@@ -1,0 +1,61 @@
+# Install Dhow
+
+Dhow is one server process with the web app built in, and a PostgreSQL 18 database. Its install methods are set in [ADR-0024](../../Plan/ADR/0024-install-methods.md) and [ADR-0036](../../Plan/ADR/0036-interactive-host-installer.md).
+
+## Choose a method
+
+| Method | Status | Best for | You manage |
+|---|---|---|---|
+| [Docker Compose](compose.md) | Available, the default | One host with Docker, from a small VPS up | Docker, the reverse proxy, backups |
+| [Run Dhow locally](local.md) | Available | Trying Dhow out, or working on its code | Nothing that others rely on |
+| Binary with systemd | Coming with the native installer | Hosts without Docker | PostgreSQL, the reverse proxy, the service |
+| Interactive installer (`dhow-server install`) | Coming with the native installer | Setting up the binary, PostgreSQL and a proxy on a fresh Linux host | Answering its questions |
+| Helm chart for Kubernetes | With M3, together with the runners | Clusters with an external PostgreSQL | The cluster, the database, ingress |
+| Signed air-gapped bundle | Enterprise, later | Networks without internet access | The offline registry and updates |
+
+If you are not sure, use Docker Compose. Every method runs the same server with the same [configuration](configuration.md), so you can move between them by restoring a database backup and keeping the same `DHOW_SECRET_KEY`.
+
+## Requirements for every method
+
+- **A Linux host** on `amd64` or `arm64`. The release images are built for both.
+- **PostgreSQL 18.** The Compose stack brings its own. Elsewhere, Dhow needs a database and a user that owns it, reached over TLS (`sslmode=require` or stronger).
+- **About 1 GB of memory** for Dhow and PostgreSQL together. The Compose stack limits Dhow to 256 MB and PostgreSQL to 512 MB.
+- **A host name and a TLS certificate.** Users reach Dhow at an `https://` address on its own host name, such as `dhow.example.com`, never under a path like `example.com/dhow`. A reverse proxy in front of Dhow terminates TLS: see [Put Dhow behind a reverse proxy](reverse-proxy.md) for nginx, Caddy and Traefik.
+- **Ports 80 and 443** open to users on the proxy. Dhow's own port, 8080, stays on the loopback interface or a private network.
+- **Outbound HTTPS, optionally.** It is used to pull images and for the breached-password check, which `DHOW_BREACHED_PASSWORD_CHECK=false` turns off.
+
+## Security checklist
+
+Go through this list before other people use the instance.
+
+**TLS**
+
+- [ ] `DHOW_PUBLIC_URL` is the `https://` address users open, and the browser shows a valid certificate for it.
+- [ ] Plain HTTP on port 80 only redirects to HTTPS.
+- [ ] `curl -sSI https://dhow.example.com/ | grep -i strict-transport-security` prints exactly one line.
+- [ ] Every step of [Verify the setup](reverse-proxy.md#verify-the-setup) passes, including the client address in the log.
+- [ ] A database on another machine uses `sslmode=verify-full`, so Dhow checks the server's certificate.
+
+**Secrets and backups**
+
+- [ ] `DHOW_SECRET_KEY` was generated randomly, for example by `init.sh` or `openssl rand -hex 32`, and never reused from another instance.
+- [ ] `DHOW_SECRET_KEY` is backed up together with the database backups, somewhere other than the host. A database backup cannot be decrypted without it.
+- [ ] A restore was tried once, as in [Back up and restore](compose.md#back-up-and-restore).
+- [ ] The file that holds the secrets, such as `.env`, has mode `600`. Only administrators can use the Docker socket, because it reveals every container's environment.
+
+**Development mode**
+
+- [ ] `DHOW_DEV` is not set, or is `false`. It allows plain HTTP and unencrypted database connections and is only for [your own machine](local.md).
+- [ ] The server log has no `DHOW_DEV=true` warning. With Compose, `docker compose logs dhow | grep DHOW_DEV` prints nothing.
+
+**Network and accounts**
+
+- [ ] `DHOW_TRUSTED_PROXIES` lists exactly the proxies in front of Dhow, as described in [Trusted proxies](reverse-proxy.md#trusted-proxies), and no range that clients connect from.
+- [ ] Dhow's port 8080 and PostgreSQL's port are not reachable from the internet.
+- [ ] The owner account was created right after the install. Until then, anyone who can read the server log can use the setup link.
+- [ ] The image is pinned by digest after [verifying its signature](compose.md#verify-an-image).
+
+## More
+
+- [Configuration](configuration.md): every `DHOW_*` variable, its default and its validation.
+- [Troubleshooting](troubleshooting.md): `CSRF_FAILED`, cookies that are not stored, the public URL and `sslmode` errors, the wrong client address, locked-out sign-ins, and the setup link.
