@@ -8,8 +8,8 @@ Dhow is one server process with the web app built in, and a PostgreSQL 18 databa
 |---|---|---|---|
 | [Docker Compose](compose.md) | Available, the default | One host with Docker, from a small VPS up | Docker, the reverse proxy, backups |
 | [Run Dhow locally](local.md) | Available | Trying Dhow out, or working on its code | Nothing that others rely on |
-| Binary with systemd | Coming with the native installer | Hosts without Docker | PostgreSQL, the reverse proxy, the service |
-| Interactive installer (`dhow-server install`) | Coming with the native installer | Setting up the binary, PostgreSQL and a proxy on a fresh Linux host | Answering its questions |
+| [Binary with systemd](binary-systemd.md) | Available | Hosts without Docker, set up by hand | PostgreSQL, the reverse proxy, the service |
+| [Interactive installer](installer.md) (`dhow-server install`) | Available | Setting up the binary, PostgreSQL and a proxy on a fresh Linux host | Answering its questions, backups |
 | Helm chart for Kubernetes | With M3, together with the runners | Clusters with an external PostgreSQL | The cluster, the database, ingress |
 | Signed air-gapped bundle | Enterprise, later | Networks without internet access | The offline registry and updates |
 

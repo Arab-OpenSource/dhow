@@ -63,7 +63,7 @@ export const useMfaStep = ({ pending, onSignedIn, onBack, inputRef: InputRef }: 
     } catch (error) {
       if (isApiError(error) && error.Code === EXPIRED) onBack(true);
       else if (isApiError(error) && error.RetryAfterSeconds !== null) Countdown.Start(error.RetryAfterSeconds);
-      else if (error instanceof PasskeyCancelled) setNotice(t('mfa.passkeys.cancelled'));
+      else if (error instanceof PasskeyCancelled) setNotice(t('mfa.step.passkeyCancelled'));
       else setNotice(errorText(error));
       SetCode('');
       InputRef.current?.focus();

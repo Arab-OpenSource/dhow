@@ -53,10 +53,10 @@ func Load(getenv func(string) string) (Config, error) {
 	if cfg.BreachedPasswordCheck, err = parseBoolDefault(getenv(EnvBreachedPasswordCheck), true); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvBreachedPasswordCheck, err))
 	}
-	if cfg.SecretKey, err = parseSecretKey(getenv(EnvSecretKey)); err != nil {
+	if cfg.SecretKey, err = loadSecretKey(getenv); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvSecretKey, err))
 	}
-	if cfg.DatabaseURL, err = parseDatabaseURL(getenv(EnvDatabaseURL), dev); err != nil {
+	if cfg.DatabaseURL, err = loadDatabaseURL(getenv, dev); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvDatabaseURL, err))
 	}
 	if cfg.PublicURL, err = parsePublicURL(getenv(EnvPublicURL), dev); err != nil {
@@ -79,6 +79,22 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	return cfg, nil
+}
+
+func loadSecretKey(getenv func(string) string) ([]byte, error) {
+	v, err := secretValue(getenv, EnvSecretKey, CredentialSecretKey)
+	if err != nil {
+		return nil, err
+	}
+	return parseSecretKey(v)
+}
+
+func loadDatabaseURL(getenv func(string) string, dev bool) (string, error) {
+	v, err := secretValue(getenv, EnvDatabaseURL, CredentialDatabaseURL)
+	if err != nil {
+		return "", err
+	}
+	return parseDatabaseURL(v, dev)
 }
 
 func parseBool(v string) (bool, error) {

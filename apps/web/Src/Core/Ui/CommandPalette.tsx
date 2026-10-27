@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { AnimatePresence, LazyMotion, m } from 'motion/react';
+import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
 import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 
 import { useFocusReturn } from '@/Core/Hooks/useFocusReturn';
@@ -119,49 +119,51 @@ export const CommandPalette = ({ open, onOpenChange, ...body }: ICommandPaletteP
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal forceMount>
-        <LazyMotion features={loadFeatures} strict>
-          <AnimatePresence>
-            {open ? (
-              <m.div
-                key="backdrop"
-                role="presentation"
-                aria-hidden="true"
-                onClick={() => {
-                  onOpenChange(false);
-                }}
-                className="pointer-events-auto fixed inset-0 z-40 bg-backdrop"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={transition}
-              />
-            ) : null}
-            {open ? (
-              <Dialog.Content
-                key="palette"
-                asChild
-                forceMount
-                aria-describedby={undefined}
-                onOpenAutoFocus={focus.onOpenAutoFocus}
-                onCloseAutoFocus={focus.onCloseAutoFocus}
-              >
+        <MotionConfig reducedMotion="user">
+          <LazyMotion features={loadFeatures} strict>
+            <AnimatePresence>
+              {open ? (
                 <m.div
-                  className={
-                    'fixed inset-x-4 top-[12vh] z-50 mx-auto w-[min(580px,calc(100dvw-2rem))] overflow-hidden rounded-lg ' +
-                    'border border-line-2 bg-surface shadow-overlay'
-                  }
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                  key="backdrop"
+                  role="presentation"
+                  aria-hidden="true"
+                  onClick={() => {
+                    onOpenChange(false);
+                  }}
+                  className="pointer-events-auto fixed inset-0 z-40 bg-backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   transition={transition}
+                />
+              ) : null}
+              {open ? (
+                <Dialog.Content
+                  key="palette"
+                  asChild
+                  forceMount
+                  aria-describedby={undefined}
+                  onOpenAutoFocus={focus.onOpenAutoFocus}
+                  onCloseAutoFocus={focus.onCloseAutoFocus}
                 >
-                  <Dialog.Title className="sr-only">{body.label}</Dialog.Title>
-                  <PaletteBody {...body} />
-                </m.div>
-              </Dialog.Content>
-            ) : null}
-          </AnimatePresence>
-        </LazyMotion>
+                  <m.div
+                    className={
+                      'fixed inset-x-4 top-[12vh] z-50 mx-auto w-[min(580px,calc(100dvw-2rem))] overflow-hidden rounded-lg ' +
+                      'border border-line-2 bg-surface shadow-overlay'
+                    }
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    transition={transition}
+                  >
+                    <Dialog.Title className="sr-only">{body.label}</Dialog.Title>
+                    <PaletteBody {...body} />
+                  </m.div>
+                </Dialog.Content>
+              ) : null}
+            </AnimatePresence>
+          </LazyMotion>
+        </MotionConfig>
       </Dialog.Portal>
     </Dialog.Root>
   );

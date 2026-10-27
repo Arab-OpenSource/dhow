@@ -1,13 +1,20 @@
-import { createRootRoute, createRoute, createRouter, redirect, type RouterHistory } from '@tanstack/react-router';
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  lazyRouteComponent,
+  redirect,
+  type RouterHistory,
+} from '@tanstack/react-router';
 
+import { preloadShell } from '@/App/Layout/LazyShell';
 import { NotFoundPage } from '@/App/Layout/NotFoundPage';
 import { RootLayout } from '@/App/Layout/RootLayout';
 import { ShellGate } from '@/App/Layout/ShellGate';
-import { parseShellSearch, stringifyShellSearch } from '@/App/Panels';
-import { LoginRoute } from '@/App/Routes/LoginRoute';
-import { SetupRoute } from '@/App/Routes/SetupRoute';
+import { parseShellSearch, stringifyShellSearch, UNKNOWN_STACK } from '@/App/Panels';
+import { LoginRoute, preloadLoginPage } from '@/App/Routes/LoginRoute';
+import { preloadSetupPage, SetupRoute } from '@/App/Routes/SetupRoute';
 import { SETUP_PATH, takeSetupTokenFromHash } from '@/Modules/Identity/Store/SetupToken';
-import { WorkspacePage } from '@/Modules/System/Pages/WorkspacePage';
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -19,12 +26,16 @@ const shellRoute = createRoute({
   id: 'shell',
   component: ShellGate,
   validateSearch: parseShellSearch,
+  loaderDeps: ({ search }) => ({ stack: search.stack }),
+  loader: ({ deps }) => {
+    preloadShell(deps.stack === undefined || deps.stack === UNKNOWN_STACK ? [] : deps.stack);
+  },
 });
 
 const workspaceRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/',
-  component: WorkspacePage,
+  component: lazyRouteComponent(() => import('@/Modules/System/Pages/WorkspacePage'), 'WorkspacePage'),
 });
 
 const shellNotFoundRoute = createRoute({
@@ -39,6 +50,7 @@ const setupRoute = createRoute({
   beforeLoad: ({ location }) => {
     if (takeSetupTokenFromHash(location.hash)) throw redirect({ to: SETUP_PATH, hash: '', replace: true });
   },
+  loader: preloadSetupPage,
   component: SetupRoute,
 });
 
@@ -47,6 +59,7 @@ const loginRoute = createRoute({
   path: '/login',
   validateSearch: (search: Record<string, unknown>): { redirect?: string } =>
     typeof search.redirect === 'string' ? { redirect: search.redirect } : {},
+  loader: preloadLoginPage,
   component: LoginRoute,
 });
 

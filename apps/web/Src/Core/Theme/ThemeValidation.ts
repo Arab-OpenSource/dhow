@@ -1,13 +1,9 @@
-import {
-  DEFAULT_COLORS,
-  isSystemThemeId,
-  THEME_TOKEN_KEYS,
-  type ICustomTheme,
-  type TThemeColors,
-} from '@/Core/Theme/ThemeTokens';
+import { isCustomThemeId } from '@/Core/Theme/ThemeIds';
+import { DEFAULT_COLORS, THEME_TOKEN_KEYS, type ICustomTheme, type TThemeColors } from '@/Core/Theme/ThemeTokens';
+
+export { isCustomThemeId, THEME_ID_PATTERN } from '@/Core/Theme/ThemeIds';
 
 export const HEX_PATTERN = /^#[0-9a-f]{6}$/i;
-export const THEME_ID_PATTERN = /^[a-z0-9-]{1,40}$/;
 export const THEME_NAME_MAX = 40;
 export const MAX_CUSTOM_THEMES = 50;
 
@@ -17,9 +13,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const isHex = (value: unknown): value is string => typeof value === 'string' && HEX_PATTERN.test(value);
-
-export const isCustomThemeId = (value: unknown): value is string =>
-  typeof value === 'string' && THEME_ID_PATTERN.test(value) && !isSystemThemeId(value);
 
 export const cleanThemeName = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;

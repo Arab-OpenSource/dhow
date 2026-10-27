@@ -1,6 +1,6 @@
 import { defaultStringifySearch } from '@tanstack/react-router';
 
-import { isCustomThemeId } from '@/Core/Theme/ThemeValidation';
+import { isCustomThemeId } from '@/Core/Theme/ThemeIds';
 import { isCheckName, type TCheckName } from '@/Modules/System/Types/SystemTypes';
 
 export const STACK_SEPARATOR = ',';

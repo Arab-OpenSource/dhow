@@ -18,7 +18,7 @@ The assets to protect are:
 | **Malicious or compromised developer** | Can push code and edit `.dhow.yml` in repos they can write to | Sandboxed runners (no host access); environment protection rules and approvals; secrets scoped per environment; branch restrictions per environment; audit |
 | **External contributor (PR from a fork)** | Can open PRs, so attacker-controlled code reaches CI | Fork PR jobs run with **no secrets** and are restricted to non-deploy environments. Running them needs maintainer approval, and the pipeline definition always comes from the base branch for privileged events |
 | **Compromised runner host** | Full control of one runner | A runner only receives secrets for jobs leased to it. A runner identity can be revoked instantly. Runners can be pinned to environments through labels and pools. Runners never get control-plane credentials or database access |
-| **Network attacker** | MITM between components or against targets | TLS everywhere. Runner identity keys are pinned. SSH host keys and TLS fingerprints are pinned per target. Webhooks are verified with HMAC and replay protection |
+| **Network attacker** | MITM between components or against targets | TLS everywhere. Runner identity keys are pinned, and the control plane signs every lease grant with a key the runner pinned at registration, so a compromised proxy cannot inject jobs. Secrets are sealed end to end to the runner's key (HPKE). SSH host keys and TLS fingerprints are pinned per target. Webhooks are verified with HMAC and replay protection |
 | **Stolen session or token** | Holds a user's cookie or API token | Server-side sessions with an idle and an absolute timeout. A session is revoked at once by sign-out, password change, MFA change, role change or an admin action. Cookies are `HttpOnly`, `Secure` and `SameSite=Strict`, and every state-changing request needs a CSRF token. High-risk actions require re-authentication. API tokens are scoped and expire |
 | **Unauthenticated internet attacker** | Can reach the public endpoints | Registration is closed. Every route requires authentication by default. Rate limits apply per IP *and* per account. There is no unauthenticated realtime channel |
 | **Malicious plugin author** | Publishes a step image | Plugins run inside the job sandbox with the job's privileges only. Plugins are referenced by digest. The registry marks verified publishers and requires signatures (cosign) |
@@ -92,7 +92,16 @@ The web UI and the API are served from the same origin, so browsers use **server
 
 ## 7. Execution safety
 
-- **Isolation (ADR-0007).** Jobs only run inside a rootless container or microVM, with limits, a read-only root filesystem, network egress denied by default, and no host mounts. The control plane never executes user code.
+- **Isolation (ADR-0007, ADR-0043).** Jobs only run inside a rootless container or microVM, with limits, a read-only root filesystem, network egress denied by default, and no host mounts. The control plane never executes user code.
+  - The default sandbox is rootless Podman with all capabilities dropped, `no-new-privileges`, a seccomp profile that also blocks nested user namespaces, `io_uring`, `bpf`, `ptrace` and `mount`, and a separate user-namespace range per job.
+  - A runner refuses to start if cgroup v2 delegation for CPU, memory and PIDs is missing, and it fails the job if the created container does not match the policy.
+  - An escape test suite (host files, runner credentials, other jobs, metadata endpoints, container sockets, privilege escalation, network) is a required CI check.
+- **Network egress (ADR-0044).** A sandbox has no network interface besides loopback. Allowed hosts are reached only through a per-job proxy in the runner. The proxy resolves names itself, connects to the address it resolved, and always denies private, loopback, link-local, CGNAT and cloud metadata ranges. Only the runner operator can open a private range.
+- **Runner plane (ADR-0041, ADR-0042).**
+  - Runners authenticate with pinned Ed25519 keys and 15-minute access tokens.
+  - Starting a job needs a fresh signature.
+  - Every mutating call carries the attempt's fencing token.
+  - Session cookies are rejected on the runner plane, and runner tokens are rejected on the public API.
 - **No shell strings in platform code.**
   - Every process the platform starts (git, ssh, rsync, docker, kubectl) uses argv arrays.
   - User-controlled values are validated against strict grammars: refs go through `git check-ref-format`, SHAs must match `^[0-9a-f]{40}$`, and URLs go through a parser with a scheme allowlist.
