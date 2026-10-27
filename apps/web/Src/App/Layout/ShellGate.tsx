@@ -1,5 +1,5 @@
-import { AppShell } from '@/App/Layout/AppShell';
 import { EntryRedirect } from '@/App/Layout/EntryRedirect';
+import { LazyAppShell } from '@/App/Layout/LazyShell';
 import { PageError, PageLoading } from '@/App/Layout/PageStates';
 import { isUnauthenticated } from '@/Core/Api/ApiError';
 import { useMe } from '@/Core/Auth/useMe';
@@ -19,5 +19,5 @@ export const ShellGate = () => {
     );
   }
   if (me.data === undefined) return <PageLoading />;
-  return <AppShell />;
+  return <LazyAppShell />;
 };

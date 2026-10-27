@@ -1,12 +1,15 @@
 import { useNavigate } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 
 import { PageError, PageLoading } from '@/App/Layout/PageStates';
+import { lazyComponent } from '@/Core/Ui/LazyComponent';
 import { useMeta } from '@/Modules/System/Hooks/useMeta';
 
-const SetupPage = lazy(() =>
-  import('@/Modules/Identity/Pages/SetupPage').then((module) => ({ default: module.SetupPage })),
-);
+const SetupPage = lazyComponent(() => import('@/Modules/Identity/Pages/SetupPage').then((module) => module.SetupPage));
+
+export const preloadSetupPage = (): void => {
+  void SetupPage.preload();
+};
 
 export const SetupRoute = () => {
   const meta = useMeta();

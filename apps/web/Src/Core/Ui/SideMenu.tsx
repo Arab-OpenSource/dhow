@@ -14,6 +14,7 @@ export interface IMenuItem {
   href: string;
   current?: boolean;
   onSelect: () => void;
+  onIntent?: () => void;
 }
 
 export interface IPendingMenuItem {
@@ -38,6 +39,7 @@ export interface IMenuAccount {
   href: string;
   current?: boolean;
   onSelect: () => void;
+  onIntent?: () => void;
   signOut?: IMenuSignOut;
 }
 
@@ -60,6 +62,8 @@ const MenuLink = ({ item }: { item: IMenuItem }) => (
     <a
       href={item.href}
       aria-current={item.current ? 'page' : undefined}
+      onPointerEnter={item.onIntent}
+      onFocus={item.onIntent}
       onClick={(event) => {
         if (isPlainClick(event)) {
           event.preventDefault();
@@ -89,6 +93,8 @@ const AccountRow = ({ account }: { account: IMenuAccount }) => (
       <a
         href={account.href}
         aria-current={account.current ? 'page' : undefined}
+        onPointerEnter={account.onIntent}
+        onFocus={account.onIntent}
         onClick={(event) => {
           if (isPlainClick(event)) {
             event.preventDefault();

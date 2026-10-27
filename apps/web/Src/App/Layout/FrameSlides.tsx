@@ -1,16 +1,18 @@
 import type { IFrameContext } from '@/App/Layout/FrameContext';
 import { buildIdentitySlide } from '@/App/Layout/IdentitySlides';
+import {
+  LazyAppearanceBody,
+  LazyAppearanceFooter,
+  LazyCheckDetailBody,
+  LazySystemStatusBody,
+  LazySystemStatusFooter,
+  LazyThemeEditorBody,
+  LazyThemeEditorFooter,
+} from '@/App/Layout/LazyFrames';
 import { checkFrame, checkOf, themeEditFrame, themeOf, type TFrameId } from '@/App/Panels';
 import { Card } from '@/Core/Ui/Card';
 import { EmptyState } from '@/Core/Ui/EmptyState';
 import type { ISlide } from '@/Core/Ui/SlideStack';
-import { AppearanceBody } from '@/Modules/Appearance/Components/AppearanceBody';
-import { AppearanceFooter } from '@/Modules/Appearance/Components/AppearanceFooter';
-import { ThemeEditor } from '@/Modules/Appearance/Components/ThemeEditor';
-import { ThemeEditorFooter } from '@/Modules/Appearance/Components/ThemeEditorFooter';
-import { CheckDetailBody } from '@/Modules/System/Components/CheckDetailBody';
-import { SystemStatusBody } from '@/Modules/System/Components/SystemStatusBody';
-import { SystemStatusFooter } from '@/Modules/System/Components/SystemStatusFooter';
 
 const themeEditSlide = (id: TFrameId, { t, navigation, draftName, customThemes }: IFrameContext): ISlide => {
   const sourceId = themeOf(id) ?? undefined;
@@ -20,8 +22,8 @@ const themeEditSlide = (id: TFrameId, { t, navigation, draftName, customThemes }
     title:
       [draftName?.trim(), existing].find((name) => name !== undefined && name !== '') ?? t('themeEditor.title.new'),
     subtitle: <span>{t('themeEditor.subtitle')}</span>,
-    children: <ThemeEditor sourceId={sourceId} onDone={navigation.popFrame} />,
-    footer: <ThemeEditorFooter onCancel={navigation.popFrame} onDone={navigation.popFrame} />,
+    children: <LazyThemeEditorBody sourceId={sourceId} onDone={navigation.popFrame} />,
+    footer: <LazyThemeEditorFooter onCancel={navigation.popFrame} onDone={navigation.popFrame} />,
   };
 };
 
@@ -35,8 +37,8 @@ export const buildSlide = (id: TFrameId, context: IFrameContext): ISlide => {
       id,
       title: t(`status.check.${check}`),
       subtitle: <span>{t('checkDetail.subtitle')}</span>,
-      children: <CheckDetailBody name={check} />,
-      footer: <SystemStatusFooter />,
+      children: <LazyCheckDetailBody name={check} />,
+      footer: <LazySystemStatusFooter />,
     };
   }
   if (id === 'system-status') {
@@ -45,13 +47,13 @@ export const buildSlide = (id: TFrameId, context: IFrameContext): ISlide => {
       title: t('status.title'),
       subtitle: <span>{t('status.subtitle')}</span>,
       children: (
-        <SystemStatusBody
+        <LazySystemStatusBody
           onOpenCheck={(name) => {
             navigation.pushFrame(checkFrame(name));
           }}
         />
       ),
-      footer: <SystemStatusFooter />,
+      footer: <LazySystemStatusFooter />,
     };
   }
   if (id === 'notifications') {
@@ -71,14 +73,14 @@ export const buildSlide = (id: TFrameId, context: IFrameContext): ISlide => {
       title: t('appearance.title'),
       subtitle: <span>{t('appearance.subtitle')}</span>,
       children: (
-        <AppearanceBody
+        <LazyAppearanceBody
           onEdit={(themeId) => {
             navigation.pushFrame(themeEditFrame(themeId));
           }}
         />
       ),
       footer: (
-        <AppearanceFooter
+        <LazyAppearanceFooter
           onCreate={() => {
             navigation.pushFrame('theme-edit');
           }}
