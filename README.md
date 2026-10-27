@@ -43,7 +43,7 @@ See [docs/editions-and-licensing.md](docs/editions-and-licensing.md).
 ## Install
 
 Dhow installs with one Docker Compose file: `./init.sh` generates strong secrets, then `docker compose up -d` starts an empty, hardened instance with its own PostgreSQL. Images are signed with cosign and ship with an SBOM.
-See [docs/install.md](docs/install.md) for the quick start, upgrades, backups and signature verification.
+See [docs/install/](docs/install/README.md) to choose a method, then the [Compose guide](docs/install/compose.md) for the quick start, upgrades, backups and signature verification.
 
 ## Documentation
 
@@ -54,7 +54,7 @@ See [docs/install.md](docs/install.md) for the quick start, upgrades, backups an
 | [Pipeline spec](docs/pipeline-spec.md) | `.dhow.yml` schema v1 (draft) |
 | [UI principles](docs/ui-principles.md) | Arabic-first design, navigation model, performance budgets |
 | [Editions & licensing](docs/editions-and-licensing.md) | Open-core model, feature matrix, license enforcement |
-| [Install](docs/install.md) | Docker Compose install, upgrade, backup and restore, verifying signed images |
+| [Install](docs/install/README.md) | Choosing a method, Docker Compose, reverse proxies, local runs, configuration, troubleshooting |
 | [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
 | [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
 

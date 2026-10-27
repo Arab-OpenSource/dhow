@@ -56,6 +56,10 @@ compose-down: ## Stop the Compose stack and keep its data (COMPOSE_DOWN_FLAGS=--
 smoke: image ## Build the image, start a fresh Compose stack, check it, and remove it
 	deploy/smoke.sh $(IMAGE)
 
+.PHONY: proxy-check
+proxy-check: image ## Build the image and test the documented nginx, Caddy and Traefik configs in Docker (local only)
+	deploy/proxy-check/run.sh $(IMAGE)
+
 .PHONY: gen
 gen: ## Regenerate code from the OpenAPI spec (one config per module) and SQL queries
 	set -e; for cfg in apps/server/internal/Modules/*/oapi-codegen.yaml; do \
