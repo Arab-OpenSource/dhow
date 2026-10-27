@@ -1,0 +1,24 @@
+# Build output
+/bin/
+/dist/
+apps/web/dist/
+apps/server/web/dist/
+coverage.out
+*.test
+
+# Dependencies
+node_modules/
+
+# Local config and secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+dhow.local.yaml
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
