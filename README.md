@@ -3,8 +3,9 @@
 > **Ship to your own servers — safely.**
 > A secure, self-hosted continuous deployment platform. Arabic-first.
 
-**Status:** 🧭 Design phase. No runnable code yet. This repository currently holds the architecture,
-security model, pipeline spec and decision records. Feedback is welcome through issues and discussions.
+**Status:** 🧱 Foundations (milestone M1 of the [roadmap](docs/roadmap.md)). `docker compose up` boots an empty,
+hardened instance with the web shell and health endpoints. Sign-in, projects, runners and deployments come in the next
+milestones, so Dhow is not usable for real work yet. Feedback is welcome through issues and discussions.
 
 ---
 
