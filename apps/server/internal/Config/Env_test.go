@@ -78,6 +78,9 @@ func TestLoadListenAddr(t *testing.T) {
 		{"port only", "8080", true},
 		{"port out of range", "localhost:99999", true},
 		{"ipv6 without brackets", "::1:8080", true},
+		{"ipv6 port out of range", "[::1]:99999", true},
+		{"ipv6 port not numeric", "[::1]:http", true},
+		{"ipv6 empty port", "[::1]:", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

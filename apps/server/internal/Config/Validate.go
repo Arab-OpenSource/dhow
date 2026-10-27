@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -60,7 +61,11 @@ func ruleMessage(fe validator.FieldError) string {
 
 func isIPv6Port(fl validator.FieldLevel) bool {
 	host, port, err := net.SplitHostPort(fl.Field().String())
-	if err != nil || port == "" {
+	if err != nil {
+		return false
+	}
+	n, err := strconv.Atoi(port)
+	if err != nil || n < 0 || n > 65535 {
 		return false
 	}
 	addr, err := netip.ParseAddr(host)
