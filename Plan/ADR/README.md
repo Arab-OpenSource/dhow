@@ -32,3 +32,4 @@
 | [0028](0028-naming-conventions-and-project-hooks.md) | قواعد التسمية والأسلوب، وفرضها بـ Claude Code hooks |
 | [0029](0029-design-system-aurora-dusk.md) | الـ Design System على aurora-dark-ui بألوان الغروب، وغامق بس في الإصدار الأول |
 | [0030](0030-server-modular-monolith.md) | هيكل السيرفر: Modular Monolith بتكييف Go |
+| [0031](0031-web-structure-and-ui-components.md) | هيكل الواجهة بالـ Modules، وأسماء الـ hooks، وcomponents مكتوبة بإيدينا فوق Radix |
