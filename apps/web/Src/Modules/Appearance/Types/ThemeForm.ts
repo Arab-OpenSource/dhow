@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { THEME_NAME_MAX } from '@/Core/Theme/ThemeValidation';
 
+z.config({ jitless: true });
+
 export const themeFormSchema = z.object({
   Name: z
     .string()

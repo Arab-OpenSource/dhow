@@ -18,9 +18,10 @@ const BACKGROUND_LIGHTNESS: Record<TBackgroundToken, number> = {
 };
 const MAX_SATURATION = 45;
 
-const onLightToken = color.tokens.find((token) => token.name === 'text-on-light');
-if (!onLightToken) throw new Error('Tokens.json does not define text-on-light');
-export const ON_LIGHT: string = onLightToken.value.dark;
+const onAccentToken = color.tokens.find((token) => token.name === 'color-on-accent');
+const onAccentShare = /color-mix\(in srgb, var\(--color-aurora-1\) (\d+)%, black\)/.exec(onAccentToken?.value.dark ?? '')?.[1];
+if (onAccentShare === undefined) throw new Error('Tokens.json does not define color-on-accent as a mix of a1 with black');
+const ON_ACCENT_SHARE = Number(onAccentShare) / 100;
 
 type TRgb = [number, number, number];
 type TLab = [number, number, number];
@@ -45,6 +46,15 @@ export const contrastRatio = (first: string, second: string): number => {
   const [lighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort((a, b) => b - a);
   return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05);
 };
+
+export const onAccent = (accent: string): string =>
+  `#${channels(accent)
+    .map((value) =>
+      Math.round(value * ON_ACCENT_SHARE)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
 
 export const hexToHsl = (hex: string): [number, number, number] => {
   const [r, g, b] = channels(hex).map((value) => value / 255) as TRgb;
@@ -98,7 +108,7 @@ export const colorDistance = (first: string, second: string): number => {
   return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
 };
 
-export type TContrastCheckId = 'textOnCards' | 'secondaryOnCanvas' | 'textOnGradient';
+export type TContrastCheckId = 'textOnCards' | 'secondaryOnCanvas' | 'textOnPrimary';
 
 export interface IContrastCheck {
   Id: TContrastCheckId;
@@ -111,7 +121,7 @@ export const contrastChecks = (colors: TThemeColors): IContrastCheck[] =>
     [
       ['textOnCards', colors.t1, colors.surface],
       ['secondaryOnCanvas', colors.t2, colors.canvas],
-      ['textOnGradient', ON_LIGHT, colors.a3],
+      ['textOnPrimary', onAccent(colors.a1), colors.a1],
     ] as const
   ).map(([Id, foreground, background]) => {
     const Ratio = contrastRatio(foreground, background);

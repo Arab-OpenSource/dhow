@@ -27,3 +27,15 @@ describe('Tooltip', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('System status');
   });
 });
+
+describe('Tooltip on a menu with visible labels', () => {
+  it('can be limited to phones, where the label is hidden', async () => {
+    const { user } = renderUi(
+      <Tooltip label="System status" phoneOnly>
+        <button type="button">Trigger</button>
+      </Tooltip>,
+    );
+    await user.tab();
+    expect(await screen.findByRole('tooltip')).toHaveClass('md:hidden');
+  });
+});

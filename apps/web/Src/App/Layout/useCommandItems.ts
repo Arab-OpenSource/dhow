@@ -14,8 +14,8 @@ export const useCommandItems = (): ICommands => {
   const target = otherLocale(Locale);
 
   const items: ICommandItem[] = [
-    { id: 'workspace', icon: 'project', label: t('palette.command.workspace'), kind: t('palette.kind.page') },
-    { id: 'system-status', icon: 'health', label: t('palette.command.systemStatus'), kind: t('palette.kind.panel') },
+    { id: 'home', icon: 'home', label: t('palette.command.home'), kind: t('palette.kind.page') },
+    { id: 'system-status', icon: 'shield', label: t('palette.command.systemStatus'), kind: t('palette.kind.panel') },
     { id: 'notifications', icon: 'bell', label: t('palette.command.notifications'), kind: t('palette.kind.panel') },
     { id: 'appearance', icon: 'settings', label: t('palette.command.appearance'), kind: t('palette.kind.panel') },
     { id: 'theme-new', icon: 'plus', label: t('palette.command.createTheme'), kind: t('palette.kind.panel') },
@@ -27,7 +27,7 @@ export const useCommandItems = (): ICommands => {
   ];
 
   const run = (item: ICommandItem) => {
-    if (item.id === 'workspace') goWorkspace();
+    if (item.id === 'home') goWorkspace();
     else if (item.id === 'system-status') openStack(['system-status']);
     else if (item.id === 'notifications') openStack(['notifications']);
     else if (item.id === 'appearance') openStack(['appearance']);

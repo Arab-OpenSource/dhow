@@ -18,6 +18,14 @@ export const ACCENT_DOT: Record<TAccent, string> = {
   queued: 'bg-accent-violet',
 };
 
+export const ACCENT_SURFACE: Record<TAccent, string> = {
+  live: 'border-ok-line bg-ok-wash',
+  building: 'border-line bg-surface-inset',
+  awaiting: 'border-warn-line bg-warn-wash',
+  failed: 'border-bad-line bg-bad-wash',
+  queued: 'border-line bg-surface-inset',
+};
+
 export const ACCENT_ICON: Record<TAccent, TIconName> = {
   live: 'check',
   building: 'info',

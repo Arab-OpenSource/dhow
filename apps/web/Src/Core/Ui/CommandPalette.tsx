@@ -57,7 +57,7 @@ const PaletteBody = ({ items, onSelect, label, placeholder, emptyText }: TBodyPr
 
   return (
     <>
-      <div className="flex items-center gap-2.5 border-b border-subtle bg-input px-[18px] text-tertiary">
+      <div className="flex items-center gap-2.5 border-b border-line bg-input px-4 text-tertiary">
         <Icon name="search" size={18} />
         <input
           role="combobox"
@@ -73,7 +73,7 @@ const PaletteBody = ({ items, onSelect, label, placeholder, emptyText }: TBodyPr
             setActive(0);
           }}
           onKeyDown={HandleKeyDown}
-          className="h-[54px] flex-1 border-0 bg-transparent text-[15px] text-primary outline-none placeholder:text-tertiary"
+          className="h-14 flex-1 border-0 bg-transparent text-body text-primary outline-none placeholder:text-tertiary"
         />
       </div>
       <div id={listId} role="listbox" aria-label={label} className="grid max-h-80 gap-0.5 overflow-auto p-2 empty:hidden">
@@ -92,7 +92,7 @@ const PaletteBody = ({ items, onSelect, label, placeholder, emptyText }: TBodyPr
                 onSelect(item);
               }}
               className={cx(
-                'flex w-full cursor-pointer items-center gap-3 rounded-md border-0 bg-transparent px-3 py-2.5 text-start text-[14px] text-secondary',
+                'flex w-full cursor-pointer items-center gap-3 rounded-sm border-0 bg-transparent px-3 py-2.5 text-start text-body-sm text-secondary',
                 index === Active && 'bg-surface-raised text-primary',
               )}
             >
@@ -104,7 +104,7 @@ const PaletteBody = ({ items, onSelect, label, placeholder, emptyText }: TBodyPr
         ))}
       </div>
       {visible.length === 0 ? (
-        <p role="status" className="m-0 px-5 pb-4 text-caption text-tertiary">
+        <p role="status" className="m-0 px-5 pb-4 text-caption text-secondary">
           {emptyText}
         </p>
       ) : null}
@@ -129,7 +129,7 @@ export const CommandPalette = ({ open, onOpenChange, ...body }: ICommandPaletteP
                 onClick={() => {
                   onOpenChange(false);
                 }}
-                className="pointer-events-auto fixed inset-0 z-40 bg-backdrop backdrop-blur-[8px]"
+                className="pointer-events-auto fixed inset-0 z-40 bg-backdrop"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -147,8 +147,8 @@ export const CommandPalette = ({ open, onOpenChange, ...body }: ICommandPaletteP
               >
                 <m.div
                   className={
-                    'fixed inset-x-4 top-[12vh] z-50 mx-auto w-[min(580px,calc(100dvw-2rem))] overflow-hidden rounded-xl ' +
-                    'bg-card-gradient [box-shadow:var(--shadow-card),var(--shadow-overlay)]'
+                    'fixed inset-x-4 top-[12vh] z-50 mx-auto w-[min(580px,calc(100dvw-2rem))] overflow-hidden rounded-lg ' +
+                    'border border-line-2 bg-surface shadow-overlay'
                   }
                   initial={{ opacity: 0, y: 8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}

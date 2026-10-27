@@ -22,7 +22,7 @@ export const StatusDot = ({ status, children, className }: IStatusDotProps) => (
     data-status={status}
     className={cx('inline-flex items-center gap-2 whitespace-nowrap text-caption text-secondary', className)}
   >
-    <i aria-hidden="true" className={cx('size-1.5 rounded-full', DOT[status])} />
+    <i aria-hidden="true" className={cx('size-2 rounded-full', DOT[status])} />
     {children}
   </span>
 );

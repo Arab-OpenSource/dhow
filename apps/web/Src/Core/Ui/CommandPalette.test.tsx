@@ -6,8 +6,8 @@ import { renderUi } from '@/Core/Testing/Render';
 import { CommandPalette, type ICommandItem } from '@/Core/Ui/CommandPalette';
 
 const ITEMS: ICommandItem[] = [
-  { id: 'workspace', label: 'Go to workspace', icon: 'project', kind: 'Page' },
-  { id: 'status', label: 'Open system status', icon: 'health', kind: 'Panel' },
+  { id: 'workspace', label: 'Go to workspace', icon: 'layers', kind: 'Page' },
+  { id: 'status', label: 'Open system status', icon: 'shield', kind: 'Panel' },
   { id: 'language', label: 'Switch to English', kind: 'Action' },
 ];
 

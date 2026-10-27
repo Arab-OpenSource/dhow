@@ -1,5 +1,7 @@
 import { useId } from 'react';
 
+const STOPS = [1, 2, 3, 4, 5, 6] as const;
+
 export interface IMarkProps {
   size?: number;
   className?: string;
@@ -11,9 +13,9 @@ export const Mark = ({ size = 32, className }: IMarkProps) => {
     <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden="true" className={className}>
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" style={{ stopColor: 'var(--color-aurora-1)' }} />
-          <stop offset="0.5" style={{ stopColor: 'var(--color-aurora-3)' }} />
-          <stop offset="1" style={{ stopColor: 'var(--color-aurora-5)' }} />
+          {STOPS.map((stop, index) => (
+            <stop key={stop} offset={index / (STOPS.length - 1)} style={{ stopColor: `var(--color-aurora-${stop})` }} />
+          ))}
         </linearGradient>
       </defs>
       <path d="M17 3 L17 20.5 L5.5 20.5 Z" fill={`url(#${gradientId})`} />

@@ -4,43 +4,46 @@ import { cx } from '@/Core/Ui/ClassNames';
 import { Icon } from '@/Core/Ui/Icon';
 import type { TIconName } from '@/Core/Ui/Icons';
 
-export type TButtonVariant = 'edge' | 'aurora' | 'quiet';
+export type TButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
-export interface IButtonProps extends ComponentProps<'button'> {
-  variant?: TButtonVariant;
+interface IButtonBase extends ComponentProps<'button'> {
   size?: 'sm' | 'md';
-  iconStart?: TIconName;
 }
 
+export type TButtonProps =
+  | (IButtonBase & { variant?: Exclude<TButtonVariant, 'danger'>; iconStart?: TIconName })
+  | (IButtonBase & { variant: 'danger'; iconStart: TIconName });
+
 const VARIANTS: Record<TButtonVariant, string> = {
-  edge: 'edge text-primary hover:[--edge-fill:var(--color-surface-raised)]',
-  aurora: 'bg-aurora text-on-light',
-  quiet: 'bg-transparent text-secondary hover:bg-surface-raised hover:text-primary',
+  primary: 'border-transparent bg-accent text-on-accent hover:brightness-110 disabled:bg-surface-raised disabled:text-muted disabled:brightness-100',
+  secondary:
+    'border-line-2 bg-transparent text-primary hover:bg-surface-raised disabled:border-line disabled:bg-transparent disabled:text-muted',
+  ghost: 'border-transparent bg-transparent text-secondary hover:bg-hover hover:text-primary disabled:bg-transparent disabled:text-muted',
+  danger: 'border-transparent bg-transparent text-accent-coral hover:bg-bad-wash disabled:bg-transparent disabled:text-muted',
 };
 
 export const Button = ({
-  variant = 'edge',
+  variant = 'secondary',
   size = 'md',
   iconStart,
   className,
   children,
   type = 'button',
   ...rest
-}: IButtonProps) => (
+}: TButtonProps) => (
   <button
     type={type}
+    data-variant={variant}
     className={cx(
-      'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-pill font-medium',
-      'transition-[background-color,color,transform] duration-140 ease-dhow active:scale-[0.98]',
-      'disabled:cursor-not-allowed disabled:border disabled:border-subtle disabled:text-muted',
-      'disabled:[background:none] disabled:active:scale-100',
-      size === 'sm' ? 'h-[34px] px-4 text-[13px]' : 'h-10 px-[18px] text-[14px]',
+      'inline-flex cursor-pointer items-center justify-center gap-2 rounded-btn border whitespace-nowrap',
+      'transition-colors duration-140 ease-dhow disabled:cursor-not-allowed',
+      size === 'sm' ? 'h-btn-sm px-3 text-label-sm' : 'h-btn px-4 text-label',
       VARIANTS[variant],
       className,
     )}
     {...rest}
   >
-    {iconStart ? <Icon name={iconStart} size={16} /> : null}
+    {iconStart ? <Icon name={iconStart} size={size === 'sm' ? 15 : 16} /> : null}
     {children}
   </button>
 );

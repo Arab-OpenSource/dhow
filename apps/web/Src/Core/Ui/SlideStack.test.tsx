@@ -169,6 +169,29 @@ describe('SlideStack', () => {
   });
 });
 
+describe('SlideStack in direction A', () => {
+  it('leaves out the trail while only one slide is open, since it would repeat the title', async () => {
+    renderWithProviders(<Harness initial={['a']} />);
+    await screen.findByRole('dialog', { name: 'Alpha' });
+    expect(within(topSlide()).queryByRole('navigation', { name: Ar['slides.trail'] })).not.toBeInTheDocument();
+  });
+
+  it('starts beside the side menu, with the offset and the width taken from the layout tokens', async () => {
+    renderWithProviders(<Harness initial={['a']} />);
+    const dialog = await screen.findByRole('dialog', { name: 'Alpha' });
+    expect(dialog).toHaveClass('start-menu', 'max-md:bottom-bottombar');
+    expect(dialog.className).toContain('var(--spacing-menu)');
+    expect(dialog.className).toContain('var(--spacing-panel)');
+    expect(dialog.className).not.toContain('rail');
+  });
+
+  it('draws the slide flat on the canvas with a thin line and 16px corners', async () => {
+    renderWithProviders(<Harness initial={['a']} />);
+    await screen.findByRole('dialog', { name: 'Alpha' });
+    expect(topSlide()).toHaveClass('rounded-lg', 'border-line-2', 'bg-canvas');
+  });
+});
+
 describe('SlideStack accessibility', () => {
   it('makes the lower slides inert and hidden from assistive technology', async () => {
     renderWithProviders(<Harness initial={['a', 'b', 'c']} />);

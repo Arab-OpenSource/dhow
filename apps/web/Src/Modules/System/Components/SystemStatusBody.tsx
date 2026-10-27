@@ -6,6 +6,7 @@ import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
 import { BuildInfoCard } from '@/Modules/System/Components/BuildInfoCard';
 import { ChecksCard } from '@/Modules/System/Components/ChecksCard';
+import { StatusSummary } from '@/Modules/System/Components/StatusSummary';
 import { useMeta } from '@/Modules/System/Hooks/useMeta';
 import { useReadiness } from '@/Modules/System/Hooks/useReadiness';
 import type { TCheckName } from '@/Modules/System/Types/SystemTypes';
@@ -38,13 +39,14 @@ export const SystemStatusBody = ({ onOpenCheck }: ISystemStatusBodyProps) => {
           <InlineAlert accent="failed" title={t('status.error.title')}>
             {errorText(failure)}
           </InlineAlert>
-          <Button size="sm" onClick={Retry}>
+          <Button variant="secondary" size="sm" onClick={Retry}>
             {t('status.retry')}
           </Button>
         </div>
       ) : null}
       {meta.data && readiness.data && !failure ? (
         <>
+          <StatusSummary meta={meta.data} health={readiness.data} />
           <BuildInfoCard meta={meta.data} />
           <ChecksCard health={readiness.data} onOpenCheck={onOpenCheck} />
         </>

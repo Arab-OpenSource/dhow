@@ -34,6 +34,49 @@ describe('locale catalogs', () => {
   });
 });
 
+describe('the UI glossary (ADR-0034)', () => {
+  const ALLOWED_LATIN = new Set(['English', 'commit', 'DHOW_DATABASE_URL']);
+
+  it('keeps English words out of the Arabic copy, except the language name, one first-mention term and a technical value', () => {
+    const stray = Object.entries(Ar).flatMap(([key, text]) =>
+      [...text.replaceAll(/\{\w+\}/g, '').matchAll(/[A-Za-z][A-Za-z0-9_]+/g)]
+        .map((match) => match[0])
+        .filter((word) => !ALLOWED_LATIN.has(word))
+        .map((word) => `${key}: ${word}`),
+    );
+    expect(stray).toEqual([]);
+  });
+
+  it('puts the English term in parentheses on first mention only', () => {
+    const withParentheses = Object.entries(Ar)
+      .filter(([, text]) => /\([A-Za-z]+\)/.test(text))
+      .map(([key]) => key);
+    expect(withParentheses).toEqual(['status.build.commit']);
+  });
+
+  it('names the shell sections with the glossary terms', () => {
+    expect(Ar['shell.nav.home']).toBe('الرئيسية');
+    expect(Ar['shell.nav.runners']).toBe('أجهزة التشغيل');
+    expect(Ar['shell.nav.team']).toBe('الفريق');
+    expect(Ar['shell.nav.audit']).toBe('سجل الأحداث');
+    expect(Ar['shell.nav.settings']).toBe('الإعدادات');
+    expect(Ar['appearance.title']).toBe('المظهر والألوان');
+    expect(En['shell.nav.home']).toBe('Home');
+    expect(En['shell.nav.runners']).toBe('Runners');
+    expect(En['shell.nav.audit']).toBe('Audit log');
+  });
+
+  it('no longer calls the home page a workspace', () => {
+    for (const text of Object.values(Ar)) expect(text).not.toContain('مساحة الشغل');
+    for (const text of Object.values(En)) expect(text.toLowerCase()).not.toContain('workspace');
+  });
+
+  it('says the coming-soon tooltip in both languages', () => {
+    expect(Ar['shell.soon']).toBe('جاية قريب');
+    expect(En['shell.soon']).toBe('Coming soon');
+  });
+});
+
 describe('translate', () => {
   it('fills placeholders and leaves unknown ones visible', () => {
     expect(translate('en', 'shell.language.switch', { language: 'Arabic' })).toBe('Switch the language to Arabic');
@@ -45,7 +88,7 @@ const Probe = () => {
   const { Locale, SetLocale, t } = useI18n();
   return (
     <>
-      <p>{t('workspace.title')}</p>
+      <p>{t('home.title')}</p>
       <output>{Locale}</output>
       <button
         type="button"
@@ -66,7 +109,7 @@ describe('I18nProvider', () => {
         <Probe />
       </I18nProvider>,
     );
-    expect(screen.getByText(Ar['workspace.title'])).toBeInTheDocument();
+    expect(screen.getByText(Ar['home.title'])).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('ar');
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.title).toBe(Ar['app.title']);
@@ -79,7 +122,7 @@ describe('I18nProvider', () => {
       </I18nProvider>,
     );
     await userEvent.click(screen.getByRole('button', { name: 'flip' }));
-    expect(screen.getByText(En['workspace.title'])).toBeInTheDocument();
+    expect(screen.getByText(En['home.title'])).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('en');
     expect(document.documentElement.dir).toBe('ltr');
     expect(document.title).toBe(En['app.title']);

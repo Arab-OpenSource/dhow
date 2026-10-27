@@ -80,6 +80,18 @@ export const THEME_TOKEN_GROUPS: IThemeTokenGroup[] = THEME_GROUPS.map((Group) =
   Tokens: THEME_TOKEN_KEYS.filter((key) => GROUP_OF[key] === Group),
 }));
 
+export const UNUSED_THEME_GROUPS: readonly TThemeGroup[] = ['edge'];
+
+export type TEditorGroup = Exclude<TThemeGroup, 'edge'>;
+
+export interface IEditorTokenGroup extends IThemeTokenGroup {
+  Group: TEditorGroup;
+}
+
+const isEditorGroup = (group: IThemeTokenGroup): group is IEditorTokenGroup => !UNUSED_THEME_GROUPS.includes(group.Group);
+
+export const EDITOR_TOKEN_GROUPS: IEditorTokenGroup[] = THEME_TOKEN_GROUPS.filter(isEditorGroup);
+
 export const SYSTEM_THEMES: ISystemTheme[] = themes.themes.flatMap((theme) =>
   isSystemThemeId(theme.id) ? [{ Id: theme.id, Colors: theme.colors }] : [],
 );
