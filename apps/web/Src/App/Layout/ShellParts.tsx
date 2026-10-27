@@ -14,6 +14,7 @@ export const preloadStack = (stack: readonly TFrameId[]): Promise<void> =>
 export const preloadShellParts = (): void => {
   void SlideHost.preload();
   void CommandPalette.preload();
+  void import('@/Core/Ui/MotionFeatures');
   void preloadAllFrames();
 };
 
