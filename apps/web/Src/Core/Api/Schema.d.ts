@@ -96,7 +96,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with email and password
-         * @description Failure is always `INVALID_CREDENTIALS` with the same body whether the account exists or not. A throttled account or address gets the same error plus a `Retry-After` header. Success sets the `__Host-dhow_session` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`), replaces any session cookie the request carried, and returns the CSRF token the client must send as `X-CSRF-Token` on every non-GET request.
+         * @description Failure is always `INVALID_CREDENTIALS` with the same body whether the account exists or not. A throttled account or address gets the same error plus a `Retry-After` header. Success sets the `__Host-dhow_session` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`), replaces any session cookie the request carried, and returns the CSRF token the client must send as `X-CSRF-Token` on every non-GET request. When the account has a second factor (TOTP or a passkey), a correct password answers 202 instead: no session is created, and the `__Host-dhow_mfa` cookie carries a challenge that is valid for 5 minutes, works once and is bound to the user and the browser. Only `POST /sessions/mfa` turns it into a session.
          */
         post: operations["login"];
         delete?: never;
@@ -154,6 +154,284 @@ export interface paths {
          * @description Another user's session id answers 404, exactly like an id that does not exist.
          */
         delete: operations["revokeSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish signing in with the second factor
+         * @description Needs the `__Host-dhow_mfa` cookie from `POST /sessions`; the user comes from that challenge, never from the request. Accepts a TOTP code, an unused recovery code or a passkey assertion (after `POST /sessions/mfa/passkey-options`). A missing, expired, used or foreign-browser challenge answers `MFA_CHALLENGE_EXPIRED`. A wrong factor answers `INVALID_MFA_CODE` whatever the reason; attempts are throttled per account and per address like the password, and a throttled attempt adds `Retry-After`. Success sets the session cookie and clears the challenge cookie.
+         */
+        post: operations["completeMfaLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/mfa/passkey-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passkey request options for the second step
+         * @description Needs the `__Host-dhow_mfa` cookie. Returns WebAuthn request options for the user's passkeys and binds their challenge to the pending sign-in. The options keep the W3C WebAuthn JSON names.
+         */
+        post: operations["beginMfaPasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/passkey-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passkey request options for signing in without a password
+         * @description Starts a discoverable-credential ceremony with user verification required. The challenge is stored on the server, lives 5 minutes and works once.
+         */
+        post: operations["beginPasskeyLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/passkey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with a passkey
+         * @description Verifies the assertion against the stored challenge, the configured RP ID and origin, and the stored public key and sign count. Any failure answers `INVALID_CREDENTIALS`. Success sets the session cookie.
+         */
+        post: operations["passkeyLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which second factors the signed-in user has */
+        get: operations["getMfaStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/mfa/passkey-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passkey request options to confirm a change with a passkey
+         * @description For a `CurrentFactor` of method `passkey`. The challenge is bound to the user and the current session, lives 5 minutes and works once.
+         */
+        post: operations["beginStepUpPasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start turning on TOTP (or replacing it)
+         * @description Generates a new secret on the server and stores it encrypted. The secret and its `otpauth://` URI are returned once so the client can draw a QR code; nothing is active until `POST /me/totp/confirm`. A pending enrollment lives 10 minutes and belongs to the session that started it.
+         */
+        post: operations["startTotpEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/totp/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn TOTP on with a code from the new app
+         * @description Needs a code from the new authenticator and a current factor: the password when the account has no second factor yet, otherwise a TOTP code, a recovery code or a passkey. Replaces an existing TOTP, revokes every other session and, for the first second factor, returns 10 recovery codes once.
+         */
+        post: operations["confirmTotp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/totp/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn TOTP off
+         * @description Needs a current second factor. Revokes every other session. When no second factor is left, the recovery codes are removed too.
+         */
+        post: operations["disableTotp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replace the recovery codes
+         * @description Needs a current second factor. Returns 10 new codes once (each carries 80 random bits and works once); the old codes stop working. Revokes every other session.
+         */
+        post: operations["regenerateRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/passkeys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the signed-in user's passkeys */
+        get: operations["listPasskeys"];
+        put?: never;
+        /**
+         * Register a passkey
+         * @description Needs the challenge from `POST /me/passkeys/options`, the attestation from `navigator.credentials.create()` and a current factor (the password when the account has no second factor yet). Revokes every other session and, for the first second factor, returns 10 recovery codes once.
+         */
+        post: operations["addPasskey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/passkeys/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Passkey creation options
+         * @description Requires a discoverable credential, prefers user verification and excludes the user's existing passkeys. The challenge is bound to the user and the current session, lives 5 minutes and works once.
+         */
+        post: operations["beginPasskeyRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/passkeys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename one of the user's passkeys
+         * @description Another user's passkey id answers 404, exactly like an id that does not exist.
+         */
+        patch: operations["renamePasskey"];
+        trace?: never;
+    };
+    "/me/passkeys/{id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove one of the user's passkeys
+         * @description Needs a current second factor. Revokes every other session. When no second factor is left, the recovery codes are removed too. Another user's passkey id answers 404.
+         */
+        post: operations["removePasskey"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -308,7 +586,7 @@ export interface components {
         };
         ErrorDetail: {
             /**
-             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID` or `CONFLICT`.
+             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED` or `PASSKEY_REJECTED`.
              * @example INTERNAL
              */
             Code: string;
@@ -491,6 +769,140 @@ export interface components {
             /** Format: uuid */
             FirstBrokenId?: string;
         };
+        /** @enum {string} */
+        MfaMethod: "totp" | "recovery_code" | "passkey";
+        /** @enum {string} */
+        FactorMethod: "password" | "totp" | "recovery_code" | "passkey";
+        /** @description A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase. */
+        WebAuthnJson: {
+            [key: string]: unknown;
+        };
+        MfaPending: {
+            /** @description The second factors this account can use. */
+            Methods: components["schemas"]["MfaMethod"][];
+            /** Format: date-time */
+            ExpiresAt: string;
+        };
+        MfaPendingResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["MfaPending"];
+        };
+        MfaLoginRequest: {
+            Method: components["schemas"]["MfaMethod"];
+            /** @description The TOTP code or the recovery code. Never logged. */
+            Code?: string;
+            Credential?: components["schemas"]["WebAuthnJson"];
+        };
+        PasskeyOptions: {
+            Options: components["schemas"]["WebAuthnJson"];
+            /** Format: date-time */
+            ExpiresAt: string;
+        };
+        PasskeyOptionsResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["PasskeyOptions"];
+        };
+        PasskeyChallenge: {
+            /** Format: uuid */
+            ChallengeId: string;
+            Options: components["schemas"]["WebAuthnJson"];
+            /** Format: date-time */
+            ExpiresAt: string;
+        };
+        PasskeyChallengeResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["PasskeyChallenge"];
+        };
+        PasskeyLoginRequest: {
+            /** Format: uuid */
+            ChallengeId: string;
+            Credential: components["schemas"]["WebAuthnJson"];
+        };
+        /** @description Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt. */
+        CurrentFactor: {
+            Method: components["schemas"]["FactorMethod"];
+            Password?: string;
+            Code?: string;
+            /**
+             * Format: uuid
+             * @description From `POST /me/mfa/passkey-options`, for method `passkey`.
+             */
+            ChallengeId?: string;
+            Credential?: components["schemas"]["WebAuthnJson"];
+        };
+        CurrentFactorRequest: {
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        MfaStatus: {
+            /** @description True when the account has TOTP or at least one passkey. */
+            Enabled: boolean;
+            TotpEnabled: boolean;
+            /** Format: date-time */
+            TotpEnabledAt?: string;
+            RecoveryCodesRemaining: number;
+            PasskeyCount: number;
+        };
+        MfaStatusResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["MfaStatus"];
+        };
+        TotpEnrollment: {
+            /** @description Base32 without padding. Shown once, for typing by hand. */
+            Secret: string;
+            /** @description The `otpauth://totp/...` URI for the QR code. Drawn by the client, never sent to a third party. */
+            Uri: string;
+            /** Format: date-time */
+            ExpiresAt: string;
+        };
+        TotpEnrollmentResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["TotpEnrollment"];
+        };
+        ConfirmTotpRequest: {
+            /** @description A code from the new authenticator. */
+            Code: string;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        MfaChange: {
+            /** @description How many other sessions were revoked. */
+            Revoked: number;
+            /** @description New recovery codes. Present only when new codes were made, and shown only this once. */
+            RecoveryCodes?: string[];
+        };
+        MfaChangeResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["MfaChange"];
+        };
+        Passkey: {
+            /** Format: uuid */
+            Id: string;
+            Name: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            LastUsedAt?: string;
+            Transports: string[];
+            /** @description The authenticator reported the credential as backup eligible (a synced passkey). */
+            Synced: boolean;
+        };
+        PasskeyResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Passkey"];
+        };
+        PasskeyListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Passkey"][];
+        };
+        AddPasskeyRequest: {
+            /** Format: uuid */
+            ChallengeId: string;
+            Credential: components["schemas"]["WebAuthnJson"];
+            Name: string;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        AddPasskeyResult: {
+            Passkey: components["schemas"]["Passkey"];
+            Revoked: number;
+            RecoveryCodes?: string[];
+        };
+        AddPasskeyResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["AddPasskeyResult"];
+        };
+        RenamePasskeyRequest: {
+            Name: string;
+        };
     };
     responses: {
         /** @description An error. Never contains internal details. */
@@ -656,6 +1068,17 @@ export interface operations {
                     "application/json": components["schemas"]["LoginResponse"];
                 };
             };
+            /** @description The password is right and the second step is required. */
+            202: {
+                headers: {
+                    /** @description The `__Host-dhow_mfa` challenge cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`). */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaPendingResponse"];
+                };
+            };
             default: components["responses"]["Error"];
         };
     };
@@ -721,6 +1144,361 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    completeMfaLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in. */
+            200: {
+                headers: {
+                    /** @description The session cookie, plus an expired `__Host-dhow_mfa` cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    beginMfaPasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Options for `navigator.credentials.get()`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyOptionsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    beginPasskeyLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The challenge id and options for `navigator.credentials.get()`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyChallengeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    passkeyLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasskeyLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in. */
+            200: {
+                headers: {
+                    /** @description The session cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getMfaStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The second-factor status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaStatusResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    beginStepUpPasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The challenge id and options for `navigator.credentials.get()`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyChallengeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    startTotpEnrollment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pending enrollment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TotpEnrollmentResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    confirmTotp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmTotpRequest"];
+            };
+        };
+        responses: {
+            /** @description TOTP is on. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    disableTotp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description TOTP is off. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    regenerateRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description The new codes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listPasskeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The passkeys, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    addPasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddPasskeyRequest"];
+            };
+        };
+        responses: {
+            /** @description The passkey was registered. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddPasskeyResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    beginPasskeyRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The challenge id and options for `navigator.credentials.create()`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyChallengeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    renamePasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenamePasskeyRequest"];
+            };
+        };
+        responses: {
+            /** @description The renamed passkey. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasskeyResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    removePasskey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description The passkey was removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaChangeResponse"];
                 };
             };
             default: components["responses"]["Error"];

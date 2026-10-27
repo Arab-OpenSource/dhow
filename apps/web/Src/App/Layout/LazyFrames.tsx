@@ -13,6 +13,7 @@ type TFramePart =
   | 'theme-edit'
   | 'account'
   | 'account-password'
+  | 'account-totp'
   | 'audit'
   | 'organization';
 
@@ -55,6 +56,10 @@ const PasswordFooter = lazyComponent(() =>
   import('@/Modules/Session/Components/PasswordFooter').then((module) => module.PasswordFooter),
 );
 
+const MfaSection = lazyComponent(() => import('@/Modules/Mfa/Components/MfaSection').then((module) => module.MfaSection));
+const TotpBody = lazyComponent(() => import('@/Modules/Mfa/Components/TotpBody').then((module) => module.TotpBody));
+const TotpFooter = lazyComponent(() => import('@/Modules/Mfa/Components/TotpFooter').then((module) => module.TotpFooter));
+
 const AuditBody = lazyComponent(() =>
   import('@/Modules/Audit/Components/AuditBody').then((module) => module.AuditBody),
 );
@@ -71,8 +76,9 @@ const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   check: [CheckDetailBody, SystemStatusFooter],
   appearance: [AppearanceBody, AppearanceFooter],
   'theme-edit': [ThemeEditorBody, ThemeEditorFooter],
-  account: [AccountSlide, AccountSubtitle, AccountFooter],
+  account: [AccountSlide, AccountSubtitle, AccountFooter, MfaSection],
   'account-password': [PasswordBody, PasswordFooter],
+  'account-totp': [TotpBody, TotpFooter],
   audit: [AuditBody, AuditFooter],
   organization: [OrganizationSlide],
 };
@@ -135,6 +141,9 @@ export const LazyAccountSubtitle = withNothing(AccountSubtitle);
 export const LazyAccountFooter = withNothing(AccountFooter);
 export const LazyPasswordBody = withSkeleton(PasswordBody);
 export const LazyPasswordFooter = withNothing(PasswordFooter);
+export const LazyMfaSection = withSkeleton(MfaSection);
+export const LazyTotpBody = withSkeleton(TotpBody);
+export const LazyTotpFooter = withNothing(TotpFooter);
 
 export const LazyAuditBody = withSkeleton(AuditBody);
 export const LazyAuditFooter = withNothing(AuditFooter);

@@ -1,0 +1,122 @@
+import { createMemoryHistory } from '@tanstack/react-router';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { App } from '@/App/App';
+import { createAppRouter } from '@/App/Router';
+import { createQueryClient } from '@/Core/Api/QueryClient';
+import { startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
+import { GOOD_CODE, GOOD_PASSWORD, NEW_CODES, passkeyFixture } from '@/Core/Testing/MfaBackend';
+import { useToastStore } from '@/Core/Store/useToastStore';
+import { Ar } from '@/I18n/Locales/Ar';
+
+const mount = async (options: IBackendOptions = {}, url = '/?stack=account') => {
+  const backend = startBackend(options);
+  const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
+  const user = userEvent.setup();
+  render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
+  const dialog = await screen.findByRole('dialog', { name: Ar['account.title'] });
+  await within(dialog).findByRole('list', { name: Ar['mfa.section.title'] });
+  return { ...backend, router, user, dialog };
+};
+
+const posted = (calls: Request[], path: string) => calls.filter((call) => call.method === 'POST' && call.url.endsWith(path));
+
+afterEach(() => {
+  useToastStore.setState({ Toasts: [] });
+});
+
+describe('two-step verification in my account', () => {
+  it('shows that nothing is on yet, with the glossary terms', async () => {
+    const { dialog } = await mount();
+    const section = within(dialog).getByRole('list', { name: Ar['mfa.section.title'] });
+    expect(within(section).getByText(Ar['mfa.totp.title'])).toBeInTheDocument();
+    expect(within(section).getByText(Ar['mfa.totp.off'])).toBeInTheDocument();
+    expect(within(section).getByText(Ar['mfa.recovery.off'])).toBeInTheDocument();
+    expect(within(dialog).getByText(Ar['mfa.passkeys.empty'])).toBeInTheDocument();
+    expect(within(dialog).getByText(Ar['mfa.passkeys.unsupported'])).toBeInTheDocument();
+  });
+
+  it('turns TOTP on with the QR, the code and the password, then shows the recovery codes once', async () => {
+    const { user, router, calls } = await mount();
+    await user.click(screen.getByRole('button', { name: Ar['mfa.totp.enable'] }));
+    const slide = await screen.findByRole('dialog', { name: Ar['totp.slide.title'] });
+    expect(router.state.location.href).toBe('/?stack=account,account-totp');
+    expect(await within(slide).findByRole('img', { name: Ar['totp.qr'] })).toBeInTheDocument();
+    expect(within(slide).getByText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP')).toBeInTheDocument();
+    expect(within(slide).queryByRole('group', { name: Ar['factor.methods'] })).not.toBeInTheDocument();
+
+    await user.type(within(slide).getByLabelText(Ar['totp.code']), GOOD_CODE);
+    await user.type(within(slide).getByLabelText(Ar['factor.method.password']), 'not my password at all');
+    await user.click(screen.getByRole('button', { name: Ar['totp.submit'] }));
+    expect(await within(slide).findByText('INVALID_CURRENT_FACTOR')).toBeInTheDocument();
+
+    await user.type(within(slide).getByLabelText(Ar['factor.method.password']), GOOD_PASSWORD);
+    await user.click(screen.getByRole('button', { name: Ar['totp.submit'] }));
+    const codes = await within(slide).findByRole('list', { name: Ar['mfa.recovery.list'] });
+    expect(within(codes).getAllByRole('listitem')).toHaveLength(10);
+    expect(within(codes).getByText(NEW_CODES[0] ?? '')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: Ar['totp.submit'] })).not.toBeInTheDocument();
+    const confirm = posted(calls, '/me/totp/confirm').at(-1);
+    expect(await confirm?.clone().json()).toEqual({ Code: GOOD_CODE, CurrentFactor: { Method: 'password', Password: GOOD_PASSWORD } });
+
+    await user.click(within(slide).getByRole('button', { name: Ar['mfa.recovery.done'] }));
+    await waitFor(() => {
+      expect(router.state.location.href).toBe('/?stack=account');
+    });
+    expect(await screen.findByText(Ar['mfa.recovery.remaining'].replace('{count}', '10'))).toBeInTheDocument();
+  });
+
+  it('needs a current second factor to turn TOTP off', async () => {
+    const { user, calls } = await mount({ mfa: { TotpEnabled: true, RecoveryCodesRemaining: 4, Passkeys: [] } });
+    await user.click(screen.getByRole('button', { name: Ar['mfa.totp.disable'] }));
+    expect(screen.getByText(Ar['mfa.totp.disable.question'])).toBeInTheDocument();
+    const methods = screen.getByRole('group', { name: Ar['factor.methods'] });
+    expect(within(methods).getAllByRole('button').map((b) => b.textContent)).toEqual([Ar['factor.method.totp'], Ar['factor.method.recovery_code']]);
+    await user.click(screen.getByRole('button', { name: Ar['mfa.totp.disable.confirm'] }));
+    expect(await screen.findByText(Ar['factor.error.required'])).toBeInTheDocument();
+    expect(posted(calls, '/me/totp/disable')).toHaveLength(0);
+
+    await user.type(screen.getByLabelText(Ar['factor.method.totp']), GOOD_CODE);
+    await user.click(screen.getByRole('button', { name: Ar['mfa.totp.disable.confirm'] }));
+    expect(await screen.findByText(Ar['mfa.totp.disabled'])).toBeInTheDocument();
+    expect(await screen.findByText(Ar['mfa.totp.off'])).toBeInTheDocument();
+  });
+
+  it('makes new recovery codes after a confirmation and offers copy and download', async () => {
+    const { user } = await mount({ mfa: { TotpEnabled: true, RecoveryCodesRemaining: 2, Passkeys: [] } });
+    expect(screen.getByText(Ar['mfa.recovery.remaining'].replace('{count}', '2'))).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: Ar['mfa.recovery.regenerate'] }));
+    await user.type(screen.getByLabelText(Ar['factor.method.totp']), GOOD_CODE);
+    await user.click(screen.getByRole('button', { name: Ar['mfa.recovery.regenerate.confirm'] }));
+    const codes = await screen.findByRole('list', { name: Ar['mfa.recovery.list'] });
+    expect(within(codes).getAllByRole('listitem')).toHaveLength(10);
+    await user.click(screen.getByRole('button', { name: Ar['mfa.recovery.copy'] }));
+    expect(await navigator.clipboard.readText()).toBe(NEW_CODES.join('\n'));
+    expect(screen.getByRole('button', { name: Ar['mfa.recovery.download'] })).toBeEnabled();
+  });
+
+  it('renames and removes a passkey, and removing needs a factor', async () => {
+    const { user, state } = await mount({ mfa: { TotpEnabled: true, RecoveryCodesRemaining: 5, Passkeys: [passkeyFixture()] } });
+    expect(screen.getByText('MacBook Touch ID')).toBeInTheDocument();
+    expect(screen.getByText(Ar['mfa.passkeys.synced'])).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: Ar['mfa.passkeys.rename.aria'].replace('{name}', 'MacBook Touch ID') }));
+    const name = screen.getByRole('textbox', { name: Ar['mfa.passkeys.name'] });
+    await user.clear(name);
+    await user.type(name, 'YubiKey 5C');
+    await user.click(screen.getByRole('button', { name: Ar['mfa.passkeys.rename.save'] }));
+    expect(await screen.findByText('YubiKey 5C')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: Ar['mfa.passkeys.remove.aria'].replace('{name}', 'YubiKey 5C') }));
+    await user.type(screen.getByLabelText(Ar['factor.method.totp']), '000000');
+    await user.click(screen.getByRole('button', { name: Ar['mfa.passkeys.remove.confirm'] }));
+    expect(await screen.findByText('INVALID_CURRENT_FACTOR')).toBeInTheDocument();
+    expect(state.mfa.Passkeys).toHaveLength(1);
+    await user.type(screen.getByLabelText(Ar['factor.method.totp']), GOOD_CODE);
+    await user.click(screen.getByRole('button', { name: Ar['mfa.passkeys.remove.confirm'] }));
+    expect(await screen.findByText(Ar['mfa.passkeys.removed'])).toBeInTheDocument();
+    expect(state.mfa.Passkeys).toHaveLength(0);
+  });
+});

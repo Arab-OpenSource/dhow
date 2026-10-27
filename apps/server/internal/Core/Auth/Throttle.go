@@ -19,3 +19,5 @@ func LockDuration(failures, free int, base, maxLock time.Duration) time.Duration
 func AccountThrottleKey(emailHash string) string { return "account:" + emailHash }
 
 func IPThrottleKey(ip string) string { return "ip:" + ip }
+
+func MfaThrottleKey(userID string) string { return "mfa:" + userID }

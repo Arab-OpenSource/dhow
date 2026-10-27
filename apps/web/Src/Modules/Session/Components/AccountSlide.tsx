@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { useMe } from '@/Core/Auth/useMe';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Badge } from '@/Core/Ui/Badge';
@@ -22,7 +24,11 @@ export const AccountSubtitle = () => {
   );
 };
 
-export const AccountSlide = () => {
+export interface IAccountSlideProps {
+  security?: ReactNode;
+}
+
+export const AccountSlide = ({ security }: IAccountSlideProps) => {
   const t = useT();
   const errorText = useApiErrorText();
   const me = useMe();
@@ -45,5 +51,5 @@ export const AccountSlide = () => {
     );
   }
   if (me.data === undefined) return <Skeleton label={t('ui.loading')} lines={5} />;
-  return <AccountBody me={me.data} />;
+  return <AccountBody me={me.data} security={security} />;
 };

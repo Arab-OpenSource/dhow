@@ -30,6 +30,7 @@ type LoginResult struct {
 	CSRFToken   string
 	CookieValue string
 	ExpiresAt   time.Time
+	Pending     *MfaPending
 }
 
 type Me struct {

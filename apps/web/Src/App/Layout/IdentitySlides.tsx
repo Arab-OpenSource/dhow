@@ -6,8 +6,11 @@ import {
   LazyAuditFooter,
   LazyOrganizationSlide,
   LazyAccountSubtitle,
+  LazyMfaSection,
   LazyPasswordBody,
   LazyPasswordFooter,
+  LazyTotpBody,
+  LazyTotpFooter,
 } from '@/App/Layout/LazyFrames';
 import type { TFrameId } from '@/App/Panels';
 import { canReadAudit } from '@/Core/Auth/AuthTypes';
@@ -19,7 +22,17 @@ export const buildIdentitySlide = (id: TFrameId, { t, navigation, role }: IFrame
       id,
       title: t('account.title'),
       subtitle: <LazyAccountSubtitle />,
-      children: <LazyAccountSlide />,
+      children: (
+        <LazyAccountSlide
+          security={
+            <LazyMfaSection
+              onSetUpTotp={() => {
+                navigation.pushFrame('account-totp');
+              }}
+            />
+          }
+        />
+      ),
       footer: (
         <LazyAccountFooter
           onChangePassword={() => {
@@ -36,6 +49,15 @@ export const buildIdentitySlide = (id: TFrameId, { t, navigation, role }: IFrame
       subtitle: <span>{t('password.slide.subtitle')}</span>,
       children: <LazyPasswordBody onDone={navigation.popFrame} />,
       footer: <LazyPasswordFooter onCancel={navigation.popFrame} />,
+    };
+  }
+  if (id === 'account-totp') {
+    return {
+      id,
+      title: t('totp.slide.title'),
+      subtitle: <span>{t('totp.slide.subtitle')}</span>,
+      children: <LazyTotpBody onDone={navigation.popFrame} />,
+      footer: <LazyTotpFooter onCancel={navigation.popFrame} />,
     };
   }
   if (id === 'audit') {

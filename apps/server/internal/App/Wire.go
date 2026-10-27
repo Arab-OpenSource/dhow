@@ -11,6 +11,7 @@ import (
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
@@ -56,6 +57,18 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	}
 	passwords := auth.NewPasswordPolicy(breach, in.Log, config.PasswordMinLength, config.PasswordMaxLength)
 	csrf := auth.NewCSRF(in.Config.SecretKey)
+	sealer, err := appcrypto.NewSealer(in.Config.SecretKey, config.TotpSealLabel)
+	if err != nil {
+		return nil, err
+	}
+	recovery, err := auth.NewRecoveryHasher(in.Config.SecretKey)
+	if err != nil {
+		return nil, err
+	}
+	passkeys, err := auth.NewWebAuthn(in.Config.PublicURL, config.WebAuthnDisplayName, config.WebAuthnChallengeTTL)
+	if err != nil {
+		return nil, err
+	}
 	bus := eventbus.New(in.Log)
 
 	auditService := audit.NewService(in.Pool, in.Log, in.Now)
@@ -64,7 +77,8 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, Bus: bus, PublicURL: in.Config.PublicURL.String(), Log: in.Log, Now: in.Now,
 	})
 	sessionService := session.NewService(session.Options{
-		DB: in.Pool, Hasher: hasher, Passwords: passwords, CSRF: csrf, Bus: bus, Log: in.Log, Now: in.Now,
+		DB: in.Pool, Hasher: hasher, Passwords: passwords, CSRF: csrf, Sealer: sealer, Recovery: recovery, WebAuthn: passkeys,
+		Bus: bus, Log: in.Log, Now: in.Now,
 	})
 
 	opts := Options{

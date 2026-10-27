@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { isApiError } from '@/Core/Api/ApiError';
-import { signIn } from '@/Core/Auth/AuthApi';
+import { signIn, type TMfaPending } from '@/Core/Auth/AuthApi';
 import { EMAIL_MAX } from '@/Core/Forms/Fields';
 import { formatClock } from '@/Core/Format/TimeFormat';
 import { useAction } from '@/Core/Hooks/useAction';
@@ -21,9 +21,10 @@ import { loginFormSchema, type TLoginForm } from '@/Modules/Session/Types/LoginF
 
 export interface ILoginFormProps {
   onSignedIn: () => void;
+  onMfa?: (pending: TMfaPending) => void;
 }
 
-export const LoginForm = ({ onSignedIn }: ILoginFormProps) => {
+export const LoginForm = ({ onSignedIn, onMfa }: ILoginFormProps) => {
   const t = useT();
   const message = useFormMessage();
   const errorText = useApiErrorText();
@@ -42,7 +43,8 @@ export const LoginForm = ({ onSignedIn }: ILoginFormProps) => {
     const result = await submit.Run(values);
     form.resetField('Password');
     if (!isApiError(result)) {
-      onSignedIn();
+      if (result.Kind === 'mfa') onMfa?.(result.Pending);
+      else onSignedIn();
       return;
     }
     if (result.RetryAfterSeconds === null) setNotice(errorText(result));

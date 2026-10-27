@@ -6,11 +6,13 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
@@ -33,6 +35,9 @@ type Options struct {
 	Hasher    *auth.Hasher
 	Passwords *auth.PasswordPolicy
 	CSRF      *auth.CSRF
+	Sealer    *appcrypto.Sealer
+	Recovery  *auth.RecoveryHasher
+	WebAuthn  *webauthn.WebAuthn
 	Bus       Publisher
 	Log       *slog.Logger
 	Now       func() time.Time
@@ -43,6 +48,9 @@ type Service struct {
 	hasher    *auth.Hasher
 	passwords *auth.PasswordPolicy
 	csrf      *auth.CSRF
+	sealer    *appcrypto.Sealer
+	recovery  *auth.RecoveryHasher
+	webauthn  *webauthn.WebAuthn
 	bus       Publisher
 	log       *slog.Logger
 	now       func() time.Time
@@ -56,7 +64,8 @@ func NewService(o Options) *Service {
 		now = time.Now
 	}
 	return &Service{
-		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, csrf: o.CSRF, bus: o.Bus, log: o.Log, now: now,
+		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, csrf: o.CSRF, sealer: o.Sealer, recovery: o.Recovery,
+		webauthn: o.WebAuthn, bus: o.Bus, log: o.Log, now: now,
 	}
 }
 
@@ -186,6 +195,10 @@ func (s *Service) RevokeOthers(ctx context.Context) (int64, error) {
 }
 
 func (s *Service) publish(ctx context.Context, name string, p auth.Principal, targetID string, data map[string]string) error {
+	return s.publishTarget(ctx, name, p, "session", targetID, data)
+}
+
+func (s *Service) publishTarget(ctx context.Context, name string, p auth.Principal, targetType, targetID string, data map[string]string) error {
 	meta := auth.RequestMetaFrom(ctx)
 	actor := p.UserID
 	orgs := make([]uuid.UUID, 0, len(p.Memberships))
@@ -193,6 +206,6 @@ func (s *Service) publish(ctx context.Context, name string, p auth.Principal, ta
 		orgs = append(orgs, m.OrganizationID)
 	}
 	return s.bus.Publish(ctx, eventbus.Event{Name: name, Payload: eventbus.Audited{
-		OrganizationIDs: orgs, ActorUserID: &actor, TargetType: "session", TargetID: targetID, IP: meta.IPString(), Data: data,
+		OrganizationIDs: orgs, ActorUserID: &actor, TargetType: targetType, TargetID: targetID, IP: meta.IPString(), Data: data,
 	}})
 }

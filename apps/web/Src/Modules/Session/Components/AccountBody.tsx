@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import type { TMe } from '@/Core/Auth/AuthTypes';
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Badge } from '@/Core/Ui/Badge';
@@ -9,9 +11,10 @@ import { SessionsCard } from '@/Modules/Session/Components/SessionsCard';
 
 export interface IAccountBodyProps {
   me: TMe;
+  security?: ReactNode;
 }
 
-export const AccountBody = ({ me }: IAccountBodyProps) => {
+export const AccountBody = ({ me, security }: IAccountBodyProps) => {
   const t = useT();
   const time = useRelativeTime();
   const membership = me.Memberships[0];
@@ -38,6 +41,7 @@ export const AccountBody = ({ me }: IAccountBodyProps) => {
           ) : null}
         </Rows>
       </Card>
+      {security}
       <SessionsCard />
     </>
   );

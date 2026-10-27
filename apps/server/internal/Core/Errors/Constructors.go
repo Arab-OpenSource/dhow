@@ -80,3 +80,27 @@ func SetupTokenInvalid() *AppError {
 func Conflict() *AppError {
 	return New(http.StatusConflict, CodeConflict, KeyConflict)
 }
+
+func MfaChallengeExpired() *AppError {
+	return New(http.StatusUnauthorized, CodeMfaChallengeExpired, KeyMfaChallengeExpired)
+}
+
+func InvalidMfaCode(retryAfter time.Duration) *AppError {
+	e := New(http.StatusUnauthorized, CodeInvalidMfaCode, KeyInvalidMfaCode)
+	e.RetryAfter = retryAfter
+	return e
+}
+
+func InvalidCurrentFactor(retryAfter time.Duration) *AppError {
+	e := New(http.StatusForbidden, CodeInvalidCurrentFactor, KeyInvalidCurrentFactor)
+	e.RetryAfter = retryAfter
+	return e
+}
+
+func EnrollmentExpired() *AppError {
+	return New(http.StatusConflict, CodeEnrollmentExpired, KeyEnrollmentExpired)
+}
+
+func PasskeyRejected() *AppError {
+	return New(http.StatusUnprocessableEntity, CodePasskeyRejected, KeyPasskeyRejected)
+}

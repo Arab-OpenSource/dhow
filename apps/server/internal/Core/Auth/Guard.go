@@ -108,6 +108,9 @@ func (g *Guard) requestMeta(r *http.Request) RequestMeta {
 	if c, err := r.Cookie(config.SessionCookieName); err == nil {
 		meta.SessionToken = c.Value
 	}
+	if c, err := r.Cookie(config.MfaCookieName); err == nil {
+		meta.MfaToken = c.Value
+	}
 	return meta
 }
 

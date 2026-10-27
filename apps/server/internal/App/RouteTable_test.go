@@ -200,7 +200,13 @@ func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request
 			path = "/sessions/" + sessionIDOf(c)
 		}
 	}
-	req := apptest.Request{Method: rule.Method, Path: path}
+	if strings.HasPrefix(rule.Path, "/me/passkeys/{id}") {
+		path = strings.Replace(rule.Path, "{id}", "00000000-0000-7000-8000-000000000002", 1)
+		if c.UserID != "" {
+			path = strings.Replace(rule.Path, "{id}", passkeyIDOf(c), 1)
+		}
+	}
+	req := apptest.Request{Method: rule.Method, Path: path, Body: mfaBodyFor(rule)}
 	switch {
 	case rule.Method == http.MethodPost && rule.Path == "/sessions":
 		req.Body = map[string]string{"Email": "nobody@example.com", "Password": "whatever whatever"}

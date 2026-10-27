@@ -43,6 +43,13 @@ The assets to protect are:
 
 **Login flow.** The password step only yields a short-lived, single-use `mfa_pending` challenge that is bound to the user and the device. The second factor must present that challenge. A user id taken from the client is never trusted.
 
+- **The challenge.** A correct password for an account with TOTP or a passkey answers `202` and sets `__Host-dhow_mfa` (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`, 5 minutes). It holds 32 random bytes, and the server stores only their SHA-256. It is bound to the user and to a hash of the User-Agent, not to the IP address, because the address of a real user can change within the same minute (IPv4/IPv6 switching, mobile handover, CGNAT). Only `POST /api/v1/sessions/mfa` turns it into a session, and it works once. Five wrong codes burn it.
+- **Throttling.** Second-step attempts are counted per user and per client address before they are checked, like passwords ([section 5](#5-sessions-and-tokens-adr-0033)). The per-user counter is separate from the password counter, so passing the password again never buys more guesses.
+- **TOTP.** The secret (160 bits) is generated on the server and stored sealed with AES-256-GCM under a key derived from `DHOW_SECRET_KEY` (HKDF-SHA256, one label per purpose) with a random nonce per record and the user id as associated data. One step of clock skew is accepted on each side, and the last accepted step is stored, so a code never works twice. The QR code is drawn in the browser.
+- **Recovery codes.** Ten codes of 80 random bits each, shown once and stored as HMAC-SHA256 under a derived key. Each works once, and each use is audited.
+- **Passkeys.** The RP ID and the only accepted origin come from `DHOW_PUBLIC_URL`. Challenges are stored on the server, live 5 minutes and work once. Passwordless sign-in requires user verification. A sign-count that goes backwards is refused and audited.
+- **Changing a factor.** Turning TOTP on, off or replacing it, making new recovery codes, and adding or removing a passkey need a current factor in the same request: the password while the account has no second factor, and a TOTP code, recovery code or passkey afterwards. Every such change revokes the user's other sessions and is audited.
+
 **Lockout.** Lockout counters are per account and per IP, with exponential backoff (details in [section 5](#5-sessions-and-tokens-adr-0033)). Error messages are generic and responses take constant time.
 
 ## 5. Sessions and tokens (ADR-0033)
