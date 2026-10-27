@@ -1,4 +1,4 @@
-import { envelope, META_BODY, meBody, ORG_ID, READY_BODY, SESSION_ID, stubFetch, UNAUTHENTICATED_BODY } from '@/Core/Testing/Fetch';
+import { envelope, META_BODY, meBody, ORG_ID, READY_BODY, SESSION_ID, stubFetch, UNAUTHENTICATED_BODY, USER_ID } from '@/Core/Testing/Fetch';
 
 export interface ISessionFixture {
   Id: string;
@@ -45,6 +45,45 @@ export const sessionsFixture = (): ISessionFixture[] => [
   },
 ];
 
+export interface IAuditFixture {
+  Id: string;
+  CreatedAt: string;
+  OrganizationId: string;
+  ActorUserId?: string;
+  Action: string;
+  TargetType: string;
+  TargetId: string;
+  Ip: string;
+  Data: Record<string, string>;
+}
+
+export interface IMemberFixture {
+  UserId: string;
+  Name: string;
+  Email: string;
+  Role: string;
+  JoinedAt: string;
+}
+
+export const auditFixture = (count: number): IAuditFixture[] =>
+  Array.from({ length: count }, (_, index) => ({
+    Id: `0198a000-0000-7000-8000-${String(index + 1).padStart(12, '0')}`,
+    CreatedAt: new Date(Date.now() - (index + 1) * 600_000).toISOString(),
+    OrganizationId: ORG_ID,
+    ActorUserId: index % 3 === 2 ? undefined : USER_ID,
+    Action: index % 3 === 2 ? 'auth.login_failed' : index % 3 === 1 ? 'auth.password_changed' : 'auth.login',
+    TargetType: 'session',
+    TargetId: SESSION_ID,
+    Ip: `203.0.113.${index + 1}`,
+    Data: {},
+  }));
+
+export const membersFixture = (): IMemberFixture[] => [
+  { UserId: USER_ID, Name: 'Sabry Dawood', Email: 'sabry@future.dev', Role: 'owner', JoinedAt: '2026-10-01T08:00:00Z' },
+  { UserId: '0198a000-0000-7000-8000-0000000000b2', Name: 'Mona Adel', Email: 'mona@future.dev', Role: 'admin', JoinedAt: '2026-10-05T08:00:00Z' },
+  { UserId: '0198a000-0000-7000-8000-0000000000b3', Name: 'Hana Samir', Email: 'hana@future.dev', Role: 'developer', JoinedAt: '2026-10-10T08:00:00Z' },
+];
+
 export type TRouteHandler = (request: Request, url: URL) => Response | undefined;
 
 export interface IBackendOptions {
@@ -54,6 +93,10 @@ export interface IBackendOptions {
   sessions?: ISessionFixture[];
   routes?: TRouteHandler[];
   passwordReply?: () => Response;
+  audit?: IAuditFixture[];
+  members?: IMemberFixture[];
+  verify?: () => Response;
+  renameReply?: () => Response;
 }
 
 export interface IBackendState {
@@ -61,6 +104,7 @@ export interface IBackendState {
   sessions: ISessionFixture[];
   role: string;
   csrf: string;
+  orgName: string;
 }
 
 const failure = (Code: string, Message: string, status: number, headers: Record<string, string> = {}): Response =>
@@ -79,8 +123,9 @@ export const startBackend = (options: IBackendOptions = {}) => {
     sessions: options.sessions ?? sessionsFixture(),
     role: options.role ?? 'owner',
     csrf: 'csrf-token-1',
+    orgName: 'Future Solution',
   };
-  const stub = stubFetch((request) => {
+  const stub = stubFetch(async (request) => {
     const url = new URL(request.url);
     const { pathname } = url;
     for (const route of options.routes ?? []) {
@@ -92,8 +137,10 @@ export const startBackend = (options: IBackendOptions = {}) => {
     }
     if (pathname.endsWith('/health/ready')) return envelope(READY_BODY);
     if (pathname.endsWith('/me') && request.method === 'GET') {
-      return state.signedIn ? envelope(meBody(state.role, state.csrf)) : envelope(UNAUTHENTICATED_BODY, 401);
+      return state.signedIn ? envelope(meBody(state.role, state.csrf, state.orgName)) : envelope(UNAUTHENTICATED_BODY, 401);
     }
+    const org = /\/organizations\/[0-9a-f-]{36}(\/[a-z-]+)*$/.exec(pathname);
+    if (org) return organizationReply(request, url, options, state);
     if (pathname.endsWith('/me/password') && request.method === 'PUT') {
       if (options.passwordReply) return options.passwordReply();
       const revoked = state.sessions.filter((session) => !session.Current).length;
@@ -118,4 +165,31 @@ export const startBackend = (options: IBackendOptions = {}) => {
     return failure('NOT_FOUND', 'x', 404);
   });
   return { ...stub, state, orgId: ORG_ID };
+};
+
+const pageOf = (items: readonly unknown[], url: URL): Response => {
+  const page = Number(url.searchParams.get('Page') ?? '1');
+  const limit = Number(url.searchParams.get('Limit') ?? '25');
+  return envelope({
+    Success: true,
+    Data: items.slice((page - 1) * limit, page * limit),
+    Meta: { Page: page, Limit: limit, Total: items.length },
+  });
+};
+
+const organizationReply = async (request: Request, url: URL, options: IBackendOptions, state: IBackendState): Promise<Response> => {
+  const { pathname } = url;
+  const organization = (name: string) => ({ Id: ORG_ID, Name: name, Slug: 'future-solution', CreatedAt: '2026-10-01T08:00:00Z' });
+  if (pathname.endsWith('/audit-events/verify')) {
+    return options.verify?.() ?? envelope({ Success: true, Data: { Valid: true, Checked: (options.audit ?? []).length } });
+  }
+  if (pathname.endsWith('/audit-events')) return pageOf(options.audit ?? [], url);
+  if (pathname.endsWith('/members')) return pageOf(options.members ?? membersFixture(), url);
+  if (request.method === 'PATCH') {
+    if (options.renameReply) return options.renameReply();
+    const body = (await request.clone().json()) as { Name: string };
+    state.orgName = body.Name;
+    return envelope({ Success: true, Data: organization(state.orgName) });
+  }
+  return envelope({ Success: true, Data: organization(state.orgName) });
 };

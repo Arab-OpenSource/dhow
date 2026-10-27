@@ -2,14 +2,17 @@ import type { IFrameContext } from '@/App/Layout/FrameContext';
 import {
   LazyAccountFooter,
   LazyAccountSlide,
+  LazyAuditBody,
+  LazyAuditFooter,
   LazyAccountSubtitle,
   LazyPasswordBody,
   LazyPasswordFooter,
 } from '@/App/Layout/LazyFrames';
 import type { TFrameId } from '@/App/Panels';
+import { canReadAudit } from '@/Core/Auth/AuthTypes';
 import type { ISlide } from '@/Core/Ui/SlideStack';
 
-export const buildIdentitySlide = (id: TFrameId, { t, navigation }: IFrameContext): ISlide | null => {
+export const buildIdentitySlide = (id: TFrameId, { t, navigation, role }: IFrameContext): ISlide | null => {
   if (id === 'account') {
     return {
       id,
@@ -32,6 +35,15 @@ export const buildIdentitySlide = (id: TFrameId, { t, navigation }: IFrameContex
       subtitle: <span>{t('password.slide.subtitle')}</span>,
       children: <LazyPasswordBody onDone={navigation.popFrame} />,
       footer: <LazyPasswordFooter onCancel={navigation.popFrame} />,
+    };
+  }
+  if (id === 'audit') {
+    return {
+      id,
+      title: t('audit.title'),
+      subtitle: <span>{t('audit.subtitle')}</span>,
+      children: <LazyAuditBody />,
+      footer: canReadAudit(role) ? <LazyAuditFooter /> : undefined,
     };
   }
   return null;

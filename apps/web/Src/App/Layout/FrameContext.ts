@@ -1,4 +1,5 @@
 import type { IShellNavigation } from '@/App/Layout/useShellNavigation';
+import type { TRole } from '@/Core/Auth/AuthTypes';
 import type { ICustomTheme } from '@/Core/Theme/ThemeTokens';
 import type { TTranslate } from '@/I18n/I18nContext';
 
@@ -7,4 +8,5 @@ export interface IFrameContext {
   navigation: IShellNavigation;
   draftName: string | undefined;
   customThemes: readonly ICustomTheme[];
+  role: TRole | undefined;
 }

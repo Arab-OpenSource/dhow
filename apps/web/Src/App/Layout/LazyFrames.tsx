@@ -22,6 +22,13 @@ const PasswordFooter = lazy(() =>
   import('@/Modules/Session/Components/PasswordFooter').then((module) => ({ default: module.PasswordFooter })),
 );
 
+const AuditBody = lazy(() =>
+  import('@/Modules/Audit/Components/AuditBody').then((module) => ({ default: module.AuditBody })),
+);
+const AuditFooter = lazy(() =>
+  import('@/Modules/Audit/Components/AuditFooter').then((module) => ({ default: module.AuditFooter })),
+);
+
 const Loading = () => {
   const t = useT();
   return <Skeleton label={t('ui.loading')} lines={5} />;
@@ -54,5 +61,17 @@ export const LazyPasswordBody = (props: IPasswordBodyProps) => (
 export const LazyPasswordFooter = (props: IPasswordFooterProps) => (
   <Suspense fallback={null}>
     <PasswordFooter {...props} />
+  </Suspense>
+);
+
+export const LazyAuditBody = () => (
+  <Suspense fallback={<Loading />}>
+    <AuditBody />
+  </Suspense>
+);
+
+export const LazyAuditFooter = () => (
+  <Suspense fallback={null}>
+    <AuditFooter />
   </Suspense>
 );

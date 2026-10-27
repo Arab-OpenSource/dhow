@@ -34,12 +34,12 @@ export const USER_ID = '0198a000-0000-7000-8000-0000000000b1';
 export const SESSION_ID = '0198a000-0000-7000-8000-0000000000c1';
 export const CSRF_TOKEN = 'csrf-token-1';
 
-export const meBody = (role = 'owner', csrfToken = CSRF_TOKEN) => ({
+export const meBody = (role = 'owner', csrfToken = CSRF_TOKEN, organizationName = 'Future Solution') => ({
   Success: true,
   Message: 'session.me.loaded',
   Data: {
     User: { Id: USER_ID, Email: 'sabry@future.dev', Name: 'Sabry Dawood', Locale: 'ar' },
-    Memberships: [{ OrganizationId: ORG_ID, OrganizationName: 'Future Solution', OrganizationSlug: 'future-solution', Role: role }],
+    Memberships: [{ OrganizationId: ORG_ID, OrganizationName: organizationName, OrganizationSlug: 'future-solution', Role: role }],
     CsrfToken: csrfToken,
     SessionId: SESSION_ID,
     ExpiresAt: '2026-11-10T12:00:00Z',
