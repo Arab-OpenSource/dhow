@@ -2,18 +2,14 @@ import os
 import re
 import subprocess
 
-from . import go_comments, js_comments
+from . import go_comments, js_comments, web_rules
+from .common import GENERATED_PATH, is_test, is_ts, new_lines
 
-TS_EXT = (".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs")
 CSS_EXT = (".css",)
 MAX_LINES = 500
 
 ROOT_MARKDOWN = {"README.md", "README.ar.md", "CLAUDE.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE.md"}
 MARKDOWN_DIRS = ("docs/", "Plan/", ".github/", ".claude/")
-
-GENERATED_PATH = re.compile(
-    r"(^|/)(gen|sqlc)/|\.gen\.go$|_gen\.go$|(^|/)apps/web/src/api/schema\.d\.ts$|"
-    r"(^|/)(go\.sum|pnpm-lock\.yaml)$", re.IGNORECASE)
 
 SERVER_INTERNAL = "apps/server/internal/"
 SERVER_IMPORT_PREFIX = "github.com/Arab-OpenSource/dhow/apps/server/internal/"
@@ -93,24 +89,11 @@ def is_go(path):
     return path.endswith(".go")
 
 
-def is_ts(path):
-    return path.lower().endswith(TS_EXT) and not path.endswith(".d.ts")
-
-
-def is_test(path):
-    return path.endswith("_test.go") or re.search(r"\.(test|spec)\.[cm]?[jt]sx?$", path) is not None
-
-
-def new_lines(added, old):
-    old_set = {ln.strip() for ln in old.splitlines()}
-    return [ln for ln in added.splitlines() if ln.strip() and ln.strip() not in old_set]
-
-
 def check_generated(rel, **_):
     if GENERATED_PATH.search(rel):
         return (f"{rel} is generated or a lockfile. Do not edit it by hand: change the source "
-                "(packages/openapi/openapi.yaml, SQL queries, go.mod, package.json) and run `make gen`, "
-                "`go mod tidy` or `pnpm install`.")
+                "(packages/openapi/openapi.yaml, SQL queries, go.mod, package.json, apps/web/Src/Styles/Tokens.json) and run "
+                "`make gen`, `go mod tidy`, `pnpm install`, `pnpm gen:api` or `pnpm gen:tokens`.")
     return None
 
 
@@ -394,6 +377,7 @@ def check_length(rel, final_content, **_):
 
 CHECKS = (
     check_generated,
+    web_rules.check_web_layout,
     check_secrets,
     check_env_file,
     check_markdown_location,
@@ -403,6 +387,8 @@ CHECKS = (
     check_server_layout,
     check_server_imports,
     check_ts,
+    web_rules.check_web_imports,
+    web_rules.check_web_text,
     check_direction,
     check_sql,
     check_migration_rules,

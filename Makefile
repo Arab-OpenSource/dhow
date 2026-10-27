@@ -58,7 +58,7 @@ lint-actions: ## Lint GitHub Actions workflows
 
 .PHONY: hooks-test
 hooks-test: ## Test the Claude Code project hooks
-	python3 -B .claude/hooks/tests/test_hooks.py
+	python3 -B -m unittest discover -s .claude/hooks/tests -p "test_*.py"
 
 .PHONY: test
 test: ## Run Go tests with the race detector

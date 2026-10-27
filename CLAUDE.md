@@ -43,13 +43,32 @@
 - مسارات الـ API بـ kebab-case، وأكواد الأخطاء UPPER_SNAKE، ورسالة الخطأ بتتترجم في السيرفر من `Accept-Language`، ورسالة النجاح هي مفتاح i18n.
 - PostgreSQL 18 (لـ `uuidv7()` المدمجة).
 
+### هيكل `apps/web/Src` (ADR-0031)
+
+| المجلد | الدور |
+|---|---|
+| `Main.tsx` | الملف الوحيد المسموح في جذر `Src` |
+| `App/` | الـ router والـ providers والـ layout (`Layout/`)، وهو الوحيد اللي بيستورد `Modules/` |
+| `Core/<X>/` | `Ui` (مكوّنات الـ Design System) و`Api` (`Schema.d.ts` متولّد و`Client.ts`) و`Hooks` و`Store` و`Testing` |
+| `I18n/` | `Locales/{Ar,En}.ts` بنفس المفاتيح و`I18nProvider` و`useT` |
+| `Styles/` | `Tokens.json` مصدر الـ tokens، و`Tokens.css` متولّد، و`Globals.css` (Tailwind v4 بـ `@theme`) |
+| `Modules/<Name>/<Folder>/` | `Pages` و`Components` و`Hooks` و`Api` و`Store` و`Types` |
+
+- PascalCase للفولدرات والملفات والـ components والـ state والـ handlers، والـ hooks بس `useX.ts` بـ `use` صغيرة. الاختبار جنب الملف: `X.test.tsx`.
+- module ممنوع يستورد module تاني، و`Core` و`I18n` و`Styles` ممنوع يستوردوا `Modules` أو `App`، و`Modules` ممنوع يستورد `App`. الاستيراد بـ `@/` (مثلًا `@/Core/Ui/Button`).
+- ممنوع أي نص مكتوب في الـ JSX أو في `aria-label` و`title` و`placeholder`: كل نص مفتاح في `Ar.ts` و`En.ts` بنفس المفاتيح، ويتعرض بـ `t('key')`.
+- الألوان من الـ tokens بس (`bg-canvas` و`text-secondary`)، ومفيش hex في الكود. الـ gradient (aurora) بحد أقصى 3 عناصر في الشاشة، وممنوع drop shadow على الكروت (الـ `shadow-card` highlight بس).
+- الـ CSP هي `'self'`: ممنوع inline scripts أو styles، وممنوع `Dialog.Overlay` من Radix لأنه بيحقن `<style>` (استخدم الـ backdrop اللي في `SlideOver`، واختبارات `SlideOver` و`CommandPalette` بتتأكد إن مفيش `<style>` اتحقن).
+- `Schema.d.ts` بيتولّد بـ `pnpm gen:api` من `packages/openapi/openapi.yaml`، و`Tokens.css` بـ `pnpm gen:tokens`، وممنوع تعديلهم بإيدك.
+
 ممنوع ملفات Markdown بره `docs/` و`Plan/` و`.github/` و`.claude/`. الاستثناء: README وREADME.ar وCLAUDE وCONTRIBUTING وSECURITY وLICENSE في الـ root.
 
 ## الأوامر
 
 - `make check`: lint وactionlint واختبارات Go بـ `-race` وgovulncheck واختبارات الـ hooks. الـ CI بيشغّل نفس الـ targets، فشغّلها قبل أي push.
 - `make help` بيعرض كل الـ targets. نسخة Go مثبّتة في `go.mod`، والـ Makefile بيبني الأدوات بيها.
-- الواجهة (لما `apps/web` يتعمل): `pnpm lint` و`pnpm typecheck` و`pnpm test` و`pnpm build` جوه `apps/web`.
+- الواجهة: جوه `apps/web` شغّل `pnpm lint` و`pnpm typecheck` و`pnpm test` و`pnpm build` و`pnpm size` (ميزانية الحجم: JS أقل من 180 KB gzip وCSS أقل من 30 KB).
+- `make web` بيبني الواجهة وينسخها في `apps/server/internal/App/WebDist/` (مش بيتعمله commit)، و`make release` بيبني الـ binary بيها. `make check` و`make build` Go بس، من غير الواجهة، والـ CI بيشغّل job الواجهة (`web`) لوحده.
 
 ## الـ Hooks (`.claude/settings.json`)
 
@@ -61,6 +80,8 @@
 - `panic`، و`fmt.Print`، و`os.Getenv` بره الـ config.
 - `any` والتسمية في TypeScript.
 - الخصائص الفيزيائية (left/right) في الواجهة.
+- مكان ملفات `apps/web/Src` وتسمية PascalCase (والـ hooks بـ `use`)، واتجاه الاستيراد بين `App` و`Core` و`I18n` و`Styles` و`Modules`.
+- أي نص عربي أو إنجليزي مكتوب في JSX أو في `aria-label` و`title` و`placeholder` بره `I18n/Locales/` والاختبارات.
 - الملفات المتولّدة.
 - الأسرار.
 - مكان الـ Markdown.
