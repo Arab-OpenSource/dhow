@@ -1,0 +1,124 @@
+openapi: 3.0.3
+info:
+  title: Dhow API
+  version: 0.1.0
+  description: |
+    Public REST API of the Dhow control plane. This file is the source of truth (spec-first):
+    change it, run `make gen`, then implement.
+  license:
+    name: AGPL-3.0-only
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+servers:
+  - url: /api/v1
+tags:
+  - name: system
+    description: Health and instance metadata.
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      tags: [system]
+      summary: Liveness probe
+      description: Returns 200 while the process is running. Does not touch dependencies.
+      security: []
+      responses:
+        "200":
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /health/ready:
+    get:
+      operationId: getReadiness
+      tags: [system]
+      summary: Readiness probe
+      description: Returns 200 when the database is reachable and fully migrated, otherwise 503.
+      security: []
+      responses:
+        "200":
+          description: Ready to serve traffic.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: Not ready. The body names the failing check without internal details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /meta:
+    get:
+      operationId: getMeta
+      tags: [system]
+      summary: Instance metadata
+      description: Public information the UI needs before sign-in.
+      security: []
+      responses:
+        "200":
+          description: Instance metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meta"
+        default:
+          $ref: "#/components/responses/Error"
+components:
+  responses:
+    Error:
+      description: An error. Never contains internal details.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable code, for example `internal`, `not_found`, `payload_too_large`.
+          example: internal
+        message:
+          type: string
+          description: Human-readable message that is safe to show to users.
+          example: Something went wrong. Try again later.
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/HealthCheck"
+    HealthCheck:
+      type: object
+      additionalProperties: false
+      required: [name, ok]
+      properties:
+        name:
+          type: string
+          enum: [database, migrations]
+        ok:
+          type: boolean
+    Meta:
+      type: object
+      additionalProperties: false
+      required: [version, commit, setupRequired]
+      properties:
+        version:
+          type: string
+          example: v0.1.0
+        commit:
+          type: string
+          example: 2e39188
+        setupRequired:
+          type: boolean
+          description: True until the first owner completes setup.

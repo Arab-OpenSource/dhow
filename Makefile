@@ -4,9 +4,24 @@ GO       ?= go
 export GOTOOLCHAIN := $(shell awk '/^toolchain/ {print $$2}' go.mod)
 PKG      := ./...
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS  := -s -w -X github.com/Arab-OpenSource/dhow/internal/buildinfo.version=$(VERSION)
+COMMIT   ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null)
+LDFLAGS  := -s -w \
+	-X github.com/Arab-OpenSource/dhow/internal/buildinfo.version=$(VERSION) \
+	-X github.com/Arab-OpenSource/dhow/internal/buildinfo.commit=$(COMMIT)
 GOLANGCI_LINT_VERSION := v2.15.0
 GOVULNCHECK_VERSION   := v1.8.0
+OAPI_CODEGEN_VERSION  := v2.8.1
+SQLC_VERSION          := v1.31.1
+
+.PHONY: build
+build: ## Build bin/dhow-server
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o bin/dhow-server ./apps/server/cmd/dhow-server
+
+.PHONY: gen
+gen: ## Regenerate code from the OpenAPI spec and SQL queries
+	cd apps/server && $(GO) run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) \
+		-config oapi-codegen.yaml ../../packages/openapi/openapi.yaml
+	cd apps/server && $(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION) generate
 
 .PHONY: help
 help: ## List targets
