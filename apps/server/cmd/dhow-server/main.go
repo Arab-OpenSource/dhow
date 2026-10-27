@@ -14,10 +14,10 @@ import (
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/config"
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/db"
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/db/sqlc"
-	"github.com/Arab-OpenSource/dhow/apps/server/internal/logging"
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/server"
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/web"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	"github.com/Arab-OpenSource/dhow/internal/logging"
 )
 
 const shutdownTimeout = 20 * time.Second
