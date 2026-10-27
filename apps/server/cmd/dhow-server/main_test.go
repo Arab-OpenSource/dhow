@@ -29,3 +29,14 @@ func TestRunHealthcheckFailsWhenNothingListens(t *testing.T) {
 	t.Setenv("DHOW_LISTEN_ADDR", "127.0.0.1:1")
 	require.Error(t, run(context.Background(), []string{"healthcheck"}))
 }
+
+func TestRunDispatchesInstallerCommands(t *testing.T) {
+	for _, cmd := range []string{"install", "doctor", "uninstall"} {
+		t.Run(cmd, func(t *testing.T) {
+			require.NoError(t, run(context.Background(), []string{cmd, "--help"}))
+		})
+	}
+	err := run(context.Background(), []string{"install", "--bogus"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "flag provided but not defined")
+}
