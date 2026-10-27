@@ -46,7 +46,7 @@ func Healthcheck(ctx context.Context, listenAddr string, timeout time.Duration) 
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("request %s: %w", target, err)
+		return fmt.Errorf("request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, healthDrainBytes))
