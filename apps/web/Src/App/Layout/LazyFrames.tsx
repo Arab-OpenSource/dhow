@@ -2,6 +2,10 @@ import { lazy, Suspense } from 'react';
 
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
+import type { IMfaSectionProps } from '@/Modules/Mfa/Components/MfaSection';
+import type { ITotpBodyProps } from '@/Modules/Mfa/Components/TotpBody';
+import type { ITotpFooterProps } from '@/Modules/Mfa/Components/TotpFooter';
+import type { IAccountSlideProps } from '@/Modules/Session/Components/AccountSlide';
 import type { IAccountFooterProps } from '@/Modules/Session/Components/AccountFooter';
 import type { IPasswordBodyProps } from '@/Modules/Session/Components/PasswordBody';
 import type { IPasswordFooterProps } from '@/Modules/Session/Components/PasswordFooter';
@@ -22,6 +26,14 @@ const PasswordFooter = lazy(() =>
   import('@/Modules/Session/Components/PasswordFooter').then((module) => ({ default: module.PasswordFooter })),
 );
 
+const MfaSection = lazy(() =>
+  import('@/Modules/Mfa/Components/MfaSection').then((module) => ({ default: module.MfaSection })),
+);
+const TotpBody = lazy(() => import('@/Modules/Mfa/Components/TotpBody').then((module) => ({ default: module.TotpBody })));
+const TotpFooter = lazy(() =>
+  import('@/Modules/Mfa/Components/TotpFooter').then((module) => ({ default: module.TotpFooter })),
+);
+
 const AuditBody = lazy(() =>
   import('@/Modules/Audit/Components/AuditBody').then((module) => ({ default: module.AuditBody })),
 );
@@ -38,9 +50,27 @@ const Loading = () => {
   return <Skeleton label={t('ui.loading')} lines={5} />;
 };
 
-export const LazyAccountSlide = () => (
+export const LazyAccountSlide = (props: IAccountSlideProps) => (
   <Suspense fallback={<Loading />}>
-    <AccountSlide />
+    <AccountSlide {...props} />
+  </Suspense>
+);
+
+export const LazyMfaSection = (props: IMfaSectionProps) => (
+  <Suspense fallback={<Loading />}>
+    <MfaSection {...props} />
+  </Suspense>
+);
+
+export const LazyTotpBody = (props: ITotpBodyProps) => (
+  <Suspense fallback={<Loading />}>
+    <TotpBody {...props} />
+  </Suspense>
+);
+
+export const LazyTotpFooter = (props: ITotpFooterProps) => (
+  <Suspense fallback={null}>
+    <TotpFooter {...props} />
   </Suspense>
 );
 

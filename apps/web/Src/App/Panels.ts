@@ -14,6 +14,7 @@ const STATIC_FRAMES = [
   'theme-edit',
   'account',
   'account-password',
+  'account-totp',
   'audit',
   'organization',
 ] as const;

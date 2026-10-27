@@ -1,3 +1,4 @@
+import { mfaReply, type IMfaFixture } from '@/Core/Testing/MfaBackend';
 import { envelope, META_BODY, meBody, ORG_ID, READY_BODY, SESSION_ID, stubFetch, UNAUTHENTICATED_BODY, USER_ID } from '@/Core/Testing/Fetch';
 
 export interface ISessionFixture {
@@ -97,6 +98,7 @@ export interface IBackendOptions {
   members?: IMemberFixture[];
   verify?: () => Response;
   renameReply?: () => Response;
+  mfa?: IMfaFixture;
 }
 
 export interface IBackendState {
@@ -105,6 +107,7 @@ export interface IBackendState {
   role: string;
   csrf: string;
   orgName: string;
+  mfa: IMfaFixture;
 }
 
 const failure = (Code: string, Message: string, status: number, headers: Record<string, string> = {}): Response =>
@@ -124,6 +127,7 @@ export const startBackend = (options: IBackendOptions = {}) => {
     role: options.role ?? 'owner',
     csrf: 'csrf-token-1',
     orgName: 'Future Solution',
+    mfa: options.mfa ?? { TotpEnabled: false, RecoveryCodesRemaining: 0, Passkeys: [] },
   };
   const stub = stubFetch(async (request) => {
     const url = new URL(request.url);
@@ -139,6 +143,8 @@ export const startBackend = (options: IBackendOptions = {}) => {
     if (pathname.endsWith('/me') && request.method === 'GET') {
       return state.signedIn ? envelope(meBody(state.role, state.csrf, state.orgName)) : envelope(UNAUTHENTICATED_BODY, 401);
     }
+    const mfa = await mfaReply(request, pathname, state.mfa);
+    if (mfa) return mfa;
     const org = /\/organizations\/[0-9a-f-]{36}(\/[a-z-]+)*$/.exec(pathname);
     if (org) return organizationReply(request, url, options, state);
     if (pathname.endsWith('/me/password') && request.method === 'PUT') {
