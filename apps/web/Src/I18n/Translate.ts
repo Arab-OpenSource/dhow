@@ -15,3 +15,5 @@ export const translate = (locale: TLocale, key: TMessageKey, params?: TMessagePa
 };
 
 export const catalogOf = (locale: TLocale): TMessages => CATALOGS[locale];
+
+export const isMessageKey = (key: string): key is TMessageKey => Object.hasOwn(Ar, key);
