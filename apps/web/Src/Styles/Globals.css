@@ -1,0 +1,107 @@
+@import "tailwindcss";
+@import "./Tokens.css";
+
+@theme {
+  --ease-dhow: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-dhow-pulse: dhow-pulse 1.4s ease-in-out infinite;
+  --animate-dhow-fade: dhow-fade 1.8s ease-in-out infinite;
+
+  @keyframes dhow-pulse {
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes dhow-fade {
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
+
+:root {
+  color-scheme: dark;
+  --gradient-aurora: linear-gradient(
+    90deg,
+    var(--color-aurora-1) 0%,
+    var(--color-aurora-2) 20%,
+    var(--color-aurora-3) 44%,
+    var(--color-aurora-4) 60%,
+    var(--color-aurora-5) 82%,
+    var(--color-aurora-6) 100%
+  );
+  --gradient-edge: linear-gradient(
+    90deg,
+    var(--color-edge-warm) 0%,
+    rgb(255 255 255 / 0.28) 22%,
+    rgb(255 255 255 / 0.1) 55%,
+    var(--color-edge-cool) 100%
+  );
+  --gradient-card: linear-gradient(180deg, var(--color-surface-top) 0%, var(--color-surface) 60%);
+}
+
+[dir="rtl"] {
+  --gradient-aurora: linear-gradient(
+    270deg,
+    var(--color-aurora-1) 0%,
+    var(--color-aurora-2) 20%,
+    var(--color-aurora-3) 44%,
+    var(--color-aurora-4) 60%,
+    var(--color-aurora-5) 82%,
+    var(--color-aurora-6) 100%
+  );
+  --gradient-edge: linear-gradient(
+    270deg,
+    var(--color-edge-warm) 0%,
+    rgb(255 255 255 / 0.28) 22%,
+    rgb(255 255 255 / 0.1) 55%,
+    var(--color-edge-cool) 100%
+  );
+}
+
+@utility edge {
+  --edge-fill: var(--color-canvas);
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--edge-fill), var(--edge-fill)) padding-box,
+    var(--gradient-edge) border-box;
+}
+
+@utility bg-aurora {
+  background-image: var(--gradient-aurora);
+}
+
+@utility bg-card-gradient {
+  background-image: var(--gradient-card);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-body text-primary antialiased;
+    margin: 0;
+  }
+
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-accent-blue);
+    outline-offset: 2px;
+  }
+
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
