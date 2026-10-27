@@ -1,50 +1,91 @@
-# CLAUDE.md — Dhow
+# CLAUDE.md — داو (Dhow)
 
-Guidance for AI agents working in this repository. Humans: start at [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+إرشادات لأي agent بيشتغل على الـ repo ده. البشر يبدأوا من [README.md](README.md) و[CONTRIBUTING.md](CONTRIBUTING.md).
 
-## What this is
+## المشروع
 
-Dhow (داو) is a secure, self-hosted continuous deployment platform: a Go control plane, Go runners that execute
-jobs in isolated sandboxes, and an Arabic-first React UI. The design lives in `docs/`; every significant decision
-is an ADR in `docs/adr/`. Read the relevant ADR before changing an area, and add a new ADR instead of editing an
-accepted one.
+داو منصة Continuous Deployment آمنة بتتنصّب عند العميل. فيها control plane بـ Go، وrunners بـ Go بتشغّل الـ jobs في sandbox معزول، وواجهة React عربي أولاً.
+- **الوثائق العامة** (بالإنجليزي) في `docs/`.
+- **القرارات** (ADRs بالعربي) في `Plan/ADR/`. اقرا الـ ADR الخاص بأي جزء قبل ما تغيّر فيه، وأي قرار جديد يبقى ADR جديد مش تعديل في القديم.
+- **السجل اليومي** في `Plan/Progress/YYYY-MM-DD.md`.
 
-## Layout (ADR-0004)
+## الهيكل (ADR-0004)
 
-| Path | What |
+| المسار | المحتوى |
 |---|---|
-| `apps/server` | Control plane (Go) |
-| `apps/runner` | Runner (Go) |
-| `apps/web` | Web UI (React + TypeScript + Tailwind, pnpm) |
-| `apps/cli` | `dhow` CLI (Go) |
-| `packages/openapi` | `openapi.yaml`, the public REST contract (spec-first) |
-| `packages/proto` | Runner ↔ control plane protocol (Connect/gRPC) |
-| `internal/` | Go packages shared by the Go apps |
-| `ee/` | Commercial features (Dhow Enterprise License); everything else is AGPL-3.0 |
-| `deploy/` | Dockerfiles, Compose, Helm |
-| `docs/` | All documentation. Do not put Markdown docs anywhere else (README, CLAUDE, CONTRIBUTING, SECURITY, LICENSE excepted). |
+| `apps/server` | الـ control plane (Go) |
+| `apps/runner` | الـ runner (Go) |
+| `apps/web` | الواجهة (React + TypeScript + Tailwind، pnpm) |
+| `apps/cli` | الـ CLI `dhow` (Go) |
+| `packages/openapi` | `openapi.yaml`، عقد الـ REST API (spec-first) |
+| `packages/proto` | بروتوكول الـ runner مع الـ control plane (Connect/gRPC) |
+| `internal/` | packages Go مشتركة بين التطبيقات |
+| `ee/` | المميزات التجارية (Dhow Enterprise License)، وكل الباقي AGPL-3.0 |
+| `deploy/` | Dockerfiles وCompose وHelm |
+| `docs/` | وثائق عامة بالإنجليزي |
+| `Plan/` | خطط وADRs وسجل يومي، بالعربي |
 
-## Commands
+ممنوع ملفات Markdown بره `docs/` و`Plan/` و`.github/` و`.claude/`. الاستثناء: README وREADME.ar وCLAUDE وCONTRIBUTING وSECURITY وLICENSE في الـ root.
 
-- `make check` runs Go lint, tests (with `-race`) and govulncheck. CI runs the same targets; run them before pushing.
-- `make help` lists all targets. The Go toolchain is pinned in `go.mod`; the Makefile builds tools with it.
-- Web (once `apps/web` exists): `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` inside `apps/web`.
+## الأوامر
 
-## Rules that are never broken
+- `make check`: lint وactionlint واختبارات Go بـ `-race` وgovulncheck واختبارات الـ hooks. الـ CI بيشغّل نفس الـ targets، فشغّلها قبل أي push.
+- `make help` بيعرض كل الـ targets. نسخة Go مثبّتة في `go.mod`، والـ Makefile بيبني الأدوات بيها.
+- الواجهة (لما `apps/web` يتعمل): `pnpm lint` و`pnpm typecheck` و`pnpm test` و`pnpm build` جوه `apps/web`.
 
-- **Never execute user-controlled strings through a shell.** Build commands as argv slices (`exec.Command(name, args...)`), validate refs and paths, and pass `--` before user values.
-- **Never evaluate user expressions with a general-purpose interpreter.** Pipeline conditions use CEL only.
-- **Secrets are write-only.** No API response, log line, event or notification may contain a secret value; test it.
-- **Fail closed.** Missing or default secrets, invalid config, or failed migrations stop the process at boot.
-- **Every endpoint goes through the central `can()` policy.** Add a route-table test row for every new route and role.
-- **SQL only through sqlc-generated queries** with parameters. No string-built SQL.
-- **No `panic` for control flow, no ignored errors, no global mutable state** outside `main`.
-- **Dependencies:** add one only when it removes real complexity; pin exact versions; CI scans every PR.
+## الـ Hooks (`.claude/settings.json`)
 
-## Conventions
+القواعد اللي تحت متطبّقة كـ hooks قبل أي Write أو Edit أو Bash، يعني الـ hook هيرفض أي تعديل مخالف ويقولك السبب. ده بيشمل:
+- الكومنتات.
+- `sh -c`.
+- SQL مبني كنص.
+- JSON tags مش PascalCase.
+- `panic`، و`fmt.Print`، و`os.Getenv` بره الـ config.
+- `any` والتسمية في TypeScript.
+- الخصائص الفيزيائية (left/right) في الواجهة.
+- الملفات المتولّدة.
+- الأسرار.
+- مكان الـ Markdown.
+- طول الملف.
+- الـ migrations اللي اتعملها merge.
+- رسائل الـ commits (Conventional، إنجليزي، ومن غير أي إشارة لـ AI).
+- `--no-verify` والـ force-push على main.
 
-- Go: standard library first, `log/slog` JSON logs, `context.Context` first argument, errors wrapped with `%w`, table-driven tests. Lint config: `.golangci.yml`.
-- API: change `packages/openapi/openapi.yaml` first, regenerate, then implement.
-- UI: Arabic is the source language and RTL is the default direction. Use logical CSS properties only. Copy follows the design system's content rules (polite Egyptian Arabic, buttons name their action).
-- Commits: Conventional Commits, signed off (`git commit -s`, DCO).
-- Communicate with the maintainer in Arabic; write code, comments, commits and docs in English.
+اختباراتها في `.claude/hooks/tests/` وبتتشغّل بـ `make hooks-test`. أي قاعدة جديدة لازم يبقى ليها hook واختبار.
+
+## قواعد ما بتتكسرش
+
+- **ممنوع تشغيل نص جاي من المستخدم من خلال shell.** الأوامر تتبني كـ argv (`exec.CommandContext(ctx, name, args...)`)، والـ refs والمسارات يتعملها validation، و`--` قبل أي قيمة جاية من المستخدم.
+- **ممنوع تقييم expressions بمفسّر عام.** شروط الـ pipeline بـ CEL بس.
+- **الأسرار للكتابة بس.** ممنوع أي response أو log أو event أو إشعار يحتوي قيمة سر، ولازم اختبار يثبت ده.
+- **Fail closed.** أي سر ناقص أو افتراضي، أو إعداد غلط، أو migration فشل، بيوقف الإقلاع.
+- **كل endpoint بيعدّي على policy مركزية `can()`**، ومع كل route جديد صف في اختبار الـ route-table لكل دور.
+- **الـ SQL من خلال sqlc بس** وبالـ parameters. ممنوع SQL مبني كنص.
+- **ممنوع `panic` في كود الإنتاج، وممنوع تجاهل أي error، وممنوع global mutable state** بره `main`.
+- **الاعتماديات:** تتضاف بس لما تشيل تعقيد حقيقي، وبنسخ مثبّتة بالظبط، والـ CI بيفحص كل PR.
+
+## الأسلوب
+
+- **الكود من غير أي كومنتات:** لا line ولا block ولا JSDoc ولا Go doc comments. الاستثناء الوحيد كومنت بيبدأ بـ `IMPORTANT:` لحاجة استثنائية فعلاً، والـ directives (`//go:`، `//nolint:`، `eslint-`...). المبرّرات مكانها `Plan/ADR`.
+- **حدود الحجم:** الملف 500 سطر بالكتير، والـ function 100 سطر (`funlen` في golangci-lint، وESLint في الواجهة).
+- **Go:** الأسلوب الرسمي (exported بـ PascalCase، وerrors بـ `Err` prefix)، والـ standard library الأول، و`log/slog` بـ JSON، و`context.Context` أول argument، والـ errors تتلف بـ `%w`، واختبارات table-driven.
+- **الـ API:** أسماء الحقول في JSON بـ **PascalCase** (`SetupRequired`، `CreatedAt`)، والـ envelope هو `{Success, Data, Error}`. عدّل `packages/openapi/openapi.yaml` الأول، وبعدين `make gen`، وبعدين التنفيذ.
+- **قاعدة البيانات:** أسماء الجداول والأعمدة بـ **PascalCase** بين علامات تنصيص (`"Projects"`، `"CreatedAt"`). أي migration بعد ما يتعمله merge ما يتعدّلش، ويتضاف واحد جديد.
+- **TypeScript:**
+  - الـ interfaces بـ `I` والـ types بـ `T` والـ enums بـ `E`.
+  - الـ components arrow functions.
+  - PascalCase للـ public methods وللـ handlers (`HandleSubmit`) ولمتغيرات الـ state (`const [Loading, setLoading]`).
+  - ممنوع `any` و`console.*`.
+- **الواجهة:** العربي هو اللغة الأساسية، والـ RTL هو الاتجاه الافتراضي، والـ CSS بالـ logical properties بس. الـ Design System قواعد `aurora-dark-ui` بألوان الغروب: الـ gradient عنبري ← وردي، وبيظهر بحد أقصى 3 مرات في الشاشة، والحدود edge-light، ومفيش زجاج blur ولا hover lift. والنصوص بالمصري المهذّب، والزرار بيقول هيعمل إيه بالظبط.
+
+## الـ git
+
+- رسائل الـ commits والـ PRs **بالإنجليزي** وبـ Conventional Commits، ومع DCO sign-off (`git commit -s`).
+- **ممنوع أي إشارة لـ AI** في أي commit أو PR: لا `Co-Authored-By: Claude` ولا «Generated with Claude Code» ولا روابط sessions.
+- ممنوع `--no-verify`، وممنوع force-push على `main`.
+
+## التواصل
+
+- مع الـ maintainer بالعربي. والكود والـ commits والوثائق العامة بالإنجليزي، والـ `Plan/` بالعربي.
+- أي سؤال للـ maintainer يبقى من خلال `AskUserQuestion` بخيارات ومعاها trade-offs، ومع توصية واضحة.
+- الـ subagents بـ `model: "sonnet"`.

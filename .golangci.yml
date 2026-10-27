@@ -9,6 +9,7 @@ linters:
     - bodyclose
     - contextcheck
     - errorlint
+    - funlen
     - gocritic
     - gosec
     - misspell
@@ -25,12 +26,21 @@ linters:
     nolintlint:
       require-explanation: true
       require-specific: true
+    funlen:
+      lines: 100
+      statements: -1
+      ignore-comments: false
     revive:
       rules:
-        - name: exported
-          arguments: ["disableStutteringCheck"]
+        - name: file-length-limit
+          arguments:
+            - max: 500
+              skipComments: false
+              skipBlankLines: false
   exclusions:
     generated: strict
+    presets:
+      - comments
     rules:
       - path: _test\.go
         linters: [gosec, unparam]
