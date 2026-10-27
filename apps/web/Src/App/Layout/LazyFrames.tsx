@@ -29,6 +29,10 @@ const AuditFooter = lazy(() =>
   import('@/Modules/Audit/Components/AuditFooter').then((module) => ({ default: module.AuditFooter })),
 );
 
+const OrganizationSlide = lazy(() =>
+  import('@/Modules/Identity/Components/OrganizationSlide').then((module) => ({ default: module.OrganizationSlide })),
+);
+
 const Loading = () => {
   const t = useT();
   return <Skeleton label={t('ui.loading')} lines={5} />;
@@ -73,5 +77,11 @@ export const LazyAuditBody = () => (
 export const LazyAuditFooter = () => (
   <Suspense fallback={null}>
     <AuditFooter />
+  </Suspense>
+);
+
+export const LazyOrganizationSlide = () => (
+  <Suspense fallback={<Loading />}>
+    <OrganizationSlide />
   </Suspense>
 );

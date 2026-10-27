@@ -1,3 +1,4 @@
+import { OrganizationChip } from '@/App/Layout/OrganizationChip';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
 import { canReadAudit } from '@/Core/Auth/AuthTypes';
 import { useMe } from '@/Core/Auth/useMe';
@@ -16,7 +17,16 @@ export const ShellMenu = () => {
     { id: 'home', icon: 'home', label: t('shell.nav.home'), href: '/', current: stack.length === 0, onSelect: goWorkspace },
     { id: 'projects', icon: 'layers', label: t('shell.nav.projects'), hint: t('shell.soon') },
     { id: 'runners', icon: 'server', label: t('shell.nav.runners'), hint: t('shell.soon') },
-    { id: 'team', icon: 'users', label: t('shell.nav.team'), hint: t('shell.soon') },
+    {
+      id: 'team',
+      icon: 'users',
+      label: t('shell.nav.team'),
+      href: '/?stack=organization',
+      current: stack.includes('organization'),
+      onSelect: () => {
+        openStack(['organization']);
+      },
+    },
   ];
   if (canReadAudit(role)) {
     items.push({
@@ -48,10 +58,13 @@ export const ShellMenu = () => {
     <SideMenu
       label={t('shell.nav.label')}
       brand={
-        <>
-          <Mark size={28} />
-          <span className="text-title-xl">{t('shell.brand')}</span>
-        </>
+        <div className="grid min-w-0 gap-2.5">
+          <span className="flex items-center gap-2.5">
+            <Mark size={28} />
+            <span className="text-title-xl">{t('shell.brand')}</span>
+          </span>
+          <OrganizationChip />
+        </div>
       }
       items={items}
       bottom={bottom}

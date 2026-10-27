@@ -15,6 +15,7 @@ const STATIC_FRAMES = [
   'account',
   'account-password',
   'audit',
+  'organization',
 ] as const;
 const CHECK_PREFIX = 'check-';
 const THEME_EDIT_PREFIX = 'theme-edit-';

@@ -4,6 +4,7 @@ import {
   LazyAccountSlide,
   LazyAuditBody,
   LazyAuditFooter,
+  LazyOrganizationSlide,
   LazyAccountSubtitle,
   LazyPasswordBody,
   LazyPasswordFooter,
@@ -44,6 +45,14 @@ export const buildIdentitySlide = (id: TFrameId, { t, navigation, role }: IFrame
       subtitle: <span>{t('audit.subtitle')}</span>,
       children: <LazyAuditBody />,
       footer: canReadAudit(role) ? <LazyAuditFooter /> : undefined,
+    };
+  }
+  if (id === 'organization') {
+    return {
+      id,
+      title: t('organization.title'),
+      subtitle: <span>{t('organization.subtitle')}</span>,
+      children: <LazyOrganizationSlide />,
     };
   }
   return null;

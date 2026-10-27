@@ -25,6 +25,7 @@ export const useCommandItems = (): ICommands => {
     { id: 'appearance', icon: 'settings', label: t('palette.command.appearance'), kind: t('palette.kind.panel') },
     { id: 'theme-new', icon: 'plus', label: t('palette.command.createTheme'), kind: t('palette.kind.panel') },
     { id: 'account', icon: 'user', label: t('palette.command.account'), kind: t('palette.kind.panel') },
+    { id: 'organization', icon: 'users', label: t('palette.command.organization'), kind: t('palette.kind.panel') },
     { id: 'password', icon: 'key', label: t('palette.command.password'), kind: t('palette.kind.panel') },
     ...(canReadAudit(role)
       ? [{ id: 'audit', icon: 'file' as const, label: t('palette.command.audit'), kind: t('palette.kind.panel') }]
@@ -44,6 +45,7 @@ export const useCommandItems = (): ICommands => {
     else if (item.id === 'appearance') openStack(['appearance']);
     else if (item.id === 'theme-new') openStack(['appearance', 'theme-edit']);
     else if (item.id === 'account') openStack(['account']);
+    else if (item.id === 'organization') openStack(['organization']);
     else if (item.id === 'audit') openStack(['audit']);
     else if (item.id === 'password') openStack(['account', 'account-password']);
     else if (item.id === 'sign-out') void SignOut();
