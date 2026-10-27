@@ -111,8 +111,8 @@ describe('stacked slides from the URL', () => {
     const { router } = await renderApp('/?stack=system-status,check-database');
     await screen.findByRole('dialog', { name: Ar['status.check.database'] });
     const target = document.querySelector('[data-slide-return]');
-    expect(target).not.toBeNull();
-    fireEvent.click(target as Element);
+    if (!target) throw new Error('there is no lower slide to press');
+    fireEvent.click(target);
     await screen.findByRole('dialog', { name: Ar['status.title'] });
     expect(router.state.location.href).toBe('/?stack=system-status');
     expect(screen.getByText(Ar['slides.returned.title'])).toBeInTheDocument();
