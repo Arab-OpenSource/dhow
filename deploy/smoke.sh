@@ -155,6 +155,80 @@ expect "the password never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"
 expect "the session cookie never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "${cookie#*=}" "$dhow_logs"
 expect "the setup token is logged only inside the setup link" test "$(grep -oF -- "$setup_token" <<<"$dhow_logs" | wc -l)" = 1
 
+totp() {
+  if command -v oathtool >/dev/null 2>&1; then
+    oathtool --totp --base32 --now "now + $(($2 * 30)) seconds" -- "$1"
+  else
+    (cd -- "$root" && go run ./deploy/smoke/totp "$1" "$2")
+  fi
+}
+json_field() { grep -o "\"$2\":\"[^\"]*\"" "$1" | head -1 | cut -d'"' -f4; }
+set_cookie() { sed -n "s/^[Ss]et-[Cc]ookie: \($2=[^;]*\);.*/\1/p" "$1" | tr -d '\r' | head -1; }
+
+printf 'Passkeys and the second step\n'
+origin=(--header "Origin: $public_url")
+status=$(api "$work/login2" POST /api/v1/sessions "$login_body" "${origin[@]}")
+expect "sign-in without a second factor still answers 200" test "$status" = 200
+cookie=$(set_cookie "$work/login2.head" __Host-dhow_session)
+csrf=$(json_field "$work/login2.body" CsrfToken)
+session=(--header "Cookie: $cookie" --header "X-CSRF-Token: $csrf")
+status=$(curl --silent --max-time 5 --output "$work/mfa-status.body" --write-out '%{http_code}' --header "Cookie: $cookie" -- "http://127.0.0.1:$port/api/v1/me/mfa")
+expect "/api/v1/me/mfa answers 200" test "$status" = 200
+expect "a new account has no second factor" grep -q '"Enabled":false' "$work/mfa-status.body"
+status=$(curl --silent --max-time 5 --output "$work/passkeys.body" --write-out '%{http_code}' --header "Cookie: $cookie" -- "http://127.0.0.1:$port/api/v1/me/passkeys")
+expect "/api/v1/me/passkeys answers 200" test "$status" = 200
+expect "a new account has no passkeys" grep -q '"Data":\[\]' "$work/passkeys.body"
+status=$(api "$work/pk-options" POST /api/v1/sessions/passkey-options '' "${origin[@]}")
+expect "passkey sign-in options answer 200" test "$status" = 200
+expect "the RP ID comes from DHOW_PUBLIC_URL" grep -q '"rpId":"dhow.smoke.test"' "$work/pk-options.body"
+expect "passkey sign-in requires user verification" grep -q '"userVerification":"required"' "$work/pk-options.body"
+challenge=$(json_field "$work/pk-options.body" ChallengeId)
+status=$(api "$work/pk-login" POST /api/v1/sessions/passkey "{\"ChallengeId\":\"$challenge\",\"Credential\":{\"id\":\"AAAA\",\"type\":\"public-key\"}}" "${origin[@]}")
+expect "an unknown passkey answers 401" test "$status" = 401
+expect "an unknown passkey is INVALID_CREDENTIALS" grep -q '"Code":"INVALID_CREDENTIALS"' "$work/pk-login.body"
+
+status=$(api "$work/totp" POST /api/v1/me/totp '' "${origin[@]}" "${session[@]}")
+expect "TOTP enrollment answers 200" test "$status" = 200
+secret=$(json_field "$work/totp.body" Secret)
+expect "the TOTP secret has 160 bits" test "${#secret}" = 32
+expect "the enrollment carries an otpauth URI" grep -q '"Uri":"otpauth://totp/' "$work/totp.body"
+confirm_body=$(printf '{"Code":"%s","CurrentFactor":{"Method":"password","Password":"%s"}}' "$(totp "$secret" 0)" "$password")
+status=$(api "$work/totp-confirm" POST /api/v1/me/totp/confirm "$confirm_body" "${origin[@]}" "${session[@]}")
+expect "confirming TOTP answers 200" test "$status" = 200
+expect "confirming TOTP returns 10 recovery codes" test "$(grep -o '[0-9A-Z]\{4\}-[0-9A-Z]\{4\}-[0-9A-Z]\{4\}-[0-9A-Z]\{4\}' "$work/totp-confirm.body" | wc -l)" = 10
+recovery=$(grep -o '[0-9A-Z]\{4\}-[0-9A-Z]\{4\}-[0-9A-Z]\{4\}-[0-9A-Z]\{4\}' "$work/totp-confirm.body" | head -1)
+
+status=$(api "$work/mfa-step" POST /api/v1/sessions "$login_body" "${origin[@]}")
+expect "the password step now answers 202" test "$status" = 202
+expect "the password step sets no session" bash -c '! grep -qi "^set-cookie: __Host-dhow_session=" "$1"' _ "$work/mfa-step.head"
+for attribute in '__Host-dhow_mfa=' 'HttpOnly' 'Secure' 'SameSite=Strict' 'Path=/' 'Max-Age=300'; do
+  expect "the challenge cookie has $attribute" has_header "$work/mfa-step.head" Set-Cookie "$attribute"
+done
+mfa_cookie=$(set_cookie "$work/mfa-step.head" __Host-dhow_mfa)
+status=$(api "$work/mfa-wrong" POST /api/v1/sessions/mfa '{"Method":"totp","Code":"000000"}' "${origin[@]}" --header "Cookie: $mfa_cookie")
+expect "a wrong code answers 401 INVALID_MFA_CODE" grep -q '"Code":"INVALID_MFA_CODE"' "$work/mfa-wrong.body"
+status=$(api "$work/mfa-ok" POST /api/v1/sessions/mfa "{\"Method\":\"totp\",\"Code\":\"$(totp "$secret" 1)\"}" "${origin[@]}" --header "Cookie: $mfa_cookie")
+expect "the right TOTP code answers 200" test "$status" = 200
+mfa_session=$(set_cookie "$work/mfa-ok.head" __Host-dhow_session)
+status=$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port/api/v1/me")
+expect "the session from the second step works" test "$status" = 200
+status=$(api "$work/mfa-reuse" POST /api/v1/sessions/mfa "{\"Method\":\"totp\",\"Code\":\"$(totp "$secret" 1)\"}" "${origin[@]}" --header "Cookie: $mfa_cookie")
+expect "a used challenge answers MFA_CHALLENGE_EXPIRED" grep -q '"Code":"MFA_CHALLENGE_EXPIRED"' "$work/mfa-reuse.body"
+
+api "$work/rc-step" POST /api/v1/sessions "$login_body" "${origin[@]}" >/dev/null
+rc_cookie=$(set_cookie "$work/rc-step.head" __Host-dhow_mfa)
+status=$(api "$work/rc-ok" POST /api/v1/sessions/mfa "{\"Method\":\"recovery_code\",\"Code\":\"$recovery\"}" "${origin[@]}" --header "Cookie: $rc_cookie")
+expect "a recovery code signs in once" test "$status" = 200
+api "$work/rc-step2" POST /api/v1/sessions "$login_body" "${origin[@]}" >/dev/null
+rc_cookie=$(set_cookie "$work/rc-step2.head" __Host-dhow_mfa)
+status=$(api "$work/rc-again" POST /api/v1/sessions/mfa "{\"Method\":\"recovery_code\",\"Code\":\"$recovery\"}" "${origin[@]}" --header "Cookie: $rc_cookie")
+expect "the same recovery code is refused the second time" test "$status" = 401
+
+dhow_logs=$(compose logs --no-color dhow 2>&1)
+expect "the TOTP secret never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "$secret" "$dhow_logs"
+expect "recovery codes never reach the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "$recovery" "$dhow_logs"
+expect "the challenge cookie never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "${mfa_cookie#*=}" "$dhow_logs"
+
 printf 'Security headers\n'
 for page in web ready; do
   expect "$page: Content-Security-Policy is 'self'" has_header "$work/$page.head" Content-Security-Policy "default-src 'self'"
