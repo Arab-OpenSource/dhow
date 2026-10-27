@@ -1,11 +1,12 @@
 import { createMemoryHistory } from '@tanstack/react-router';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from '@/App/App';
 import { createAppRouter } from '@/App/Router';
 import { createQueryClient } from '@/Core/Api/QueryClient';
+import { apiDown, apiUp, META_BODY } from '@/Core/Testing/Fetch';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { usePaletteStore } from '@/Core/Store/usePaletteStore';
 import { En } from '@/I18n/Locales/En';
@@ -18,6 +19,10 @@ const renderApp = async (url = '/') => {
   await screen.findByRole('main', { hidden: true });
   return { router, user };
 };
+
+beforeEach(() => {
+  apiUp();
+});
 
 afterEach(() => {
   useToastStore.setState({ Toasts: [] });
@@ -120,5 +125,47 @@ describe('unknown routes', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/');
     });
+  });
+});
+
+describe('system module in the shell', () => {
+  it('opens server status from the workspace action and shows the build', async () => {
+    const { router, user } = await renderApp();
+    await user.click(screen.getByRole('button', { name: Ar['workspace.empty.action'] }));
+    const dialog = await screen.findByRole('dialog', { name: Ar['status.title'] });
+    expect(await within(dialog).findByText('v0.1.0')).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/?panel=system-status');
+  });
+
+  it('opens server status from the rail and from a deep link', async () => {
+    const { user } = await renderApp();
+    await user.click(screen.getByRole('link', { name: Ar['shell.nav.systemStatus'] }));
+    expect(await screen.findByRole('dialog', { name: Ar['status.title'] })).toBeInTheDocument();
+  });
+
+  it('opens server status from a deep link', async () => {
+    await renderApp('/?panel=system-status');
+    const dialog = await screen.findByRole('dialog', { name: Ar['status.title'] });
+    expect(await within(dialog).findByText('2e39188')).toBeInTheDocument();
+  });
+
+  it('shows the first-time setup banner when the server says setup is pending', async () => {
+    apiUp({ ...META_BODY, Data: { ...META_BODY.Data, SetupRequired: true } });
+    await renderApp();
+    expect(await screen.findByText(Ar['setup.banner.title'])).toBeInTheDocument();
+  });
+
+  it('keeps the shell working with an error banner while the API is down', async () => {
+    apiDown();
+    const { user } = await renderApp();
+    expect(await screen.findByRole('alert')).toHaveTextContent(Ar['apiDown.title']);
+    await user.click(screen.getByRole('button', { name: Ar['shell.search'] }));
+    expect(await screen.findByRole('combobox')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: Ar['shell.notifications'] }));
+    expect(await screen.findByRole('dialog', { name: Ar['notifications.title'] })).toBeInTheDocument();
   });
 });

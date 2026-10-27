@@ -1,4 +1,4 @@
-export const PANEL_IDS = ['notifications'] as const;
+export const PANEL_IDS = ['system-status', 'notifications'] as const;
 
 export type TPanelId = (typeof PANEL_IDS)[number];
 

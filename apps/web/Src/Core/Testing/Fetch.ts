@@ -28,3 +28,16 @@ export const READY_BODY = {
     ],
   },
 };
+
+export const apiUp = (meta: Record<string, unknown> = META_BODY, ready: Record<string, unknown> = READY_BODY) =>
+  stubFetch((request) => {
+    const { pathname } = new URL(request.url);
+    if (pathname.endsWith('/meta')) return envelope(meta);
+    if (pathname.endsWith('/health/ready')) return envelope(ready);
+    return envelope({ Success: false, Error: { Code: 'NOT_FOUND', Message: 'x' } }, 404);
+  });
+
+export const apiDown = () =>
+  stubFetch(() => {
+    throw new TypeError('Failed to fetch');
+  });

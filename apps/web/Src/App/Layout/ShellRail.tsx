@@ -4,7 +4,7 @@ import { useT } from '@/I18n/useT';
 
 export const ShellRail = () => {
   const t = useT();
-  const { goWorkspace } = useShellNavigation();
+  const { goWorkspace, openPanel } = useShellNavigation();
 
   const items: IRailItem[] = [
     {
@@ -17,5 +17,17 @@ export const ShellRail = () => {
     },
   ];
 
-  return <IconRail label={t('shell.nav.label')} items={items} />;
+  const bottom: IRailItem[] = [
+    {
+      id: 'system-status',
+      icon: 'health',
+      label: t('shell.nav.systemStatus'),
+      href: '/?panel=system-status',
+      onSelect: () => {
+        openPanel('system-status');
+      },
+    },
+  ];
+
+  return <IconRail label={t('shell.nav.label')} items={items} bottom={bottom} />;
 };

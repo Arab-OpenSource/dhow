@@ -13,6 +13,7 @@ import { useToastStore } from '@/Core/Store/useToastStore';
 import { CommandPalette } from '@/Core/Ui/CommandPalette';
 import { Toaster } from '@/Core/Ui/Toaster';
 import { useT } from '@/I18n/useT';
+import { SystemBanners } from '@/Modules/System/Components/SystemBanners';
 
 export const AppShell = () => {
   const t = useT();
@@ -52,6 +53,7 @@ export const AppShell = () => {
       <div className="flex min-w-0 flex-1 flex-col">
         <ShellTopBar />
         <main id="main" tabIndex={-1} className="flex-1 overflow-auto px-4 pt-4 pb-24 md:px-6 md:pt-6 md:pb-6">
+          <SystemBanners />
           <Outlet />
         </main>
       </div>
