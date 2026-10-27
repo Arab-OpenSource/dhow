@@ -10,14 +10,14 @@ import (
 )
 
 const getInstance = `-- name: GetInstance :one
-SELECT id, created_at, setup_completed_at
-FROM instance
-WHERE id = 1
+SELECT "Id", "CreatedAt", "SetupCompletedAt"
+FROM "Instance"
+WHERE "Id" = 1
 `
 
 func (q *Queries) GetInstance(ctx context.Context) (Instance, error) {
 	row := q.db.QueryRow(ctx, getInstance)
 	var i Instance
-	err := row.Scan(&i.ID, &i.CreatedAt, &i.SetupCompletedAt)
+	err := row.Scan(&i.Id, &i.CreatedAt, &i.SetupCompletedAt)
 	return i, err
 }

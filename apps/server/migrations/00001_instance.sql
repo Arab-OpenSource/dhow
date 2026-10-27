@@ -1,12 +1,12 @@
 -- +goose Up
--- One row describing this Dhow installation.
-CREATE TABLE instance (
-    id                 smallint    PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-    created_at         timestamptz NOT NULL DEFAULT now(),
-    setup_completed_at timestamptz
+-- One row describing this Dhow installation. Identifiers are PascalCase and always quoted.
+CREATE TABLE "Instance" (
+    "Id"               smallint    PRIMARY KEY DEFAULT 1 CHECK ("Id" = 1),
+    "CreatedAt"        timestamptz NOT NULL DEFAULT now(),
+    "SetupCompletedAt" timestamptz
 );
 
-INSERT INTO instance (id) VALUES (1);
+INSERT INTO "Instance" ("Id") VALUES (1);
 
 -- +goose Down
-DROP TABLE instance;
+DROP TABLE "Instance";

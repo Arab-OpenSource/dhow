@@ -16,6 +16,22 @@ jobs:
   go:
     name: Go (lint, test, vulnerabilities)
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: dhow
+          POSTGRES_PASSWORD: dhow-ci-only
+          POSTGRES_DB: dhow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dhow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DHOW_TEST_DATABASE_URL: postgres://dhow:dhow-ci-only@localhost:5432/dhow_test?sslmode=disable
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -25,6 +41,10 @@ jobs:
           go-version-file: go.mod
       - name: Verify go.mod is tidy
         run: go mod tidy -diff
+      - name: Verify generated code is current
+        run: |
+          make gen
+          git diff --exit-code -- apps/server/internal/api/gen apps/server/internal/db/sqlc
       - name: Lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
@@ -37,4 +57,5 @@ jobs:
         run: make vuln
       - name: Lint workflows
         run: make lint-actions
-
+      - name: Build
+        run: make build

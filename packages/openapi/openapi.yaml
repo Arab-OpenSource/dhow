@@ -4,7 +4,7 @@ info:
   version: 0.1.0
   description: |
     Public REST API of the Dhow control plane. This file is the source of truth (spec-first):
-    change it, run `make gen`, then implement.
+    change it, run `make gen`, then implement. JSON field names are PascalCase.
   license:
     name: AGPL-3.0-only
     url: https://www.gnu.org/licenses/agpl-3.0.html
@@ -76,49 +76,49 @@ components:
     Error:
       type: object
       additionalProperties: false
-      required: [code, message]
+      required: [Code, Message]
       properties:
-        code:
+        Code:
           type: string
           description: Stable machine-readable code, for example `internal`, `not_found`, `payload_too_large`.
           example: internal
-        message:
+        Message:
           type: string
           description: Human-readable message that is safe to show to users.
           example: Something went wrong. Try again later.
     HealthStatus:
       type: object
       additionalProperties: false
-      required: [status, checks]
+      required: [Status, Checks]
       properties:
-        status:
+        Status:
           type: string
           enum: [ok, unavailable]
-        checks:
+        Checks:
           type: array
           items:
             $ref: "#/components/schemas/HealthCheck"
     HealthCheck:
       type: object
       additionalProperties: false
-      required: [name, ok]
+      required: [Name, Ok]
       properties:
-        name:
+        Name:
           type: string
           enum: [database, migrations]
-        ok:
+        Ok:
           type: boolean
     Meta:
       type: object
       additionalProperties: false
-      required: [version, commit, setupRequired]
+      required: [Version, Commit, SetupRequired]
       properties:
-        version:
+        Version:
           type: string
           example: v0.1.0
-        commit:
+        Commit:
           type: string
           example: 2e39188
-        setupRequired:
+        SetupRequired:
           type: boolean
           description: True until the first owner completes setup.

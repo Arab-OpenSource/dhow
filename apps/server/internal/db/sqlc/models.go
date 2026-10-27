@@ -9,7 +9,7 @@ import (
 )
 
 type Instance struct {
-	ID               int16
+	Id               int16
 	CreatedAt        pgtype.Timestamptz
 	SetupCompletedAt pgtype.Timestamptz
 }
