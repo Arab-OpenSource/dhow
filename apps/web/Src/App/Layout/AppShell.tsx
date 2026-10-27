@@ -1,5 +1,5 @@
 import { Outlet } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 
 import { PanelHost } from '@/App/Layout/PanelHost';
 import { ShellRail } from '@/App/Layout/ShellRail';
@@ -26,8 +26,7 @@ export const AppShell = () => {
 
   useHotkey('k', TogglePalette);
 
-  useEffect(() => {
-    if (panel !== UNKNOWN_PANEL) return;
+  const onUnknownPanel = useEffectEvent(() => {
     PushToast({
       Id: 'unknown-panel',
       Accent: 'awaiting',
@@ -35,7 +34,11 @@ export const AppShell = () => {
       Detail: t('toast.unknownPanel.detail'),
     });
     discardPanel();
-  }, [panel, PushToast, discardPanel, t]);
+  });
+
+  useEffect(() => {
+    if (panel === UNKNOWN_PANEL) onUnknownPanel();
+  }, [panel]);
 
   return (
     <div className="flex h-dvh bg-canvas max-md:flex-col">
