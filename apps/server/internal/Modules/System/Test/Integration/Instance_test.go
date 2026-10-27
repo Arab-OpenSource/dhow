@@ -3,37 +3,23 @@ package integration_test
 import (
 	"context"
 	"errors"
-	"os"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	migrations "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Migrations"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
 
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dsn := os.Getenv("DHOW_TEST_DATABASE_URL")
-	if dsn == "" {
-		if os.Getenv("CI") != "" {
-			t.Fatal("DHOW_TEST_DATABASE_URL must be set in CI")
-		}
-		t.Skip("DHOW_TEST_DATABASE_URL not set")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	pool, err := config.OpenDatabase(ctx, dsn)
-	require.NoError(t, err)
-	t.Cleanup(pool.Close)
-	return pool
+	return dbtest.NewEmptyPool(t)
 }
 
 func newMigrator(t *testing.T, pool *pgxpool.Pool) *migrations.Migrator {
@@ -96,9 +82,9 @@ func TestInstanceSingleton(t *testing.T) {
 	row, err := sqlc.New(pool).GetInstance(ctx)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, row.Id)
-	assert.True(t, row.CreatedAt.Valid)
-	assert.True(t, row.UpdatedAt.Valid)
-	assert.False(t, row.SetupCompletedAt.Valid)
+	assert.False(t, row.CreatedAt.IsZero())
+	assert.False(t, row.UpdatedAt.IsZero())
+	assert.Nil(t, row.SetupCompletedAt)
 
 	_, err = pool.Exec(ctx, `INSERT INTO "Instance" ("Id") VALUES (2)`)
 	assert.Error(t, err, "the instance table must reject a second row")

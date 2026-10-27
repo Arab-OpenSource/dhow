@@ -63,7 +63,7 @@ type Envelope struct {
 
 // ErrorDetail defines model for ErrorDetail.
 type ErrorDetail struct {
-	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE` or `SERVICE_UNAVAILABLE`.
+	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID` or `CONFLICT`.
 	//
 	// Example: INTERNAL
 	Code    string              `json:"Code"`

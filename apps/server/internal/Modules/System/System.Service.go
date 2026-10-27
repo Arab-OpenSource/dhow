@@ -102,14 +102,10 @@ func (s *MetaService) Get(ctx context.Context) (models.Meta, error) {
 }
 
 func instanceFromRow(row sqlc.Instance) models.Instance {
-	inst := models.Instance{
-		ID:        row.Id,
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
+	return models.Instance{
+		ID:               row.Id,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
+		SetupCompletedAt: row.SetupCompletedAt,
 	}
-	if row.SetupCompletedAt.Valid {
-		t := row.SetupCompletedAt.Time
-		inst.SetupCompletedAt = &t
-	}
-	return inst
 }

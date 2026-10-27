@@ -33,6 +33,13 @@ func TestCatalogsCoverTheSameKeys(t *testing.T) {
 		"errors.internal", "errors.notFound", "errors.methodNotAllowed", "errors.badRequest",
 		"errors.validationFailed", "errors.payloadTooLarge", "errors.serviceUnavailable",
 		"system.health.live", "system.health.ready", "system.meta.loaded",
+		"errors.unauthenticated", "errors.forbidden", "errors.csrfFailed", "errors.invalidCredentials",
+		"errors.invalidCurrentPassword", "errors.passwordBreached", "errors.setupCompleted", "errors.setupTokenInvalid",
+		"errors.conflict", "errors.passwordLength", "errors.passwordUnchanged", "errors.slugTaken", "errors.emailTaken",
+		"identity.setup.completed", "identity.organization.loaded", "identity.organization.updated", "identity.members.listed",
+		"session.login.succeeded", "session.logout.succeeded", "session.me.loaded", "session.list.loaded",
+		"session.revoke.succeeded", "session.revokeOthers.succeeded", "session.password.changed",
+		"audit.events.listed", "audit.chain.verified",
 	}
 	for _, k := range keys {
 		assert.NotEqual(t, k, i18n.Translate(i18n.Ar, k), "missing Arabic message for %s", k)

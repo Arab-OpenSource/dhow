@@ -29,12 +29,37 @@ export const READY_BODY = {
   },
 };
 
-export const apiUp = (meta: Record<string, unknown> = META_BODY, ready: Record<string, unknown> = READY_BODY) =>
+export const ORG_ID = '0198a000-0000-7000-8000-0000000000a1';
+export const USER_ID = '0198a000-0000-7000-8000-0000000000b1';
+export const SESSION_ID = '0198a000-0000-7000-8000-0000000000c1';
+export const CSRF_TOKEN = 'csrf-token-1';
+
+export const meBody = (role = 'owner', csrfToken = CSRF_TOKEN, organizationName = 'Future Solution') => ({
+  Success: true,
+  Message: 'session.me.loaded',
+  Data: {
+    User: { Id: USER_ID, Email: 'sabry@future.dev', Name: 'Sabry Dawood', Locale: 'ar' },
+    Memberships: [{ OrganizationId: ORG_ID, OrganizationName: organizationName, OrganizationSlug: 'future-solution', Role: role }],
+    CsrfToken: csrfToken,
+    SessionId: SESSION_ID,
+    ExpiresAt: '2026-11-10T12:00:00Z',
+  },
+});
+
+export const UNAUTHENTICATED_BODY = {
+  Success: false,
+  Error: { Code: 'UNAUTHENTICATED', Message: 'سجّل الدخول الأول.' },
+};
+
+export const notFound = (): Response => envelope({ Success: false, Error: { Code: 'NOT_FOUND', Message: 'x' } }, 404);
+
+export const apiUp = (meta: Record<string, unknown> = META_BODY, ready: Record<string, unknown> = READY_BODY, me: Record<string, unknown> | null = meBody()) =>
   stubFetch((request) => {
     const { pathname } = new URL(request.url);
     if (pathname.endsWith('/meta')) return envelope(meta);
     if (pathname.endsWith('/health/ready')) return envelope(ready);
-    return envelope({ Success: false, Error: { Code: 'NOT_FOUND', Message: 'x' } }, 404);
+    if (pathname.endsWith('/me')) return me === null ? envelope(UNAUTHENTICATED_BODY, 401) : envelope(me);
+    return notFound();
   });
 
 export const apiDown = () =>

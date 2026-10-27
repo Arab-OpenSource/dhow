@@ -46,6 +46,28 @@ dhow.example.com {
 
 The example is a Caddyfile. Any proxy that terminates TLS works. Set `DHOW_PUBLIC_URL` in `.env` to the public `https://` address and run `docker compose up -d` again to apply it.
 
+## Create the first owner
+
+A new instance has no users, and public registration is closed. On every start without an owner, Dhow logs a one-time setup link. It is valid for one hour and works once:
+
+```sh
+docker compose logs dhow | grep setup_url
+```
+
+The token is the part after the `#`. Open the whole link in a browser. The setup page reads the token, removes it from the address bar at once, and asks for your name, email, password and the organization name. When you submit, it creates the owner and the first organization and signs you in. The page works only from this link: opening `/setup` without the token explains where to find it.
+
+The same step is one API call if you prefer a terminal. The `Origin` header must equal `DHOW_PUBLIC_URL`:
+
+```sh
+curl -sS -X POST https://dhow.example.com/api/v1/setup \
+  -H 'Content-Type: application/json' -H 'Origin: https://dhow.example.com' \
+  -d '{"SetupToken":"<token>","OwnerName":"Mona","Email":"mona@example.com","Password":"<12 to 128 characters>","OrganizationName":"Acme","OrganizationSlug":"acme"}'
+```
+
+If the hour runs out, or you lose the link, restart Dhow with `docker compose restart dhow` to get a new one. The older link stops working at once. After setup the link is gone and `GET /api/v1/meta` reports `SetupRequired: false`.
+
+Sign-in uses a cookie that lives for at most 14 days and ends after 12 hours without activity, so keep your reverse proxy forwarding cookies and the `Origin` header unchanged.
+
 ## Configuration
 
 Set these in `.env`. Compose reads the file automatically, and values exported in your shell take precedence.
@@ -58,6 +80,7 @@ Set these in `.env`. Compose reads the file automatically, and values exported i
 | `DHOW_PUBLISH` | `127.0.0.1:8080` | Host address and port that Dhow is published on. Use `0.0.0.0:8080` only when something else filters access to the port. |
 | `DHOW_TRUSTED_PROXIES` | empty | Comma-separated IPs or CIDRs of reverse proxies whose `X-Forwarded-For` header is trusted. A proxy on the same host reaches the container from the Docker bridge gateway, not from `127.0.0.1`: `docker network inspect dhow_edge --format '{{(index .IPAM.Config 0).Gateway}}'` prints it. |
 | `DHOW_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
+| `DHOW_BREACHED_PASSWORD_CHECK` | `true` | Rejects new passwords found in known breaches, using the Have I Been Pwned range API. Only the first 5 characters of the password's SHA-1 leave the server, and the check is skipped with a log warning when the service cannot be reached. Set `false` on networks without internet access. |
 | `DHOW_IMAGE` | `ghcr.io/arab-opensource/dhow:latest` | The image to run. Pin it by digest, see [Verify an image](#verify-an-image). |
 
 `DHOW_DEV` is not needed and the Compose file never sets it. The database connection uses TLS (`sslmode=require`) and the public URL is `https://`, so the server's strict checks pass without it. `DHOW_DEV=true` relaxes those checks for local development only. Never set it on a host that other people can reach.

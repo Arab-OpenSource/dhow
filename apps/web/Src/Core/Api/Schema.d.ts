@@ -64,6 +64,222 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create the first owner and organization
+         * @description Works only while no owner exists. The setup token is the one logged at boot as `${PUBLIC_URL}/setup#<token>`, is valid for one hour and is single use. The request is atomic: two concurrent calls can never both succeed. The response sets no session: sign in afterwards.
+         */
+        post: operations["setupInstance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the signed-in user's own sessions */
+        get: operations["listSessions"];
+        put?: never;
+        /**
+         * Sign in with email and password
+         * @description Failure is always `INVALID_CREDENTIALS` with the same body whether the account exists or not. A throttled account or address gets the same error plus a `Retry-After` header. Success sets the `__Host-dhow_session` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`), replaces any session cookie the request carried, and returns the CSRF token the client must send as `X-CSRF-Token` on every non-GET request.
+         */
+        post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign out of the current session */
+        delete: operations["logout"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/revoke-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign out of every other device */
+        post: operations["revokeOtherSessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke one of the user's own sessions
+         * @description Another user's session id answers 404, exactly like an id that does not exist.
+         */
+        delete: operations["revokeSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in user, memberships and CSRF token */
+        get: operations["getMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change the signed-in user's password
+         * @description Needs the current password. The new one is 12 to 128 characters, must differ from the current one and must not appear in a known breach (Have I Been Pwned k-anonymity range check, when enabled). Every other session of the user is revoked.
+         */
+        put: operations["changePassword"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read an organization
+         * @description Needs `org.read`. A caller who is not a member gets 404.
+         */
+        get: operations["getOrganization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename an organization
+         * @description Needs `org.update`. A caller who is not a member gets 404.
+         */
+        patch: operations["updateOrganization"];
+        trace?: never;
+    };
+    "/organizations/{id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the members of an organization
+         * @description Needs `member.read`. A caller who is not a member gets 404.
+         */
+        get: operations["listMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the audit events of an organization
+         * @description Needs `audit.read`. Newest first. A caller who is not a member gets 404.
+         */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/audit-events/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Verify the hash chain of an organization's audit log
+         * @description Needs `audit.read`. Walks the chain from the oldest event and reports the first event whose hash or link is wrong.
+         */
+        get: operations["verifyAuditChain"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -92,7 +308,7 @@ export interface components {
         };
         ErrorDetail: {
             /**
-             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE` or `SERVICE_UNAVAILABLE`.
+             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID` or `CONFLICT`.
              * @example INTERNAL
              */
             Code: string;
@@ -125,6 +341,156 @@ export interface components {
             /** @description True until the first owner completes setup. */
             SetupRequired: boolean;
         };
+        SetupRequest: {
+            SetupToken: string;
+            OwnerName: string;
+            Email: string;
+            /** @description 12 to 128 characters. Never returned and never logged. */
+            Password: string;
+            OrganizationName: string;
+            /** @description Lowercase letters, digits and single hyphens. Unique among organizations. */
+            OrganizationSlug: string;
+            Locale?: components["schemas"]["Locale"];
+        };
+        SetupResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["SetupResult"];
+        };
+        SetupResult: {
+            User: components["schemas"]["User"];
+            Organization: components["schemas"]["Organization"];
+        };
+        /** @enum {string} */
+        Locale: "ar" | "en";
+        User: {
+            /** Format: uuid */
+            Id: string;
+            Email: string;
+            Name: string;
+            Locale: components["schemas"]["Locale"];
+        };
+        /** @enum {string} */
+        Role: "owner" | "admin" | "maintainer" | "developer" | "viewer";
+        Organization: {
+            /** Format: uuid */
+            Id: string;
+            Name: string;
+            Slug: string;
+            /** Format: date-time */
+            CreatedAt: string;
+        };
+        OrganizationResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Organization"];
+        };
+        UpdateOrganizationRequest: {
+            Name: string;
+        };
+        Member: {
+            /** Format: uuid */
+            UserId: string;
+            Name: string;
+            Email: string;
+            Role: components["schemas"]["Role"];
+            /** Format: date-time */
+            JoinedAt: string;
+        };
+        MemberListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Member"][];
+        };
+        LoginRequest: {
+            Email: string;
+            /** @description Never returned and never logged. */
+            Password: string;
+        };
+        LoginResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["LoginResult"];
+        };
+        LoginResult: {
+            User: components["schemas"]["User"];
+            /** @description Send as the `X-CSRF-Token` header on every non-GET request. */
+            CsrfToken: string;
+            /**
+             * Format: date-time
+             * @description When the session ends at the latest (absolute timeout).
+             */
+            ExpiresAt: string;
+        };
+        MembershipView: {
+            /** Format: uuid */
+            OrganizationId: string;
+            OrganizationName: string;
+            OrganizationSlug: string;
+            Role: components["schemas"]["Role"];
+        };
+        MeResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Me"];
+        };
+        Me: {
+            User: components["schemas"]["User"];
+            Memberships: components["schemas"]["MembershipView"][];
+            CsrfToken: string;
+            /** Format: uuid */
+            SessionId: string;
+            /** Format: date-time */
+            ExpiresAt: string;
+        };
+        SessionView: {
+            /** Format: uuid */
+            Id: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            LastSeenAt: string;
+            /** Format: date-time */
+            ExpiresAt: string;
+            UserAgent: string;
+            IpAddress: string;
+            Current: boolean;
+        };
+        SessionListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["SessionView"][];
+        };
+        RevokedCountResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["RevokedCount"];
+        };
+        RevokedCount: {
+            Revoked: number;
+        };
+        ChangePasswordRequest: {
+            CurrentPassword: string;
+            /** @description 12 to 128 characters. */
+            NewPassword: string;
+        };
+        AuditEvent: {
+            /** Format: uuid */
+            Id: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: uuid */
+            OrganizationId?: string;
+            /** Format: uuid */
+            ActorUserId?: string;
+            /** @example auth.login */
+            Action: string;
+            TargetType: string;
+            TargetId: string;
+            Ip: string;
+            /** @description Context of the event. Never contains a secret. */
+            Data: {
+                [key: string]: string;
+            };
+        };
+        AuditEventListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["AuditEvent"][];
+        };
+        AuditVerifyResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["AuditVerifyResult"];
+        };
+        AuditVerifyResult: {
+            Valid: boolean;
+            Checked: number;
+            /** Format: uuid */
+            FirstBrokenId?: string;
+        };
     };
     responses: {
         /** @description An error. Never contains internal details. */
@@ -137,7 +503,11 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        Id: string;
+        Page: number;
+        Limit: number;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -211,6 +581,317 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetaResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setupInstance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupRequest"];
+            };
+        };
+        responses: {
+            /** @description The owner and the organization were created. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active sessions of the current user. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in. */
+            200: {
+                headers: {
+                    /** @description The session cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session was revoked and the cookie cleared. */
+            200: {
+                headers: {
+                    /** @description An expired session cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeOtherSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every session except the current one was revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokedCountResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The session was revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current user. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description The password was changed and the other sessions were revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokedCountResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrganizationRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listMembers: {
+        parameters: {
+            query?: {
+                Page?: components["parameters"]["Page"];
+                Limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of members. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                Page?: components["parameters"]["Page"];
+                Limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of audit events. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    verifyAuditChain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The verification result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditVerifyResponse"];
                 };
             };
             default: components["responses"]["Error"];

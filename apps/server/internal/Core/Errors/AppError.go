@@ -3,6 +3,7 @@ package apperrors
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 type IErrorDetail struct {
@@ -16,6 +17,8 @@ type AppError struct {
 	Message string         `json:"Message"`
 	Details []IErrorDetail `json:"Details,omitempty"`
 	Err     error          `json:"-"`
+
+	RetryAfter time.Duration `json:"-"`
 }
 
 func (e *AppError) Error() string {

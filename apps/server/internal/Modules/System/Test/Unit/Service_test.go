@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -88,7 +87,8 @@ func TestReadinessBoundsEachCheck(t *testing.T) {
 
 func TestMetaGet(t *testing.T) {
 	build := buildinfo.Info{Version: "v0.1.0", Commit: "abc123"}
-	done := sqlc.Instance{SetupCompletedAt: pgtype.Timestamptz{Valid: true, Time: time.Now()}}
+	completedAt := time.Now()
+	done := sqlc.Instance{SetupCompletedAt: &completedAt}
 	tests := []struct {
 		name     string
 		queries  support.FakeQueries

@@ -184,6 +184,66 @@ def imp(path):
     return 'package x\n\nimport "github.com/Arab-OpenSource/dhow/apps/server/internal/' + path + '"\n'
 
 
+GOOD_ROUTES = (
+    "package audit\n\n"
+    "func Policies() []policy.Rule {\n"
+    "\treturn []policy.Rule{policy.Organization(http.MethodGet, \"/organizations/{id}/audit-events\", policy.AuditRead, \"id\")}\n"
+    "}\n\n"
+    "func Routes(r chi.Router, d Deps) {\n"
+    "\tguard := d.Guard.Middleware(policy.NewTable(Policies()...))\n"
+    "\tgen.HandlerWithOptions(strict, gen.ChiServerOptions{BaseRouter: r, Middlewares: []gen.MiddlewareFunc{guard}})\n"
+    "}\n"
+)
+ROUTES = SERVER + "Modules/Audit/Audit.Routes.go"
+
+
+class RoutePolicyRules(unittest.TestCase):
+    def test_routes_with_declared_policies_allowed(self):
+        self.assertIsNone(edit(ROUTES, GOOD_ROUTES))
+
+    def test_generated_routes_without_any_policy_blocked(self):
+        src = "package audit\n\nfunc Routes(r chi.Router) {\n\tgen.HandlerWithOptions(strict, gen.ChiServerOptions{BaseRouter: r})\n}\n"
+        self.assertIn("declared policy", edit(ROUTES, src))
+
+    def test_policies_without_enforcement_blocked(self):
+        src = GOOD_ROUTES.replace("Middlewares: []gen.MiddlewareFunc{guard}", "BaseRouter: r")
+        self.assertIn("declared policy", edit(ROUTES, src))
+
+    def test_enforcement_without_a_table_blocked(self):
+        src = GOOD_ROUTES.replace("policy.NewTable(Policies()...)", "nil")
+        self.assertIn("declared policy", edit(ROUTES, src))
+
+    def test_enforcement_without_declarations_blocked(self):
+        src = (GOOD_ROUTES.replace("policy.Organization(", "other.Organization(")
+               .replace("policy.Rule{", "[]int{").replace("[]policy.Rule", "[]int"))
+        self.assertIn("declared policy", edit(ROUTES, src))
+
+    def test_hand_registered_routes_blocked(self):
+        for call in ('r.Get("/x", h)', 'api.Post("/x", h)', 'r.Delete("/x/{id}", h)', 'r.HandleFunc("/x", h)',
+                     'r.Method("GET", "/x", h)', 'r.Mount("/x", h)', "r.Get(`/x`, h)"):
+            src = GOOD_ROUTES + "\nfunc More(r chi.Router) {\n\t" + call + "\n}\n"
+            self.assertIn("do not register routes by hand", edit(ROUTES, src), call)
+
+    def test_edit_that_only_touches_other_lines_is_checked_against_the_whole_file(self):
+        before = GOOD_ROUTES
+        after = GOOD_ROUTES.replace("Middlewares: []gen.MiddlewareFunc{guard}", "BaseRouter: r")
+        self.assertIn("declared policy", edit(ROUTES, "BaseRouter: r", old="Middlewares: []gen.MiddlewareFunc{guard}", exists=True, final=after))
+        self.assertIsNone(edit(ROUTES, "BaseRouter: r", old="x", exists=True, final=before))
+
+    def test_other_go_files_and_tests_are_not_route_files(self):
+        raw = "package audit\n\nfunc More(r chi.Router) {\n\tr.Get(\"/x\", h)\n}\n"
+        self.assertIsNone(edit(SERVER + "Modules/Audit/Audit.Service.go", raw))
+        self.assertIsNone(edit(SERVER + "Modules/Audit/Audit.Routes_test.go", raw))
+        self.assertIsNone(edit(SERVER + "Modules/Audit/Test/Unit/Routes_test.go", raw))
+
+    def test_route_files_that_register_nothing_are_fine(self):
+        self.assertIsNone(edit(ROUTES, "package audit\n\ntype Deps struct{}\n"))
+
+    def test_the_system_module_declares_its_policies(self):
+        src = GOOD_ROUTES.replace("package audit", "package system")
+        self.assertIsNone(edit(SERVER + "Modules/System/System.Routes.go", src))
+
+
 class ServerImportRules(unittest.TestCase):
     def test_module_cannot_import_another_module(self):
         r = edit(SERVER + "Modules/Billing/Billing.Service.go", imp("Modules/System/Models"))

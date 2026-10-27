@@ -25,6 +25,7 @@ export default tseslint.config(
       'max-lines': ['error', { max: 500 }],
       'max-lines-per-function': ['error', { max: 100 }],
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/only-throw-error': ['error', { allow: [{ from: 'lib', name: 'Response' }] }],
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
       '@typescript-eslint/naming-convention': [
         'error',

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -105,4 +106,49 @@ func TestLocalizeKeepsTheOriginal(t *testing.T) {
 	assert.Equal(t, "The requested resource does not exist.", out.Message)
 	assert.Equal(t, http.StatusNotFound, out.Status)
 	assert.Nil(t, out.Err)
+}
+
+func TestErrorSetsRetryAfter(t *testing.T) {
+	tests := []struct {
+		name  string
+		after time.Duration
+		want  string
+	}{
+		{"none", 0, ""},
+		{"whole seconds", 30 * time.Second, "30"},
+		{"rounded up", 1500 * time.Millisecond, "2"},
+		{"minutes", 15 * time.Minute, "900"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			response.Error(rec, httptest.NewRequest(http.MethodPost, "/", http.NoBody), apperrors.InvalidCredentials(tt.after))
+			assert.Equal(t, http.StatusUnauthorized, rec.Code)
+			assert.Equal(t, tt.want, rec.Header().Get("Retry-After"))
+			assert.NotContains(t, rec.Body.String(), "RetryAfter")
+		})
+	}
+}
+
+func TestPageParams(t *testing.T) {
+	ptr := func(n int) *int { return &n }
+	tests := []struct {
+		name      string
+		page      *int
+		limit     *int
+		wantPage  int
+		wantLimit int
+	}{
+		{"defaults", nil, nil, 1, 25},
+		{"explicit", ptr(3), ptr(10), 3, 10},
+		{"limit is capped", ptr(1), ptr(5000), 1, 100},
+		{"zero and negative fall back", ptr(0), ptr(-4), 1, 25},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			page, limit := response.PageParams(tt.page, tt.limit)
+			assert.Equal(t, tt.wantPage, page)
+			assert.Equal(t, tt.wantLimit, limit)
+		})
+	}
 }

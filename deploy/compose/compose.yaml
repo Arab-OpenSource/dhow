@@ -77,6 +77,7 @@ services:
       DHOW_PUBLIC_URL: ${DHOW_PUBLIC_URL:?run ./init.sh to create .env}
       DHOW_TRUSTED_PROXIES: ${DHOW_TRUSTED_PROXIES:-}
       DHOW_LOG_LEVEL: ${DHOW_LOG_LEVEL:-info}
+      DHOW_BREACHED_PASSWORD_CHECK: ${DHOW_BREACHED_PASSWORD_CHECK:-true}
     ports:
       - "${DHOW_PUBLISH:-127.0.0.1:8080}:8080"
     tmpfs:

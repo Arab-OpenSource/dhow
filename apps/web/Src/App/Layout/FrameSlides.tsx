@@ -1,10 +1,9 @@
-import type { IShellNavigation } from '@/App/Layout/useShellNavigation';
+import type { IFrameContext } from '@/App/Layout/FrameContext';
+import { buildIdentitySlide } from '@/App/Layout/IdentitySlides';
 import { checkFrame, checkOf, themeEditFrame, themeOf, type TFrameId } from '@/App/Panels';
-import type { ICustomTheme } from '@/Core/Theme/ThemeTokens';
 import { Card } from '@/Core/Ui/Card';
 import { EmptyState } from '@/Core/Ui/EmptyState';
 import type { ISlide } from '@/Core/Ui/SlideStack';
-import type { TTranslate } from '@/I18n/I18nContext';
 import { AppearanceBody } from '@/Modules/Appearance/Components/AppearanceBody';
 import { AppearanceFooter } from '@/Modules/Appearance/Components/AppearanceFooter';
 import { ThemeEditor } from '@/Modules/Appearance/Components/ThemeEditor';
@@ -12,13 +11,6 @@ import { ThemeEditorFooter } from '@/Modules/Appearance/Components/ThemeEditorFo
 import { CheckDetailBody } from '@/Modules/System/Components/CheckDetailBody';
 import { SystemStatusBody } from '@/Modules/System/Components/SystemStatusBody';
 import { SystemStatusFooter } from '@/Modules/System/Components/SystemStatusFooter';
-
-export interface IFrameContext {
-  t: TTranslate;
-  navigation: IShellNavigation;
-  draftName: string | undefined;
-  customThemes: readonly ICustomTheme[];
-}
 
 const themeEditSlide = (id: TFrameId, { t, navigation, draftName, customThemes }: IFrameContext): ISlide => {
   const sourceId = themeOf(id) ?? undefined;
@@ -35,6 +27,8 @@ const themeEditSlide = (id: TFrameId, { t, navigation, draftName, customThemes }
 
 export const buildSlide = (id: TFrameId, context: IFrameContext): ISlide => {
   const { t, navigation } = context;
+  const identity = buildIdentitySlide(id, context);
+  if (identity) return identity;
   const check = checkOf(id);
   if (check) {
     return {

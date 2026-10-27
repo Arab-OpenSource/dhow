@@ -36,5 +36,6 @@
 | [0032](0032-stacked-slides-and-themes.md) | الشرائح المتراكبة من اليمين، وثيمات النظام الأربعة، والثيم المخصص |
 | [0033](0033-browser-sessions-invites-breached-passwords.md) | جلسات المتصفح بـ cookie في السيرفر، والدعوات برابط وSMTP اختياري، وفحص كلمات السر المسرّبة |
 | [0034](0034-ui-direction-calm-and-organized.md) | اتجاه التصميم «هادي ومنظّم» |
+| [0035](0035-identity-core-implementation.md) | تنفيذ نواة الهوية في M2.1: سلسلة الـ audit، والـ throttle، وإعلان الـ policy لكل route |
 | [0036](0036-interactive-host-installer.md) | الـ installer التفاعلي على السيرفر (`dhow-server install`) |
 
