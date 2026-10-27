@@ -122,15 +122,19 @@ export const CommandPalette = ({ open, onOpenChange, ...body }: ICommandPaletteP
         <LazyMotion features={loadFeatures} strict>
           <AnimatePresence>
             {open ? (
-              <Dialog.Overlay key="overlay" asChild forceMount>
-                <m.div
-                  className="fixed inset-0 z-40 bg-backdrop backdrop-blur-[8px]"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={transition}
-                />
-              </Dialog.Overlay>
+              <m.div
+                key="backdrop"
+                role="presentation"
+                aria-hidden="true"
+                onClick={() => {
+                  onOpenChange(false);
+                }}
+                className="pointer-events-auto fixed inset-0 z-40 bg-backdrop backdrop-blur-[8px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={transition}
+              />
             ) : null}
             {open ? (
               <Dialog.Content

@@ -1,6 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { findBackdrop } from '@/Core/Testing/Overlay';
 import { renderUi } from '@/Core/Testing/Render';
 import { CommandPalette, type ICommandItem } from '@/Core/Ui/CommandPalette';
 
@@ -73,6 +74,21 @@ describe('CommandPalette', () => {
     await user.click(await screen.findByRole('option', { name: /Switch to English/ }));
     expect(onSelect).toHaveBeenCalledWith(ITEMS[2]);
     await user.keyboard('{Escape}');
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('never injects a style element, so a strict style-src policy holds', async () => {
+    const before = document.querySelectorAll('style').length;
+    setup();
+    await screen.findByRole('combobox');
+    expect(document.querySelectorAll('style')).toHaveLength(before);
+  });
+
+  it('asks to close when the backdrop is pressed', async () => {
+    const onOpenChange = vi.fn();
+    setup({ onOpenChange });
+    await screen.findByRole('combobox');
+    fireEvent.click(findBackdrop());
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

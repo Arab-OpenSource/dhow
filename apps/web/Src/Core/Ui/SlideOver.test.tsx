@@ -1,7 +1,8 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { findBackdrop } from '@/Core/Testing/Overlay';
 import { renderUi } from '@/Core/Testing/Render';
 import { SlideOver } from '@/Core/Ui/SlideOver';
 
@@ -73,5 +74,21 @@ describe('SlideOver', () => {
       await user.tab();
       expect(dialog).toContainElement(document.activeElement as HTMLElement);
     }
+  });
+
+  it('closes when the backdrop is pressed', async () => {
+    renderUi(<Harness initiallyOpen />);
+    await screen.findByRole('dialog');
+    fireEvent.click(findBackdrop());
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('never injects a style element, so a strict style-src policy holds', async () => {
+    const before = document.querySelectorAll('style').length;
+    renderUi(<Harness initiallyOpen />);
+    await screen.findByRole('dialog');
+    expect(document.querySelectorAll('style')).toHaveLength(before);
   });
 });
