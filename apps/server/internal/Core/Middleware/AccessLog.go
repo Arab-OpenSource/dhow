@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/Arab-OpenSource/dhow/internal/logging"
 )
 
 type statusRecorder struct {
@@ -44,7 +46,7 @@ func AccessLog(log *slog.Logger) func(http.Handler) http.Handler {
 			log.LogAttrs(r.Context(), slog.LevelInfo, "http request",
 				slog.String("request_id", RequestIDFrom(r.Context())),
 				slog.String("method", r.Method),
-				slog.String("path", r.URL.Path),
+				slog.String("path", logging.UserValue(r.URL.Path)),
 				slog.Int("status", status),
 				slog.Int("bytes", rec.bytes),
 				slog.Duration("duration", time.Since(start)),

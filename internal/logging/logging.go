@@ -39,3 +39,14 @@ func redact(_ []string, a slog.Attr) slog.Attr {
 	}
 	return a
 }
+
+const MaxUserValueLen = 512
+
+func UserValue(s string) string {
+	s = strings.ReplaceAll(s, "\n", "")
+	s = strings.ReplaceAll(s, "\r", "")
+	if len(s) > MaxUserValueLen {
+		s = s[:MaxUserValueLen]
+	}
+	return s
+}

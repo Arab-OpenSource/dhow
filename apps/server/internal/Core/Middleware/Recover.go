@@ -9,6 +9,7 @@ import (
 
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
+	"github.com/Arab-OpenSource/dhow/internal/logging"
 )
 
 func Recover(log *slog.Logger) func(http.Handler) http.Handler {
@@ -27,10 +28,10 @@ func Recover(log *slog.Logger) func(http.Handler) http.Handler {
 func handlePanic(log *slog.Logger, w http.ResponseWriter, r *http.Request, rec any) {
 	ctx := r.Context()
 	if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
-		log.WarnContext(ctx, "handler aborted", "request_id", RequestIDFrom(ctx), "path", r.URL.Path)
+		log.WarnContext(ctx, "handler aborted", "request_id", RequestIDFrom(ctx), "path", logging.UserValue(r.URL.Path))
 		return
 	}
 	log.ErrorContext(ctx, "panic serving request",
-		"request_id", RequestIDFrom(ctx), "path", r.URL.Path, "panic", rec, "stack", string(debug.Stack()))
+		"request_id", RequestIDFrom(ctx), "path", logging.UserValue(r.URL.Path), "panic", rec, "stack", string(debug.Stack()))
 	response.Error(w, r, apperrors.Internal(fmt.Errorf("panic: %v", rec)))
 }

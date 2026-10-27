@@ -3,6 +3,7 @@ package logging
 import (
 	"bytes"
 	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,6 +49,24 @@ func TestIsSensitiveKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.key, func(t *testing.T) {
 			assert.Equal(t, tt.want, IsSensitiveKey(tt.key))
+		})
+	}
+}
+
+func TestUserValue(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "/api/v1/meta", "/api/v1/meta"},
+		{"newline", "/a\nfake entry", "/afake entry"},
+		{"carriage return", "/a\r\nb", "/ab"},
+		{"long", strings.Repeat("a", MaxUserValueLen+10), strings.Repeat("a", MaxUserValueLen)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, UserValue(tt.in))
 		})
 	}
 }
