@@ -8,11 +8,14 @@ Element.prototype.hasPointerCapture = vi.fn(() => false);
 Element.prototype.setPointerCapture = vi.fn();
 Element.prototype.releasePointerCapture = vi.fn();
 
+class ResizeObserverStub {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+
 beforeEach(() => {
-  vi.stubGlobal(
-    'ResizeObserver',
-    vi.fn(() => ({ observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() })),
-  );
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub);
   vi.stubGlobal(
     'matchMedia',
     vi.fn((query: string) => ({
