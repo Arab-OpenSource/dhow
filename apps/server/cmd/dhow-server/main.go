@@ -30,7 +30,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := config.Load(os.Getenv)
+	cfg, err := config.LoadFromEnv()
 	if err != nil {
 		return fmt.Errorf("invalid configuration:\n%w", err)
 	}

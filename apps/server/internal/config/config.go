@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/netip"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -36,6 +37,8 @@ type Config struct {
 	LogLevel       slog.Level
 	Dev            bool
 }
+
+func LoadFromEnv() (Config, error) { return Load(os.Getenv) }
 
 func Load(getenv func(string) string) (Config, error) {
 	var cfg Config

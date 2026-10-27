@@ -56,13 +56,11 @@ func newMigrator(pool *pgxpool.Pool, fsys fs.FS) (*Migrator, error) {
 	sqlDB := stdlib.OpenDBFromPool(pool)
 	provider, err := goose.NewProvider(goose.DialectPostgres, sqlDB, fsys, goose.WithSessionLocker(locker))
 	if err != nil {
-		_ = sqlDB.Close()
-		return nil, fmt.Errorf("load migrations: %w", err)
+		return nil, errors.Join(fmt.Errorf("load migrations: %w", err), sqlDB.Close())
 	}
 	sources := provider.ListSources()
 	if len(sources) == 0 {
-		_ = sqlDB.Close()
-		return nil, errors.New("no migrations embedded")
+		return nil, errors.Join(errors.New("no migrations embedded"), sqlDB.Close())
 	}
 	return &Migrator{provider: provider, db: sqlDB, latest: sources[len(sources)-1].Version}, nil
 }
