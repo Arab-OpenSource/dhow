@@ -203,7 +203,13 @@ describe('ThemeInit.js before first paint', () => {
         {
           Id: 'evil',
           Name: 'x',
-          Colors: { canvas: 'url(javascript:alert(1))', rail: 'red', input: '#fff', surface: '#112233', 'bad-key': '#123456' },
+          Colors: {
+            canvas: 'url(javascript:alert(1))',
+            rail: 'red',
+            input: '#fff',
+            surface: '#112233',
+            'bad-key': '#123456',
+          },
         },
       ]),
     );

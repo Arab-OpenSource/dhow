@@ -10,7 +10,15 @@ export type TIconName =
   | 'alert'
   | 'info'
   | 'queue'
-  | 'commit';
+  | 'commit'
+  | 'back'
+  | 'next'
+  | 'plus'
+  | 'settings'
+  | 'database'
+  | 'migrations';
+
+export const MIRRORED_ICONS: readonly TIconName[] = ['back', 'next'];
 
 export const ICONS: Record<TIconName, ReactElement> = {
   project: (
@@ -59,6 +67,31 @@ export const ICONS: Record<TIconName, ReactElement> = {
     <>
       <circle cx="12" cy="12" r="3.5" />
       <path d="M3 12h5.5M15.5 12H21" />
+    </>
+  ),
+  back: <path d="M19 12H5M11 6l-6 6 6 6" />,
+  next: <path d="m9 6 6 6-6 6" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  settings: (
+    <>
+      <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" />
+      <circle cx="15" cy="6" r="2" />
+      <circle cx="9" cy="12" r="2" />
+      <circle cx="17" cy="18" r="2" />
+    </>
+  ),
+  database: (
+    <>
+      <rect x="3.5" y="4" width="17" height="7" rx="2" />
+      <rect x="3.5" y="13" width="17" height="7" rx="2" />
+      <path d="M7.5 7.5h.01M7.5 16.5h.01" />
+    </>
+  ),
+  migrations: (
+    <>
+      <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9z" />
+      <path d="m4 7.5 8 4.5 8-4.5" />
+      <path d="M12 12v9" />
     </>
   ),
 };

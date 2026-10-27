@@ -38,6 +38,12 @@ export const Ar = {
   'workspace.empty.text': 'لسه مفيش مشاريع هنا. أول ما تضيف مشروع هيظهر في المساحة دي.',
   'workspace.empty.action': 'افتح حالة السيرفر',
 
+  'slides.trail': 'مسار الشرائح المفتوحة',
+  'slides.back': 'ارجع خطوة',
+  'slides.closeAll': 'اقفل كل الشرائح',
+  'slides.level': '{current} من {total}',
+  'slides.returned.title': 'رجعت للشريحة اللي قبلها',
+
   'notifications.title': 'الإشعارات',
   'notifications.empty': 'مفيش إشعارات جديدة.',
 

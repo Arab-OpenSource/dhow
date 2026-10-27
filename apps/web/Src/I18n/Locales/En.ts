@@ -40,6 +40,12 @@ export const En: TMessages = {
   'workspace.empty.text': 'No projects here yet. Once you add a project, it will show up in this space.',
   'workspace.empty.action': 'Open server status',
 
+  'slides.trail': 'Open slides',
+  'slides.back': 'Go back one',
+  'slides.closeAll': 'Close all slides',
+  'slides.level': '{current} of {total}',
+  'slides.returned.title': 'Back to the previous slide',
+
   'notifications.title': 'Notifications',
   'notifications.empty': 'No new notifications.',
 

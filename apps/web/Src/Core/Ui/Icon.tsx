@@ -1,4 +1,4 @@
-import { ICONS, type TIconName } from '@/Core/Ui/Icons';
+import { ICONS, MIRRORED_ICONS, type TIconName } from '@/Core/Ui/Icons';
 import { cx } from '@/Core/Ui/ClassNames';
 
 export interface IIconProps {
@@ -23,7 +23,11 @@ export const Icon = ({ name, size = 18, weight = 1.6, label, className }: IIconP
     role={label ? 'img' : undefined}
     aria-label={label}
     aria-hidden={label ? undefined : true}
-    className={cx('inline-block flex-none align-middle', className)}
+    className={cx(
+      'inline-block flex-none align-middle',
+      MIRRORED_ICONS.includes(name) && 'rtl:-scale-x-100',
+      className,
+    )}
   >
     {ICONS[name]}
   </svg>

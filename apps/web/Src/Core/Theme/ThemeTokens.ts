@@ -39,7 +39,13 @@ export type TSystemThemeId = (typeof SYSTEM_THEME_IDS)[number];
 
 export const DEFAULT_THEME_ID: TSystemThemeId = 'sea';
 
-export const STATUS_TOKENS = ['green', 'blue', 'amber', 'coral', 'violet-soft'] as const satisfies readonly TThemeToken[];
+export const STATUS_TOKENS = [
+  'green',
+  'blue',
+  'amber',
+  'coral',
+  'violet-soft',
+] as const satisfies readonly TThemeToken[];
 
 export interface ISystemTheme {
   Id: TSystemThemeId;
@@ -57,8 +63,7 @@ export interface IThemeTokenGroup {
   Tokens: TThemeToken[];
 }
 
-export const isSystemThemeId = (value: unknown): value is TSystemThemeId =>
-  SYSTEM_THEME_IDS.some((id) => id === value);
+export const isSystemThemeId = (value: unknown): value is TSystemThemeId => SYSTEM_THEME_IDS.some((id) => id === value);
 
 export const THEME_VARIABLES = Object.fromEntries(themes.tokens.map((token) => [token.key, token.variable])) as Record<
   TThemeToken,
