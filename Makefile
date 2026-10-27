@@ -36,7 +36,7 @@ release: ## Build bin/dhow-server with the web app embedded
 
 .PHONY: image
 image: ## Build the container image (IMAGE=dhow:dev)
-	docker build $(DOCKER_BUILD_FLAGS) -f $(IMAGE_DOCKERFILE) \
+	docker buildx build --load $(DOCKER_BUILD_FLAGS) -f $(IMAGE_DOCKERFILE) \
 		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(IMAGE) .
 
 .PHONY: compose-up

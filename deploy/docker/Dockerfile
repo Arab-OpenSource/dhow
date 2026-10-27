@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS web
+FROM --platform=$BUILDPLATFORM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS web
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
@@ -10,10 +10,12 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 COPY apps/web ./
 RUN pnpm build
 
-FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5 AS build
 
 ARG VERSION=dev
 ARG COMMIT=unknown
+ARG TARGETOS
+ARG TARGETARCH
 
 ENV GOTOOLCHAIN=local \
     CGO_ENABLED=0 \
@@ -28,7 +30,7 @@ COPY internal ./internal
 COPY --from=web /src/apps/web/dist/ ./apps/server/internal/App/WebDist/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -trimpath \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath \
       -ldflags "-s -w -buildid= \
         -X github.com/Arab-OpenSource/dhow/internal/buildinfo.version=${VERSION} \
         -X github.com/Arab-OpenSource/dhow/internal/buildinfo.commit=${COMMIT}" \
