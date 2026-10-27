@@ -1,0 +1,55 @@
+FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS web
+
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
+
+WORKDIR /src/apps/web
+COPY apps/web/package.json apps/web/pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+COPY apps/web ./
+RUN pnpm build
+
+FROM golang:1.27.3-bookworm@sha256:972b4110ba0f47539a975c31e52c64765e1ff19f2d74469ae4a595c6676e80a5 AS build
+
+ARG VERSION=dev
+ARG COMMIT=unknown
+
+ENV GOTOOLCHAIN=local \
+    CGO_ENABLED=0 \
+    GOFLAGS=-mod=readonly
+
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+COPY apps/server ./apps/server
+COPY internal ./internal
+COPY --from=web /src/apps/web/dist/ ./apps/server/internal/App/WebDist/
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -trimpath \
+      -ldflags "-s -w -buildid= \
+        -X github.com/Arab-OpenSource/dhow/internal/buildinfo.version=${VERSION} \
+        -X github.com/Arab-OpenSource/dhow/internal/buildinfo.commit=${COMMIT}" \
+      -o /out/dhow-server ./apps/server/cmd/dhow-server
+
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+
+ARG VERSION=dev
+ARG COMMIT=unknown
+
+LABEL org.opencontainers.image.title="Dhow" \
+      org.opencontainers.image.description="Self-hosted continuous deployment control plane" \
+      org.opencontainers.image.source="https://github.com/Arab-OpenSource/dhow" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}"
+
+COPY --from=build /out/dhow-server /dhow-server
+
+ENV DHOW_LISTEN_ADDR=0.0.0.0:8080
+EXPOSE 8080
+USER 65532:65532
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 CMD ["/dhow-server", "healthcheck"]
+ENTRYPOINT ["/dhow-server"]
