@@ -29,10 +29,10 @@ const DefaultListenAddr = "127.0.0.1:8080"
 const MinSecretKeyBytes = 32
 
 type Config struct {
-	DatabaseURL    string
-	SecretKey      []byte
-	PublicURL      *url.URL
-	ListenAddr     string
+	DatabaseURL    string   `validate:"required"`
+	SecretKey      []byte   `validate:"required,min=32"`
+	PublicURL      *url.URL `validate:"required"`
+	ListenAddr     string   `validate:"required,hostname_port|ipv6_port"`
 	TrustedProxies []netip.Prefix
 	LogLevel       slog.Level
 	Dev            bool
@@ -71,6 +71,9 @@ func Load(getenv func(string) string) (Config, error) {
 
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)
+	}
+	if err := cfg.Validate(); err != nil {
+		return Config{}, err
 	}
 	return cfg, nil
 }
