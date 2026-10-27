@@ -16,12 +16,12 @@ describe('Icon', () => {
     expect(screen.getByRole('img', { name: 'Search' })).toBeInTheDocument();
   });
 
-  it('draws every icon on the 24px grid with the 1.6px stroke', () => {
+  it('draws every icon on the 24px grid with the 1.7px stroke', () => {
     for (const name of Object.keys(ICONS) as TIconName[]) {
       const { container, unmount } = render(<Icon name={name} />);
       const svg = container.querySelector('svg');
       expect(svg).toHaveAttribute('viewBox', '0 0 24 24');
-      expect(svg).toHaveAttribute('stroke-width', '1.6');
+      expect(svg).toHaveAttribute('stroke-width', '1.7');
       expect(svg?.childElementCount).toBeGreaterThan(0);
       unmount();
     }

@@ -146,7 +146,7 @@ export const SlideStack = ({ slides, onPop, onJump, onCloseAll }: ISlideStackPro
               data-on={backdropOn}
               onClick={onPop}
               className={
-                'pointer-events-none fixed inset-0 z-20 bg-backdrop opacity-0 backdrop-blur-[8px] ' +
+                'pointer-events-none fixed inset-0 z-20 bg-backdrop opacity-0 ' +
                 'transition-opacity duration-[280ms] ease-dhow data-[on=true]:pointer-events-auto data-[on=true]:opacity-100'
               }
             />
@@ -166,8 +166,8 @@ export const SlideStack = ({ slides, onPop, onJump, onCloseAll }: ISlideStackPro
                 takeOriginalOpener()?.focus({ preventScroll: true });
               }}
               className={
-                'fixed inset-y-0 start-rail z-25 w-[min(var(--spacing-panel),calc(100dvw-var(--spacing-rail)-1.5rem))] ' +
-                '[--peek:30px] max-md:start-0 max-md:bottom-16 max-md:w-full max-md:[--peek:14px]'
+                'fixed inset-y-0 start-menu z-25 w-[min(var(--spacing-panel),calc(100dvw-var(--spacing-menu)-1.5rem))] ' +
+                '[--peek:30px] max-md:start-0 max-md:bottom-bottombar max-md:w-full max-md:[--peek:14px]'
               }
             >
               {slides.map((slide, index) => (

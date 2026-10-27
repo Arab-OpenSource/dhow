@@ -34,16 +34,41 @@ describe('Button', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it('uses the aurora fill only for the aurora variant', () => {
+  it('fills only the primary variant, and gives the others a line or nothing', () => {
     renderUi(
       <>
-        <Button variant="aurora">Primary</Button>
+        <Button variant="primary">Primary</Button>
         <Button>Secondary</Button>
+        <Button variant="ghost">Quiet</Button>
+        <Button variant="danger" iconStart="trash">
+          Delete
+        </Button>
       </>,
     );
-    expect(screen.getByRole('button', { name: 'Primary' })).toHaveClass('bg-aurora', 'text-on-light');
-    expect(screen.getByRole('button', { name: 'Secondary' })).toHaveClass('edge');
-    expect(screen.getByRole('button', { name: 'Secondary' })).not.toHaveClass('bg-aurora');
+    expect(screen.getByRole('button', { name: 'Primary' })).toHaveClass('bg-accent', 'text-on-accent');
+    expect(screen.getByRole('button', { name: 'Secondary' })).toHaveClass('border-line-2', 'bg-transparent');
+    expect(screen.getByRole('button', { name: 'Secondary' })).not.toHaveClass('bg-accent');
+    expect(screen.getByRole('button', { name: 'Quiet' })).toHaveClass('bg-transparent');
+    expect(screen.getByRole('button', { name: 'Quiet' })).not.toHaveClass('border-line-2');
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass('text-accent-coral');
+  });
+
+  it('is secondary by default and 40px tall, or 34px when small', () => {
+    renderUi(
+      <>
+        <Button>Normal</Button>
+        <Button size="sm">Small</Button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Normal' })).toHaveAttribute('data-variant', 'secondary');
+    expect(screen.getByRole('button', { name: 'Normal' })).toHaveClass('h-btn', 'rounded-btn');
+    expect(screen.getByRole('button', { name: 'Small' })).toHaveClass('h-btn-sm');
+  });
+
+  it('refuses a danger button without an icon at compile time', () => {
+    // @ts-expect-error a destructive action always carries an icon
+    renderUi(<Button variant="danger">Delete</Button>);
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });
 
   it('hides the optional icon from assistive technology', () => {

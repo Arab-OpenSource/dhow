@@ -44,10 +44,10 @@ const Trail = ({ trail, index, onCrumb }: TTrailProps) => {
 
   return (
     <nav aria-label={t('slides.trail')}>
-      <ol className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-micro text-tertiary">
+      <ol className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-caption text-tertiary">
         {trail.map((title, position) => (
           <li key={position} className="inline-flex items-center gap-1.5">
-            {position > 0 ? <Icon name="next" size={12} className="text-muted" /> : null}
+            {position > 0 ? <Icon name="next" size={12} className="text-tertiary" /> : null}
             {position === index ? (
               <span aria-current="step" className="text-primary">
                 {title}
@@ -59,8 +59,8 @@ const Trail = ({ trail, index, onCrumb }: TTrailProps) => {
                   onCrumb(position);
                 }}
                 className={
-                  'cursor-pointer rounded-xs border-0 bg-transparent px-1 py-0.5 text-micro text-secondary ' +
-                  'hover:bg-surface-raised hover:text-primary'
+                  'cursor-pointer rounded-xs border-0 bg-transparent px-1 py-0.5 text-caption text-secondary ' +
+                  'hover:bg-hover hover:text-primary'
                 }
               >
                 {title}
@@ -82,34 +82,22 @@ const SlideHeader = ({ slide, index, total, trail, top, onBack, onCloseAll, onCr
   );
 
   return (
-    <header className="grid gap-2.5 border-b border-subtle px-5 pt-[18px] pb-3.5">
+    <header className="grid gap-2 border-b border-line px-5 pt-4 pb-3.5">
       <div className="flex items-center gap-2.5">
         {index > 0 ? (
-          <IconButton
-            icon="back"
-            size="sm"
-            label={t('slides.back')}
-            onClick={onBack}
-            className="[--edge-fill:var(--color-surface)]"
-          />
+          <IconButton icon="back" size="sm" label={t('slides.back')} onClick={onBack} />
         ) : null}
         {top ? <Dialog.Title asChild>{heading}</Dialog.Title> : heading}
         <div className="ms-auto flex items-center gap-2">
-          <span className="rounded-pill border border-default px-2 font-mono text-[11px] whitespace-nowrap text-tertiary">
+          <span className="rounded-pill bg-wash px-2.5 text-caption whitespace-nowrap text-secondary">
             {t('slides.level', { current: index + 1, total })}
           </span>
-          <IconButton
-            icon="close"
-            size="sm"
-            label={t('slides.closeAll')}
-            onClick={onCloseAll}
-            className="[--edge-fill:var(--color-surface)]"
-          />
+          <IconButton icon="close" size="sm" label={t('slides.closeAll')} onClick={onCloseAll} />
         </div>
       </div>
-      <Trail trail={trail} index={index} onCrumb={onCrumb} />
+      {total > 1 ? <Trail trail={trail} index={index} onCrumb={onCrumb} /> : null}
       {slide.subtitle ? (
-        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-caption text-secondary">
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-body-sm text-secondary">
           {slide.subtitle}
         </div>
       ) : null}
@@ -163,8 +151,7 @@ export const SlideView = ({
         inert={!top}
         aria-hidden={top ? undefined : true}
         className={cx(
-          'flex size-full flex-col overflow-hidden rounded-[26px] border border-default bg-surface',
-          '[box-shadow:var(--shadow-overlay),var(--shadow-card)]',
+          'flex size-full flex-col overflow-hidden rounded-lg border border-line-2 bg-canvas shadow-overlay',
         )}
       >
         <SlideHeader
@@ -177,9 +164,9 @@ export const SlideView = ({
           onCloseAll={onCloseAll}
           onCrumb={onCrumb}
         />
-        <div className="grid min-h-0 flex-1 content-start gap-3 overflow-auto px-5 pt-4 pb-5">{slide.children}</div>
+        <div className="grid min-h-0 flex-1 content-start gap-3.5 overflow-auto px-5 py-4">{slide.children}</div>
         {slide.footer ? (
-          <footer className="flex items-center gap-2.5 border-t border-subtle px-5 py-3.5">{slide.footer}</footer>
+          <footer className="flex items-center gap-2 border-t border-line px-5 py-3">{slide.footer}</footer>
         ) : null}
       </section>
       {under ? (
@@ -189,7 +176,7 @@ export const SlideView = ({
           aria-hidden="true"
           data-slide-return=""
           onClick={onReturn}
-          className="absolute inset-0 cursor-pointer rounded-[26px] border-0 bg-transparent p-0"
+          className="absolute inset-0 cursor-pointer rounded-lg border-0 bg-transparent p-0"
         />
       ) : null}
     </div>

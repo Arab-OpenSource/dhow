@@ -18,8 +18,14 @@ describe('IconButton', () => {
     expect(container.querySelector('i')).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('drops the edge outline when plain', () => {
-    renderUi(<IconButton icon="close" label="Close" plain />);
-    expect(screen.getByRole('button', { name: 'Close' })).not.toHaveClass('edge');
+  it('has a thin line, and drops it when plain', () => {
+    renderUi(
+      <>
+        <IconButton icon="close" label="Close" />
+        <IconButton icon="close" label="Dismiss" plain />
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveClass('border-line-2', 'rounded-btn');
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toHaveClass('border-transparent');
   });
 });

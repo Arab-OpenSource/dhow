@@ -32,7 +32,7 @@ export const Tooltip = ({ label, side = 'top', children }: ITooltipProps) => {
         <RadixTooltip.Content
           side={physicalSide(side, dir)}
           sideOffset={8}
-          className="z-50 rounded-md border border-default bg-surface-top px-3 py-1.5 text-caption whitespace-nowrap text-primary"
+          className="z-50 rounded-sm border border-line-2 bg-surface-top px-3 py-1.5 text-caption whitespace-nowrap text-primary"
         >
           {label}
         </RadixTooltip.Content>
