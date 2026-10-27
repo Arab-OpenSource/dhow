@@ -36,6 +36,14 @@ func (c *Controller) Login(ctx context.Context, req gen.LoginRequestObject) (gen
 	if err != nil {
 		return nil, err
 	}
+	if res.Pending != nil {
+		return gen.Login202JSONResponse{
+			Body: gen.MfaPendingResponse{Success: true, Message: ptr(messageMfaRequired), Data: pendingToGen(res.Pending)},
+			Headers: gen.Login202ResponseHeaders{
+				SetCookie: auth.SessionCookie(config.MfaCookieName, res.Pending.CookieValue, config.MfaPendingTTL),
+			},
+		}, nil
+	}
 	data := gen.LoginResult{User: userToGen(res.User), CsrfToken: res.CSRFToken, ExpiresAt: res.ExpiresAt}
 	return gen.Login200JSONResponse{
 		Body:    gen.LoginResponse{Success: true, Message: ptr(messageLogin), Data: &data},

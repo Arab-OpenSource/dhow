@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuditEvent struct {
@@ -25,6 +26,22 @@ type AuditEvent struct {
 	Data           []byte
 	PrevHash       []byte
 	Hash           []byte
+}
+
+type AuthChallenge struct {
+	Id              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	IsDeleted       bool
+	Kind            string
+	TokenHash       []byte
+	UserId          *uuid.UUID
+	SessionId       *uuid.UUID
+	DeviceHash      []byte
+	WebauthnSession []byte
+	Attempts        int32
+	ExpiresAt       time.Time
+	UsedAt          *time.Time
 }
 
 type Instance struct {
@@ -64,6 +81,38 @@ type Organization struct {
 	Slug      string
 }
 
+type Passkey struct {
+	Id                uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	IsDeleted         bool
+	UserId            uuid.UUID
+	Name              string
+	CredentialId      []byte
+	PublicKey         []byte
+	AttestationType   string
+	AttestationFormat string
+	Aaguid            []byte
+	SignCount         int64
+	Transports        []string
+	Attachment        string
+	UserPresent       bool
+	UserVerified      bool
+	BackupEligible    bool
+	BackupState       bool
+	LastUsedAt        *time.Time
+}
+
+type RecoveryCode struct {
+	Id        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	IsDeleted bool
+	UserId    uuid.UUID
+	CodeHash  []byte
+	UsedAt    *time.Time
+}
+
 type Session struct {
 	Id            uuid.UUID
 	CreatedAt     time.Time
@@ -90,6 +139,19 @@ type SetupToken struct {
 	UsedAt    *time.Time
 }
 
+type TotpFactor struct {
+	Id           uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	IsDeleted    bool
+	UserId       uuid.UUID
+	SessionId    *uuid.UUID
+	SecretSealed []byte
+	ExpiresAt    time.Time
+	ConfirmedAt  *time.Time
+	LastUsedStep pgtype.Int8
+}
+
 type User struct {
 	Id                uuid.UUID
 	CreatedAt         time.Time
@@ -101,4 +163,5 @@ type User struct {
 	PasswordChangedAt time.Time
 	Locale            string
 	Disabled          bool
+	WebauthnHandle    []byte
 }

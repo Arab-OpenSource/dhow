@@ -48,7 +48,22 @@ func (s *Service) Login(ctx context.Context, in models.LoginInput) (models.Login
 	if rehash {
 		s.rehash(ctx, now, user, in.Password)
 	}
-	return s.openSession(ctx, now, user, meta)
+	who := sessionUser{ID: user.Id, Email: user.Email, Name: user.Name, Locale: user.Locale}
+	factors, err := s.queries().GetMfaFactors(ctx, user.Id)
+	if err != nil {
+		return models.LoginResult{}, err
+	}
+	if hasMfa(factors) {
+		return s.issuePending(ctx, now, who, factors, meta)
+	}
+	return s.openSession(ctx, now, who, meta, models.MethodPassword)
+}
+
+type sessionUser struct {
+	ID     uuid.UUID
+	Email  string
+	Name   string
+	Locale string
 }
 
 func (s *Service) findLoginUser(ctx context.Context, email string) (sqlc.GetUserForLoginRow, bool, error) {
@@ -103,7 +118,7 @@ func (s *Service) rehash(ctx context.Context, now time.Time, user sqlc.GetUserFo
 	}
 }
 
-func (s *Service) openSession(ctx context.Context, now time.Time, user sqlc.GetUserForLoginRow, meta auth.RequestMeta) (models.LoginResult, error) {
+func (s *Service) openSession(ctx context.Context, now time.Time, user sessionUser, meta auth.RequestMeta, method string) (models.LoginResult, error) {
 	cookie, tokenHash, err := auth.NewSessionToken(config.SessionTokenBytes)
 	if err != nil {
 		return models.LoginResult{}, err
@@ -119,14 +134,14 @@ func (s *Service) openSession(ctx context.Context, now time.Time, user sqlc.GetU
 			}
 		}
 		row, err := q.InsertSession(ctx, sqlc.InsertSessionParams{
-			UserID: user.Id, TokenHash: tokenHash, CsrfHash: s.csrf.Hash(csrfToken), Now: now, ExpiresAt: expires,
+			UserID: user.ID, TokenHash: tokenHash, CsrfHash: s.csrf.Hash(csrfToken), Now: now, ExpiresAt: expires,
 			IdleExpiresAt: now.Add(config.SessionIdleTimeout), UserAgent: meta.UserAgent, IpAddress: meta.IPString(),
 		})
 		if err != nil {
 			return err
 		}
 		sessionID = row.Id
-		memberships, err = q.ListUserMemberships(ctx, user.Id)
+		memberships, err = q.ListUserMemberships(ctx, user.ID)
 		return err
 	})
 	if err != nil {
@@ -136,18 +151,19 @@ func (s *Service) openSession(ctx context.Context, now time.Time, user sqlc.GetU
 	for _, m := range memberships {
 		orgs = append(orgs, m.OrganizationId)
 	}
-	actor := user.Id
+	actor := user.ID
 	publishErr := s.bus.Publish(ctx, eventbus.Event{Name: eventbus.AuthLogin, Payload: eventbus.Audited{
 		OrganizationIDs: orgs, ActorUserID: &actor, TargetType: "session", TargetID: sessionID.String(), IP: meta.IPString(),
+		Data: map[string]string{"Method": method},
 	}})
 	if publishErr != nil {
-		if _, revokeErr := s.queries().RevokeUserSession(context.WithoutCancel(ctx), sqlc.RevokeUserSessionParams{ID: sessionID, UserID: user.Id, Now: now}); revokeErr != nil {
+		if _, revokeErr := s.queries().RevokeUserSession(context.WithoutCancel(ctx), sqlc.RevokeUserSessionParams{ID: sessionID, UserID: user.ID, Now: now}); revokeErr != nil {
 			s.log.ErrorContext(ctx, "revoke session after audit failure", "error", revokeErr)
 		}
 		return models.LoginResult{}, publishErr
 	}
 	return models.LoginResult{
-		User:        models.User{ID: user.Id, Email: user.Email, Name: user.Name, Locale: user.Locale},
+		User:        models.User{ID: user.ID, Email: user.Email, Name: user.Name, Locale: user.Locale},
 		CSRFToken:   csrfToken,
 		CookieValue: cookie,
 		ExpiresAt:   expires,

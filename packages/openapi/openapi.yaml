@@ -18,6 +18,10 @@ tags:
     description: First-owner setup, organizations and members. Served by the Identity module.
   - name: session
     description: Sign-in, sign-out, the current user, own sessions and password change. Served by the Session module.
+  - name: mfa
+    description: >-
+      The second sign-in step, TOTP, recovery codes and passkeys (WebAuthn). Served by the Session module, because the
+      second step is part of signing in.
   - name: audit
     description: The tamper-evident audit log. Served by the Audit module.
 paths:
@@ -112,6 +116,9 @@ paths:
         account or address gets the same error plus a `Retry-After` header. Success sets the
         `__Host-dhow_session` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`), replaces any session cookie the
         request carried, and returns the CSRF token the client must send as `X-CSRF-Token` on every non-GET request.
+        When the account has a second factor (TOTP or a passkey), a correct password answers 202 instead: no session
+        is created, and the `__Host-dhow_mfa` cookie carries a challenge that is valid for 5 minutes, works once and
+        is bound to the user and the browser. Only `POST /sessions/mfa` turns it into a session.
       security: []
       requestBody:
         required: true
@@ -132,6 +139,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
+        "202":
+          description: The password is right and the second step is required.
+          headers:
+            Set-Cookie:
+              description: The `__Host-dhow_mfa` challenge cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`).
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaPendingResponse"
         default:
           $ref: "#/components/responses/Error"
     get:
@@ -207,6 +226,358 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Envelope"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/mfa:
+    post:
+      operationId: completeMfaLogin
+      tags: [mfa]
+      summary: Finish signing in with the second factor
+      description: >-
+        Needs the `__Host-dhow_mfa` cookie from `POST /sessions`; the user comes from that challenge, never from the
+        request. Accepts a TOTP code, an unused recovery code or a passkey assertion (after
+        `POST /sessions/mfa/passkey-options`). A missing, expired, used or foreign-browser challenge answers
+        `MFA_CHALLENGE_EXPIRED`. A wrong factor answers `INVALID_MFA_CODE` whatever the reason; attempts are throttled
+        per account and per address like the password, and a throttled attempt adds `Retry-After`. Success sets the
+        session cookie and clears the challenge cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaLoginRequest"
+      responses:
+        "200":
+          description: Signed in.
+          headers:
+            Set-Cookie:
+              description: The session cookie, plus an expired `__Host-dhow_mfa` cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/mfa/passkey-options:
+    post:
+      operationId: beginMfaPasskey
+      tags: [mfa]
+      summary: Passkey request options for the second step
+      description: >-
+        Needs the `__Host-dhow_mfa` cookie. Returns WebAuthn request options for the user's passkeys and binds their
+        challenge to the pending sign-in. The options keep the W3C WebAuthn JSON names.
+      security: []
+      responses:
+        "200":
+          description: Options for `navigator.credentials.get()`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyOptionsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/passkey-options:
+    post:
+      operationId: beginPasskeyLogin
+      tags: [mfa]
+      summary: Passkey request options for signing in without a password
+      description: >-
+        Starts a discoverable-credential ceremony with user verification required. The challenge is stored on the
+        server, lives 5 minutes and works once.
+      security: []
+      responses:
+        "200":
+          description: The challenge id and options for `navigator.credentials.get()`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyChallengeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/passkey:
+    post:
+      operationId: passkeyLogin
+      tags: [mfa]
+      summary: Sign in with a passkey
+      description: >-
+        Verifies the assertion against the stored challenge, the configured RP ID and origin, and the stored public
+        key and sign count. Any failure answers `INVALID_CREDENTIALS`. Success sets the session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasskeyLoginRequest"
+      responses:
+        "200":
+          description: Signed in.
+          headers:
+            Set-Cookie:
+              description: The session cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/mfa:
+    get:
+      operationId: getMfaStatus
+      tags: [mfa]
+      summary: Which second factors the signed-in user has
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The second-factor status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaStatusResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/mfa/passkey-options:
+    post:
+      operationId: beginStepUpPasskey
+      tags: [mfa]
+      summary: Passkey request options to confirm a change with a passkey
+      description: >-
+        For a `CurrentFactor` of method `passkey`. The challenge is bound to the user and the current session, lives 5
+        minutes and works once.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      responses:
+        "200":
+          description: The challenge id and options for `navigator.credentials.get()`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyChallengeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/totp:
+    post:
+      operationId: startTotpEnrollment
+      tags: [mfa]
+      summary: Start turning on TOTP (or replacing it)
+      description: >-
+        Generates a new secret on the server and stores it encrypted. The secret and its `otpauth://` URI are returned
+        once so the client can draw a QR code; nothing is active until `POST /me/totp/confirm`. A pending enrollment
+        lives 10 minutes and belongs to the session that started it.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      responses:
+        "200":
+          description: The pending enrollment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TotpEnrollmentResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/totp/confirm:
+    post:
+      operationId: confirmTotp
+      tags: [mfa]
+      summary: Turn TOTP on with a code from the new app
+      description: >-
+        Needs a code from the new authenticator and a current factor: the password when the account has no second
+        factor yet, otherwise a TOTP code, a recovery code or a passkey. Replaces an existing TOTP, revokes every other
+        session and, for the first second factor, returns 10 recovery codes once.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmTotpRequest"
+      responses:
+        "200":
+          description: TOTP is on.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/totp/disable:
+    post:
+      operationId: disableTotp
+      tags: [mfa]
+      summary: Turn TOTP off
+      description: >-
+        Needs a current second factor. Revokes every other session. When no second factor is left, the recovery codes
+        are removed too.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurrentFactorRequest"
+      responses:
+        "200":
+          description: TOTP is off.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/recovery-codes:
+    post:
+      operationId: regenerateRecoveryCodes
+      tags: [mfa]
+      summary: Replace the recovery codes
+      description: >-
+        Needs a current second factor. Returns 10 new codes once (each carries 80 random bits and works once); the old
+        codes stop working. Revokes every other session.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurrentFactorRequest"
+      responses:
+        "200":
+          description: The new codes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/passkeys:
+    get:
+      operationId: listPasskeys
+      tags: [mfa]
+      summary: List the signed-in user's passkeys
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The passkeys, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: addPasskey
+      tags: [mfa]
+      summary: Register a passkey
+      description: >-
+        Needs the challenge from `POST /me/passkeys/options`, the attestation from `navigator.credentials.create()` and
+        a current factor (the password when the account has no second factor yet). Revokes every other session and,
+        for the first second factor, returns 10 recovery codes once.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddPasskeyRequest"
+      responses:
+        "200":
+          description: The passkey was registered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AddPasskeyResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/passkeys/options:
+    post:
+      operationId: beginPasskeyRegistration
+      tags: [mfa]
+      summary: Passkey creation options
+      description: >-
+        Requires a discoverable credential, prefers user verification and excludes the user's existing passkeys. The
+        challenge is bound to the user and the current session, lives 5 minutes and works once.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      responses:
+        "200":
+          description: The challenge id and options for `navigator.credentials.create()`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyChallengeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/passkeys/{id}:
+    patch:
+      operationId: renamePasskey
+      tags: [mfa]
+      summary: Rename one of the user's passkeys
+      description: Another user's passkey id answers 404, exactly like an id that does not exist.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenamePasskeyRequest"
+      responses:
+        "200":
+          description: The renamed passkey.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/passkeys/{id}/remove:
+    post:
+      operationId: removePasskey
+      tags: [mfa]
+      summary: Remove one of the user's passkeys
+      description: >-
+        Needs a current second factor. Revokes every other session. When no second factor is left, the recovery codes
+        are removed too. Another user's passkey id answers 404.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurrentFactorRequest"
+      responses:
+        "200":
+          description: The passkey was removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaChangeResponse"
         default:
           $ref: "#/components/responses/Error"
   /me:
@@ -460,7 +831,8 @@ components:
             Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`,
             `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`,
             `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`,
-            `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID` or `CONFLICT`.
+            `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`,
+            `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED` or `PASSKEY_REJECTED`.
           example: INTERNAL
         Message:
           type: string
@@ -830,3 +1202,291 @@ components:
         FirstBrokenId:
           type: string
           format: uuid
+    MfaMethod:
+      type: string
+      enum: [totp, recovery_code, passkey]
+    FactorMethod:
+      type: string
+      enum: [password, totp, recovery_code, passkey]
+    WebAuthnJson:
+      type: object
+      additionalProperties: true
+      x-go-type: json.RawMessage
+      description: >-
+        A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON`
+        or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification,
+        the only place where the API does not use PascalCase.
+    MfaPending:
+      type: object
+      additionalProperties: false
+      required: [Methods, ExpiresAt]
+      properties:
+        Methods:
+          type: array
+          items:
+            $ref: "#/components/schemas/MfaMethod"
+          description: The second factors this account can use.
+        ExpiresAt:
+          type: string
+          format: date-time
+    MfaPendingResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/MfaPending"
+    MfaLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [Method]
+      properties:
+        Method:
+          $ref: "#/components/schemas/MfaMethod"
+        Code:
+          type: string
+          maxLength: 64
+          description: The TOTP code or the recovery code. Never logged.
+        Credential:
+          $ref: "#/components/schemas/WebAuthnJson"
+    PasskeyOptions:
+      type: object
+      additionalProperties: false
+      required: [Options, ExpiresAt]
+      properties:
+        Options:
+          $ref: "#/components/schemas/WebAuthnJson"
+        ExpiresAt:
+          type: string
+          format: date-time
+    PasskeyOptionsResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/PasskeyOptions"
+    PasskeyChallenge:
+      type: object
+      additionalProperties: false
+      required: [ChallengeId, Options, ExpiresAt]
+      properties:
+        ChallengeId:
+          type: string
+          format: uuid
+        Options:
+          $ref: "#/components/schemas/WebAuthnJson"
+        ExpiresAt:
+          type: string
+          format: date-time
+    PasskeyChallengeResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/PasskeyChallenge"
+    PasskeyLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [ChallengeId, Credential]
+      properties:
+        ChallengeId:
+          type: string
+          format: uuid
+        Credential:
+          $ref: "#/components/schemas/WebAuthnJson"
+    CurrentFactor:
+      type: object
+      additionalProperties: false
+      required: [Method]
+      description: >-
+        Proof of a factor the user already has. `password` is accepted only while the account has no second factor;
+        afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers
+        `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+      properties:
+        Method:
+          $ref: "#/components/schemas/FactorMethod"
+        Password:
+          type: string
+          maxLength: 1024
+        Code:
+          type: string
+          maxLength: 64
+        ChallengeId:
+          type: string
+          format: uuid
+          description: From `POST /me/mfa/passkey-options`, for method `passkey`.
+        Credential:
+          $ref: "#/components/schemas/WebAuthnJson"
+    CurrentFactorRequest:
+      type: object
+      additionalProperties: false
+      required: [CurrentFactor]
+      properties:
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    MfaStatus:
+      type: object
+      additionalProperties: false
+      required: [Enabled, TotpEnabled, RecoveryCodesRemaining, PasskeyCount]
+      properties:
+        Enabled:
+          type: boolean
+          description: True when the account has TOTP or at least one passkey.
+        TotpEnabled:
+          type: boolean
+        TotpEnabledAt:
+          type: string
+          format: date-time
+        RecoveryCodesRemaining:
+          type: integer
+          minimum: 0
+        PasskeyCount:
+          type: integer
+          minimum: 0
+    MfaStatusResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/MfaStatus"
+    TotpEnrollment:
+      type: object
+      additionalProperties: false
+      required: [Secret, Uri, ExpiresAt]
+      properties:
+        Secret:
+          type: string
+          description: Base32 without padding. Shown once, for typing by hand.
+        Uri:
+          type: string
+          description: The `otpauth://totp/...` URI for the QR code. Drawn by the client, never sent to a third party.
+        ExpiresAt:
+          type: string
+          format: date-time
+    TotpEnrollmentResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/TotpEnrollment"
+    ConfirmTotpRequest:
+      type: object
+      additionalProperties: false
+      required: [Code, CurrentFactor]
+      properties:
+        Code:
+          type: string
+          maxLength: 64
+          description: A code from the new authenticator.
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    MfaChange:
+      type: object
+      additionalProperties: false
+      required: [Revoked]
+      properties:
+        Revoked:
+          type: integer
+          minimum: 0
+          description: How many other sessions were revoked.
+        RecoveryCodes:
+          type: array
+          items:
+            type: string
+          description: New recovery codes. Present only when new codes were made, and shown only this once.
+    MfaChangeResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/MfaChange"
+    Passkey:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, CreatedAt, Transports, Synced]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        CreatedAt:
+          type: string
+          format: date-time
+        LastUsedAt:
+          type: string
+          format: date-time
+        Transports:
+          type: array
+          items:
+            type: string
+        Synced:
+          type: boolean
+          description: The authenticator reported the credential as backup eligible (a synced passkey).
+    PasskeyResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Passkey"
+    PasskeyListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Passkey"
+    AddPasskeyRequest:
+      type: object
+      additionalProperties: false
+      required: [ChallengeId, Credential, Name, CurrentFactor]
+      properties:
+        ChallengeId:
+          type: string
+          format: uuid
+        Credential:
+          $ref: "#/components/schemas/WebAuthnJson"
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    AddPasskeyResult:
+      type: object
+      additionalProperties: false
+      required: [Passkey, Revoked]
+      properties:
+        Passkey:
+          $ref: "#/components/schemas/Passkey"
+        Revoked:
+          type: integer
+          minimum: 0
+        RecoveryCodes:
+          type: array
+          items:
+            type: string
+    AddPasskeyResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/AddPasskeyResult"
+    RenamePasskeyRequest:
+      type: object
+      additionalProperties: false
+      required: [Name]
+      properties:
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 64

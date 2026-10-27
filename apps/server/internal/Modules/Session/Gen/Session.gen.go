@@ -16,6 +16,30 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for FactorMethod.
+const (
+	FactorMethodPasskey      FactorMethod = "passkey"
+	FactorMethodPassword     FactorMethod = "password"
+	FactorMethodRecoveryCode FactorMethod = "recovery_code"
+	FactorMethodTotp         FactorMethod = "totp"
+)
+
+// Valid indicates whether the value is a known member of the FactorMethod enum.
+func (e FactorMethod) Valid() bool {
+	switch e {
+	case FactorMethodPasskey:
+		return true
+	case FactorMethodPassword:
+		return true
+	case FactorMethodRecoveryCode:
+		return true
+	case FactorMethodTotp:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Locale.
 const (
 	Ar Locale = "ar"
@@ -28,6 +52,27 @@ func (e Locale) Valid() bool {
 	case Ar:
 		return true
 	case En:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for MfaMethod.
+const (
+	MfaMethodPasskey      MfaMethod = "passkey"
+	MfaMethodRecoveryCode MfaMethod = "recovery_code"
+	MfaMethodTotp         MfaMethod = "totp"
+)
+
+// Valid indicates whether the value is a known member of the MfaMethod enum.
+func (e MfaMethod) Valid() bool {
+	switch e {
+	case MfaMethodPasskey:
+		return true
+	case MfaMethodRecoveryCode:
+		return true
+	case MfaMethodTotp:
 		return true
 	default:
 		return false
@@ -61,12 +106,71 @@ func (e Role) Valid() bool {
 	}
 }
 
+// AddPasskeyRequest defines model for AddPasskeyRequest.
+type AddPasskeyRequest struct {
+	ChallengeId openapi_types.UUID `json:"ChallengeId"`
+
+	// Credential A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase.
+	Credential WebAuthnJson `json:"Credential"`
+
+	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+	CurrentFactor CurrentFactor `json:"CurrentFactor"`
+	Name          string        `json:"Name"`
+}
+
+// AddPasskeyResponse defines model for AddPasskeyResponse.
+type AddPasskeyResponse struct {
+	Data  *AddPasskeyResult `json:"Data,omitempty"`
+	Error *ErrorDetail      `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// AddPasskeyResult defines model for AddPasskeyResult.
+type AddPasskeyResult struct {
+	Passkey       Passkey   `json:"Passkey"`
+	RecoveryCodes *[]string `json:"RecoveryCodes,omitempty"`
+	Revoked       int       `json:"Revoked"`
+}
+
 // ChangePasswordRequest defines model for ChangePasswordRequest.
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"CurrentPassword"`
 
 	// NewPassword 12 to 128 characters.
 	NewPassword string `json:"NewPassword"`
+}
+
+// ConfirmTotpRequest defines model for ConfirmTotpRequest.
+type ConfirmTotpRequest struct {
+	// Code A code from the new authenticator.
+	Code string `json:"Code"`
+
+	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+	CurrentFactor CurrentFactor `json:"CurrentFactor"`
+}
+
+// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+type CurrentFactor struct {
+	// ChallengeId From `POST /me/mfa/passkey-options`, for method `passkey`.
+	ChallengeId *openapi_types.UUID `json:"ChallengeId,omitempty"`
+	Code        *string             `json:"Code,omitempty"`
+
+	// Credential A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase.
+	Credential *WebAuthnJson `json:"Credential,omitempty"`
+	Method     FactorMethod  `json:"Method"`
+	Password   *string       `json:"Password,omitempty"`
+}
+
+// CurrentFactorRequest defines model for CurrentFactorRequest.
+type CurrentFactorRequest struct {
+	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+	CurrentFactor CurrentFactor `json:"CurrentFactor"`
 }
 
 // Envelope defines model for Envelope.
@@ -83,7 +187,7 @@ type Envelope struct {
 
 // ErrorDetail defines model for ErrorDetail.
 type ErrorDetail struct {
-	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID` or `CONFLICT`.
+	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED` or `PASSKEY_REJECTED`.
 	//
 	// Example: INTERNAL
 	Code    string              `json:"Code"`
@@ -112,6 +216,9 @@ type ErrorResponse struct {
 	Meta    *PageMeta `json:"Meta,omitempty"`
 	Success bool      `json:"Success"`
 }
+
+// FactorMethod defines model for FactorMethod.
+type FactorMethod string
 
 // Locale defines model for Locale.
 type Locale string
@@ -177,11 +284,184 @@ type MembershipView struct {
 	Role             Role               `json:"Role"`
 }
 
+// MfaChange defines model for MfaChange.
+type MfaChange struct {
+	// RecoveryCodes New recovery codes. Present only when new codes were made, and shown only this once.
+	RecoveryCodes *[]string `json:"RecoveryCodes,omitempty"`
+
+	// Revoked How many other sessions were revoked.
+	Revoked int `json:"Revoked"`
+}
+
+// MfaChangeResponse defines model for MfaChangeResponse.
+type MfaChangeResponse struct {
+	Data  *MfaChange   `json:"Data,omitempty"`
+	Error *ErrorDetail `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// MfaLoginRequest defines model for MfaLoginRequest.
+type MfaLoginRequest struct {
+	// Code The TOTP code or the recovery code. Never logged.
+	Code *string `json:"Code,omitempty"`
+
+	// Credential A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase.
+	Credential *WebAuthnJson `json:"Credential,omitempty"`
+	Method     MfaMethod     `json:"Method"`
+}
+
+// MfaMethod defines model for MfaMethod.
+type MfaMethod string
+
+// MfaPending defines model for MfaPending.
+type MfaPending struct {
+	ExpiresAt time.Time `json:"ExpiresAt"`
+
+	// Methods The second factors this account can use.
+	Methods []MfaMethod `json:"Methods"`
+}
+
+// MfaPendingResponse defines model for MfaPendingResponse.
+type MfaPendingResponse struct {
+	Data  *MfaPending  `json:"Data,omitempty"`
+	Error *ErrorDetail `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// MfaStatus defines model for MfaStatus.
+type MfaStatus struct {
+	// Enabled True when the account has TOTP or at least one passkey.
+	Enabled                bool       `json:"Enabled"`
+	PasskeyCount           int        `json:"PasskeyCount"`
+	RecoveryCodesRemaining int        `json:"RecoveryCodesRemaining"`
+	TotpEnabled            bool       `json:"TotpEnabled"`
+	TotpEnabledAt          *time.Time `json:"TotpEnabledAt,omitempty"`
+}
+
+// MfaStatusResponse defines model for MfaStatusResponse.
+type MfaStatusResponse struct {
+	Data  *MfaStatus   `json:"Data,omitempty"`
+	Error *ErrorDetail `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
 // PageMeta defines model for PageMeta.
 type PageMeta struct {
 	Limit int `json:"Limit"`
 	Page  int `json:"Page"`
 	Total int `json:"Total"`
+}
+
+// Passkey defines model for Passkey.
+type Passkey struct {
+	CreatedAt  time.Time          `json:"CreatedAt"`
+	Id         openapi_types.UUID `json:"Id"`
+	LastUsedAt *time.Time         `json:"LastUsedAt,omitempty"`
+	Name       string             `json:"Name"`
+
+	// Synced The authenticator reported the credential as backup eligible (a synced passkey).
+	Synced     bool     `json:"Synced"`
+	Transports []string `json:"Transports"`
+}
+
+// PasskeyChallenge defines model for PasskeyChallenge.
+type PasskeyChallenge struct {
+	ChallengeId openapi_types.UUID `json:"ChallengeId"`
+	ExpiresAt   time.Time          `json:"ExpiresAt"`
+
+	// Options A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase.
+	Options WebAuthnJson `json:"Options"`
+}
+
+// PasskeyChallengeResponse defines model for PasskeyChallengeResponse.
+type PasskeyChallengeResponse struct {
+	Data  *PasskeyChallenge `json:"Data,omitempty"`
+	Error *ErrorDetail      `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// PasskeyListResponse defines model for PasskeyListResponse.
+type PasskeyListResponse struct {
+	Data  *[]Passkey   `json:"Data,omitempty"`
+	Error *ErrorDetail `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// PasskeyLoginRequest defines model for PasskeyLoginRequest.
+type PasskeyLoginRequest struct {
+	ChallengeId openapi_types.UUID `json:"ChallengeId"`
+
+	// Credential A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase.
+	Credential WebAuthnJson `json:"Credential"`
+}
+
+// PasskeyOptions defines model for PasskeyOptions.
+type PasskeyOptions struct {
+	ExpiresAt time.Time `json:"ExpiresAt"`
+
+	// Options A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase.
+	Options WebAuthnJson `json:"Options"`
+}
+
+// PasskeyOptionsResponse defines model for PasskeyOptionsResponse.
+type PasskeyOptionsResponse struct {
+	Data  *PasskeyOptions `json:"Data,omitempty"`
+	Error *ErrorDetail    `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// PasskeyResponse defines model for PasskeyResponse.
+type PasskeyResponse struct {
+	Data  *Passkey     `json:"Data,omitempty"`
+	Error *ErrorDetail `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// RenamePasskeyRequest defines model for RenamePasskeyRequest.
+type RenamePasskeyRequest struct {
+	Name string `json:"Name"`
 }
 
 // RevokedCount defines model for RevokedCount.
@@ -229,6 +509,30 @@ type SessionView struct {
 	UserAgent  string             `json:"UserAgent"`
 }
 
+// TotpEnrollment defines model for TotpEnrollment.
+type TotpEnrollment struct {
+	ExpiresAt time.Time `json:"ExpiresAt"`
+
+	// Secret Base32 without padding. Shown once, for typing by hand.
+	Secret string `json:"Secret"`
+
+	// Uri The `otpauth://totp/...` URI for the QR code. Drawn by the client, never sent to a third party.
+	Uri string `json:"Uri"`
+}
+
+// TotpEnrollmentResponse defines model for TotpEnrollmentResponse.
+type TotpEnrollmentResponse struct {
+	Data  *TotpEnrollment `json:"Data,omitempty"`
+	Error *ErrorDetail    `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
 // User defines model for User.
 type User struct {
 	Email  string             `json:"Email"`
@@ -237,26 +541,86 @@ type User struct {
 	Name   string             `json:"Name"`
 }
 
+// WebAuthnJson A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase.
+type WebAuthnJson = json.RawMessage
+
 // Id defines model for Id.
 type Id = openapi_types.UUID
 
 // Error defines model for Error.
 type Error = ErrorResponse
 
+// AddPasskeyJSONRequestBody defines body for AddPasskey for application/json ContentType.
+type AddPasskeyJSONRequestBody = AddPasskeyRequest
+
+// RenamePasskeyJSONRequestBody defines body for RenamePasskey for application/json ContentType.
+type RenamePasskeyJSONRequestBody = RenamePasskeyRequest
+
+// RemovePasskeyJSONRequestBody defines body for RemovePasskey for application/json ContentType.
+type RemovePasskeyJSONRequestBody = CurrentFactorRequest
+
 // ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
 type ChangePasswordJSONRequestBody = ChangePasswordRequest
 
+// RegenerateRecoveryCodesJSONRequestBody defines body for RegenerateRecoveryCodes for application/json ContentType.
+type RegenerateRecoveryCodesJSONRequestBody = CurrentFactorRequest
+
+// ConfirmTotpJSONRequestBody defines body for ConfirmTotp for application/json ContentType.
+type ConfirmTotpJSONRequestBody = ConfirmTotpRequest
+
+// DisableTotpJSONRequestBody defines body for DisableTotp for application/json ContentType.
+type DisableTotpJSONRequestBody = CurrentFactorRequest
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
+
+// CompleteMfaLoginJSONRequestBody defines body for CompleteMfaLogin for application/json ContentType.
+type CompleteMfaLoginJSONRequestBody = MfaLoginRequest
+
+// PasskeyLoginJSONRequestBody defines body for PasskeyLogin for application/json ContentType.
+type PasskeyLoginJSONRequestBody = PasskeyLoginRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetMe The signed-in user, memberships and CSRF token
 	// (GET /me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// GetMfaStatus Which second factors the signed-in user has
+	// (GET /me/mfa)
+	GetMfaStatus(w http.ResponseWriter, r *http.Request)
+	// BeginStepUpPasskey Passkey request options to confirm a change with a passkey
+	// (POST /me/mfa/passkey-options)
+	BeginStepUpPasskey(w http.ResponseWriter, r *http.Request)
+	// ListPasskeys List the signed-in user's passkeys
+	// (GET /me/passkeys)
+	ListPasskeys(w http.ResponseWriter, r *http.Request)
+	// AddPasskey Register a passkey
+	// (POST /me/passkeys)
+	AddPasskey(w http.ResponseWriter, r *http.Request)
+	// BeginPasskeyRegistration Passkey creation options
+	// (POST /me/passkeys/options)
+	BeginPasskeyRegistration(w http.ResponseWriter, r *http.Request)
+	// RenamePasskey Rename one of the user's passkeys
+	// (PATCH /me/passkeys/{id})
+	RenamePasskey(w http.ResponseWriter, r *http.Request, id Id)
+	// RemovePasskey Remove one of the user's passkeys
+	// (POST /me/passkeys/{id}/remove)
+	RemovePasskey(w http.ResponseWriter, r *http.Request, id Id)
 	// ChangePassword Change the signed-in user's password
 	// (PUT /me/password)
 	ChangePassword(w http.ResponseWriter, r *http.Request)
+	// RegenerateRecoveryCodes Replace the recovery codes
+	// (POST /me/recovery-codes)
+	RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request)
+	// StartTotpEnrollment Start turning on TOTP (or replacing it)
+	// (POST /me/totp)
+	StartTotpEnrollment(w http.ResponseWriter, r *http.Request)
+	// ConfirmTotp Turn TOTP on with a code from the new app
+	// (POST /me/totp/confirm)
+	ConfirmTotp(w http.ResponseWriter, r *http.Request)
+	// DisableTotp Turn TOTP off
+	// (POST /me/totp/disable)
+	DisableTotp(w http.ResponseWriter, r *http.Request)
 	// ListSessions List the signed-in user's own sessions
 	// (GET /sessions)
 	ListSessions(w http.ResponseWriter, r *http.Request)
@@ -266,6 +630,18 @@ type ServerInterface interface {
 	// Logout Sign out of the current session
 	// (DELETE /sessions/current)
 	Logout(w http.ResponseWriter, r *http.Request)
+	// CompleteMfaLogin Finish signing in with the second factor
+	// (POST /sessions/mfa)
+	CompleteMfaLogin(w http.ResponseWriter, r *http.Request)
+	// BeginMfaPasskey Passkey request options for the second step
+	// (POST /sessions/mfa/passkey-options)
+	BeginMfaPasskey(w http.ResponseWriter, r *http.Request)
+	// PasskeyLogin Sign in with a passkey
+	// (POST /sessions/passkey)
+	PasskeyLogin(w http.ResponseWriter, r *http.Request)
+	// BeginPasskeyLogin Passkey request options for signing in without a password
+	// (POST /sessions/passkey-options)
+	BeginPasskeyLogin(w http.ResponseWriter, r *http.Request)
 	// RevokeOtherSessions Sign out of every other device
 	// (POST /sessions/revoke-others)
 	RevokeOtherSessions(w http.ResponseWriter, r *http.Request)
@@ -284,9 +660,75 @@ func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// GetMfaStatus Which second factors the signed-in user has
+// (GET /me/mfa)
+func (_ Unimplemented) GetMfaStatus(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// BeginStepUpPasskey Passkey request options to confirm a change with a passkey
+// (POST /me/mfa/passkey-options)
+func (_ Unimplemented) BeginStepUpPasskey(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListPasskeys List the signed-in user's passkeys
+// (GET /me/passkeys)
+func (_ Unimplemented) ListPasskeys(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// AddPasskey Register a passkey
+// (POST /me/passkeys)
+func (_ Unimplemented) AddPasskey(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// BeginPasskeyRegistration Passkey creation options
+// (POST /me/passkeys/options)
+func (_ Unimplemented) BeginPasskeyRegistration(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RenamePasskey Rename one of the user's passkeys
+// (PATCH /me/passkeys/{id})
+func (_ Unimplemented) RenamePasskey(w http.ResponseWriter, r *http.Request, id Id) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RemovePasskey Remove one of the user's passkeys
+// (POST /me/passkeys/{id}/remove)
+func (_ Unimplemented) RemovePasskey(w http.ResponseWriter, r *http.Request, id Id) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ChangePassword Change the signed-in user's password
 // (PUT /me/password)
 func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RegenerateRecoveryCodes Replace the recovery codes
+// (POST /me/recovery-codes)
+func (_ Unimplemented) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// StartTotpEnrollment Start turning on TOTP (or replacing it)
+// (POST /me/totp)
+func (_ Unimplemented) StartTotpEnrollment(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ConfirmTotp Turn TOTP on with a code from the new app
+// (POST /me/totp/confirm)
+func (_ Unimplemented) ConfirmTotp(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DisableTotp Turn TOTP off
+// (POST /me/totp/disable)
+func (_ Unimplemented) DisableTotp(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -305,6 +747,30 @@ func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
 // Logout Sign out of the current session
 // (DELETE /sessions/current)
 func (_ Unimplemented) Logout(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CompleteMfaLogin Finish signing in with the second factor
+// (POST /sessions/mfa)
+func (_ Unimplemented) CompleteMfaLogin(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// BeginMfaPasskey Passkey request options for the second step
+// (POST /sessions/mfa/passkey-options)
+func (_ Unimplemented) BeginMfaPasskey(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// PasskeyLogin Sign in with a passkey
+// (POST /sessions/passkey)
+func (_ Unimplemented) PasskeyLogin(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// BeginPasskeyLogin Passkey request options for signing in without a password
+// (POST /sessions/passkey-options)
+func (_ Unimplemented) BeginPasskeyLogin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -343,11 +809,189 @@ func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request)
 	handler.ServeHTTP(w, r)
 }
 
+// GetMfaStatus operation middleware
+func (siw *ServerInterfaceWrapper) GetMfaStatus(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMfaStatus(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// BeginStepUpPasskey operation middleware
+func (siw *ServerInterfaceWrapper) BeginStepUpPasskey(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BeginStepUpPasskey(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPasskeys operation middleware
+func (siw *ServerInterfaceWrapper) ListPasskeys(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPasskeys(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddPasskey operation middleware
+func (siw *ServerInterfaceWrapper) AddPasskey(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddPasskey(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// BeginPasskeyRegistration operation middleware
+func (siw *ServerInterfaceWrapper) BeginPasskeyRegistration(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BeginPasskeyRegistration(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RenamePasskey operation middleware
+func (siw *ServerInterfaceWrapper) RenamePasskey(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RenamePasskey(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemovePasskey operation middleware
+func (siw *ServerInterfaceWrapper) RemovePasskey(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemovePasskey(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ChangePassword operation middleware
 func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ChangePassword(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RegenerateRecoveryCodes operation middleware
+func (siw *ServerInterfaceWrapper) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RegenerateRecoveryCodes(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StartTotpEnrollment operation middleware
+func (siw *ServerInterfaceWrapper) StartTotpEnrollment(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StartTotpEnrollment(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ConfirmTotp operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmTotp(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConfirmTotp(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DisableTotp operation middleware
+func (siw *ServerInterfaceWrapper) DisableTotp(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DisableTotp(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -390,6 +1034,62 @@ func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Logout(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CompleteMfaLogin operation middleware
+func (siw *ServerInterfaceWrapper) CompleteMfaLogin(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CompleteMfaLogin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// BeginMfaPasskey operation middleware
+func (siw *ServerInterfaceWrapper) BeginMfaPasskey(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BeginMfaPasskey(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PasskeyLogin operation middleware
+func (siw *ServerInterfaceWrapper) PasskeyLogin(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PasskeyLogin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// BeginPasskeyLogin operation middleware
+func (siw *ServerInterfaceWrapper) BeginPasskeyLogin(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BeginPasskeyLogin(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -568,6 +1268,51 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Delete(options.BaseURL+"/sessions/{id}", wrapper.RevokeSession)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/sessions/mfa", wrapper.CompleteMfaLogin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/sessions/mfa/passkey-options", wrapper.BeginMfaPasskey)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/sessions/passkey-options", wrapper.BeginPasskeyLogin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/sessions/passkey", wrapper.PasskeyLogin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/me/mfa", wrapper.GetMfaStatus)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/mfa/passkey-options", wrapper.BeginStepUpPasskey)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/totp", wrapper.StartTotpEnrollment)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/totp/confirm", wrapper.ConfirmTotp)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/totp/disable", wrapper.DisableTotp)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/recovery-codes", wrapper.RegenerateRecoveryCodes)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/me/passkeys", wrapper.ListPasskeys)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/passkeys", wrapper.AddPasskey)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/passkeys/options", wrapper.BeginPasskeyRegistration)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/me/passkeys/{id}", wrapper.RenamePasskey)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/passkeys/{id}/remove", wrapper.RemovePasskey)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/me", wrapper.GetMe)
 	})
 	r.Group(func(r chi.Router) {
@@ -617,6 +1362,277 @@ func (response GetMedefaultJSONResponse) VisitGetMeResponse(w http.ResponseWrite
 	return err
 }
 
+type GetMfaStatusRequestObject struct {
+}
+
+type GetMfaStatusResponseObject interface {
+	VisitGetMfaStatusResponse(w http.ResponseWriter) error
+}
+
+type GetMfaStatus200JSONResponse MfaStatusResponse
+
+func (response GetMfaStatus200JSONResponse) VisitGetMfaStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetMfaStatusdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response GetMfaStatusdefaultJSONResponse) VisitGetMfaStatusResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginStepUpPasskeyRequestObject struct {
+}
+
+type BeginStepUpPasskeyResponseObject interface {
+	VisitBeginStepUpPasskeyResponse(w http.ResponseWriter) error
+}
+
+type BeginStepUpPasskey200JSONResponse PasskeyChallengeResponse
+
+func (response BeginStepUpPasskey200JSONResponse) VisitBeginStepUpPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginStepUpPasskeydefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response BeginStepUpPasskeydefaultJSONResponse) VisitBeginStepUpPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPasskeysRequestObject struct {
+}
+
+type ListPasskeysResponseObject interface {
+	VisitListPasskeysResponse(w http.ResponseWriter) error
+}
+
+type ListPasskeys200JSONResponse PasskeyListResponse
+
+func (response ListPasskeys200JSONResponse) VisitListPasskeysResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPasskeysdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response ListPasskeysdefaultJSONResponse) VisitListPasskeysResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddPasskeyRequestObject struct {
+	Body *AddPasskeyJSONRequestBody
+}
+
+type AddPasskeyResponseObject interface {
+	VisitAddPasskeyResponse(w http.ResponseWriter) error
+}
+
+type AddPasskey200JSONResponse AddPasskeyResponse
+
+func (response AddPasskey200JSONResponse) VisitAddPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddPasskeydefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response AddPasskeydefaultJSONResponse) VisitAddPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginPasskeyRegistrationRequestObject struct {
+}
+
+type BeginPasskeyRegistrationResponseObject interface {
+	VisitBeginPasskeyRegistrationResponse(w http.ResponseWriter) error
+}
+
+type BeginPasskeyRegistration200JSONResponse PasskeyChallengeResponse
+
+func (response BeginPasskeyRegistration200JSONResponse) VisitBeginPasskeyRegistrationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginPasskeyRegistrationdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response BeginPasskeyRegistrationdefaultJSONResponse) VisitBeginPasskeyRegistrationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RenamePasskeyRequestObject struct {
+	Id   Id `json:"id"`
+	Body *RenamePasskeyJSONRequestBody
+}
+
+type RenamePasskeyResponseObject interface {
+	VisitRenamePasskeyResponse(w http.ResponseWriter) error
+}
+
+type RenamePasskey200JSONResponse PasskeyResponse
+
+func (response RenamePasskey200JSONResponse) VisitRenamePasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RenamePasskeydefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response RenamePasskeydefaultJSONResponse) VisitRenamePasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemovePasskeyRequestObject struct {
+	Id   Id `json:"id"`
+	Body *RemovePasskeyJSONRequestBody
+}
+
+type RemovePasskeyResponseObject interface {
+	VisitRemovePasskeyResponse(w http.ResponseWriter) error
+}
+
+type RemovePasskey200JSONResponse MfaChangeResponse
+
+func (response RemovePasskey200JSONResponse) VisitRemovePasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemovePasskeydefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response RemovePasskeydefaultJSONResponse) VisitRemovePasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ChangePasswordRequestObject struct {
 	Body *ChangePasswordJSONRequestBody
 }
@@ -645,6 +1661,161 @@ type ChangePassworddefaultJSONResponse struct {
 }
 
 func (response ChangePassworddefaultJSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegenerateRecoveryCodesRequestObject struct {
+	Body *RegenerateRecoveryCodesJSONRequestBody
+}
+
+type RegenerateRecoveryCodesResponseObject interface {
+	VisitRegenerateRecoveryCodesResponse(w http.ResponseWriter) error
+}
+
+type RegenerateRecoveryCodes200JSONResponse MfaChangeResponse
+
+func (response RegenerateRecoveryCodes200JSONResponse) VisitRegenerateRecoveryCodesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RegenerateRecoveryCodesdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response RegenerateRecoveryCodesdefaultJSONResponse) VisitRegenerateRecoveryCodesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StartTotpEnrollmentRequestObject struct {
+}
+
+type StartTotpEnrollmentResponseObject interface {
+	VisitStartTotpEnrollmentResponse(w http.ResponseWriter) error
+}
+
+type StartTotpEnrollment200JSONResponse TotpEnrollmentResponse
+
+func (response StartTotpEnrollment200JSONResponse) VisitStartTotpEnrollmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StartTotpEnrollmentdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response StartTotpEnrollmentdefaultJSONResponse) VisitStartTotpEnrollmentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmTotpRequestObject struct {
+	Body *ConfirmTotpJSONRequestBody
+}
+
+type ConfirmTotpResponseObject interface {
+	VisitConfirmTotpResponse(w http.ResponseWriter) error
+}
+
+type ConfirmTotp200JSONResponse MfaChangeResponse
+
+func (response ConfirmTotp200JSONResponse) VisitConfirmTotpResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmTotpdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response ConfirmTotpdefaultJSONResponse) VisitConfirmTotpResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableTotpRequestObject struct {
+	Body *DisableTotpJSONRequestBody
+}
+
+type DisableTotpResponseObject interface {
+	VisitDisableTotpResponse(w http.ResponseWriter) error
+}
+
+type DisableTotp200JSONResponse MfaChangeResponse
+
+func (response DisableTotp200JSONResponse) VisitDisableTotpResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DisableTotpdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response DisableTotpdefaultJSONResponse) VisitDisableTotpResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -724,6 +1895,28 @@ func (response Login200JSONResponse) VisitLoginResponse(w http.ResponseWriter) e
 	return err
 }
 
+type Login202ResponseHeaders struct {
+	SetCookie string
+}
+
+type Login202JSONResponse struct {
+	Body    MfaPendingResponse
+	Headers Login202ResponseHeaders
+}
+
+func (response Login202JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type LogindefaultJSONResponse struct {
 	Body       ErrorResponse
 	StatusCode int
@@ -776,6 +1969,176 @@ type LogoutdefaultJSONResponse struct {
 }
 
 func (response LogoutdefaultJSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteMfaLoginRequestObject struct {
+	Body *CompleteMfaLoginJSONRequestBody
+}
+
+type CompleteMfaLoginResponseObject interface {
+	VisitCompleteMfaLoginResponse(w http.ResponseWriter) error
+}
+
+type CompleteMfaLogin200ResponseHeaders struct {
+	SetCookie string
+}
+
+type CompleteMfaLogin200JSONResponse struct {
+	Body    LoginResponse
+	Headers CompleteMfaLogin200ResponseHeaders
+}
+
+func (response CompleteMfaLogin200JSONResponse) VisitCompleteMfaLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteMfaLogindefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response CompleteMfaLogindefaultJSONResponse) VisitCompleteMfaLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginMfaPasskeyRequestObject struct {
+}
+
+type BeginMfaPasskeyResponseObject interface {
+	VisitBeginMfaPasskeyResponse(w http.ResponseWriter) error
+}
+
+type BeginMfaPasskey200JSONResponse PasskeyOptionsResponse
+
+func (response BeginMfaPasskey200JSONResponse) VisitBeginMfaPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginMfaPasskeydefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response BeginMfaPasskeydefaultJSONResponse) VisitBeginMfaPasskeyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PasskeyLoginRequestObject struct {
+	Body *PasskeyLoginJSONRequestBody
+}
+
+type PasskeyLoginResponseObject interface {
+	VisitPasskeyLoginResponse(w http.ResponseWriter) error
+}
+
+type PasskeyLogin200ResponseHeaders struct {
+	SetCookie string
+}
+
+type PasskeyLogin200JSONResponse struct {
+	Body    LoginResponse
+	Headers PasskeyLogin200ResponseHeaders
+}
+
+func (response PasskeyLogin200JSONResponse) VisitPasskeyLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PasskeyLogindefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response PasskeyLogindefaultJSONResponse) VisitPasskeyLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginPasskeyLoginRequestObject struct {
+}
+
+type BeginPasskeyLoginResponseObject interface {
+	VisitBeginPasskeyLoginResponse(w http.ResponseWriter) error
+}
+
+type BeginPasskeyLogin200JSONResponse PasskeyChallengeResponse
+
+func (response BeginPasskeyLogin200JSONResponse) VisitBeginPasskeyLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginPasskeyLogindefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response BeginPasskeyLogindefaultJSONResponse) VisitBeginPasskeyLoginResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -869,9 +2232,42 @@ type StrictServerInterface interface {
 	// GetMe The signed-in user, memberships and CSRF token
 	// (GET /me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// GetMfaStatus Which second factors the signed-in user has
+	// (GET /me/mfa)
+	GetMfaStatus(ctx context.Context, request GetMfaStatusRequestObject) (GetMfaStatusResponseObject, error)
+	// BeginStepUpPasskey Passkey request options to confirm a change with a passkey
+	// (POST /me/mfa/passkey-options)
+	BeginStepUpPasskey(ctx context.Context, request BeginStepUpPasskeyRequestObject) (BeginStepUpPasskeyResponseObject, error)
+	// ListPasskeys List the signed-in user's passkeys
+	// (GET /me/passkeys)
+	ListPasskeys(ctx context.Context, request ListPasskeysRequestObject) (ListPasskeysResponseObject, error)
+	// AddPasskey Register a passkey
+	// (POST /me/passkeys)
+	AddPasskey(ctx context.Context, request AddPasskeyRequestObject) (AddPasskeyResponseObject, error)
+	// BeginPasskeyRegistration Passkey creation options
+	// (POST /me/passkeys/options)
+	BeginPasskeyRegistration(ctx context.Context, request BeginPasskeyRegistrationRequestObject) (BeginPasskeyRegistrationResponseObject, error)
+	// RenamePasskey Rename one of the user's passkeys
+	// (PATCH /me/passkeys/{id})
+	RenamePasskey(ctx context.Context, request RenamePasskeyRequestObject) (RenamePasskeyResponseObject, error)
+	// RemovePasskey Remove one of the user's passkeys
+	// (POST /me/passkeys/{id}/remove)
+	RemovePasskey(ctx context.Context, request RemovePasskeyRequestObject) (RemovePasskeyResponseObject, error)
 	// ChangePassword Change the signed-in user's password
 	// (PUT /me/password)
 	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
+	// RegenerateRecoveryCodes Replace the recovery codes
+	// (POST /me/recovery-codes)
+	RegenerateRecoveryCodes(ctx context.Context, request RegenerateRecoveryCodesRequestObject) (RegenerateRecoveryCodesResponseObject, error)
+	// StartTotpEnrollment Start turning on TOTP (or replacing it)
+	// (POST /me/totp)
+	StartTotpEnrollment(ctx context.Context, request StartTotpEnrollmentRequestObject) (StartTotpEnrollmentResponseObject, error)
+	// ConfirmTotp Turn TOTP on with a code from the new app
+	// (POST /me/totp/confirm)
+	ConfirmTotp(ctx context.Context, request ConfirmTotpRequestObject) (ConfirmTotpResponseObject, error)
+	// DisableTotp Turn TOTP off
+	// (POST /me/totp/disable)
+	DisableTotp(ctx context.Context, request DisableTotpRequestObject) (DisableTotpResponseObject, error)
 	// ListSessions List the signed-in user's own sessions
 	// (GET /sessions)
 	ListSessions(ctx context.Context, request ListSessionsRequestObject) (ListSessionsResponseObject, error)
@@ -881,6 +2277,18 @@ type StrictServerInterface interface {
 	// Logout Sign out of the current session
 	// (DELETE /sessions/current)
 	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
+	// CompleteMfaLogin Finish signing in with the second factor
+	// (POST /sessions/mfa)
+	CompleteMfaLogin(ctx context.Context, request CompleteMfaLoginRequestObject) (CompleteMfaLoginResponseObject, error)
+	// BeginMfaPasskey Passkey request options for the second step
+	// (POST /sessions/mfa/passkey-options)
+	BeginMfaPasskey(ctx context.Context, request BeginMfaPasskeyRequestObject) (BeginMfaPasskeyResponseObject, error)
+	// PasskeyLogin Sign in with a passkey
+	// (POST /sessions/passkey)
+	PasskeyLogin(ctx context.Context, request PasskeyLoginRequestObject) (PasskeyLoginResponseObject, error)
+	// BeginPasskeyLogin Passkey request options for signing in without a password
+	// (POST /sessions/passkey-options)
+	BeginPasskeyLogin(ctx context.Context, request BeginPasskeyLoginRequestObject) (BeginPasskeyLoginResponseObject, error)
 	// RevokeOtherSessions Sign out of every other device
 	// (POST /sessions/revoke-others)
 	RevokeOtherSessions(ctx context.Context, request RevokeOtherSessionsRequestObject) (RevokeOtherSessionsResponseObject, error)
@@ -952,6 +2360,199 @@ func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetMfaStatus operation middleware
+func (sh *strictHandler) GetMfaStatus(w http.ResponseWriter, r *http.Request) {
+	var request GetMfaStatusRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMfaStatus(ctx, request.(GetMfaStatusRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMfaStatus")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetMfaStatusResponseObject); ok {
+		if err := validResponse.VisitGetMfaStatusResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// BeginStepUpPasskey operation middleware
+func (sh *strictHandler) BeginStepUpPasskey(w http.ResponseWriter, r *http.Request) {
+	var request BeginStepUpPasskeyRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.BeginStepUpPasskey(ctx, request.(BeginStepUpPasskeyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BeginStepUpPasskey")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BeginStepUpPasskeyResponseObject); ok {
+		if err := validResponse.VisitBeginStepUpPasskeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPasskeys operation middleware
+func (sh *strictHandler) ListPasskeys(w http.ResponseWriter, r *http.Request) {
+	var request ListPasskeysRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPasskeys(ctx, request.(ListPasskeysRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPasskeys")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPasskeysResponseObject); ok {
+		if err := validResponse.VisitListPasskeysResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddPasskey operation middleware
+func (sh *strictHandler) AddPasskey(w http.ResponseWriter, r *http.Request) {
+	var request AddPasskeyRequestObject
+
+	var body AddPasskeyJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddPasskey(ctx, request.(AddPasskeyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddPasskey")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddPasskeyResponseObject); ok {
+		if err := validResponse.VisitAddPasskeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// BeginPasskeyRegistration operation middleware
+func (sh *strictHandler) BeginPasskeyRegistration(w http.ResponseWriter, r *http.Request) {
+	var request BeginPasskeyRegistrationRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.BeginPasskeyRegistration(ctx, request.(BeginPasskeyRegistrationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BeginPasskeyRegistration")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BeginPasskeyRegistrationResponseObject); ok {
+		if err := validResponse.VisitBeginPasskeyRegistrationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RenamePasskey operation middleware
+func (sh *strictHandler) RenamePasskey(w http.ResponseWriter, r *http.Request, id Id) {
+	var request RenamePasskeyRequestObject
+
+	request.Id = id
+
+	var body RenamePasskeyJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RenamePasskey(ctx, request.(RenamePasskeyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RenamePasskey")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RenamePasskeyResponseObject); ok {
+		if err := validResponse.VisitRenamePasskeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemovePasskey operation middleware
+func (sh *strictHandler) RemovePasskey(w http.ResponseWriter, r *http.Request, id Id) {
+	var request RemovePasskeyRequestObject
+
+	request.Id = id
+
+	var body RemovePasskeyJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemovePasskey(ctx, request.(RemovePasskeyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemovePasskey")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemovePasskeyResponseObject); ok {
+		if err := validResponse.VisitRemovePasskeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ChangePassword operation middleware
 func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	var request ChangePasswordRequestObject
@@ -976,6 +2577,123 @@ func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request) 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ChangePasswordResponseObject); ok {
 		if err := validResponse.VisitChangePasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RegenerateRecoveryCodes operation middleware
+func (sh *strictHandler) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request) {
+	var request RegenerateRecoveryCodesRequestObject
+
+	var body RegenerateRecoveryCodesJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RegenerateRecoveryCodes(ctx, request.(RegenerateRecoveryCodesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RegenerateRecoveryCodes")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RegenerateRecoveryCodesResponseObject); ok {
+		if err := validResponse.VisitRegenerateRecoveryCodesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// StartTotpEnrollment operation middleware
+func (sh *strictHandler) StartTotpEnrollment(w http.ResponseWriter, r *http.Request) {
+	var request StartTotpEnrollmentRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.StartTotpEnrollment(ctx, request.(StartTotpEnrollmentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "StartTotpEnrollment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(StartTotpEnrollmentResponseObject); ok {
+		if err := validResponse.VisitStartTotpEnrollmentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ConfirmTotp operation middleware
+func (sh *strictHandler) ConfirmTotp(w http.ResponseWriter, r *http.Request) {
+	var request ConfirmTotpRequestObject
+
+	var body ConfirmTotpJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ConfirmTotp(ctx, request.(ConfirmTotpRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ConfirmTotp")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ConfirmTotpResponseObject); ok {
+		if err := validResponse.VisitConfirmTotpResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DisableTotp operation middleware
+func (sh *strictHandler) DisableTotp(w http.ResponseWriter, r *http.Request) {
+	var request DisableTotpRequestObject
+
+	var body DisableTotpJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DisableTotp(ctx, request.(DisableTotpRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DisableTotp")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DisableTotpResponseObject); ok {
+		if err := validResponse.VisitDisableTotpResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1055,6 +2773,116 @@ func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(LogoutResponseObject); ok {
 		if err := validResponse.VisitLogoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CompleteMfaLogin operation middleware
+func (sh *strictHandler) CompleteMfaLogin(w http.ResponseWriter, r *http.Request) {
+	var request CompleteMfaLoginRequestObject
+
+	var body CompleteMfaLoginJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CompleteMfaLogin(ctx, request.(CompleteMfaLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CompleteMfaLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CompleteMfaLoginResponseObject); ok {
+		if err := validResponse.VisitCompleteMfaLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// BeginMfaPasskey operation middleware
+func (sh *strictHandler) BeginMfaPasskey(w http.ResponseWriter, r *http.Request) {
+	var request BeginMfaPasskeyRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.BeginMfaPasskey(ctx, request.(BeginMfaPasskeyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BeginMfaPasskey")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BeginMfaPasskeyResponseObject); ok {
+		if err := validResponse.VisitBeginMfaPasskeyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PasskeyLogin operation middleware
+func (sh *strictHandler) PasskeyLogin(w http.ResponseWriter, r *http.Request) {
+	var request PasskeyLoginRequestObject
+
+	var body PasskeyLoginJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PasskeyLogin(ctx, request.(PasskeyLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PasskeyLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PasskeyLoginResponseObject); ok {
+		if err := validResponse.VisitPasskeyLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// BeginPasskeyLogin operation middleware
+func (sh *strictHandler) BeginPasskeyLogin(w http.ResponseWriter, r *http.Request) {
+	var request BeginPasskeyLoginRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.BeginPasskeyLogin(ctx, request.(BeginPasskeyLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BeginPasskeyLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BeginPasskeyLoginResponseObject); ok {
+		if err := validResponse.VisitBeginPasskeyLoginResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

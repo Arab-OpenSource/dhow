@@ -28,6 +28,21 @@ func Policies() []policy.Rule {
 		policy.Authenticated(http.MethodDelete, "/sessions/{id}", policy.SessionManageSelf),
 		policy.Authenticated(http.MethodGet, "/me", policy.SessionManageSelf),
 		policy.Authenticated(http.MethodPut, "/me/password", policy.SessionManageSelf),
+		policy.Public(http.MethodPost, "/sessions/mfa"),
+		policy.Public(http.MethodPost, "/sessions/mfa/passkey-options"),
+		policy.Public(http.MethodPost, "/sessions/passkey-options"),
+		policy.Public(http.MethodPost, "/sessions/passkey"),
+		policy.Authenticated(http.MethodGet, "/me/mfa", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/mfa/passkey-options", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/totp", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/totp/confirm", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/totp/disable", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/recovery-codes", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodGet, "/me/passkeys", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/passkeys", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/passkeys/options", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPatch, "/me/passkeys/{id}", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/passkeys/{id}/remove", policy.SessionManageSelf),
 	}
 }
 
