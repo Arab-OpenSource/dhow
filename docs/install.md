@@ -54,7 +54,9 @@ A new instance has no users, and public registration is closed. On every start w
 docker compose logs dhow | grep setup_url
 ```
 
-The token is the part after the `#`. The setup screen of the web app opens from that link. Until it ships, create the owner and the first organization with one API call. The `Origin` header must equal `DHOW_PUBLIC_URL`:
+The token is the part after the `#`. Open the whole link in a browser. The setup page reads the token, removes it from the address bar at once, and asks for your name, email, password and the organization name. When you submit, it creates the owner and the first organization and signs you in. The page works only from this link: opening `/setup` without the token explains where to find it.
+
+The same step is one API call if you prefer a terminal. The `Origin` header must equal `DHOW_PUBLIC_URL`:
 
 ```sh
 curl -sS -X POST https://dhow.example.com/api/v1/setup \

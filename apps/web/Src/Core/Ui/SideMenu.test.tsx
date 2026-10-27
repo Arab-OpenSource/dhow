@@ -68,6 +68,18 @@ describe('SideMenu', () => {
     expect(screen.getByRole('link', { name: 'Sabry Dawood' })).toHaveAttribute('href', '/?stack=account');
   });
 
+  it('offers a sign-out button next to the account link and keeps it off the phone bar', async () => {
+    const onSignOut = vi.fn();
+    const props = build();
+    const { user } = renderUi(
+      <SideMenu {...props} account={{ ...props.account, signOut: { label: 'Sign out', busy: false, onSelect: onSignOut } }} />,
+    );
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    expect(button.parentElement).toHaveClass('max-md:hidden');
+    await user.click(button);
+    expect(onSignOut).toHaveBeenCalledOnce();
+  });
+
   it('puts the settings link and the account row after the sections', () => {
     renderUi(<SideMenu {...build()} />);
     const nav = screen.getByRole('navigation');

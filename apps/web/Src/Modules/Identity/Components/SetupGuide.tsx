@@ -17,7 +17,7 @@ export const SetupGuide = ({ rejection }: ISetupGuideProps) => {
           {t('setup.guide.rejected.detail')}
         </InlineAlert>
       ) : null}
-      <ol className="m-0 grid gap-3 ps-5 text-body-sm">
+      <ol className="m-0 grid list-decimal gap-3 ps-5 text-body-sm">
         <li>{t('setup.guide.step1')}</li>
         <li>{t('setup.guide.step2')}</li>
         <li>{t('setup.guide.step3')}</li>

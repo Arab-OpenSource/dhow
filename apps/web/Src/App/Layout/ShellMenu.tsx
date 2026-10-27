@@ -2,6 +2,7 @@ import { OrganizationChip } from '@/App/Layout/OrganizationChip';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
 import { canReadAudit } from '@/Core/Auth/AuthTypes';
 import { useMe } from '@/Core/Auth/useMe';
+import { useSignOut } from '@/Core/Auth/useSignOut';
 import { Mark } from '@/Core/Ui/Mark';
 import { SideMenu, type IMenuItem, type TMenuEntry } from '@/Core/Ui/SideMenu';
 import { useT } from '@/I18n/useT';
@@ -11,6 +12,7 @@ export const ShellMenu = () => {
   const { stack, goWorkspace, openStack } = useShellNavigation();
 
   const me = useMe();
+  const { SignOut, Pending } = useSignOut();
   const role = me.data?.Memberships[0]?.Role;
 
   const items: TMenuEntry[] = [
@@ -76,6 +78,13 @@ export const ShellMenu = () => {
         current: stack.includes('account'),
         onSelect: () => {
           openStack(['account']);
+        },
+        signOut: {
+          label: t('account.signOut'),
+          busy: Pending,
+          onSelect: () => {
+            void SignOut();
+          },
         },
       }}
     />

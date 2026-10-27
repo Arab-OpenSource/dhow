@@ -86,3 +86,28 @@ describe('sign-in throttle', () => {
     expect(screen.queryByRole('timer')).not.toBeInTheDocument();
   });
 });
+
+describe('sign-in from the keyboard', () => {
+  it('walks email, password, the show-password button and the submit button in order, and Enter submits', async () => {
+    const { calls } = stubFetch(() => envelope({ Success: true, Data: { User: {}, CsrfToken: 'token', ExpiresAt: '2026-11-10T12:00:00Z' } }));
+    const onSignedIn = vi.fn();
+    const { user } = renderWithProviders(<LoginForm onSignedIn={onSignedIn} />, { advanceTimers: advance });
+    await user.tab();
+    expect(screen.getByLabelText(Ar['field.email'])).toHaveFocus();
+    await user.keyboard('sabry@future.dev');
+    await user.tab();
+    expect(screen.getByLabelText(Ar['field.password'])).toHaveFocus();
+    await user.keyboard('a long enough password');
+    await user.tab();
+    expect(screen.getByRole('button', { name: Ar['password.show'] })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: Ar['login.submit'] })).toHaveFocus();
+    await user.tab({ shift: true });
+    await user.tab({ shift: true });
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(onSignedIn).toHaveBeenCalledOnce();
+    });
+    expect(calls).toHaveLength(1);
+  });
+});

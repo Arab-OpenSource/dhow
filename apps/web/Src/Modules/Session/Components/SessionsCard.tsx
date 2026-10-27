@@ -5,17 +5,21 @@ import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Rows } from '@/Core/Ui/Row';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
+import type { TSessionView } from '@/Modules/Session/Api/SessionApi';
 import { RevokeOthersBar } from '@/Modules/Session/Components/RevokeOthersBar';
 import { SessionRow } from '@/Modules/Session/Components/SessionRow';
 import { ALL_OTHERS, useSessionActions } from '@/Modules/Session/Hooks/useSessionActions';
 import { useSessions } from '@/Modules/Session/Hooks/useSessions';
+
+const byCurrentThenRecent = (a: TSessionView, b: TSessionView): number =>
+  Number(b.Current) - Number(a.Current) || Date.parse(b.LastSeenAt) - Date.parse(a.LastSeenAt);
 
 export const SessionsCard = () => {
   const t = useT();
   const errorText = useApiErrorText();
   const sessions = useSessions();
   const actions = useSessionActions();
-  const list = sessions.data ?? [];
+  const list = [...(sessions.data ?? [])].sort(byCurrentThenRecent);
   const others = list.filter((session) => !session.Current).length;
 
   if (sessions.isPending) return <Skeleton label={t('account.sessions.loading')} lines={4} />;

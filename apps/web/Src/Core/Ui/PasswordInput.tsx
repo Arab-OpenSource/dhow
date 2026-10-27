@@ -14,16 +14,17 @@ export const PasswordInput = ({ className, ...rest }: TPasswordInputProps) => {
   return (
     <span dir="ltr" className="relative block">
       <Input type={Visible ? 'text' : 'password'} className={cx('pe-12', className)} {...rest} />
-      <IconButton
-        plain
-        size="sm"
-        icon={Visible ? 'eyeOff' : 'eye'}
-        label={Visible ? t('password.hide') : t('password.show')}
-        onClick={() => {
-          setVisible((current) => !current);
-        }}
-        className="absolute end-1 top-1/2 -translate-y-1/2"
-      />
+      <span className="absolute end-1 top-1/2 -translate-y-1/2">
+        <IconButton
+          plain
+          size="sm"
+          icon={Visible ? 'eyeOff' : 'eye'}
+          label={Visible ? t('password.hide') : t('password.show')}
+          onClick={() => {
+            setVisible((current) => !current);
+          }}
+        />
+      </span>
     </span>
   );
 };

@@ -48,12 +48,9 @@ export const VerifyCard = ({ state, onRetry }: IVerifyCardProps) => {
           <>
             {t('audit.verify.broken.sub', { count: state.Result.Checked })}
             {state.Result.FirstBrokenId ? (
-              <>
-                {' '}
-                <bdi dir="ltr" className="font-mono">
-                  {state.Result.FirstBrokenId}
-                </bdi>
-              </>
+              <bdi dir="ltr" className="block font-mono">
+                {state.Result.FirstBrokenId}
+              </bdi>
             ) : null}
           </>
         }

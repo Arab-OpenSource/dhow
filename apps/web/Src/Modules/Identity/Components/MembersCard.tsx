@@ -59,11 +59,10 @@ const MembersList = ({ organizationId }: { organizationId: string }) => {
             title={member.Name}
             sub={
               <>
-                <bdi dir="ltr" className="font-mono">
+                <bdi dir="ltr" className="block font-mono">
                   {member.Email}
                 </bdi>
-                {' · '}
-                {t('members.joined', { when: time.ago(member.JoinedAt) })}
+                <span className="block">{t('members.joined', { when: time.ago(member.JoinedAt) })}</span>
               </>
             }
             end={<Badge tone="mute">{t(`role.${member.Role}`)}</Badge>}

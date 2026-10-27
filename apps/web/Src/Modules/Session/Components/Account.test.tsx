@@ -168,6 +168,17 @@ describe('signing out', () => {
     expect(useToastStore.getState().Toasts.some((toast) => toast.Title === Ar['account.signOut.done'])).toBe(true);
   });
 
+  it('signs out from the button next to the account link in the side menu', async () => {
+    const { calls, state } = startBackend();
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/'] }));
+    const user = userEvent.setup();
+    render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
+    await user.click(await screen.findByRole('button', { name: Ar['account.signOut'] }));
+    expect(await screen.findByRole('heading', { level: 1, name: Ar['login.title'] })).toBeInTheDocument();
+    expect(state.signedIn).toBe(false);
+    expect(calls.some((call) => call.method === 'DELETE' && call.url.endsWith('/sessions/current'))).toBe(true);
+  });
+
   it('signs out from the command palette too', async () => {
     const { user } = await mount();
     await user.keyboard('{Control>}k{/Control}');

@@ -3,6 +3,7 @@ import type { MouseEvent, ReactNode } from 'react';
 import { Avatar } from '@/Core/Ui/Avatar';
 import { cx } from '@/Core/Ui/ClassNames';
 import { Icon } from '@/Core/Ui/Icon';
+import { IconButton } from '@/Core/Ui/IconButton';
 import type { TIconName } from '@/Core/Ui/Icons';
 import { Tooltip } from '@/Core/Ui/Tooltip';
 
@@ -24,6 +25,12 @@ export interface IPendingMenuItem {
 
 export type TMenuEntry = IMenuItem | IPendingMenuItem;
 
+export interface IMenuSignOut {
+  label: string;
+  busy: boolean;
+  onSelect: () => void;
+}
+
 export interface IMenuAccount {
   id: string;
   name: string;
@@ -31,6 +38,7 @@ export interface IMenuAccount {
   href: string;
   current?: boolean;
   onSelect: () => void;
+  signOut?: IMenuSignOut;
 }
 
 export interface ISideMenuProps {
@@ -76,26 +84,40 @@ const PendingLink = ({ item }: { item: IPendingMenuItem }) => (
 );
 
 const AccountRow = ({ account }: { account: IMenuAccount }) => (
-  <Tooltip label={account.label} side="top" phoneOnly>
-    <a
-      href={account.href}
-      aria-current={account.current ? 'page' : undefined}
-      onClick={(event) => {
-        if (isPlainClick(event)) {
-          event.preventDefault();
-          account.onSelect();
-        }
-      }}
-      className={cx(
-        'flex items-center gap-2.5 rounded-sm px-1.5 py-2 text-body-sm no-underline transition-colors duration-140',
-        'max-md:size-11 max-md:justify-center max-md:p-0',
-        account.current ? 'bg-sel text-primary' : 'text-secondary hover:bg-hover hover:text-primary',
-      )}
-    >
-      <Avatar name={account.name} size="sm" />
-      <span className="truncate max-md:sr-only">{account.label}</span>
-    </a>
-  </Tooltip>
+  <div className="flex items-center gap-1 max-md:contents">
+    <Tooltip label={account.label} side="top" phoneOnly>
+      <a
+        href={account.href}
+        aria-current={account.current ? 'page' : undefined}
+        onClick={(event) => {
+          if (isPlainClick(event)) {
+            event.preventDefault();
+            account.onSelect();
+          }
+        }}
+        className={cx(
+          'flex min-w-0 flex-1 items-center gap-2.5 rounded-sm px-1.5 py-2 text-body-sm no-underline transition-colors duration-140',
+          'max-md:size-11 max-md:flex-none max-md:justify-center max-md:p-0',
+          account.current ? 'bg-sel text-primary' : 'text-secondary hover:bg-hover hover:text-primary',
+        )}
+      >
+        <Avatar name={account.name} size="sm" />
+        <span className="truncate max-md:sr-only">{account.label}</span>
+      </a>
+    </Tooltip>
+    {account.signOut ? (
+      <span className="flex-none max-md:hidden">
+        <IconButton
+          plain
+          size="sm"
+          icon="out"
+          label={account.signOut.label}
+          disabled={account.signOut.busy}
+          onClick={account.signOut.onSelect}
+        />
+      </span>
+    ) : null}
+  </div>
 );
 
 export const SideMenu = ({ label, brand, items, bottom, account }: ISideMenuProps) => (
