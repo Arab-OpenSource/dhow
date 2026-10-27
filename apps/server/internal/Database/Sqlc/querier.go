@@ -6,10 +6,50 @@ package sqlc
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
+	CompleteInstanceSetup(ctx context.Context, completedAt time.Time) error
+	CountAuditEvents(ctx context.Context, organizationID *uuid.UUID) (int64, error)
+	CountMembers(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	GetInstance(ctx context.Context) (Instance, error)
+	GetLastAuditHash(ctx context.Context, organizationID *uuid.UUID) ([]byte, error)
+	GetOrganizationForMember(ctx context.Context, arg GetOrganizationForMemberParams) (GetOrganizationForMemberRow, error)
+	GetThrottle(ctx context.Context, key string) (GetThrottleRow, error)
+	GetUsableSetupToken(ctx context.Context, arg GetUsableSetupTokenParams) (GetUsableSetupTokenRow, error)
+	GetUserForLogin(ctx context.Context, email string) (GetUserForLoginRow, error)
+	GetUserPasswordHash(ctx context.Context, id uuid.UUID) (string, error)
+	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
+	InsertMembership(ctx context.Context, arg InsertMembershipParams) error
+	InsertOrganization(ctx context.Context, arg InsertOrganizationParams) (InsertOrganizationRow, error)
+	InsertSession(ctx context.Context, arg InsertSessionParams) (InsertSessionRow, error)
+	InsertSetupToken(ctx context.Context, arg InsertSetupTokenParams) error
+	InsertUser(ctx context.Context, arg InsertUserParams) (InsertUserRow, error)
+	InvalidateSetupTokens(ctx context.Context, now time.Time) error
+	ListActiveUserSessions(ctx context.Context, arg ListActiveUserSessionsParams) ([]ListActiveUserSessionsRow, error)
+	ListAuditEvents(ctx context.Context, arg ListAuditEventsParams) ([]ListAuditEventsRow, error)
+	ListMembers(ctx context.Context, arg ListMembersParams) ([]ListMembersRow, error)
+	ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]ListUserMembershipsRow, error)
+	LockAuditChain(ctx context.Context, chainKey string) error
+	LockInstance(ctx context.Context) (*time.Time, error)
+	LockUsableSetupToken(ctx context.Context, arg LockUsableSetupTokenParams) (uuid.UUID, error)
+	MarkSetupTokenUsed(ctx context.Context, arg MarkSetupTokenUsedParams) error
+	NextAuditId(ctx context.Context) (uuid.UUID, error)
+	RecordThrottleFailure(ctx context.Context, arg RecordThrottleFailureParams) (int32, error)
+	RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error
+	ResetThrottle(ctx context.Context, arg ResetThrottleParams) error
+	ResolveSession(ctx context.Context, arg ResolveSessionParams) (ResolveSessionRow, error)
+	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) (int64, error)
+	RevokeSessionByTokenHash(ctx context.Context, arg RevokeSessionByTokenHashParams) (int64, error)
+	RevokeUserSession(ctx context.Context, arg RevokeUserSessionParams) (int64, error)
+	SetThrottleLock(ctx context.Context, arg SetThrottleLockParams) error
+	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	TouchSession(ctx context.Context, arg TouchSessionParams) error
+	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
+	WalkAuditChain(ctx context.Context, arg WalkAuditChainParams) ([]WalkAuditChainRow, error)
 }
 
 var _ Querier = (*Queries)(nil)
