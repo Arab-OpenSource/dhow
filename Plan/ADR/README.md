@@ -38,3 +38,13 @@
 | [0034](0034-ui-direction-calm-and-organized.md) | اتجاه التصميم «هادي ومنظّم» |
 | [0035](0035-identity-core-implementation.md) | تنفيذ نواة الهوية في M2.1: سلسلة الـ audit، والـ throttle، وإعلان الـ policy لكل route |
 | [0036](0036-interactive-host-installer.md) | الـ installer التفاعلي على السيرفر (`dhow-server install`) |
+| [0041](0041-runner-identity-and-registration.md) | هوية الـ runner وتسجيله: مفاتيح Ed25519 متثبّتة، وتوكن قصير، وإثبات امتلاك عند الحاجات الحساسة |
+| [0042](0042-runner-protocol-and-leasing.md) | بروتوكول الـ runner: Connect بـ RPCs unary بس، وleases بـ fencing token، وتسليم at-least-once بإنهاء idempotent |
+| [0043](0043-job-sandbox-rootless-podman.md) | الـ sandbox: Podman rootless افتراضيًا، وagent هو PID 1، وحدود cgroup v2 بتفشل مقفولة، وgVisor اختياري |
+| [0044](0044-job-network-egress-proxy.md) | شبكة الـ job: `none` افتراضيًا، والـ egress من خلال proxy في الـ runner بقايمة hosts مسموحة |
+| [0045](0045-secrets-transport-and-masking.md) | توصيل الأسرار للـ job: HPKE لمفتاح الـ runner، والذاكرة بس، والـ masking في الـ runner قبل أي حاجة تخرج |
+| [0046](0046-job-logs-storage-and-streaming.md) | الـ logs: chunks متسلسلة من غير فراغات في جدول Postgres مقسّم بالأيام، وSSE بيكمّل من آخر seq |
+| [0047](0047-job-state-machine-and-reconciliation.md) | حالات الـ job والـ attempt، والإلغاء بالتدريج، والـ reconciliation بقيود في قاعدة البيانات |
+| [0048](0048-runner-packaging-and-kubernetes.md) | تغليف الـ runner: binary وsystemd ووضع `runner` في الـ installer، وHelm chart واحد، وpod لكل job على Kubernetes |
+
+الأرقام من 0037 لـ 0040 محجوزة لقرارات M2 اللي جاية.
