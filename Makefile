@@ -12,6 +12,11 @@ ACTIONLINT_VERSION    := v1.7.12
 OAPI_CODEGEN_VERSION  := v2.8.1
 SQLC_VERSION          := v1.31.1
 WEB_DIST              := apps/server/internal/App/WebDist
+IMAGE                 ?= dhow:dev
+IMAGE_DOCKERFILE      ?= deploy/docker/Dockerfile
+DOCKER_BUILD_FLAGS    ?=
+COMPOSE_DIR           := deploy/compose
+COMPOSE               := docker compose --project-directory $(COMPOSE_DIR) -f $(COMPOSE_DIR)/compose.yaml
 
 .PHONY: build
 build: ## Build bin/dhow-server
@@ -28,6 +33,24 @@ web: ## Build the web app and copy it into the server embed directory
 release: ## Build bin/dhow-server with the web app embedded
 	$(MAKE) web
 	$(MAKE) build
+
+.PHONY: image
+image: ## Build the container image (IMAGE=dhow:dev)
+	docker build $(DOCKER_BUILD_FLAGS) -f $(IMAGE_DOCKERFILE) \
+		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(IMAGE) .
+
+.PHONY: compose-up
+compose-up: ## Start the Compose stack with the local image (run deploy/compose/init.sh first)
+	@test -f $(COMPOSE_DIR)/.env || { echo "$(COMPOSE_DIR)/.env is missing: run $(COMPOSE_DIR)/init.sh first" >&2; exit 1; }
+	DHOW_IMAGE=$(IMAGE) $(COMPOSE) up --detach --wait
+
+.PHONY: compose-down
+compose-down: ## Stop the Compose stack and keep its data (COMPOSE_DOWN_FLAGS=--volumes deletes it)
+	DHOW_IMAGE=$(IMAGE) $(COMPOSE) down $(COMPOSE_DOWN_FLAGS)
+
+.PHONY: smoke
+smoke: image ## Build the image, start a fresh Compose stack, check it, and remove it
+	deploy/smoke.sh $(IMAGE)
 
 .PHONY: gen
 gen: ## Regenerate code from the OpenAPI spec (one config per module) and SQL queries
