@@ -3,8 +3,9 @@ package logging
 import (
 	"bytes"
 	"log/slog"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRedactsSensitiveKeys(t *testing.T) {
@@ -20,25 +21,33 @@ func TestRedactsSensitiveKeys(t *testing.T) {
 	)
 	out := buf.String()
 	for _, leak := range []string{"hunter2", "ak_live_123", "Bearer abc", "deadbeef", "sid=xyz"} {
-		if strings.Contains(out, leak) {
-			t.Errorf("log leaks %q: %s", leak, out)
-		}
+		assert.NotContains(t, out, leak)
 	}
 	for _, keep := range []string{`"user":"sara"`, `"path":"/api/v1/meta"`} {
-		if !strings.Contains(out, keep) {
-			t.Errorf("log lost %s: %s", keep, out)
-		}
+		assert.Contains(t, out, keep)
 	}
 }
 
 func TestIsSensitiveKey(t *testing.T) {
-	tests := map[string]bool{
-		"password": true, "db_password": true, "secretKey": true, "access-token": true, "session_id": true,
-		"key": true, "ssh.private_key": true, "user": false, "path": false, "status": false, "keyboard": false,
+	tests := []struct {
+		key  string
+		want bool
+	}{
+		{"password", true},
+		{"db_password", true},
+		{"secretKey", true},
+		{"access-token", true},
+		{"session_id", true},
+		{"key", true},
+		{"ssh.private_key", true},
+		{"user", false},
+		{"path", false},
+		{"status", false},
+		{"keyboard", false},
 	}
-	for k, want := range tests {
-		if got := IsSensitiveKey(k); got != want {
-			t.Errorf("IsSensitiveKey(%q) = %v, want %v", k, got, want)
-		}
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			assert.Equal(t, tt.want, IsSensitiveKey(tt.key))
+		})
 	}
 }
