@@ -30,4 +30,5 @@
 | [0026](0026-product-name.md) | اسم المنتج: Dhow |
 | [0027](0027-public-repo-from-day-one.md) | مستودع عام من اليوم الأول |
 | [0028](0028-naming-conventions-and-project-hooks.md) | قواعد التسمية والأسلوب، وفرضها بـ Claude Code hooks |
+| [0029](0029-design-system-aurora-dusk.md) | الـ Design System على aurora-dark-ui بألوان الغروب، وغامق بس في الإصدار الأول |
 | [0030](0030-server-modular-monolith.md) | هيكل السيرفر: Modular Monolith بتكييف Go |
