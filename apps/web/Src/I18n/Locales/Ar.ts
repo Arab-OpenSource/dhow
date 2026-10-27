@@ -111,7 +111,7 @@ export const Ar = {
   'themeEditor.contrast': 'فحص التباين',
   'themeEditor.contrast.textOnCards': 'النص على الكروت',
   'themeEditor.contrast.secondaryOnCanvas': 'النص الثانوي على الخلفية',
-  'themeEditor.contrast.textOnGradient': 'الكلام على التدرّج',
+  'themeEditor.contrast.textOnPrimary': 'الكلام على الزرار الأساسي',
   'themeEditor.contrast.pass': 'عدّى الحد الأدنى',
   'themeEditor.contrast.fail': 'أقل من الحد الأدنى 4.5 إلى 1',
   'themeEditor.similar': '{first} و{second} قريبين من بعض، وممكن يتلخبطوا.',

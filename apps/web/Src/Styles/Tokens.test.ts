@@ -64,8 +64,35 @@ describe('design tokens', () => {
   });
 
   it('derives the theme-dependent colours from the base tokens, so custom themes follow too', () => {
-    expect(generated).toMatch(/--color-frame: color-mix\(in srgb, var\(--color-canvas\)/);
-    expect(generated).toMatch(/--color-bubble: color-mix\(in srgb, var\(--color-surface-inset\)/);
+    expect(generated).toContain('--color-accent: var(--color-aurora-1);');
+    expect(generated).toMatch(/--color-on-accent: color-mix\(in srgb, var\(--color-aurora-1\) \d+%, black\);/);
+    expect(generated).toMatch(/--color-sel: color-mix\(in srgb, var\(--color-aurora-1\)/);
+    for (const tone of ['ok', 'warn', 'bad']) {
+      for (const part of ['wash', 'line', 'fg']) expect(generated).toContain(`--color-${tone}-${part}: color-mix(`);
+    }
+  });
+
+  it('defines the direction A hairlines, radii and control heights', () => {
+    expect(generated).toContain('--color-line: #ffffff14;');
+    expect(generated).toContain('--color-line-2: #ffffff24;');
+    for (const [name, value] of [
+      ['sm', '8px'],
+      ['md', '12px'],
+      ['lg', '16px'],
+      ['btn', '10px'],
+      ['input', '10px'],
+    ]) {
+      expect(generated).toContain(`--radius-${name}: ${value};`);
+    }
+    expect(generated).toContain('--spacing-btn: 40px;');
+    expect(generated).toContain('--spacing-input: 44px;');
+    expect(generated).toContain('--spacing-menu: 216px;');
+  });
+
+  it('keeps every type size at 13px or more', () => {
+    const sizes = [...generated.matchAll(/--text-[a-z0-9-]+: (\d+(?:\.\d+)?)px;/g)].map((match) => Number(match[1]));
+    expect(sizes.length).toBeGreaterThan(0);
+    expect(Math.min(...sizes)).toBeGreaterThanOrEqual(13);
   });
 
   it('keeps hex colors out of application code', () => {

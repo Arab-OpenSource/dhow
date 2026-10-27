@@ -113,7 +113,7 @@ export const En: TMessages = {
   'themeEditor.contrast': 'Contrast check',
   'themeEditor.contrast.textOnCards': 'Text on cards',
   'themeEditor.contrast.secondaryOnCanvas': 'Secondary text on background',
-  'themeEditor.contrast.textOnGradient': 'Text on the gradient',
+  'themeEditor.contrast.textOnPrimary': 'Text on the primary button',
   'themeEditor.contrast.pass': 'Meets the minimum',
   'themeEditor.contrast.fail': 'Below the 4.5 to 1 minimum',
   'themeEditor.similar': '{first} and {second} look too alike and may be mixed up.',

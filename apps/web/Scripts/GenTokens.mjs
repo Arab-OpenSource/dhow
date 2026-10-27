@@ -8,7 +8,7 @@ const tokens = JSON.parse(readFileSync(source, 'utf8'));
 const themes = JSON.parse(readFileSync(themeSource, 'utf8'));
 
 const HEX = /^#[0-9a-f]{6}$/i;
-const DERIVED = /^color-mix\(/;
+const DERIVED = /^(color-mix|var)\(/;
 
 const THEME = 'dark';
 const COLOR_PREFIX = /^(color|text|border)-/;
@@ -59,7 +59,10 @@ const themeBlocks = themes.themes.map(
 const colors = tokens.color.tokens.map((t) => `  --color-${t.name.replace(COLOR_PREFIX, '')}: ${colorValue(t)};`);
 const radii = tokens.radius.tokens.map((t) => `  --radius-${t.name.replace('radius-', '')}: ${t.value};`);
 const shadows = tokens.shadow.tokens.map((t) => `  --shadow-${t.name.replace('shadow-', '')}: ${t.value};`);
-const layout = tokens.layout.tokens.map((t) => `  --spacing-${t.name.replace('layout-', '')}: ${t.value};`);
+const layout = [
+  ...tokens.layout.tokens.map((t) => `  --spacing-${t.name.replace('layout-', '')}: ${t.value};`),
+  ...tokens.control.tokens.map((t) => `  --spacing-${t.name.replace('control-', '')}: ${t.value};`),
+];
 const fonts = Object.entries(tokens.type.families).map(([name, stack]) => `  --font-${name}: ${stack};`);
 const text = tokens.type.groups
   .flatMap((group) => group.styles)
