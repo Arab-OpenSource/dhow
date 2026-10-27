@@ -53,7 +53,7 @@ flowchart TB
 
 ### 2.1 Control plane (`apps/server`, Go — ADR-0003)
 
-A modular monolith shipped as a single binary. The modules are listed below; each one has its own package and owns its own tables.
+A modular monolith shipped as a single binary. The modules are listed below; each one has its own package and owns its own tables. On disk, `apps/server/internal` holds `App` (router and bootstrap), `Config`, `Core` (errors, response envelope, i18n, middleware, event bus), `Database` (migrations and generated queries) and `Modules/<Name>` (routes, controller, service, models, queries, generated API code and tests). Only `App` imports modules, and modules talk to each other through the event bus.
 
 | Module | Responsibility |
 |---|---|
@@ -93,7 +93,7 @@ A modular monolith shipped as a single binary. The modules are listed below; eac
 
 | Store | Use | Notes |
 |---|---|---|
-| **PostgreSQL** (required) | All state, plus the job queue (`FOR UPDATE SKIP LOCKED`), advisory locks (migrations, environment locks), and `LISTEN/NOTIFY` for intra-cluster events | The only required stateful dependency. Migrations run as a separate locked step. |
+| **PostgreSQL 18** (required, for native `uuidv7()`) | All state, plus the job queue (`FOR UPDATE SKIP LOCKED`), advisory locks (migrations, environment locks), and `LISTEN/NOTIFY` for intra-cluster events | The only required stateful dependency. Migrations run as a separate locked step. |
 | **Object storage** (required, with a disk default) | Logs, artifacts and build cache | S3-compatible (AWS S3, R2, MinIO) or local disk for single-node installs. |
 | **Redis** (optional) | Cross-instance pub/sub fan-out, distributed rate limits, and hot caches at high scale | When Redis is absent, the same interfaces fall back to Postgres. |
 

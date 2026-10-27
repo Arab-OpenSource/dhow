@@ -1,0 +1,193 @@
+openapi: 3.0.3
+info:
+  title: Dhow API
+  version: 0.1.0
+  description: |
+    Public REST API of the Dhow control plane. This file is the source of truth (spec-first):
+    change it, run `make gen`, then implement. JSON field names are PascalCase and path segments are kebab-case.
+    Every response uses the envelope: Success is required, and Data, Message, Meta and Error are omitted when absent.
+  license:
+    name: AGPL-3.0-only
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+servers:
+  - url: /api/v1
+tags:
+  - name: system
+    description: Health and instance metadata. Served by the System module.
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      tags: [system]
+      summary: Liveness probe
+      description: Returns 200 while the process is running. Does not touch dependencies.
+      security: []
+      responses:
+        "200":
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /health/ready:
+    get:
+      operationId: getReadiness
+      tags: [system]
+      summary: Readiness probe
+      description: Returns 200 when the database is reachable and fully migrated, otherwise 503.
+      security: []
+      responses:
+        "200":
+          description: Ready to serve traffic.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "503":
+          description: >-
+            Not ready. Success is false, Error carries the code `SERVICE_UNAVAILABLE`, and Data names each
+            failing check without internal details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /meta:
+    get:
+      operationId: getMeta
+      tags: [system]
+      summary: Instance metadata
+      description: Public information the UI needs before sign-in.
+      security: []
+      responses:
+        "200":
+          description: Instance metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaResponse"
+        default:
+          $ref: "#/components/responses/Error"
+components:
+  responses:
+    Error:
+      description: An error. Never contains internal details.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    Envelope:
+      type: object
+      required: [Success]
+      properties:
+        Success:
+          type: boolean
+        Message:
+          type: string
+          description: An i18n key such as `system.meta.loaded`. The client translates it.
+          example: system.meta.loaded
+        Meta:
+          $ref: "#/components/schemas/PageMeta"
+        Error:
+          $ref: "#/components/schemas/ErrorDetail"
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          required: [Error]
+    HealthResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/HealthStatus"
+    MetaResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Meta"
+    PageMeta:
+      type: object
+      additionalProperties: false
+      required: [Page, Limit, Total]
+      properties:
+        Page:
+          type: integer
+          minimum: 1
+        Limit:
+          type: integer
+          minimum: 1
+        Total:
+          type: integer
+          minimum: 0
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required: [Code, Message]
+      properties:
+        Code:
+          type: string
+          description: >-
+            Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`,
+            `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE` or `SERVICE_UNAVAILABLE`.
+          example: INTERNAL
+        Message:
+          type: string
+          description: Message translated by the server for the Accept-Language locale (Arabic by default).
+          example: Something went wrong. Try again later.
+        Details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorFieldDetail"
+    ErrorFieldDetail:
+      type: object
+      additionalProperties: false
+      required: [Field, Message]
+      properties:
+        Field:
+          type: string
+        Message:
+          type: string
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [Status, Checks]
+      properties:
+        Status:
+          type: string
+          enum: [ok, unavailable]
+        Checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/HealthCheck"
+    HealthCheck:
+      type: object
+      additionalProperties: false
+      required: [Name, Ok]
+      properties:
+        Name:
+          type: string
+          enum: [database, migrations]
+        Ok:
+          type: boolean
+    Meta:
+      type: object
+      additionalProperties: false
+      required: [Version, Commit, SetupRequired]
+      properties:
+        Version:
+          type: string
+          example: v0.1.0
+        Commit:
+          type: string
+          example: 2e39188
+        SetupRequired:
+          type: boolean
+          description: True until the first owner completes setup.

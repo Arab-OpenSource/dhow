@@ -1,0 +1,108 @@
+package response_test
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
+	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
+	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
+)
+
+type payload struct {
+	Name string `json:"Name"`
+}
+
+func TestSuccess(t *testing.T) {
+	tests := []struct {
+		name string
+		data any
+		msg  string
+		meta *response.Meta
+		want string
+	}{
+		{"data only", payload{Name: "dhow"}, "", nil, `{"Success":true,"Data":{"Name":"dhow"}}`},
+		{"data and message", payload{Name: "dhow"}, "system.meta.loaded", nil, `{"Success":true,"Data":{"Name":"dhow"},"Message":"system.meta.loaded"}`},
+		{"with page meta", []int{1, 2}, "", &response.Meta{Page: 1, Limit: 2, Total: 9}, `{"Success":true,"Data":[1,2],"Meta":{"Page":1,"Limit":2,"Total":9}}`},
+		{"nothing else", nil, "", nil, `{"Success":true}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			response.Success(rec, http.StatusOK, tt.data, tt.msg, tt.meta)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+			assert.JSONEq(t, tt.want, rec.Body.String())
+		})
+	}
+}
+
+func TestSuccessCreatedStatus(t *testing.T) {
+	rec := httptest.NewRecorder()
+	response.Success(rec, http.StatusCreated, payload{Name: "x"}, "", nil)
+	assert.Equal(t, http.StatusCreated, rec.Code)
+}
+
+func TestSuccessUnmarshalableFallsBack(t *testing.T) {
+	rec := httptest.NewRecorder()
+	response.Success(rec, http.StatusOK, make(chan int), "", nil)
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.JSONEq(t, `{"Success":false,"Error":{"Code":"INTERNAL","Message":"Something went wrong. Try again later."}}`, rec.Body.String())
+}
+
+func TestError(t *testing.T) {
+	tests := []struct {
+		name       string
+		acceptLang string
+		err        *apperrors.AppError
+		wantStatus int
+		want       string
+	}{
+		{"arabic by default", "", apperrors.NotFound(), http.StatusNotFound, `{"Success":false,"Error":{"Code":"NOT_FOUND","Message":"المورد المطلوب مش موجود."}}`},
+		{"english", "en", apperrors.NotFound(), http.StatusNotFound, `{"Success":false,"Error":{"Code":"NOT_FOUND","Message":"The requested resource does not exist."}}`},
+		{
+			"details are translated", "en",
+			apperrors.ValidationFailed(apperrors.IErrorDetail{Field: "Name", Message: "errors.badRequest"}),
+			http.StatusUnprocessableEntity,
+			`{"Success":false,"Error":{"Code":"VALIDATION_FAILED","Message":"Some of the data is not valid. Check it and try again.","Details":[{"Field":"Name","Message":"The request is not valid. Check the data and try again."}]}}`,
+		},
+		{"internal text never leaks", "en", apperrors.Internal(assert.AnError), http.StatusInternalServerError, `{"Success":false,"Error":{"Code":"INTERNAL","Message":"Something went wrong. Try again later."}}`},
+		{"nil error is internal", "en", nil, http.StatusInternalServerError, `{"Success":false,"Error":{"Code":"INTERNAL","Message":"Something went wrong. Try again later."}}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+			req = req.WithContext(i18n.WithLocale(req.Context(), i18n.Parse(tt.acceptLang)))
+			rec := httptest.NewRecorder()
+			response.Error(rec, req, tt.err)
+			assert.Equal(t, tt.wantStatus, rec.Code)
+			assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+			assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+			assert.JSONEq(t, tt.want, rec.Body.String())
+		})
+	}
+}
+
+func TestErrorEnvelopeOmitsAbsentFields(t *testing.T) {
+	rec := httptest.NewRecorder()
+	response.Error(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody), apperrors.BadRequest())
+	var raw map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &raw))
+	assert.Len(t, raw, 2)
+	assert.Contains(t, raw, "Success")
+	assert.Contains(t, raw, "Error")
+}
+
+func TestLocalizeKeepsTheOriginal(t *testing.T) {
+	ae := apperrors.NotFound()
+	out := response.Localize(i18n.WithLocale(httptest.NewRequest(http.MethodGet, "/", http.NoBody).Context(), i18n.En), ae)
+	assert.Equal(t, "errors.notFound", ae.Message)
+	assert.Equal(t, "The requested resource does not exist.", out.Message)
+	assert.Equal(t, http.StatusNotFound, out.Status)
+	assert.Nil(t, out.Err)
+}

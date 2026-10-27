@@ -25,6 +25,24 @@
 | `docs/` | وثائق عامة بالإنجليزي |
 | `Plan/` | خطط وADRs وسجل يومي، بالعربي |
 
+### هيكل `apps/server/internal` (Modular Monolith، ADR-0030)
+
+| المجلد | الدور |
+|---|---|
+| `App/` | الـ router والـ middleware العامة والـ bootstrap (`Run()`)، وهو الوحيد اللي بيستورد `Modules/` |
+| `Config/` | الـ env والـ validator وفتح الـ DB والـ logger والثوابت |
+| `Core/<X>/` | حاجات مشتركة: `Errors` (`package apperrors`) و`Response` و`I18n` و`Middleware` و`EventBus` |
+| `Database/<X>/` | `Migrations` (ملفات SQL والـ migrator) و`Sqlc` (متولّد) |
+| `Modules/<Name>/` | كل ميزة لوحدها: `<Name>.Routes.go` و`.Controller.go` و`.Service.go` و`Models/` و`Queries/` و`Gen/` و`Test/{Unit,Integration,E2E,Edge}` |
+
+- أسماء المجلدات وملفات Go PascalCase بنقط للأدوار (`System.Service.go`)، وأسماء الـ packages lowercase.
+- الموديول ممنوع يستورد موديول تاني. التواصل بينهم عن طريق `Core/EventBus`. و`Core` و`Config` و`Database` ممنوع يستوردوا `Modules` أو `App`.
+- كل موديول ليه `oapi-codegen.yaml` بـ `include-tags`، و`make gen` بيشغّلهم كلهم.
+- أي جدول جديد فيه الأعمدة الأربعة: `"Id" uuid DEFAULT uuidv7()` و`"CreatedAt"` و`"UpdatedAt"` و`"IsDeleted"`. الاستثناء الوحيد جدول `"Instance"`.
+- الحذف soft بس (ممنوع `DELETE FROM` في `Queries/`)، والوقت `timestamptz` بـ UTC، والنص `TEXT` مش `VARCHAR`، والترجمات في جدول `<Entity>Translations` مش أعمدة `NameAr`/`NameEn`.
+- مسارات الـ API بـ kebab-case، وأكواد الأخطاء UPPER_SNAKE، ورسالة الخطأ بتتترجم في السيرفر من `Accept-Language`، ورسالة النجاح هي مفتاح i18n.
+- PostgreSQL 18 (لـ `uuidv7()` المدمجة).
+
 ممنوع ملفات Markdown بره `docs/` و`Plan/` و`.github/` و`.claude/`. الاستثناء: README وREADME.ar وCLAUDE وCONTRIBUTING وSECURITY وLICENSE في الـ root.
 
 ## الأوامر
@@ -48,6 +66,9 @@
 - مكان الـ Markdown.
 - طول الملف.
 - الـ migrations اللي اتعملها merge.
+- مكان ملفات Go في `apps/server/internal`، وتسمية PascalCase، واتجاه الاستيراد بين الطبقات.
+- قواعد الـ migrations (الأعمدة الأساسية، `timestamptz`، `TEXT`، ممنوع أعمدة `Ar`/`En`) وممنوع `DELETE FROM` في الـ queries.
+- مسارات `openapi.yaml` بـ kebab-case.
 - رسائل الـ commits (Conventional، إنجليزي، ومن غير أي إشارة لـ AI).
 - `--no-verify` والـ force-push على main.
 

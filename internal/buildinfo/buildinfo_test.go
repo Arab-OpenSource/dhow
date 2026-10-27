@@ -1,13 +1,13 @@
 package buildinfo
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestGetDefaults(t *testing.T) {
 	info := Get()
-	if info.Version != "dev" {
-		t.Fatalf("version = %q, want %q", info.Version, "dev")
-	}
-	if info.GoVersion == "" {
-		t.Fatal("GoVersion is empty")
-	}
+	assert.Equal(t, "dev", info.Version)
+	assert.NotEmpty(t, info.GoVersion)
 }
