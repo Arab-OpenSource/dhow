@@ -1,8 +1,8 @@
 import { Card } from '@/Core/Ui/Card';
-import { Icon } from '@/Core/Ui/Icon';
-import { StatusDot } from '@/Core/Ui/StatusDot';
+import { Row, Rows } from '@/Core/Ui/Row';
 import { useT } from '@/I18n/useT';
-import type { TCheckName, THealthStatus } from '@/Modules/System/Types/SystemTypes';
+import { CheckBadge } from '@/Modules/System/Components/CheckBadge';
+import { CHECK_ICONS, type TCheckName, type THealthStatus } from '@/Modules/System/Types/SystemTypes';
 
 export interface IChecksCardProps {
   health: THealthStatus;
@@ -11,43 +11,25 @@ export interface IChecksCardProps {
 
 export const ChecksCard = ({ health, onOpenCheck }: IChecksCardProps) => {
   const t = useT();
-  const overall = health.Status === 'ok' ? 'live' : 'failed';
 
   return (
-    <Card
-      title={t('status.checks.title')}
-      icon="health"
-      end={
-        <StatusDot status={overall}>{t(overall === 'live' ? 'status.state.live' : 'status.state.failed')}</StatusDot>
-      }
-    >
+    <Card title={t('status.checks.title')} icon="server" end={<CheckBadge ok={health.Status === 'ok'} />}>
       {health.Checks.length === 0 ? (
-        <p className="m-0 text-caption text-tertiary">{t('status.checks.empty')}</p>
+        <p className="m-0 px-4 pt-1.5 pb-4 text-body-sm text-secondary">{t('status.checks.empty')}</p>
       ) : (
-        <ul className="m-0 grid list-none gap-1.5 p-0">
+        <Rows>
           {health.Checks.map((check) => (
-            <li key={check.Name}>
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenCheck(check.Name);
-                }}
-                className={
-                  'flex w-full cursor-pointer items-center justify-between gap-3 rounded-md border-0 bg-row px-3 py-2.5 ' +
-                  'text-start text-body-sm text-primary hover:bg-surface-raised'
-                }
-              >
-                <span>{t(`status.check.${check.Name}`)}</span>
-                <span className="flex items-center gap-2">
-                  <StatusDot status={check.Ok ? 'live' : 'failed'}>
-                    {t(check.Ok ? 'status.state.live' : 'status.state.failed')}
-                  </StatusDot>
-                  <Icon name="next" size={16} className="text-muted" />
-                </span>
-              </button>
-            </li>
+            <Row
+              key={check.Name}
+              icon={CHECK_ICONS[check.Name]}
+              title={t(`status.check.${check.Name}`)}
+              end={<CheckBadge ok={check.Ok} />}
+              onSelect={() => {
+                onOpenCheck(check.Name);
+              }}
+            />
           ))}
-        </ul>
+        </Rows>
       )}
     </Card>
   );

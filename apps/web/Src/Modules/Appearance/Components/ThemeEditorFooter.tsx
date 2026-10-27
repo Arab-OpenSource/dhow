@@ -32,9 +32,8 @@ export const ThemeEditorFooter = ({ onCancel, onDone }: IThemeEditorFooterProps)
     <>
       {draft?.Existing ? (
         <Button
-          size="sm"
-          variant="quiet"
-          iconStart="close"
+          variant="danger"
+          iconStart="trash"
           onClick={() => {
             Delete(draft.Id);
           }}
@@ -42,11 +41,11 @@ export const ThemeEditorFooter = ({ onCancel, onDone }: IThemeEditorFooterProps)
           {t('themeEditor.delete')}
         </Button>
       ) : null}
-      <span className="flex-1" />
-      <Button size="sm" variant="quiet" onClick={onCancel}>
+      <Button variant="ghost" onClick={onCancel}>
         {t('themeEditor.cancel')}
       </Button>
-      <Button size="sm" variant="aurora" type="submit" form={THEME_FORM_ID} iconStart="check">
+      <span className="flex-1" />
+      <Button variant="primary" type="submit" form={THEME_FORM_ID} iconStart="check">
         {t('themeEditor.save')}
       </Button>
     </>
