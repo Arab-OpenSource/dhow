@@ -8,15 +8,15 @@ const BUDGETS = { js: 180 * KB, css: 30 * KB };
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const html = readFileSync(join(dist, 'index.html'), 'utf8');
 
-const attr = (tag, name) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
+const attr = (tag, name) => new RegExp(`\\s${name}="([^"]*)"`, 'i').exec(tag)?.[1];
 
 const collect = () => {
   const js = new Set();
   const css = new Set();
-  for (const [tag] of html.matchAll(/<script\b[^>]*>/g)) {
+  for (const [tag] of html.matchAll(/<script\b[^>]*>/gi)) {
     if (attr(tag, 'type') === 'module' && attr(tag, 'src')) js.add(attr(tag, 'src'));
   }
-  for (const [tag] of html.matchAll(/<link\b[^>]*>/g)) {
+  for (const [tag] of html.matchAll(/<link\b[^>]*>/gi)) {
     const rel = attr(tag, 'rel');
     if (rel === 'modulepreload') js.add(attr(tag, 'href'));
     if (rel === 'stylesheet') css.add(attr(tag, 'href'));
