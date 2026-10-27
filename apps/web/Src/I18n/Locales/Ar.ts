@@ -1,0 +1,74 @@
+export const Ar = {
+  'app.title': 'داو',
+
+  'shell.nav.label': 'التنقّل الرئيسي',
+  'shell.nav.workspace': 'مساحة الشغل',
+  'shell.nav.systemStatus': 'حالة السيرفر',
+  'shell.skipToContent': 'روح للمحتوى',
+  'shell.brand': 'داو',
+  'shell.search': 'دوّر على صفحة أو أمر',
+  'shell.notifications': 'افتح الإشعارات',
+  'shell.language.switch': 'بدّل اللغة إلى {language}',
+
+  'language.ar': 'العربية',
+  'language.en': 'English',
+
+  'palette.label': 'الأوامر',
+  'palette.placeholder': 'اكتب اسم صفحة أو أمر',
+  'palette.empty': 'مفيش نتيجة. جرّب كلمة تانية.',
+  'palette.kind.page': 'صفحة',
+  'palette.kind.panel': 'لوحة',
+  'palette.kind.action': 'إجراء',
+  'palette.command.workspace': 'روح لمساحة الشغل',
+  'palette.command.systemStatus': 'افتح حالة السيرفر',
+  'palette.command.notifications': 'افتح الإشعارات',
+  'palette.command.language': 'بدّل اللغة إلى {language}',
+
+  'ui.close': 'اقفل',
+  'ui.loading': 'بيحمّل',
+
+  'toast.dismiss': 'اقفل',
+  'toast.unknownPanel.title': 'اللوحة اللي طلبتها مش موجودة',
+  'toast.unknownPanel.detail': 'رجّعناك لمساحة الشغل.',
+
+  'notFound.text': 'الصفحة دي مش موجودة.',
+  'notFound.action': 'ارجع لمساحة الشغل',
+
+  'workspace.title': 'مساحة الشغل',
+  'workspace.empty.text': 'لسه مفيش مشاريع هنا. أول ما تضيف مشروع هيظهر في المساحة دي.',
+  'workspace.empty.action': 'افتح حالة السيرفر',
+
+  'notifications.title': 'الإشعارات',
+  'notifications.empty': 'مفيش إشعارات جديدة.',
+
+  'setup.banner.title': 'الإعداد الأولاني لسه ماخلصش',
+  'setup.banner.body': 'السيرفر شغّال، بس لسه محتاج يخلّص الإعداد الأولاني.',
+
+  'apiDown.title': 'مش قادرين نوصل للسيرفر',
+  'apiDown.body': 'الواجهة فاضلة شغّالة. اتأكد إن السيرفر شغّال وإن النت واصل.',
+  'apiDown.retry': 'جرّب الاتصال تاني',
+
+  'status.title': 'حالة السيرفر',
+  'status.subtitle': 'الفحوصات والنسخة الشغّالة دلوقتي',
+  'status.loading': 'بيحمّل حالة السيرفر',
+  'status.error.title': 'مقدرناش نجيب حالة السيرفر',
+  'status.retry': 'جرّب تاني',
+  'status.refresh': 'حدّث حالة السيرفر',
+  'status.refreshing': 'بيحدّث الحالة',
+  'status.build.title': 'النسخة',
+  'status.build.version': 'رقم النسخة',
+  'status.build.commit': 'رقم الـ commit',
+  'status.build.setup': 'الإعداد الأولاني',
+  'status.build.setupDone': 'مكتمل',
+  'status.build.setupPending': 'لسه ماخلصش',
+  'status.checks.title': 'الفحوصات',
+  'status.checks.empty': 'السيرفر مابعتش أي فحوصات.',
+  'status.check.database': 'قاعدة البيانات',
+  'status.check.migrations': 'تحديثات قاعدة البيانات',
+  'status.state.live': 'شغّال',
+  'status.state.failed': 'فشل',
+
+  'api.error.network': 'مش قادرين نوصل للسيرفر. اتأكد إن النت واصل وجرّب تاني.',
+  'api.error.invalid': 'السيرفر رد برد مش مفهوم. جرّب تاني.',
+  'api.error.unknown': 'حصلت مشكلة. جرّب تاني.',
+} as const;

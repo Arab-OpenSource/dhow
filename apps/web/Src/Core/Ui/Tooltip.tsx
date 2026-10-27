@@ -2,6 +2,7 @@ import * as RadixTooltip from '@radix-ui/react-tooltip';
 import type { ReactElement, ReactNode } from 'react';
 
 import { useDocumentDirection } from '@/Core/Hooks/useDocumentDirection';
+import type { TDirection } from '@/I18n/Locale';
 
 export interface ITooltipProps {
   label: string;
@@ -15,7 +16,7 @@ export const TooltipProvider = ({ children }: { children: ReactNode }) => (
   </RadixTooltip.Provider>
 );
 
-const physicalSide = (side: NonNullable<ITooltipProps['side']>, dir: 'rtl' | 'ltr'): 'left' | 'right' | 'top' | 'bottom' => {
+const physicalSide = (side: NonNullable<ITooltipProps['side']>, dir: TDirection): 'left' | 'right' | 'top' | 'bottom' => {
   if (side === 'top' || side === 'bottom') return side;
   const startIsLeft = dir === 'ltr';
   if (side === 'start') return startIsLeft ? 'left' : 'right';

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-export type TDirection = 'rtl' | 'ltr';
+import type { TDirection } from '@/I18n/Locale';
 
 const subscribe = (onChange: () => void): (() => void) => {
   const observer = new MutationObserver(onChange);
