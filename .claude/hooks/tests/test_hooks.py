@@ -141,9 +141,9 @@ class FileRules(unittest.TestCase):
         self.assertIn("lines", edit("internal/a/a.go", "var y = 2\n", final=big))
 
     def test_sql_naming(self):
-        self.assertIn("table names", edit("apps/server/migrations/00002_x.sql", "CREATE TABLE projects (\n"))
-        self.assertIn("column names", edit("apps/server/migrations/00002_x.sql", 'CREATE TABLE "Projects" (\n  created_at timestamptz\n'))
-        self.assertIsNone(edit("apps/server/migrations/00002_x.sql", GOOD_TABLE))
+        self.assertIn("table names", edit("apps/server/internal/Database/Migrations/00002_x.sql", "CREATE TABLE projects (\n"))
+        self.assertIn("column names", edit("apps/server/internal/Database/Migrations/00002_x.sql", 'CREATE TABLE "Projects" (\n  created_at timestamptz\n'))
+        self.assertIsNone(edit("apps/server/internal/Database/Migrations/00002_x.sql", GOOD_TABLE))
 
 
 class ServerLayoutRules(unittest.TestCase):
