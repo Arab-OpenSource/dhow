@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dhow.runner.v1;
+
+import "dhow/runner/v1/common.proto";
+
+service RegistrationService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+}
+
+message RegisterRequest {
+  string token = 1;
+  string name = 2;
+  string os = 3;
+  string arch = 4;
+  string version = 5;
+  repeated Isolation isolation_levels = 6;
+  int32 capacity = 7;
+  bytes signing_public_key = 8;
+  bytes encryption_public_key = 9;
+  bytes proof = 10;
+}
+
+message RegisterResponse {
+  string runner_id = 1;
+  string organization_id = 2;
+  repeated string labels = 3;
+  bytes server_signing_public_key = 4;
+  int32 server_key_version = 5;
+}

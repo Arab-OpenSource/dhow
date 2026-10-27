@@ -11,6 +11,14 @@ GOVULNCHECK_VERSION   := v1.8.0
 ACTIONLINT_VERSION    := v1.7.12
 OAPI_CODEGEN_VERSION  := v2.8.1
 SQLC_VERSION          := v1.31.1
+PROTOBUF_VERSION      := v1.36.12
+CONNECT_VERSION       := v1.21.0
+BUF_VERSION           := v1.73.0
+BUF                   := $(GO) run github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
+TOOLS_DIR             := bin/tools
+PROTO_DIR             := packages/proto
+PROTO_AGAINST_BRANCH  ?= main
+PROTO_AGAINST         ?= $(shell git rev-parse --git-common-dir 2>/dev/null)\#branch=$(PROTO_AGAINST_BRANCH),subdir=$(PROTO_DIR)
 WEB_DIST              := apps/server/internal/App/WebDist
 IMAGE                 ?= dhow:dev
 E2E_BASE              ?= debian:12
@@ -65,20 +73,38 @@ smoke: image ## Build the image, start a fresh Compose stack, check it, and remo
 proxy-check: image ## Build the image and test the documented nginx, Caddy and Traefik configs in Docker (local only)
 	deploy/proxy-check/run.sh $(IMAGE)
 
+.PHONY: tools
+tools: ## Build the pinned protoc plugins into bin/tools
+	GOBIN=$(abspath $(TOOLS_DIR)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOBUF_VERSION)
+	GOBIN=$(abspath $(TOOLS_DIR)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@$(CONNECT_VERSION)
+
 .PHONY: gen
-gen: ## Regenerate code from the OpenAPI spec (one config per module) and SQL queries
+gen: tools ## Regenerate code from the OpenAPI spec (one config per module), SQL queries and the runner protocol
 	set -e; for cfg in apps/server/internal/Modules/*/oapi-codegen.yaml; do \
 		$(GO) run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) \
 			-config $$cfg packages/openapi/openapi.yaml; \
 	done
 	cd apps/server && $(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION) generate
+	$(BUF) generate $(PROTO_DIR) --template $(PROTO_DIR)/buf.gen.yaml
+
+.PHONY: proto-lint
+proto-lint: ## Lint the runner protocol and check it for breaking changes against main
+	$(BUF) lint $(PROTO_DIR)
+	@git rev-parse --verify --quiet refs/heads/$(PROTO_AGAINST_BRANCH) >/dev/null || \
+		{ echo "proto-lint: branch $(PROTO_AGAINST_BRANCH) is missing: git fetch origin $(PROTO_AGAINST_BRANCH):$(PROTO_AGAINST_BRANCH)" >&2; exit 1; }
+	@if git cat-file -e $(PROTO_AGAINST_BRANCH):$(PROTO_DIR)/buf.yaml 2>/dev/null; then \
+		echo "$(BUF) breaking $(PROTO_DIR) --against '$(PROTO_AGAINST)'"; \
+		$(BUF) breaking $(PROTO_DIR) --against '$(PROTO_AGAINST)'; \
+	else \
+		echo "proto-lint: $(PROTO_AGAINST_BRANCH) has no $(PROTO_DIR) yet, so there is nothing to break"; \
+	fi
 
 .PHONY: help
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
 .PHONY: check
-check: lint lint-actions test vuln hooks-test ## Everything CI checks
+check: lint lint-actions proto-lint test vuln hooks-test ## Everything CI checks
 
 .PHONY: fmt
 fmt: ## Format Go code
