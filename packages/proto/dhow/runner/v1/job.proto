@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package dhow.runner.v1;
+
+import "dhow/runner/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+message JobSpec {
+  string image = 1;
+  repeated Step steps = 2;
+  map<string, string> env = 3;
+  repeated SecretRef secrets = 4;
+  Resources resources = 5;
+  int32 timeout_seconds = 6;
+  Network network = 7;
+  Isolation isolation = 8;
+  repeated string labels = 9;
+}
+
+message Step {
+  string name = 1;
+  string run = 2;
+  map<string, string> env = 3;
+  bool mutating = 4;
+  int32 timeout_seconds = 5;
+}
+
+message SecretRef {
+  string name = 1;
+  oneof target {
+    string as_env = 2;
+    string as_file = 3;
+  }
+  repeated int32 step_indexes = 4;
+}
+
+message Resources {
+  int64 cpu_millis = 1;
+  int64 memory_bytes = 2;
+  int64 pids = 3;
+  int64 disk_bytes = 4;
+}
+
+message Network {
+  repeated string egress = 1;
+}
+
+enum HpkeKem {
+  HPKE_KEM_UNSPECIFIED = 0;
+  HPKE_KEM_MLKEM768_X25519 = 1;
+}
+
+message SealedSecrets {
+  HpkeKem kem = 1;
+  bytes enc = 2;
+  bytes ciphertext = 3;
+}
+
+message LeaseGrant {
+  string lease_id = 1;
+  string attempt_id = 2;
+  string job_id = 3;
+  string organization_id = 4;
+  string runner_id = 5;
+  int64 fencing_token = 6;
+  int32 lease_ttl_seconds = 7;
+  google.protobuf.Timestamp issued_at = 8;
+  JobSpec spec = 9;
+}
+
+message SignedLeaseGrant {
+  bytes grant_bytes = 1;
+  bytes signature = 2;
+  int32 key_version = 3;
+}

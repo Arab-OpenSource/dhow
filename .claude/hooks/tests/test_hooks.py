@@ -58,6 +58,16 @@ class CommentRules(unittest.TestCase):
     def test_markdown_not_checked(self):
         self.assertIsNone(edit("docs/a.md", "<!-- c -->\n", exists=True))
 
+    def test_proto_comments_blocked(self):
+        proto = "packages/proto/dhow/runner/v1/lease.proto"
+        self.assertIn("no comments", edit(proto, 'syntax = "proto3";\n// Lease asks for a job\nmessage A {}\n'))
+        self.assertIn("no comments", edit(proto, "message A {\n  int32 b = 1; /* why */\n}\n"))
+
+    def test_proto_directives_allowed(self):
+        src = 'syntax = "proto3";\n// buf:lint:ignore RPC_REQUEST_STANDARD_NAME\nmessage A { string b = 1; }\n'
+        self.assertIsNone(edit("packages/proto/dhow/runner/v1/lease.proto", src))
+        self.assertIsNone(edit("packages/proto/dhow/runner/v1/a.proto", 'option go_package = "x//y";\n'))
+
 
 class GoRules(unittest.TestCase):
     def test_shell_exec_blocked(self):
@@ -122,6 +132,9 @@ class FileRules(unittest.TestCase):
         self.assertIn("generated", edit("apps/server/internal/Database/Sqlc/Instance.sql.go", "x", exists=True))
         self.assertIn("generated", edit("apps/server/internal/legacy/gen/api.gen.go", "x", exists=True))
         self.assertIn("generated", edit("apps/web/pnpm-lock.yaml", "x", exists=True))
+        self.assertIn("generated", edit("packages/proto/gen/go/dhow/runner/v1/lease.pb.go", "x", exists=True))
+        self.assertIn("generated", edit("packages/proto/gen/go/dhow/runner/v1/runnerv1connect/lease.connect.go", "x"))
+        self.assertIsNone(edit("packages/proto/contract_test.go", "package proto_test\n"))
 
     def test_secret_blocked(self):
         self.assertIn("private key", edit("deploy/x.yaml", "-----BEGIN " + "OPENSSH PRIVATE KEY-----\n"))

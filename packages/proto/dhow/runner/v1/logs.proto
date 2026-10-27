@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dhow.runner.v1;
+
+import "dhow/runner/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service LogService {
+  rpc Append(AppendRequest) returns (AppendResponse);
+}
+
+enum LogStream {
+  LOG_STREAM_UNSPECIFIED = 0;
+  LOG_STREAM_STDOUT = 1;
+  LOG_STREAM_STDERR = 2;
+  LOG_STREAM_SYSTEM = 3;
+}
+
+message LogChunk {
+  int64 seq = 1;
+  LogStream stream = 2;
+  optional int32 step_index = 3;
+  google.protobuf.Timestamp emitted_at = 4;
+  bytes data = 5;
+}
+
+message AppendRequest {
+  LeaseRef lease = 1;
+  repeated LogChunk chunks = 2;
+}
+
+message AppendResponse {
+  int64 last_seq = 1;
+  optional int64 expected_seq = 2;
+  bool log_truncated = 3;
+  LeaseControl control = 4;
+}

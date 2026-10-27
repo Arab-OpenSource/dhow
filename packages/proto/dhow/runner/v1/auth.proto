@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package dhow.runner.v1;
+
+import "dhow/runner/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service AuthService {
+  rpc Challenge(ChallengeRequest) returns (ChallengeResponse);
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+  rpc RotateKeys(RotateKeysRequest) returns (RotateKeysResponse);
+}
+
+message AuthChallenge {
+  bytes nonce = 1;
+  string runner_id = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message IssuedChallenge {
+  bytes challenge_bytes = 1;
+  bytes mac = 2;
+}
+
+message ChallengeRequest {
+  RunnerRef runner = 1;
+}
+
+message ChallengeResponse {
+  IssuedChallenge challenge = 1;
+}
+
+message AuthenticateRequest {
+  RunnerRef runner = 1;
+  IssuedChallenge challenge = 2;
+  bytes signature = 3;
+}
+
+message AuthenticateResponse {
+  string access_token = 1;
+  int32 expires_in_seconds = 2;
+}
+
+message RotateKeysRequest {
+  bytes new_signing_public_key = 1;
+  bytes new_encryption_public_key = 2;
+  bytes old_key_signature = 3;
+  bytes new_key_signature = 4;
+}
+
+message RotateKeysResponse {
+  int32 key_version = 1;
+}
