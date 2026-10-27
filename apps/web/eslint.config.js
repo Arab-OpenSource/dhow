@@ -35,7 +35,7 @@ export default tseslint.config(
       'no-restricted-syntax': [
         'error',
         {
-          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          selector: 'JSXAttribute[name.name=/^dangerously/]',
           message: 'Render elements, never HTML strings.',
         },
       ],

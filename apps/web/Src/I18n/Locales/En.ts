@@ -47,7 +47,7 @@ export const En: TMessages = {
   'setup.banner.body': 'The server is running, but it still needs to finish its first-time setup.',
 
   'apiDown.title': 'We cannot reach the server',
-  'apiDown.body': 'The interface keeps working. Check that the server is running and your network is up.',
+  'apiDown.body': 'The app keeps working. Check that the server is running and your network is up.',
   'apiDown.retry': 'Try the connection again',
 
   'status.title': 'Server status',
