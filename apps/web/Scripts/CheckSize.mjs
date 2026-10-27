@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 const KB = 1024;
-const BUDGETS = { js: 180 * KB, css: 30 * KB };
+const BUDGETS = { js: 128 * KB, css: 30 * KB };
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const html = readFileSync(join(dist, 'index.html'), 'utf8');
 
