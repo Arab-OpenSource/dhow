@@ -1,6 +1,6 @@
 # خطة M1: الواجهة (`apps/web`)
 
-**الحالة:** القرارات متوافق عليها، ومستنية «نفّذ» · **التاريخ:** 2026-10-27
+**الحالة:** اتنفّذت على فرع `m1/web-shell`، ومستنية مراجعة Sabry · **التاريخ:** 2026-10-27
 
 ## الهدف
 أول نسخة من الواجهة بتشتغل فوق السيرفر اللي اندمج في #2. الهيكل وقواعده بيتثبّتوا من دلوقتي، والشاشات نفسها هتتبني بعدين. يعني M1 فيه الـ shell والتنقّل والترجمة والاتصال بالـ API بس، ومفيش features.
@@ -96,6 +96,28 @@
 - `localStorage` مقفول (private mode): الإعدادات الافتراضية تشتغل من غير crash.
 - اسم مشروع طويل أو مكتوب بالإنجليزي جوه نص عربي: بيتعزل بـ `<bdi>`.
 
+## اللي اتنفّذ فعلًا
+
+**اختلافات عن الخطة (وليه):**
+- **الترتيب:** الترجمة (5) والـ API (6) اتعملوا قبل الـ shell (4)، لأن الـ shell مفيهوش نص مكتوب في الكود، ومحتاج `useT` والـ client من الأول.
+- **الاعتماديات:** `react-hook-form` و`zod` مش متضافين، لأن M1 مفيهوش فورم. وRadix فيه `Dialog` و`Tooltip` بس، و`Tabs` و`Switch` و`Checkbox` يتضافوا مع أول شاشة بتستخدمهم.
+- **TypeScript 6.0.3 مش 7.0.2:** `typescript-eslint` بيقبل `<6.1.0` و`openapi-typescript` بيقبل `5.x`. ESLint 10 شغّال مع `eslint-plugin-jsx-a11y` (بيعلن دعم لحد 9) وكل قواعده بتشتغل، وده متجرّب.
+- **الـ overlay:** `Dialog.Overlay` من Radix بيركّب `react-remove-scroll`، وده بيحقن `<style>` والـ CSP (`style-src 'self'`) بترفضه وبتظهر أخطاء في الـ console. فالـ backdrop بتاعنا عنصر عادي، والـ Dialog content (focus trap وEsc وaria) فاضل من Radix. اختبارات `SlideOver` و`CommandPalette` بتتأكد إن مفيش `<style>` اتحقن، والتحقق في المتصفح على السيرفر الحقيقي طلع من غير أي خطأ.
+- **الـ backdrop blur:** الـ Design System بيحدد blur خفيف (8px) ورا الـ overlay بس، فاتطبّق زي ما هو. مفيش blur على أي كارت.
+- **الخطوط:** Poppins وIBM Plex Sans Arabic وIBM Plex Mono بوزن 400 و500 بس (الـ wordmark SVG). مفيش وزن 300 أو 600 لحد ما حد يحتاجهم.
+- **`WebDist`:** فيه `.keep` بدل `index.html` placeholder، فلو مفيش build كل المسارات اللي مش `/api/` بترجع 404 بنفس الـ envelope. كده اختبارات السيرفر القديمة فاضلة صح، واختبارات `App/Web_test.go` بتشتغل على filesystem وهمي فمش بتتأثر بـ `make web`.
+- **الـ CI:** pnpm بييجي من `corepack` ومن حقل `packageManager`، بدل `pnpm/action-setup`، لأن SHA الـ action مش متاح للتثبيت في الجلسة دي. الـ cache من `actions/setup-node`.
+- **hooks زيادة:** `Modules` ممنوع يستورد `App`، وأي ملف اسمه `UseX` (بـ U كبيرة) مرفوض، وأي مسار `apps/web/src/` بحروف صغيرة مرفوض.
+
+**أهداف الـ build:**
+- `make check` و`make build` Go بس، من غير الواجهة، وبيشتغلوا على `WebDist` الفاضي. الـ CI (job `go`) بيشغّلهم زي ما هم.
+- job `web` في الـ CI بيشغّل `pnpm` مباشرة: install وفحص الـ drift للـ API والـ tokens وlint وtypecheck وtest وbuild وsize.
+- `make web` بيبني ويكوبي في `WebDist`، و`make release` بيعمل `web` وبعده `build`. ده للإصدارات ولتشغيل الواجهة محليًا، ومش داخل في الـ CI لسه.
+
+**الحجم (gzip):** الـ JS الأولاني حوالي 149 KB من 180، والـ CSS حوالي 6 KB من 30. حركة Motion (`domAnimation`) بتتحمّل lazy مع أول overlay.
+
 ## مفتوح
-- «نفّذ» من Sabry.
+- مراجعة Sabry للفرع.
 - branch protection على `main`.
+- مسح worktree `m1/web` القديم (Sabry هو اللي هيمسحه).
+- هل نضيف `make release` للـ CI؟
