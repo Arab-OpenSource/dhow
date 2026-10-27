@@ -102,7 +102,7 @@ describe('what the API client reads from a reply', () => {
           { status: 401, headers: { 'Content-Type': 'application/json', 'Retry-After': '30' } },
         ),
     );
-    const failure = await request(() => ApiClient.POST('/sessions', { body: { Email: 'a@b.c', Password: 'x' } })).catch(
+    const failure = await request<unknown>(() => ApiClient.POST('/sessions', { body: { Email: 'a@b.c', Password: 'x' } })).catch(
       (error: unknown) => error,
     );
     expect(failure).toMatchObject({
@@ -115,7 +115,7 @@ describe('what the API client reads from a reply', () => {
 
   it('leaves RetryAfterSeconds empty without the header', async () => {
     stubFetch(() => envelope({ Success: false, Error: { Code: 'INVALID_CREDENTIALS', Message: 'x' } }, 401));
-    await expect(request(() => ApiClient.POST('/sessions', { body: { Email: 'a@b.c', Password: 'x' } }))).rejects.toMatchObject({
+    await expect(request<unknown>(() => ApiClient.POST('/sessions', { body: { Email: 'a@b.c', Password: 'x' } }))).rejects.toMatchObject({
       RetryAfterSeconds: null,
     });
   });
