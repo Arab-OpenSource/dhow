@@ -13,6 +13,7 @@ OAPI_CODEGEN_VERSION  := v2.8.1
 SQLC_VERSION          := v1.31.1
 WEB_DIST              := apps/server/internal/App/WebDist
 IMAGE                 ?= dhow:dev
+E2E_BASE              ?= debian:12
 IMAGE_DOCKERFILE      ?= deploy/docker/Dockerfile
 DOCKER_BUILD_FLAGS    ?=
 COMPOSE_DIR           := deploy/compose
@@ -37,6 +38,10 @@ release: ## Build bin/dhow-server with the web app embedded
 .PHONY: dist
 dist: ## Build reproducible release archives and SHA256SUMS in dist/ (run make web first)
 	deploy/release/dist.sh $(VERSION) $(COMMIT)
+
+.PHONY: installer-e2e
+installer-e2e: build ## Run the installer end to end in a systemd container (E2E_BASE=debian:12)
+	deploy/install/e2e/run.sh $(E2E_BASE) bin/dhow-server
 
 .PHONY: image
 image: ## Build the container image (IMAGE=dhow:dev)
