@@ -38,3 +38,4 @@
 | [0034](0034-ui-direction-calm-and-organized.md) | اتجاه التصميم «هادي ومنظّم» |
 | [0035](0035-identity-core-implementation.md) | تنفيذ نواة الهوية في M2.1: سلسلة الـ audit، والـ throttle، وإعلان الـ policy لكل route |
 | [0036](0036-interactive-host-installer.md) | الـ installer التفاعلي على السيرفر (`dhow-server install`) |
+| [0037](0037-mfa-implementation.md) | تنفيذ التحقق بخطوتين في M2.2: خطوة `mfa_pending`، وTOTP، وأكواد الطوارئ، ومفاتيح المرور |
