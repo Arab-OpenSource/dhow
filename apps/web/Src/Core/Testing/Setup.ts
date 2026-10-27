@@ -3,6 +3,9 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 
+import { DEFAULT_THEME_ID } from '@/Core/Theme/ThemeTokens';
+import { useThemeStore } from '@/Core/Theme/useThemeStore';
+
 window.scrollTo = vi.fn();
 Element.prototype.scrollIntoView = vi.fn();
 Element.prototype.hasPointerCapture = vi.fn(() => false);
@@ -38,4 +41,7 @@ afterEach(() => {
   window.localStorage.clear();
   document.documentElement.lang = 'ar';
   document.documentElement.dir = 'rtl';
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('style');
+  useThemeStore.setState({ ActiveId: DEFAULT_THEME_ID, CustomThemes: [], Draft: null });
 });
