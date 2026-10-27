@@ -1,0 +1,286 @@
+{
+ "name": "داو",
+ "version": 1,
+ "default": "sea",
+ "groups": [
+  "bg",
+  "text",
+  "aurora",
+  "edge",
+  "status"
+ ],
+ "tokens": [
+  {
+   "key": "canvas",
+   "variable": "--color-canvas",
+   "group": "bg",
+   "usage": "Main content background."
+  },
+  {
+   "key": "rail",
+   "variable": "--color-rail",
+   "group": "bg",
+   "usage": "The icon rail, one step lighter than canvas."
+  },
+  {
+   "key": "input",
+   "variable": "--color-input",
+   "group": "bg",
+   "usage": "Deepest well: the log viewer and command palette input."
+  },
+  {
+   "key": "inset",
+   "variable": "--color-surface-inset",
+   "group": "bg",
+   "usage": "Rows and inputs placed inside a card; table header."
+  },
+  {
+   "key": "surface",
+   "variable": "--color-surface",
+   "group": "bg",
+   "usage": "Card body (end of the card gradient)."
+  },
+  {
+   "key": "raised",
+   "variable": "--color-surface-raised",
+   "group": "bg",
+   "usage": "Hover and selected rows; skeleton blocks."
+  },
+  {
+   "key": "top",
+   "variable": "--color-surface-top",
+   "group": "bg",
+   "usage": "Card top (start of the card gradient); selected segment."
+  },
+  {
+   "key": "track",
+   "variable": "--color-track",
+   "group": "bg",
+   "usage": "Progress and pipeline tracks, disabled fills."
+  },
+  {
+   "key": "t1",
+   "variable": "--color-primary",
+   "group": "text",
+   "usage": "Headings, values, body on canvas and every surface (≥15:1)."
+  },
+  {
+   "key": "t2",
+   "variable": "--color-secondary",
+   "group": "text",
+   "usage": "Labels, list items, icons at rest on canvas and surfaces (≥8:1)."
+  },
+  {
+   "key": "t3",
+   "variable": "--color-tertiary",
+   "group": "text",
+   "usage": "Meta, timestamps, placeholders, inactive rail icons on canvas and surfaces (≥5:1). The lowest tier for readable information."
+  },
+  {
+   "key": "t4",
+   "variable": "--color-muted",
+   "group": "text",
+   "usage": "Disabled only. Never for information the user needs."
+  },
+  {
+   "key": "a1",
+   "variable": "--color-aurora-1",
+   "group": "aurora",
+   "usage": "Aurora dusk stop 1, amber: the leading edge of the brand gradient."
+  },
+  {
+   "key": "a2",
+   "variable": "--color-aurora-2",
+   "group": "aurora",
+   "usage": "Aurora dusk stop 2, apricot."
+  },
+  {
+   "key": "a3",
+   "variable": "--color-aurora-3",
+   "group": "aurora",
+   "usage": "Aurora dusk stop 3, pearl: the bright centre that makes aurora read as light."
+  },
+  {
+   "key": "a4",
+   "variable": "--color-aurora-4",
+   "group": "aurora",
+   "usage": "Aurora dusk stop 4, blush."
+  },
+  {
+   "key": "a5",
+   "variable": "--color-aurora-5",
+   "group": "aurora",
+   "usage": "Aurora dusk stop 5, pink."
+  },
+  {
+   "key": "a6",
+   "variable": "--color-aurora-6",
+   "group": "aurora",
+   "usage": "Aurora dusk stop 6, rose: the trailing edge."
+  },
+  {
+   "key": "edge-warm",
+   "variable": "--color-edge-warm",
+   "group": "edge",
+   "usage": "Edge light, leading (warm) end. Interactive outlines only."
+  },
+  {
+   "key": "edge-cool",
+   "variable": "--color-edge-cool",
+   "group": "edge",
+   "usage": "Edge light, trailing (cool violet) end. Interactive outlines only."
+  },
+  {
+   "key": "green",
+   "variable": "--color-accent-green",
+   "group": "status",
+   "usage": "Category: live / succeeded. Dot, icon, flare, progress fill."
+  },
+  {
+   "key": "blue",
+   "variable": "--color-accent-blue",
+   "group": "status",
+   "usage": "Category: building / running; also the focus ring and primary data series."
+  },
+  {
+   "key": "amber",
+   "variable": "--color-accent-amber",
+   "group": "status",
+   "usage": "Category: awaiting approval. Saturated amber is a state, never the brand (the brand is the pale aurora)."
+  },
+  {
+   "key": "coral",
+   "variable": "--color-accent-coral",
+   "group": "status",
+   "usage": "Category: failed; destructive text actions."
+  },
+  {
+   "key": "violet-soft",
+   "variable": "--color-accent-violet-soft",
+   "group": "status",
+   "usage": "Queued at small sizes (dots)."
+  }
+ ],
+ "themes": [
+  {
+   "id": "sea",
+   "colors": {
+    "canvas": "#071318",
+    "rail": "#0b1a20",
+    "input": "#040d11",
+    "inset": "#0e1d23",
+    "surface": "#10222a",
+    "raised": "#163039",
+    "top": "#1c3842",
+    "track": "#27464f",
+    "t1": "#f3f4f6",
+    "t2": "#b3c2c6",
+    "t3": "#86979c",
+    "t4": "#5e636b",
+    "a1": "#2ec4b6",
+    "a2": "#7fe0d3",
+    "a3": "#e8f6ef",
+    "a4": "#f6e2b3",
+    "a5": "#f0c06a",
+    "a6": "#e7a94a",
+    "edge-warm": "#f0c06a",
+    "edge-cool": "#2ec4b6",
+    "green": "#6bbf72",
+    "blue": "#68b3ec",
+    "amber": "#f49514",
+    "coral": "#ed7572",
+    "violet-soft": "#b379e1"
+   }
+  },
+  {
+   "id": "teak",
+   "colors": {
+    "canvas": "#100d0b",
+    "rail": "#17130f",
+    "input": "#0a0806",
+    "inset": "#1a1511",
+    "surface": "#1d1814",
+    "raised": "#262019",
+    "top": "#2e2720",
+    "track": "#3d342b",
+    "t1": "#f3f4f6",
+    "t2": "#c2b8ad",
+    "t3": "#968b80",
+    "t4": "#5e636b",
+    "a1": "#c98a3b",
+    "a2": "#e6b56d",
+    "a3": "#f8ead2",
+    "a4": "#f1c7a6",
+    "a5": "#e08e64",
+    "a6": "#c96b4f",
+    "edge-warm": "#e6b56d",
+    "edge-cool": "#c96b4f",
+    "green": "#6bbf72",
+    "blue": "#68b3ec",
+    "amber": "#f49514",
+    "coral": "#ed7572",
+    "violet-soft": "#b379e1"
+   }
+  },
+  {
+   "id": "dusk",
+   "colors": {
+    "canvas": "#0c1015",
+    "rail": "#13171c",
+    "input": "#05060f",
+    "inset": "#161a1e",
+    "surface": "#1a1e23",
+    "raised": "#22262b",
+    "top": "#2a2e31",
+    "track": "#34383d",
+    "t1": "#f3f4f6",
+    "t2": "#b4b8bf",
+    "t3": "#8a8f97",
+    "t4": "#5e636b",
+    "a1": "#f2b66b",
+    "a2": "#f6cb98",
+    "a3": "#fbeadf",
+    "a4": "#fdd0d8",
+    "a5": "#fe9fc1",
+    "a6": "#f5a9ca",
+    "edge-warm": "#f2aa7d",
+    "edge-cool": "#a98be6",
+    "green": "#6bbf72",
+    "blue": "#68b3ec",
+    "amber": "#f49514",
+    "coral": "#ed7572",
+    "violet-soft": "#b379e1"
+   }
+  },
+  {
+   "id": "indigo",
+   "colors": {
+    "canvas": "#0a0b18",
+    "rail": "#0f1024",
+    "input": "#06071a",
+    "inset": "#121430",
+    "surface": "#151733",
+    "raised": "#1c1f42",
+    "top": "#24274f",
+    "track": "#31355f",
+    "t1": "#f3f4f6",
+    "t2": "#b6b8d4",
+    "t3": "#8a8cab",
+    "t4": "#5e636b",
+    "a1": "#6f6cf6",
+    "a2": "#a9a6ff",
+    "a3": "#eceaff",
+    "a4": "#fde9c4",
+    "a5": "#f8c463",
+    "a6": "#f2a93b",
+    "edge-warm": "#f8c463",
+    "edge-cool": "#8f8cfa",
+    "green": "#6bbf72",
+    "blue": "#68b3ec",
+    "amber": "#f49514",
+    "coral": "#ed7572",
+    "violet-soft": "#e88fd0"
+   }
+  }
+ ]
+}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"testing/fstest"
 
 	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
@@ -37,6 +38,10 @@ func DiscardLogger() *slog.Logger {
 }
 
 func Router(d system.Deps) http.Handler {
+	return RouterWithWeb(d, app.NewWebHandler(fstest.MapFS{}))
+}
+
+func RouterWithWeb(d system.Deps, web http.Handler) http.Handler {
 	if d.Log == nil {
 		d.Log = DiscardLogger()
 	}
@@ -56,6 +61,7 @@ func Router(d system.Deps) http.Handler {
 		},
 		Log:    d.Log,
 		System: d,
+		Web:    web,
 	})
 }
 

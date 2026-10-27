@@ -50,10 +50,10 @@ class CommentRules(unittest.TestCase):
         self.assertIsNone(edit("internal/a/a.go", "// old\nx := 1\n", old="// old\n"))
 
     def test_ts_comment_blocked(self):
-        self.assertIsNotNone(edit("apps/web/src/a.ts", "export const IX = 1;\n// hi\n"))
+        self.assertIsNotNone(edit("apps/web/Src/Core/Ui/A.ts", "export const IX = 1;\n// hi\n"))
 
     def test_ts_directive_allowed(self):
-        self.assertIsNone(edit("apps/web/src/a.ts", "// eslint-disable-next-line no-alert\nexport const A = 1;\n"))
+        self.assertIsNone(edit("apps/web/Src/Core/Ui/A.ts", "// eslint-disable-next-line no-alert\nexport const A = 1;\n"))
 
     def test_markdown_not_checked(self):
         self.assertIsNone(edit("docs/a.md", "<!-- c -->\n", exists=True))
@@ -90,30 +90,30 @@ class GoRules(unittest.TestCase):
 
 class TsRules(unittest.TestCase):
     def test_any_blocked(self):
-        self.assertIn("any", edit("apps/web/src/a.ts", "export const X = (v: any) => v;\n"))
+        self.assertIn("any", edit("apps/web/Src/Core/Ui/A.ts", "export const X = (v: any) => v;\n"))
 
     def test_naming(self):
-        self.assertIn("`I`", edit("apps/web/src/a.ts", "export interface Props { A: string }\n"))
-        self.assertIn("`T`", edit("apps/web/src/a.ts", "export type Role = 'a' | 'b';\n"))
-        self.assertIn("`E`", edit("apps/web/src/a.ts", "export enum Status { Live = 'live' }\n"))
-        self.assertIsNone(edit("apps/web/src/a.ts", "export interface IProps { A: string }\nexport type TRole = 'a';\nexport enum EStatus { Live = 'live' }\n"))
+        self.assertIn("`I`", edit("apps/web/Src/Core/Ui/A.ts", "export interface Props { A: string }\n"))
+        self.assertIn("`T`", edit("apps/web/Src/Core/Ui/A.ts", "export type Role = 'a' | 'b';\n"))
+        self.assertIn("`E`", edit("apps/web/Src/Core/Ui/A.ts", "export enum Status { Live = 'live' }\n"))
+        self.assertIsNone(edit("apps/web/Src/Core/Ui/A.ts", "export interface IProps { A: string }\nexport type TRole = 'a';\nexport enum EStatus { Live = 'live' }\n"))
 
     def test_console_blocked(self):
-        self.assertIsNotNone(edit("apps/web/src/a.ts", "console.log(1);\n"))
-        self.assertIsNone(edit("apps/web/src/a.test.ts", "console.log(1);\n"))
+        self.assertIsNotNone(edit("apps/web/Src/Core/Ui/A.ts", "console.log(1);\n"))
+        self.assertIsNone(edit("apps/web/Src/Core/Ui/A.test.ts", "console.log(1);\n"))
 
     def test_inner_html_and_eval_blocked(self):
-        self.assertIsNotNone(edit("apps/web/src/a.tsx", "export const A = () => <div dangerouslySetInnerHTML={x} />;\n"))
-        self.assertIsNotNone(edit("apps/web/src/a.ts", "const f = new Function('x');\n"))
+        self.assertIsNotNone(edit("apps/web/Src/Core/Ui/A.tsx", "export const A = () => <div dangerouslySetInnerHTML={x} />;\n"))
+        self.assertIsNotNone(edit("apps/web/Src/Core/Ui/A.ts", "const f = new Function('x');\n"))
 
     def test_function_component_blocked(self):
-        self.assertIn("arrow", edit("apps/web/src/A.tsx", "export function Card() { return null; }\n"))
+        self.assertIn("arrow", edit("apps/web/Src/Core/Ui/A.tsx", "export function Card() { return null; }\n"))
 
     def test_physical_direction_blocked(self):
-        self.assertIn("logical", edit("apps/web/src/A.tsx", 'export const A = () => <div className="ml-2 text-left" />;\n'))
-        self.assertIn("logical", edit("apps/web/src/a.css", ".x { margin-left: 4px; }\n"))
-        self.assertIsNone(edit("apps/web/src/A.tsx", 'export const A = () => <div className="ms-2 text-start" />;\n'))
-        self.assertIsNone(edit("apps/web/src/a.css", ".x { margin-inline-start: 4px; inset-inline-end: 0; }\n"))
+        self.assertIn("logical", edit("apps/web/Src/Core/Ui/A.tsx", 'export const A = () => <div className="ml-2 text-left" />;\n'))
+        self.assertIn("logical", edit("apps/web/Src/Styles/A.css", ".x { margin-left: 4px; }\n"))
+        self.assertIsNone(edit("apps/web/Src/Core/Ui/A.tsx", 'export const A = () => <div className="ms-2 text-start" />;\n'))
+        self.assertIsNone(edit("apps/web/Src/Styles/A.css", ".x { margin-inline-start: 4px; inset-inline-end: 0; }\n"))
 
 
 class FileRules(unittest.TestCase):

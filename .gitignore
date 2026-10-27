@@ -2,7 +2,8 @@
 /bin/
 /dist/
 apps/web/dist/
-apps/server/web/dist/
+apps/server/internal/App/WebDist/*
+!apps/server/internal/App/WebDist/.keep
 coverage.out
 *.test
 
