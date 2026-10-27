@@ -1,17 +1,17 @@
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
+import { useMe } from '@/Core/Auth/useMe';
 import { Mark } from '@/Core/Ui/Mark';
-import { SideMenu, type IMenuItem, type IPendingMenuItem } from '@/Core/Ui/SideMenu';
+import { SideMenu, type IMenuItem, type TMenuEntry } from '@/Core/Ui/SideMenu';
 import { useT } from '@/I18n/useT';
 
 export const ShellMenu = () => {
   const t = useT();
   const { stack, goWorkspace, openStack } = useShellNavigation();
 
-  const items: IMenuItem[] = [
-    { id: 'home', icon: 'home', label: t('shell.nav.home'), href: '/', current: stack.length === 0, onSelect: goWorkspace },
-  ];
+  const me = useMe();
 
-  const pending: IPendingMenuItem[] = [
+  const items: TMenuEntry[] = [
+    { id: 'home', icon: 'home', label: t('shell.nav.home'), href: '/', current: stack.length === 0, onSelect: goWorkspace },
     { id: 'projects', icon: 'layers', label: t('shell.nav.projects'), hint: t('shell.soon') },
     { id: 'runners', icon: 'server', label: t('shell.nav.runners'), hint: t('shell.soon') },
     { id: 'team', icon: 'users', label: t('shell.nav.team'), hint: t('shell.soon') },
@@ -41,9 +41,17 @@ export const ShellMenu = () => {
         </>
       }
       items={items}
-      pending={pending}
       bottom={bottom}
-      account={{ id: 'account', icon: 'user', avatar: 'user', label: t('shell.nav.account'), hint: t('shell.soon') }}
+      account={{
+        id: 'account',
+        name: me.data?.User.Name ?? '',
+        label: me.data?.User.Name ?? t('shell.nav.account'),
+        href: '/?stack=account',
+        current: stack.includes('account'),
+        onSelect: () => {
+          openStack(['account']);
+        },
+      }}
     />
   );
 };

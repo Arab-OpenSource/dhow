@@ -26,7 +26,7 @@ const mountLocked = async (status = 401, retryAfter = '30') => {
   return { ...view, calls };
 };
 
-const lockedButton = (time: string) => screen.getByRole('button', { name: Ar['login.retryIn'].replace('{time}', time) });
+const lockedButton = (time: string) => screen.getByRole('button', { name: Ar['throttle.retryIn'].replace('{time}', time) });
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });

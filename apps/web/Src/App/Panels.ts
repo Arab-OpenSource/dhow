@@ -7,7 +7,14 @@ export const STACK_SEPARATOR = ',';
 export const MAX_STACK_DEPTH = 6;
 export const UNKNOWN_STACK = 'unknown';
 
-const STATIC_FRAMES = ['system-status', 'notifications', 'appearance', 'theme-edit'] as const;
+const STATIC_FRAMES = [
+  'system-status',
+  'notifications',
+  'appearance',
+  'theme-edit',
+  'account',
+  'account-password',
+] as const;
 const CHECK_PREFIX = 'check-';
 const THEME_EDIT_PREFIX = 'theme-edit-';
 

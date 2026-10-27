@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react';
 
+import { Avatar } from '@/Core/Ui/Avatar';
 import { cx } from '@/Core/Ui/ClassNames';
 import { Icon } from '@/Core/Ui/Icon';
 import type { TIconName } from '@/Core/Ui/Icons';
@@ -21,15 +22,21 @@ export interface IPendingMenuItem {
   hint: string;
 }
 
-export interface IMenuAccount extends IPendingMenuItem {
-  avatar: TIconName;
+export type TMenuEntry = IMenuItem | IPendingMenuItem;
+
+export interface IMenuAccount {
+  id: string;
+  name: string;
+  label: string;
+  href: string;
+  current?: boolean;
+  onSelect: () => void;
 }
 
 export interface ISideMenuProps {
   label: string;
   brand: ReactNode;
-  items: IMenuItem[];
-  pending: IPendingMenuItem[];
+  items: TMenuEntry[];
   bottom: IMenuItem[];
   account: IMenuAccount;
 }
@@ -69,21 +76,29 @@ const PendingLink = ({ item }: { item: IPendingMenuItem }) => (
 );
 
 const AccountRow = ({ account }: { account: IMenuAccount }) => (
-  <Tooltip label={account.hint} side="top">
-    <button
-      type="button"
-      aria-disabled="true"
-      className="flex cursor-not-allowed items-center gap-2.5 rounded-sm border-0 bg-transparent px-1.5 py-2 text-start text-body-sm text-tertiary max-md:size-11 max-md:justify-center max-md:p-0"
+  <Tooltip label={account.label} side="top" phoneOnly>
+    <a
+      href={account.href}
+      aria-current={account.current ? 'page' : undefined}
+      onClick={(event) => {
+        if (isPlainClick(event)) {
+          event.preventDefault();
+          account.onSelect();
+        }
+      }}
+      className={cx(
+        'flex items-center gap-2.5 rounded-sm px-1.5 py-2 text-body-sm no-underline transition-colors duration-140',
+        'max-md:size-11 max-md:justify-center max-md:p-0',
+        account.current ? 'bg-sel text-primary' : 'text-secondary hover:bg-hover hover:text-primary',
+      )}
     >
-      <span className="inline-grid size-8 flex-none place-items-center rounded-pill bg-surface-raised text-primary">
-        <Icon name={account.avatar} size={16} />
-      </span>
+      <Avatar name={account.name} size="sm" />
       <span className="truncate max-md:sr-only">{account.label}</span>
-    </button>
+    </a>
   </Tooltip>
 );
 
-export const SideMenu = ({ label, brand, items, pending, bottom, account }: ISideMenuProps) => (
+export const SideMenu = ({ label, brand, items, bottom, account }: ISideMenuProps) => (
   <nav
     aria-label={label}
     className={cx(
@@ -93,12 +108,7 @@ export const SideMenu = ({ label, brand, items, pending, bottom, account }: ISid
     )}
   >
     <div className="flex items-center gap-2.5 px-1.5 pt-1 pb-3.5 max-md:hidden">{brand}</div>
-    {items.map((item) => (
-      <MenuLink key={item.id} item={item} />
-    ))}
-    {pending.map((item) => (
-      <PendingLink key={item.id} item={item} />
-    ))}
+    {items.map((item) => ('href' in item ? <MenuLink key={item.id} item={item} /> : <PendingLink key={item.id} item={item} />))}
     <div className="grid gap-1 max-md:contents md:mt-auto">
       {bottom.map((item) => (
         <MenuLink key={item.id} item={item} />

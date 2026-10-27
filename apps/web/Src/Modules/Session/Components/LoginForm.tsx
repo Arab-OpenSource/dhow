@@ -51,7 +51,7 @@ export const LoginForm = ({ onSignedIn }: ILoginFormProps) => {
   };
 
   const time = formatClock(countdown.Remaining);
-  const label = locked ? t('login.retryIn', { time }) : submit.Pending ? t('login.submitting') : t('login.submit');
+  const label = locked ? t('throttle.retryIn', { time }) : submit.Pending ? t('login.submitting') : t('login.submit');
 
   return (
     <form noValidate onSubmit={(event) => void form.handleSubmit(HandleValid)(event)} className="grid gap-4">
