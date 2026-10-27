@@ -11,8 +11,8 @@ import (
 
 const (
 	FileSuffix              = "_FILE"
-	EnvSecretKeyFile        = EnvSecretKey + FileSuffix
-	EnvDatabaseURLFile      = EnvDatabaseURL + FileSuffix
+	EnvSecretKeyFile        = "DHOW_SECRET_KEY_FILE"   //nolint:gosec // The name of an environment variable, not a credential.
+	EnvDatabaseURLFile      = "DHOW_DATABASE_URL_FILE" //nolint:gosec // The name of an environment variable, not a credential.
 	EnvCredentialsDirectory = "CREDENTIALS_DIRECTORY"
 	CredentialSecretKey     = "dhow-secret-key"
 	CredentialDatabaseURL   = "dhow-database-url" //nolint:gosec // The name of a systemd credential, not a credential.
