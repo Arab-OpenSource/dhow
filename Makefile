@@ -34,6 +34,10 @@ release: ## Build bin/dhow-server with the web app embedded
 	$(MAKE) web
 	$(MAKE) build
 
+.PHONY: dist
+dist: ## Build reproducible release archives and SHA256SUMS in dist/ (run make web first)
+	deploy/release/dist.sh $(VERSION) $(COMMIT)
+
 .PHONY: image
 image: ## Build the container image (IMAGE=dhow:dev)
 	docker buildx build --load $(DOCKER_BUILD_FLAGS) -f $(IMAGE_DOCKERFILE) \

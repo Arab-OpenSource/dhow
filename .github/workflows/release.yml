@@ -114,3 +114,127 @@ jobs:
           name: dhow-sbom-spdx
           path: dhow.spdx.json
           if-no-files-found: error
+
+  binaries:
+    name: Build the Linux binaries
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Work out the version
+        id: meta
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag $REF_NAME is not a semantic version such as v1.2.3 or v1.2.3-rc.1"
+            exit 1
+          fi
+          echo "version=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Enable pnpm from the packageManager field
+        run: corepack enable
+      - name: Build the web app into the embed directory
+        run: make web
+      - name: Build the archives and SHA256SUMS
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          COMMIT: ${{ github.sha }}
+        run: make dist VERSION="$VERSION" COMMIT="$COMMIT"
+      - name: Check that a second build is byte for byte identical
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          DIST_DIR="$RUNNER_TEMP/dist-again" make dist VERSION="$VERSION" COMMIT="$COMMIT"
+          diff dist/SHA256SUMS "$RUNNER_TEMP/dist-again/SHA256SUMS"
+      - name: Check the archives
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          (cd dist && sha256sum --check --strict SHA256SUMS)
+          tar -xzf "dist/dhow-server_${VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" dhow-server
+          go version -m "$RUNNER_TEMP/dhow-server" | grep -q 'CGO_ENABLED=0'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dhow-binaries
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-binaries:
+    name: Sign, attest and publish the binaries
+    needs: binaries
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.binaries.outputs.version }}
+      IDENTITY: ^https://github\.com/${{ github.repository }}/\.github/workflows/release\.yml@refs/tags/v
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dhow-binaries
+          path: dist
+      - name: Check the archives against SHA256SUMS
+        working-directory: dist
+        run: sha256sum --check --strict SHA256SUMS
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign SHA256SUMS (keyless)
+        working-directory: dist
+        run: cosign sign-blob --yes --bundle SHA256SUMS.sigstore.json SHA256SUMS
+      - name: Verify the signature
+        working-directory: dist
+        run: |
+          cosign verify-blob \
+            --bundle SHA256SUMS.sigstore.json \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "$IDENTITY" \
+            SHA256SUMS
+      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        id: syft
+      - name: Generate an SPDX SBOM per archive
+        env:
+          SYFT: ${{ steps.syft.outputs.cmd }}
+        run: |
+          for archive in dist/*.tar.gz; do
+            unpacked="$RUNNER_TEMP/sbom/$(basename "$archive" .tar.gz)"
+            mkdir -p "$unpacked"
+            tar -xzf "$archive" -C "$unpacked"
+            "$SYFT" scan "dir:$unpacked" --source-name "$(basename "$archive")" --source-version "$VERSION" \
+              -o "spdx-json=$archive.spdx.json"
+          done
+      - name: Attest the SLSA build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
+      - name: Upload to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            flags=(--verify-tag --title "$TAG" --generate-notes)
+            if [[ "$VERSION" == *-* ]]; then
+              flags+=(--prerelease)
+            fi
+            gh release create "$TAG" "${flags[@]}"
+          fi
+          gh release upload "$TAG" --clobber \
+            dist/*.tar.gz dist/*.tar.gz.spdx.json dist/SHA256SUMS dist/SHA256SUMS.sigstore.json
