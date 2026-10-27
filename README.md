@@ -3,8 +3,9 @@
 > **Ship to your own servers — safely.**
 > A secure, self-hosted continuous deployment platform. Arabic-first.
 
-**Status:** 🧭 Design phase. No runnable code yet. This repository currently holds the architecture,
-security model, pipeline spec and decision records. Feedback is welcome through issues and discussions.
+**Status:** 🧱 Foundations (milestone M1 of the [roadmap](docs/roadmap.md)). `docker compose up` boots an empty,
+hardened instance with the web shell and health endpoints. Sign-in, projects, runners and deployments come in the next
+milestones, so Dhow is not usable for real work yet. Feedback is welcome through issues and discussions.
 
 ---
 
@@ -39,6 +40,11 @@ GitLab CI build and hand Dhow the artifact through an official action.
 
 See [docs/editions-and-licensing.md](docs/editions-and-licensing.md).
 
+## Install
+
+Dhow installs with one Docker Compose file: `./init.sh` generates strong secrets, then `docker compose up -d` starts an empty, hardened instance with its own PostgreSQL. Images are signed with cosign and ship with an SBOM.
+See [docs/install.md](docs/install.md) for the quick start, upgrades, backups and signature verification.
+
 ## Documentation
 
 | Doc | Contents |
@@ -48,6 +54,7 @@ See [docs/editions-and-licensing.md](docs/editions-and-licensing.md).
 | [Pipeline spec](docs/pipeline-spec.md) | `.dhow.yml` schema v1 (draft) |
 | [UI principles](docs/ui-principles.md) | Arabic-first design, navigation model, performance budgets |
 | [Editions & licensing](docs/editions-and-licensing.md) | Open-core model, feature matrix, license enforcement |
+| [Install](docs/install.md) | Docker Compose install, upgrade, backup and restore, verifying signed images |
 | [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
 | [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
 

@@ -17,7 +17,7 @@ import (
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
 
-func Run() error {
+func Run(ctx context.Context) error {
 	cfg, err := config.LoadFromEnv()
 	if err != nil {
 		return fmt.Errorf("invalid configuration:\n%w", err)
@@ -29,7 +29,7 @@ func Run() error {
 		log.Warn("DHOW_DEV=true: plain HTTP and unencrypted database connections are allowed. Never use this in production.")
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	pool, err := config.OpenDatabase(ctx, cfg.DatabaseURL)

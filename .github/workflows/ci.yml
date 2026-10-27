@@ -102,3 +102,38 @@ jobs:
         run: pnpm build
       - name: Check the bundle size budget
         run: pnpm size
+
+  image:
+    name: Image (build, smoke test, SBOM, vulnerability scan)
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE: dhow:ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the image and smoke test a fresh Compose install
+        run: make smoke
+      - name: Generate the SPDX SBOM
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ${{ env.IMAGE }}
+          format: spdx-json
+          output-file: dhow.spdx.json
+          upload-artifact: false
+      - name: Upload the SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dhow-sbom-spdx
+          path: dhow.spdx.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Scan the image for vulnerabilities
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          image: ${{ env.IMAGE }}
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table
