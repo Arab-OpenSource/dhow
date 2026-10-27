@@ -108,6 +108,12 @@ func TestLoadRejects(t *testing.T) {
 		{"placeholder secret", map[string]string{config.EnvSecretKey: "change_this_secret_in_production_please_123456"}, "placeholder"},
 		{"short secret", map[string]string{config.EnvSecretKey: "9f1c4a7e2b8d06f35a1e9c7b4d2f80a6"}, "at least 32 bytes"},
 		{"repeated secret", map[string]string{config.EnvSecretKey: strings.Repeat("ab", 32)}, "too little variety"},
+		{"one repeated hex character", map[string]string{config.EnvSecretKey: strings.Repeat("a", 64)}, "too little variety"},
+		{"one repeated digit", map[string]string{config.EnvSecretKey: strings.Repeat("0", 64)}, "too little variety"},
+		{"one repeated base64 character", map[string]string{config.EnvSecretKey: strings.Repeat("Z", 44)}, "too little variety"},
+		{"changeme", map[string]string{config.EnvSecretKey: "changeme"}, "placeholder"},
+		{"secret", map[string]string{config.EnvSecretKey: "secret"}, "placeholder"},
+		{"example", map[string]string{config.EnvSecretKey: "EXAMPLE-KEY-EXAMPLE-KEY-EXAMPLE-KEY"}, "placeholder"},
 		{"not encoded secret", map[string]string{config.EnvSecretKey: "this is not hex or base64!!"}, "hex or base64"},
 		{"missing database", map[string]string{config.EnvDatabaseURL: ""}, config.EnvDatabaseURL + ": is required"},
 		{"dsn instead of url", map[string]string{config.EnvDatabaseURL: "host=db user=dhow"}, "postgres:// URL"},
@@ -214,6 +220,31 @@ func TestValidate(t *testing.T) {
 			}
 			assert.NotContains(t, err.Error(), "short-key-material")
 			assert.NotContains(t, err.Error(), goodDB)
+		})
+	}
+}
+
+func TestLoadListenAddrOnly(t *testing.T) {
+	tests := []struct {
+		name    string
+		env     map[string]string
+		want    string
+		wantErr bool
+	}{
+		{"default", map[string]string{}, config.DefaultListenAddr, false},
+		{"explicit", map[string]string{config.EnvListenAddr: "0.0.0.0:8080"}, "0.0.0.0:8080", false},
+		{"invalid", map[string]string{config.EnvListenAddr: "8080"}, "", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := config.LoadListenAddr(env(tt.env))
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), config.EnvListenAddr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
