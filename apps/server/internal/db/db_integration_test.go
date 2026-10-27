@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -98,8 +99,8 @@ func TestMigrationsAndReadiness(t *testing.T) {
 				errs <- err
 				return
 			}
-			defer func() { _ = mm.Close() }()
-			if _, err := mm.Up(ctx); err != nil {
+			_, upErr := mm.Up(ctx)
+			if err := errors.Join(upErr, mm.Close()); err != nil {
 				errs <- err
 			}
 		}()
@@ -118,12 +119,12 @@ func TestMigrationsAndReadiness(t *testing.T) {
 	}
 
 	rec := get("/api/v1/meta")
-	var meta gen.Meta
+	var meta gen.MetaResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &meta); err != nil {
 		t.Fatal(err)
 	}
-	if rec.Code != http.StatusOK || !meta.SetupRequired {
-		t.Fatalf("meta = %d %+v, want setupRequired on a fresh instance", rec.Code, meta)
+	if rec.Code != http.StatusOK || !meta.Success || meta.Data == nil || !meta.Data.SetupRequired {
+		t.Fatalf("meta = %d %s, want SetupRequired on a fresh instance", rec.Code, rec.Body.String())
 	}
 
 	if _, err := pool.Exec(ctx, `INSERT INTO "Instance" ("Id") VALUES (2)`); err == nil {
