@@ -73,7 +73,7 @@ export const CheckDetailBody = ({ name }: ICheckDetailBodyProps) => {
         }
       >
         <h3 className="m-0 mb-3 text-title-lg">{t('checkDetail.fix')}</h3>
-        <ol className="m-0 grid gap-2 ps-5 text-body-sm">
+        <ol className="m-0 grid list-decimal gap-2 ps-5 text-body-sm">
           {FIX_STEPS.map((step) => (
             <li key={step}>{t(`checkDetail.${name}.fix${step}`)}</li>
           ))}
