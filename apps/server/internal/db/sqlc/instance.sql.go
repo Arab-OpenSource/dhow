@@ -10,7 +10,7 @@ import (
 )
 
 const getInstance = `-- name: GetInstance :one
-SELECT "Id", "CreatedAt", "SetupCompletedAt"
+SELECT "Id", "CreatedAt", "UpdatedAt", "SetupCompletedAt"
 FROM "Instance"
 WHERE "Id" = 1
 `
@@ -18,6 +18,11 @@ WHERE "Id" = 1
 func (q *Queries) GetInstance(ctx context.Context) (Instance, error) {
 	row := q.db.QueryRow(ctx, getInstance)
 	var i Instance
-	err := row.Scan(&i.Id, &i.CreatedAt, &i.SetupCompletedAt)
+	err := row.Scan(
+		&i.Id,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SetupCompletedAt,
+	)
 	return i, err
 }

@@ -11,5 +11,6 @@ import (
 type Instance struct {
 	Id               int16
 	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 	SetupCompletedAt pgtype.Timestamptz
 }

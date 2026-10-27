@@ -93,7 +93,7 @@ A modular monolith shipped as a single binary. The modules are listed below; eac
 
 | Store | Use | Notes |
 |---|---|---|
-| **PostgreSQL** (required) | All state, plus the job queue (`FOR UPDATE SKIP LOCKED`), advisory locks (migrations, environment locks), and `LISTEN/NOTIFY` for intra-cluster events | The only required stateful dependency. Migrations run as a separate locked step. |
+| **PostgreSQL 18** (required, for native `uuidv7()`) | All state, plus the job queue (`FOR UPDATE SKIP LOCKED`), advisory locks (migrations, environment locks), and `LISTEN/NOTIFY` for intra-cluster events | The only required stateful dependency. Migrations run as a separate locked step. |
 | **Object storage** (required, with a disk default) | Logs, artifacts and build cache | S3-compatible (AWS S3, R2, MinIO) or local disk for single-node installs. |
 | **Redis** (optional) | Cross-instance pub/sub fan-out, distributed rate limits, and hot caches at high scale | When Redis is absent, the same interfaces fall back to Postgres. |
 

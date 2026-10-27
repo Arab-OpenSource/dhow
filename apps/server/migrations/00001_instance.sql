@@ -2,6 +2,7 @@
 CREATE TABLE "Instance" (
     "Id"               smallint    PRIMARY KEY DEFAULT 1 CHECK ("Id" = 1),
     "CreatedAt"        timestamptz NOT NULL DEFAULT now(),
+    "UpdatedAt"        timestamptz NOT NULL DEFAULT now(),
     "SetupCompletedAt" timestamptz
 );
 
