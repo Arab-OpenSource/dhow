@@ -4,4 +4,6 @@
 # Generated code: collapse in diffs.
 **/*.gen.go linguist-generated=true
 **/gen/** linguist-generated=true
+**/Gen/** linguist-generated=true
+**/Sqlc/** linguist-generated=true
 apps/web/src/api/schema.d.ts linguist-generated=true

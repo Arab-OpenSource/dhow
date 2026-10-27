@@ -1,0 +1,78 @@
+package apperrors_test
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
+)
+
+func TestConstructors(t *testing.T) {
+	tests := []struct {
+		name       string
+		err        *apperrors.AppError
+		wantStatus int
+		wantCode   string
+		wantKey    string
+	}{
+		{"bad request", apperrors.BadRequest(), http.StatusBadRequest, "BAD_REQUEST", "errors.badRequest"},
+		{"validation failed", apperrors.ValidationFailed(), http.StatusUnprocessableEntity, "VALIDATION_FAILED", "errors.validationFailed"},
+		{"not found", apperrors.NotFound(), http.StatusNotFound, "NOT_FOUND", "errors.notFound"},
+		{"method not allowed", apperrors.MethodNotAllowed(), http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "errors.methodNotAllowed"},
+		{"payload too large", apperrors.PayloadTooLarge(), http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "errors.payloadTooLarge"},
+		{"service unavailable", apperrors.ServiceUnavailable(), http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "errors.serviceUnavailable"},
+		{"internal", apperrors.Internal(errors.New("boom")), http.StatusInternalServerError, "INTERNAL", "errors.internal"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.wantStatus, tt.err.Status)
+			assert.Equal(t, tt.wantCode, tt.err.Code)
+			assert.Equal(t, tt.wantKey, tt.err.Message)
+		})
+	}
+}
+
+func TestErrorAndUnwrap(t *testing.T) {
+	cause := errors.New("relation does not exist")
+	ae := apperrors.Internal(cause)
+	assert.ErrorIs(t, ae, cause)
+	assert.Contains(t, ae.Error(), "relation does not exist")
+	assert.Equal(t, "NOT_FOUND: errors.notFound", apperrors.NotFound().Error())
+}
+
+func TestJSONOmitsInternals(t *testing.T) {
+	ae := apperrors.ValidationFailed(apperrors.IErrorDetail{Field: "Name", Message: "required"})
+	ae.Err = errors.New("secret internal text")
+	raw, err := json.Marshal(ae)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"Code":"VALIDATION_FAILED","Message":"errors.validationFailed","Details":[{"Field":"Name","Message":"required"}]}`, string(raw))
+
+	raw, err = json.Marshal(apperrors.NotFound())
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"Code":"NOT_FOUND","Message":"errors.notFound"}`, string(raw))
+}
+
+func TestFrom(t *testing.T) {
+	notFound := apperrors.NotFound()
+	tests := []struct {
+		name     string
+		err      error
+		wantCode string
+	}{
+		{"app error", notFound, "NOT_FOUND"},
+		{"wrapped app error", fmt.Errorf("load: %w", notFound), "NOT_FOUND"},
+		{"plain error", errors.New("boom"), "INTERNAL"},
+		{"nil", nil, "INTERNAL"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.wantCode, apperrors.From(tt.err).Code)
+		})
+	}
+}

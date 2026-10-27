@@ -17,9 +17,11 @@ build: ## Build bin/dhow-server
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o bin/dhow-server ./apps/server/cmd/dhow-server
 
 .PHONY: gen
-gen: ## Regenerate code from the OpenAPI spec and SQL queries
-	cd apps/server && $(GO) run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) \
-		-config oapi-codegen.yaml ../../packages/openapi/openapi.yaml
+gen: ## Regenerate code from the OpenAPI spec (one config per module) and SQL queries
+	set -e; for cfg in apps/server/internal/Modules/*/oapi-codegen.yaml; do \
+		$(GO) run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) \
+			-config $$cfg packages/openapi/openapi.yaml; \
+	done
 	cd apps/server && $(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION) generate
 
 .PHONY: help

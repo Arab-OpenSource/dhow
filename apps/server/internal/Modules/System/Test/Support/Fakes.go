@@ -1,0 +1,70 @@
+package support
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+
+	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
+	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
+	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
+)
+
+type FakeDB struct{ Err error }
+
+func (f FakeDB) Ping(context.Context) error { return f.Err }
+
+type FakeMigrations struct {
+	Pending bool
+	Err     error
+}
+
+func (f FakeMigrations) Current(context.Context) (bool, error) { return !f.Pending, f.Err }
+
+type FakeQueries struct {
+	Instance sqlc.Instance
+	Err      error
+}
+
+func (f FakeQueries) GetInstance(context.Context) (sqlc.Instance, error) { return f.Instance, f.Err }
+
+func DiscardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func Router(d system.Deps) http.Handler {
+	if d.Log == nil {
+		d.Log = DiscardLogger()
+	}
+	if d.DB == nil {
+		d.DB = FakeDB{}
+	}
+	if d.Migrations == nil {
+		d.Migrations = FakeMigrations{}
+	}
+	if d.Queries == nil {
+		d.Queries = FakeQueries{}
+	}
+	return app.NewRouter(app.Options{
+		Config: config.Config{
+			PublicURL:  &url.URL{Scheme: "https", Host: "dhow.example.com"},
+			ListenAddr: config.DefaultListenAddr,
+		},
+		Log:    d.Log,
+		System: d,
+	})
+}
+
+func Do(h http.Handler, method, path string, headers map[string]string) *httptest.ResponseRecorder {
+	req := httptest.NewRequestWithContext(context.Background(), method, path, http.NoBody)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}

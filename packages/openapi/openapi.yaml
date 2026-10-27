@@ -4,7 +4,8 @@ info:
   version: 0.1.0
   description: |
     Public REST API of the Dhow control plane. This file is the source of truth (spec-first):
-    change it, run `make gen`, then implement. JSON field names are PascalCase.
+    change it, run `make gen`, then implement. JSON field names are PascalCase and path segments are kebab-case.
+    Every response uses the envelope: Success is required, and Data, Message, Meta and Error are omitted when absent.
   license:
     name: AGPL-3.0-only
     url: https://www.gnu.org/licenses/agpl-3.0.html
@@ -12,7 +13,7 @@ servers:
   - url: /api/v1
 tags:
   - name: system
-    description: Health and instance metadata.
+    description: Health and instance metadata. Served by the System module.
 paths:
   /health/live:
     get:
@@ -46,8 +47,8 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
         "503":
           description: >-
-            Not ready. Success is false, Error carries the code `unavailable`, and Data names each failing
-            check without internal details.
+            Not ready. Success is false, Error carries the code `SERVICE_UNAVAILABLE`, and Data names each
+            failing check without internal details.
           content:
             application/json:
               schema:
@@ -81,44 +82,51 @@ components:
   schemas:
     Envelope:
       type: object
-      required: [Success, Error]
+      required: [Success]
       properties:
         Success:
           type: boolean
+        Message:
+          type: string
+          description: An i18n key such as `system.meta.loaded`. The client translates it.
+          example: system.meta.loaded
+        Meta:
+          $ref: "#/components/schemas/PageMeta"
         Error:
-          allOf:
-            - $ref: "#/components/schemas/ErrorDetail"
-          nullable: true
+          $ref: "#/components/schemas/ErrorDetail"
     ErrorResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"
         - type: object
-          required: [Data]
-          properties:
-            Data:
-              type: object
-              nullable: true
-              maxProperties: 0
+          required: [Error]
     HealthResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"
         - type: object
-          required: [Data]
           properties:
             Data:
-              allOf:
-                - $ref: "#/components/schemas/HealthStatus"
-              nullable: true
+              $ref: "#/components/schemas/HealthStatus"
     MetaResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"
         - type: object
-          required: [Data]
           properties:
             Data:
-              allOf:
-                - $ref: "#/components/schemas/Meta"
-              nullable: true
+              $ref: "#/components/schemas/Meta"
+    PageMeta:
+      type: object
+      additionalProperties: false
+      required: [Page, Limit, Total]
+      properties:
+        Page:
+          type: integer
+          minimum: 1
+        Limit:
+          type: integer
+          minimum: 1
+        Total:
+          type: integer
+          minimum: 0
     ErrorDetail:
       type: object
       additionalProperties: false
@@ -126,12 +134,27 @@ components:
       properties:
         Code:
           type: string
-          description: Stable machine-readable code, for example `internal`, `not_found`, `payload_too_large`.
-          example: internal
+          description: >-
+            Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`,
+            `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE` or `SERVICE_UNAVAILABLE`.
+          example: INTERNAL
         Message:
           type: string
-          description: Human-readable message that is safe to show to users.
+          description: Message translated by the server for the Accept-Language locale (Arabic by default).
           example: Something went wrong. Try again later.
+        Details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorFieldDetail"
+    ErrorFieldDetail:
+      type: object
+      additionalProperties: false
+      required: [Field, Message]
+      properties:
+        Field:
+          type: string
+        Message:
+          type: string
     HealthStatus:
       type: object
       additionalProperties: false
