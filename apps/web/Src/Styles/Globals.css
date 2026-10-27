@@ -2,6 +2,7 @@
 @import "./Tokens.css";
 
 @theme {
+  --breakpoint-md: 721px;
   --ease-dhow: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-dhow-pulse: dhow-pulse 1.4s ease-in-out infinite;
   --animate-dhow-fade: dhow-fade 1.8s ease-in-out infinite;
@@ -21,28 +22,19 @@
 
 :root {
   color-scheme: dark;
-  --gradient-aurora: linear-gradient(
-    90deg,
-    var(--color-aurora-1) 0%,
-    var(--color-aurora-2) 20%,
-    var(--color-aurora-3) 44%,
-    var(--color-aurora-4) 60%,
-    var(--color-aurora-5) 82%,
-    var(--color-aurora-6) 100%
-  );
-  --gradient-edge: linear-gradient(
-    90deg,
-    var(--color-edge-warm) 0%,
-    rgb(255 255 255 / 0.28) 22%,
-    rgb(255 255 255 / 0.1) 55%,
-    var(--color-edge-cool) 100%
-  );
-  --gradient-card: linear-gradient(180deg, var(--color-surface-top) 0%, var(--color-surface) 60%);
+  --gradient-angle: 90deg;
+  --slide-dir: -1;
 }
 
 [dir="rtl"] {
+  --gradient-angle: 270deg;
+  --slide-dir: 1;
+}
+
+:root,
+[data-theme] {
   --gradient-aurora: linear-gradient(
-    270deg,
+    var(--gradient-angle),
     var(--color-aurora-1) 0%,
     var(--color-aurora-2) 20%,
     var(--color-aurora-3) 44%,
@@ -51,11 +43,32 @@
     var(--color-aurora-6) 100%
   );
   --gradient-edge: linear-gradient(
-    270deg,
-    var(--color-edge-warm) 0%,
+    var(--gradient-angle),
+    color-mix(in srgb, var(--color-edge-warm) 95%, transparent) 0%,
     rgb(255 255 255 / 0.28) 22%,
     rgb(255 255 255 / 0.1) 55%,
-    var(--color-edge-cool) 100%
+    color-mix(in srgb, var(--color-edge-cool) 95%, transparent) 100%
+  );
+  --gradient-card: linear-gradient(180deg, var(--color-surface-top) 0%, var(--color-surface) 60%);
+  --gradient-aurora-card: linear-gradient(
+    115deg,
+    var(--color-aurora-1) 0%,
+    var(--color-aurora-2) 26%,
+    white 48%,
+    var(--color-aurora-4) 70%,
+    var(--color-aurora-5) 100%
+  );
+  --gradient-orb: radial-gradient(
+    circle at 32% 28%,
+    white 0%,
+    var(--color-aurora-3) 32%,
+    var(--color-aurora-1) 62%,
+    var(--color-aurora-5) 100%
+  );
+  --gradient-row: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-raised) 70%, var(--color-surface)) 0%,
+    color-mix(in srgb, var(--color-surface) 70%, var(--color-canvas)) 100%
   );
 }
 
@@ -67,12 +80,33 @@
     var(--gradient-edge) border-box;
 }
 
+@utility slide-offscreen {
+  transform: translateX(calc(var(--slide-dir) * (100% + 120px)));
+}
+
+@utility slide-shift {
+  transform: translateX(calc(var(--slide-dir) * -1 * var(--depth) * var(--peek)))
+    scale(calc(1 - var(--depth) * 0.03));
+}
+
 @utility bg-aurora {
   background-image: var(--gradient-aurora);
 }
 
 @utility bg-card-gradient {
   background-image: var(--gradient-card);
+}
+
+@utility bg-aurora-card {
+  background-image: var(--gradient-aurora-card);
+}
+
+@utility bg-orb {
+  background-image: var(--gradient-orb);
+}
+
+@utility bg-row {
+  background-image: var(--gradient-row);
 }
 
 @layer base {

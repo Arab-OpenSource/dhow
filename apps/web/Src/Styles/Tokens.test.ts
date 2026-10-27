@@ -12,9 +12,16 @@ interface ITokenFile {
   color: { tokens: IColorToken[] };
 }
 
+interface IThemeFile {
+  default: string;
+  tokens: { key: string; variable: string }[];
+  themes: { id: string; colors: Record<string, string> }[];
+}
+
 const read = (name: string): string => readFileSync(fileURLToPath(new URL(name, import.meta.url)), 'utf8');
 
 const tokens = JSON.parse(read('./Tokens.json')) as ITokenFile;
+const themes = JSON.parse(read('./Themes.json')) as IThemeFile;
 const generated = read('./Tokens.css');
 const sources = import.meta.glob<string>('../**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true });
 
@@ -27,6 +34,38 @@ describe('design tokens', () => {
       const name = token.name.replace(/^(color|text|border)-/, '');
       expect(generated).toContain(`--color-${name}: ${token.value.dark};`);
     }
+  });
+
+  it('defines each theme token exactly once, outside Tokens.json', () => {
+    const names = new Set(tokens.color.tokens.map((token) => `--color-${token.name.replace(/^(color|text|border)-/, '')}`));
+    for (const token of themes.tokens) expect(names.has(token.variable), token.variable).toBe(false);
+  });
+
+  it('puts the default theme on the root and every system theme in its own data-theme block', () => {
+    const fallback = themes.themes.find((theme) => theme.id === themes.default);
+    expect(fallback).toBeDefined();
+    const theme = generated.slice(0, generated.indexOf('\n}\n'));
+    for (const token of themes.tokens) expect(theme).toContain(`${token.variable}: ${fallback?.colors[token.key] ?? ''};`);
+    for (const entry of themes.themes) {
+      const start = generated.indexOf(`[data-theme="${entry.id}"] {`);
+      expect(start, entry.id).toBeGreaterThan(-1);
+      const block = generated.slice(start, generated.indexOf('\n}', start));
+      for (const token of themes.tokens) expect(block).toContain(`${token.variable}: ${entry.colors[token.key] ?? ''};`);
+    }
+  });
+
+  it('gives every system theme the same 25 hex tokens', () => {
+    expect(themes.tokens).toHaveLength(25);
+    expect(themes.themes.map((theme) => theme.id)).toEqual(['sea', 'teak', 'dusk', 'indigo']);
+    for (const entry of themes.themes) {
+      expect(Object.keys(entry.colors).sort()).toEqual(themes.tokens.map((token) => token.key).sort());
+      for (const value of Object.values(entry.colors)) expect(value).toMatch(/^#[0-9a-f]{6}$/);
+    }
+  });
+
+  it('derives the theme-dependent colours from the base tokens, so custom themes follow too', () => {
+    expect(generated).toMatch(/--color-frame: color-mix\(in srgb, var\(--color-canvas\)/);
+    expect(generated).toMatch(/--color-bubble: color-mix\(in srgb, var\(--color-surface-inset\)/);
   });
 
   it('keeps hex colors out of application code', () => {
