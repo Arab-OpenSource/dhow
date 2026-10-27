@@ -87,8 +87,9 @@ func (b *Builder) blockers() []string {
 	if len(missing) > 0 {
 		list := strings.Join(missing, " ")
 		switch {
-		case !det.PackagesInstallable():
+		case !det.Distro.Supported:
 			out = append(out, m.T(KeyBlockManual, det.Distro.PrettyName, list))
+		case !det.PackagesInstallable():
 		case !a.InstallPackages:
 			out = append(out, m.T(KeyBlockDeclined, list))
 		}

@@ -174,6 +174,13 @@ func blockerCases() []planCase {
 			wantBlockers: []string{"systemd is not running"},
 		},
 		{
+			name:         "no systemd on a supported distribution blames systemd only",
+			host:         func() *fakeSys { f := debianHost(); delete(f.files, "/run/systemd/system"); return f },
+			yaml:         minimalAnswers,
+			wantBlockers: []string{"systemd is not running"},
+			absent:       []string{"not a supported distribution"},
+		},
+		{
 			name: "compose with caddy trusts the docker gateway",
 			host: func() *fakeSys {
 				f := debianHost()
@@ -198,6 +205,9 @@ func TestBuildPlan(t *testing.T) {
 			if tt.wantBlockers != nil {
 				for _, w := range tt.wantBlockers {
 					assert.Contains(t, blockers, w)
+				}
+				for _, w := range tt.absent {
+					assert.NotContains(t, blockers, w)
 				}
 				assert.Empty(t, p.Steps)
 				return
