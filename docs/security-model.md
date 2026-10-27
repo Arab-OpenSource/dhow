@@ -1,6 +1,6 @@
 # Security model
 
-Status: **Draft v0.1**. Security is the product: every design choice below is a default, not an option.
+Status: **Draft v0.2**. Security is the product: every design choice below is a default, not an option.
 
 ## 1. Assets
 
@@ -19,7 +19,7 @@ The assets to protect are:
 | **External contributor (PR from a fork)** | Can open PRs, so attacker-controlled code reaches CI | Fork PR jobs run with **no secrets** and are restricted to non-deploy environments. Running them needs maintainer approval, and the pipeline definition always comes from the base branch for privileged events |
 | **Compromised runner host** | Full control of one runner | A runner only receives secrets for jobs leased to it. A runner identity can be revoked instantly. Runners can be pinned to environments through labels and pools. Runners never get control-plane credentials or database access |
 | **Network attacker** | MITM between components or against targets | TLS everywhere. Runner identity keys are pinned. SSH host keys and TLS fingerprints are pinned per target. Webhooks are verified with HMAC and replay protection |
-| **Stolen session or token** | Holds a user's cookie or API token | 15-minute access tokens. Refresh tokens rotate, and reuse is detected. Sessions are revocable server-side. High-risk actions require re-authentication. API tokens are scoped and expire |
+| **Stolen session or token** | Holds a user's cookie or API token | Server-side sessions with an idle and an absolute timeout. A session is revoked at once by sign-out, password change, MFA change, role change or an admin action. Cookies are `HttpOnly`, `Secure` and `SameSite=Strict`, and every state-changing request needs a CSRF token. High-risk actions require re-authentication. API tokens are scoped and expire |
 | **Unauthenticated internet attacker** | Can reach the public endpoints | Registration is closed. Every route requires authentication by default. Rate limits apply per IP *and* per account. There is no unauthenticated realtime channel |
 | **Malicious plugin author** | Publishes a step image | Plugins run inside the job sandbox with the job's privileges only. Plugins are referenced by digest. The registry marks verified publishers and requires signatures (cosign) |
 
@@ -27,7 +27,7 @@ The assets to protect are:
 
 - **Registration.** Public registration is **closed**. The first owner account is created through a one-time setup URL. After that, users join by invitation or via SSO/OIDC (with optional domain allowlists).
 - **Fail closed on weak configuration.** The server **refuses to boot** with missing, placeholder, short or reused secrets. Real environment variables take precedence over config files.
-- **TLS** is required outside localhost. HSTS is on. Cookies are `Secure`, `HttpOnly` and `SameSite=Lax/Strict`.
+- **TLS** is required outside localhost. HSTS is on. Cookies are `Secure`, `HttpOnly` and `SameSite=Strict`.
 - **Strict CSP:** `default-src 'self'`, no inline script, `frame-ancestors 'none'`, Trusted Types.
 - **No secret values in any API response, log line, error message or notification.**
 
@@ -43,14 +43,26 @@ The assets to protect are:
 
 **Login flow.** The password step only yields a short-lived, single-use `mfa_pending` challenge that is bound to the user and the device. The second factor must present that challenge. A user id taken from the client is never trusted.
 
-**Lockout.** Lockout counters are per account and per IP, with exponential backoff. Error messages are generic and responses take constant time.
+**Lockout.** Lockout counters are per account and per IP, with exponential backoff (details in [section 5](#5-sessions-and-tokens-adr-0033)). Error messages are generic and responses take constant time.
 
-## 5. Sessions and tokens
+## 5. Sessions and tokens (ADR-0033)
 
-- The **access token** is short-lived (15 minutes) and carries a session id (`sid`). The server checks the session state on every request, using a cached lookup.
-- The **refresh token** is opaque, stored hashed, **rotated on every use**, and **reuse detection** revokes the whole session family.
-- **Global revocation.** Logout, password change, MFA change, role change and an admin "sign out everywhere" all revoke sessions server-side.
-- **API tokens** are prefixed (`dhow_pat_…`), so secret scanners can detect them. They are stored as HMAC-SHA256 with a server pepper, scoped to an org or project with explicit permissions, and must expire. A token can never exceed its creator's permissions.
+The web UI and the API are served from the same origin, so browsers use **server-side sessions** with a cookie. There is no JWT for browsers: a JWT would still need a server-side lookup on every request to be revocable, and it would live in JavaScript.
+
+- **Cookie.** `__Host-dhow_session` with `HttpOnly`, `Secure`, `SameSite=Strict` and `Path=/`, and no `Domain`. The `__Host-` prefix makes browsers refuse a cookie set by a sub-domain or over plain HTTP. `Secure` is always set, because the public URL is HTTPS by design.
+- **Session id.** 32 random bytes. Only its SHA-256 hash is stored in `"Sessions"`, so a database leak does not yield usable cookies.
+- **Lifetime.** A session ends after **12 hours without activity** (idle timeout) or **14 days** after sign-in (absolute timeout), whichever comes first. `LastSeenAt` is written at most once a minute, so reads do not turn into writes.
+- **Rotation.** Signing in always issues a new session id and revokes the session the request carried. The id is also replaced whenever a user's privileges rise (role changes arrive with M2.3).
+- **Revocation is immediate.** Every request checks the session row, with no cache. Sign-out, password change, MFA change, role change, an admin "sign out everywhere" and "sign out of every other device" all revoke sessions server-side. A disabled or deleted user loses every session at once.
+- **CSRF.**
+  - Every request that is not `GET`, `HEAD` or `OPTIONS` needs an `X-CSRF-Token` header and an `Origin` header equal to `DHOW_PUBLIC_URL`. Otherwise the answer is `403 CSRF_FAILED`.
+  - The token is an HMAC of the session id under a key derived from `DHOW_SECRET_KEY`. It is bound to one session, `GET /api/v1/me` returns it, and the server stores only its hash.
+  - Sign-in and setup have no session yet, so they skip the token but still check `Origin`.
+  - Responses of the API are never cacheable (`Cache-Control: no-store`).
+- **Passwords.** Argon2id (m=19 MiB, t=2, p=1, 16-byte salt, 32-byte key), stored as a PHC string and compared in constant time. A hash made with older parameters is replaced after the next successful sign-in. The length is 12 to 128 characters.
+  - **Breached passwords.** When a password is set or changed, the server asks the Have I Been Pwned range API. Only the first 5 hex characters of the password's SHA-1 leave the server (k-anonymity), padding is requested, and the call times out after 3 seconds. If the service cannot be reached, the change goes through and a warning is logged. `DHOW_BREACHED_PASSWORD_CHECK=false` turns the check off for isolated networks.
+- **Sign-in throttling.** Failures are counted per account and per client address. After 5 failures for an account, or 20 for an address, the key is locked for 30 seconds, and every further failure doubles the lock up to 15 minutes. A key forgets its failures after an hour without one, and a successful sign-in resets the account. Attempts made during a lock are refused without being counted, so nobody can extend a lock. A locked key answers with the same generic `INVALID_CREDENTIALS` error plus `Retry-After`. Unknown accounts are throttled exactly like real ones, and the unknown-account path still runs a full Argon2id verification, so neither the answer nor its timing shows whether an account exists.
+- **CLI, CI and integrations** use **API tokens**, never a session. They are prefixed (`dhow_pat_…`), so secret scanners can detect them. They are stored as HMAC-SHA256 with a server pepper, scoped to an org or project with explicit permissions, and must expire. A token can never exceed its creator's permissions.
 
 ## 6. Authorization (ADR-0015)
 
@@ -90,7 +102,10 @@ The assets to protect are:
 
 ## 9. Audit
 
-- The audit log is append-only, and each event includes `prev_hash`, which makes the log **tamper-evident**.
+- The audit log is append-only, and each event includes `PrevHash`, which makes the log **tamper-evident**.
+  - Every event stores `Hash = SHA-256(PrevHash ‖ canonical JSON of the event)`, and events form one chain per organization (plus one for instance-level events). Writers take a per-chain advisory lock, so the chain never forks.
+  - A database trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` on the table. `GET /api/v1/organizations/{id}/audit-events/verify` walks a chain and reports the first event whose hash or link is wrong.
+  - Event data never carries a secret: passwords, tokens and cookies are not recorded, and keys that look sensitive are dropped before the write.
 - Every security-relevant action is recorded, including auth events, role changes, secret writes, approvals, deployments and runner registration.
 - **Retention:** Community keeps 90 days. Business and Enterprise get longer retention, export, and SIEM streaming.
 
@@ -119,7 +134,7 @@ Each class of vulnerability found in Deploy Center v3, and the design rule in Dh
 | The API returned webhook secrets and credentials in plaintext | Secrets are write-only. Response DTOs contain no secret fields. Everything is encrypted at rest |
 | Routes lacked object-level checks (IDOR) | A central `can()` policy, tenant-scoped loaders, non-enumerable UUIDv7 ids, and route-table authorization tests |
 | Hardcoded fallback secrets were accepted in production | Boot fails on missing or placeholder secrets. The installer generates strong ones |
-| Stateless long-lived JWTs could not be revoked | 15-minute access tokens checked against server-side sessions; refresh rotation with reuse detection |
+| Stateless long-lived JWTs could not be revoked | Server-side sessions stored as hashes, checked on every request, revoked at once, with idle and absolute timeouts and CSRF tokens |
 | In-place `rsync --delete` deploys with fragile backups | Atomic releases (symlink switch), health checks, automatic rollback to the previous release |
 | Queue retries re-ran whole, non-idempotent deployments | No automatic retry after the first mutating step. Leases and reconciliation handle crashed jobs, and an environment lock prevents concurrent deployments |
 | Notification URLs allowed SSRF and blocked the single worker | A separate notification queue with timeouts, plus an SSRF guard that checks the resolved IP |
