@@ -1,0 +1,99 @@
+name: dhow
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:18@sha256:edb0c08dc33befd0262ab3b5cf1c4f3f8cfd8b09e88c05b45adee29d6761ddb6
+    restart: unless-stopped
+    user: "999:999"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 200
+    stop_grace_period: 30s
+    logging: *logging
+    environment:
+      POSTGRES_USER: dhow
+      POSTGRES_DB: dhow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./init.sh to create .env}
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        umask 077
+        mkdir -p /tmp/tls
+        openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+          -days 825 -subj /CN=postgres \
+          -keyout /tmp/tls/server.key -out /tmp/tls/server.crt
+        exec docker-entrypoint.sh "$$@"
+      - dhow-postgres
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/tmp/tls/server.crt
+      - -c
+      - ssl_key_file=/tmp/tls/server.key
+      - -c
+      - ssl_min_protocol_version=TLSv1.2
+    volumes:
+      - pgdata:/var/lib/postgresql
+    tmpfs:
+      - /tmp:mode=1777,size=16m
+      - /var/run/postgresql:uid=999,gid=999,mode=0755,size=4m
+    networks: [data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "dhow", "-d", "dhow", "-q"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  dhow:
+    image: ${DHOW_IMAGE:-ghcr.io/arab-opensource/dhow:latest}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 128
+    stop_grace_period: 30s
+    logging: *logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DHOW_DATABASE_URL: postgres://dhow:${POSTGRES_PASSWORD:?run ./init.sh to create .env}@postgres:5432/dhow?sslmode=require
+      DHOW_SECRET_KEY: ${DHOW_SECRET_KEY:?run ./init.sh to create .env}
+      DHOW_PUBLIC_URL: ${DHOW_PUBLIC_URL:?run ./init.sh to create .env}
+      DHOW_TRUSTED_PROXIES: ${DHOW_TRUSTED_PROXIES:-}
+      DHOW_LOG_LEVEL: ${DHOW_LOG_LEVEL:-info}
+      DHOW_BREACHED_PASSWORD_CHECK: ${DHOW_BREACHED_PASSWORD_CHECK:-true}
+    ports:
+      - "${DHOW_PUBLISH:-127.0.0.1:8080}:8080"
+    tmpfs:
+      - /tmp:mode=1777,size=16m
+    networks: [data, edge]
+    healthcheck:
+      test: ["CMD", "/dhow-server", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  data:
+    internal: true
+  edge: {}
+
+volumes:
+  pgdata: {}
