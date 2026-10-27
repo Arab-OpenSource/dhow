@@ -1,4 +1,7 @@
+import { DEFAULT_THEME_ID, isSystemThemeId, type TSystemThemeId } from '@/Core/Theme/ThemeIds';
 import themes from '@/Styles/Themes.json';
+
+export { DEFAULT_THEME_ID, isSystemThemeId, SYSTEM_THEME_IDS, type TSystemThemeId } from '@/Core/Theme/ThemeIds';
 
 export const THEME_TOKEN_KEYS = [
   'canvas',
@@ -34,11 +37,6 @@ export type TThemeColors = Record<TThemeToken, string>;
 export const THEME_GROUPS = ['bg', 'text', 'aurora', 'edge', 'status'] as const;
 export type TThemeGroup = (typeof THEME_GROUPS)[number];
 
-export const SYSTEM_THEME_IDS = ['sea', 'teak', 'dusk', 'indigo'] as const;
-export type TSystemThemeId = (typeof SYSTEM_THEME_IDS)[number];
-
-export const DEFAULT_THEME_ID: TSystemThemeId = 'sea';
-
 export const STATUS_TOKENS = [
   'green',
   'blue',
@@ -62,8 +60,6 @@ export interface IThemeTokenGroup {
   Group: TThemeGroup;
   Tokens: TThemeToken[];
 }
-
-export const isSystemThemeId = (value: unknown): value is TSystemThemeId => SYSTEM_THEME_IDS.some((id) => id === value);
 
 export const THEME_VARIABLES = Object.fromEntries(themes.tokens.map((token) => [token.key, token.variable])) as Record<
   TThemeToken,

@@ -17,6 +17,24 @@ const build = (onSelect = vi.fn()): ISideMenuProps => ({
 });
 
 describe('SideMenu', () => {
+  it('tells the shell a person is about to open an item when they hover or focus it', () => {
+    const onIntent = vi.fn();
+    const props = build();
+    renderUi(
+      <SideMenu
+        {...props}
+        items={props.items.map((item) => ('href' in item && item.id === 'team' ? { ...item, onIntent } : item))}
+        account={{ ...props.account, onIntent }}
+      />,
+    );
+    fireEvent.pointerEnter(screen.getByRole('link', { name: 'Team' }));
+    expect(onIntent).toHaveBeenCalledTimes(1);
+    fireEvent.focus(screen.getByRole('link', { name: 'Sabry Dawood' }));
+    expect(onIntent).toHaveBeenCalledTimes(2);
+    fireEvent.pointerEnter(screen.getByRole('link', { name: 'Home' }));
+    expect(onIntent).toHaveBeenCalledTimes(2);
+  });
+
   it('is a labelled navigation landmark that marks only the current page', () => {
     renderUi(<SideMenu {...build()} />);
     expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();

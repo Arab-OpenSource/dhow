@@ -1,13 +1,16 @@
 import { Navigate, useNavigate, useRouter, useSearch } from '@tanstack/react-router';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 
 import { PageError, PageLoading } from '@/App/Layout/PageStates';
 import { safeRedirect } from '@/App/Routes/Redirect';
+import { lazyComponent } from '@/Core/Ui/LazyComponent';
 import { useMeta } from '@/Modules/System/Hooks/useMeta';
 
-const LoginPage = lazy(() =>
-  import('@/Modules/Session/Pages/LoginPage').then((module) => ({ default: module.LoginPage })),
-);
+const LoginPage = lazyComponent(() => import('@/Modules/Session/Pages/LoginPage').then((module) => module.LoginPage));
+
+export const preloadLoginPage = (): void => {
+  void LoginPage.preload();
+};
 
 export const LoginRoute = () => {
   const meta = useMeta();

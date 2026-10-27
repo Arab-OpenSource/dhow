@@ -6,6 +6,9 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { DEFAULT_THEME_ID } from '@/Core/Theme/ThemeTokens';
 import { useCsrfStore } from '@/Core/Store/useCsrfStore';
 import { useThemeStore } from '@/Core/Theme/useThemeStore';
+import { loadWorkspaceMessages } from '@/I18n/WorkspaceCatalog';
+
+await Promise.all([loadWorkspaceMessages('ar'), loadWorkspaceMessages('en')]);
 
 window.scrollTo = vi.fn();
 Element.prototype.scrollIntoView = vi.fn();

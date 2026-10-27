@@ -1,12 +1,23 @@
-import { Ar } from '@/I18n/Locales/Ar';
-import { En } from '@/I18n/Locales/En';
 import type { TLocale } from '@/I18n/Locale';
-import type { TMessageKey, TMessageParams, TMessages } from '@/I18n/Messages';
+import { BootAr } from '@/I18n/Locales/Boot/Ar';
+import { BootEn } from '@/I18n/Locales/Boot/En';
+import type { TMessageKey, TMessageParams, TMessages, TWorkspaceMessages } from '@/I18n/Messages';
+import { useCatalogStore } from '@/I18n/useCatalogStore';
 
-const CATALOGS: Record<TLocale, TMessages> = { ar: Ar, en: En };
+type TCatalog = Readonly<Partial<TMessages>>;
 
-export const translate = (locale: TLocale, key: TMessageKey, params?: TMessageParams): string => {
-  const template = CATALOGS[locale][key];
+const BOOT: Record<TLocale, TCatalog> = { ar: BootAr, en: BootEn };
+
+const loadedWorkspace = (locale: TLocale): TWorkspaceMessages | undefined =>
+  useCatalogStore.getState().Workspace[locale];
+
+export const translate = (
+  locale: TLocale,
+  key: TMessageKey,
+  params?: TMessageParams,
+  workspace: TCatalog | undefined = loadedWorkspace(locale),
+): string => {
+  const template = BOOT[locale][key] ?? workspace?.[key] ?? key;
   if (!params) return template;
   return template.replace(/\{(\w+)\}/g, (placeholder, name: string) => {
     const value = params[name];
@@ -14,6 +25,6 @@ export const translate = (locale: TLocale, key: TMessageKey, params?: TMessagePa
   });
 };
 
-export const catalogOf = (locale: TLocale): TMessages => CATALOGS[locale];
-
-export const isMessageKey = (key: string): key is TMessageKey => Object.hasOwn(Ar, key);
+export const isMessageKey = (key: string): key is TMessageKey =>
+  Object.hasOwn(BootAr, key) ||
+  Object.values(useCatalogStore.getState().Workspace).some((messages) => Object.hasOwn(messages, key));
