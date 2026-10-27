@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package dhow.runner.v1;
+
+import "dhow/runner/v1/common.proto";
+import "dhow/runner/v1/job.proto";
+
+service LeaseService {
+  rpc Lease(LeaseRequest) returns (LeaseResponse);
+  rpc Start(StartRequest) returns (StartResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc BeginStep(BeginStepRequest) returns (BeginStepResponse);
+  rpc EndStep(EndStepRequest) returns (EndStepResponse);
+  rpc Complete(CompleteRequest) returns (CompleteResponse);
+}
+
+message LeaseRequest {
+  int32 free_slots = 1;
+  int32 wait_seconds = 2;
+}
+
+message LeaseResponse {
+  SignedLeaseGrant grant = 1;
+}
+
+message StartRequest {
+  LeaseRef lease = 1;
+  bytes pop_signature = 2;
+}
+
+message StartResponse {
+  SealedSecrets secrets = 1;
+  LeaseControl control = 2;
+}
+
+message HeartbeatRequest {
+  LeaseRef lease = 1;
+}
+
+message HeartbeatResponse {
+  LeaseControl control = 1;
+}
+
+message BeginStepRequest {
+  LeaseRef lease = 1;
+  int32 index = 2;
+  bool mutating = 3;
+}
+
+message BeginStepResponse {
+  LeaseControl control = 1;
+}
+
+message EndStepRequest {
+  LeaseRef lease = 1;
+  int32 index = 2;
+  int32 exit_code = 3;
+  FailureReason failure_reason = 4;
+}
+
+message EndStepResponse {
+  LeaseControl control = 1;
+}
+
+message CompleteRequest {
+  LeaseRef lease = 1;
+  AttemptResult result = 2;
+  int32 exit_code = 3;
+  FailureReason failure_reason = 4;
+  bytes digest = 5;
+}
+
+message CompleteResponse {}

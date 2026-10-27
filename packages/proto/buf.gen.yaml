@@ -1,0 +1,14 @@
+version: v2
+clean: true
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/Arab-OpenSource/dhow/packages/proto/gen/go
+plugins:
+  - local: bin/tools/protoc-gen-go
+    out: packages/proto/gen/go
+    opt: paths=source_relative
+  - local: bin/tools/protoc-gen-connect-go
+    out: packages/proto/gen/go
+    opt: paths=source_relative

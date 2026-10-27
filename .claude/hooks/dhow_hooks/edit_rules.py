@@ -6,6 +6,7 @@ from . import go_comments, js_comments, web_rules
 from .common import GENERATED_PATH, is_test, is_ts, new_lines
 
 CSS_EXT = (".css",)
+PROTO_DIRECTIVE = re.compile(r"^//\s*buf:lint:ignore\s")
 MAX_LINES = 500
 
 ROOT_MARKDOWN = {"README.md", "README.ar.md", "CLAUDE.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE.md"}
@@ -100,7 +101,7 @@ def is_go(path):
 def check_generated(rel, **_):
     if GENERATED_PATH.search(rel):
         return (f"{rel} is generated or a lockfile. Do not edit it by hand: change the source "
-                "(packages/openapi/openapi.yaml, SQL queries, go.mod, package.json, apps/web/Src/Styles/Tokens.json) and run "
+                "(packages/openapi/openapi.yaml, packages/proto/**/*.proto, SQL queries, go.mod, package.json, apps/web/Src/Styles/Tokens.json) and run "
                 "`make gen`, `go mod tidy`, `pnpm install`, `pnpm gen:api` or `pnpm gen:tokens`.")
     return None
 
@@ -128,16 +129,22 @@ def check_markdown_location(rel, exists, **_):
             "Do not create Markdown files elsewhere.")
 
 
+def proto_comment_allowed(kind, text):
+    return (kind == "line" and PROTO_DIRECTIVE.match(text) is not None) or go_comments.is_allowed(kind, text)
+
+
 def check_comments(rel, added, old, **_):
     if is_go(rel):
-        scanner = go_comments
+        find, allowed = go_comments.find_comments, go_comments.is_allowed
     elif is_ts(rel):
-        scanner = js_comments
+        find, allowed = js_comments.find_comments, js_comments.is_allowed
+    elif rel.endswith(".proto"):
+        find, allowed = go_comments.find_comments, proto_comment_allowed
     else:
         return None
-    for start, end, kind in scanner.find_comments(added):
+    for start, end, kind in find(added):
         text = added[start:end]
-        if scanner.is_allowed(kind, text):
+        if allowed(kind, text):
             continue
         stripped = text.strip()
         if stripped and stripped in old:
@@ -145,7 +152,7 @@ def check_comments(rel, added, old, **_):
         snippet = " ".join(stripped.split())[:90]
         return (f"{rel}: code carries no comments (no line comments, block comments, JSDoc or Go doc comments). "
                 f"Offending comment: {snippet}. Rationale belongs in Plan/ADR. The only exceptions are build "
-                "directives (//go:, //nolint:, eslint-, ts-expect-error, ...) and a comment that starts with `IMPORTANT:`.")
+                "directives (//go:, //nolint:, eslint-, ts-expect-error, buf:lint:ignore, ...) and a comment that starts with `IMPORTANT:`.")
     return None
 
 

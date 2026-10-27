@@ -44,7 +44,13 @@ jobs:
       - name: Verify generated code is current
         run: |
           make gen
-          git diff --exit-code -- apps/server/internal/Modules apps/server/internal/Database/Sqlc
+          git diff --exit-code -- apps/server/internal/Modules apps/server/internal/Database/Sqlc packages/proto/gen
+          test -z "$(git status --porcelain --untracked-files=all -- packages/proto/gen)"
+      - name: Fetch main for the proto breaking check
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/heads/main
+      - name: Lint the runner protocol
+        run: make proto-lint
       - name: Lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
