@@ -49,8 +49,14 @@ func (e HealthStatusStatus) Valid() bool {
 	}
 }
 
-// Error defines model for Error.
-type Error struct {
+// Envelope defines model for Envelope.
+type Envelope struct {
+	Error   *ErrorDetail `json:"Error"`
+	Success bool         `json:"Success"`
+}
+
+// ErrorDetail defines model for ErrorDetail.
+type ErrorDetail struct {
 	// Code Stable machine-readable code, for example `internal`, `not_found`, `payload_too_large`.
 	//
 	// Example: internal
@@ -62,6 +68,13 @@ type Error struct {
 	Message string `json:"Message"`
 }
 
+// ErrorResponse defines model for ErrorResponse.
+type ErrorResponse struct {
+	Data    *map[string]interface{} `json:"Data"`
+	Error   *ErrorDetail            `json:"Error"`
+	Success bool                    `json:"Success"`
+}
+
 // HealthCheck defines model for HealthCheck.
 type HealthCheck struct {
 	Name HealthCheckName `json:"Name"`
@@ -70,6 +83,13 @@ type HealthCheck struct {
 
 // HealthCheckName defines model for HealthCheck.Name.
 type HealthCheckName string
+
+// HealthResponse defines model for HealthResponse.
+type HealthResponse struct {
+	Data    *HealthStatus `json:"Data"`
+	Error   *ErrorDetail  `json:"Error"`
+	Success bool          `json:"Success"`
+}
 
 // HealthStatus defines model for HealthStatus.
 type HealthStatus struct {
@@ -91,6 +111,16 @@ type Meta struct {
 	// Version Example: v0.1.0
 	Version string `json:"Version"`
 }
+
+// MetaResponse defines model for MetaResponse.
+type MetaResponse struct {
+	Data    *Meta        `json:"Data"`
+	Error   *ErrorDetail `json:"Error"`
+	Success bool         `json:"Success"`
+}
+
+// Error defines model for Error.
+type Error = ErrorResponse
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -304,7 +334,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	return r
 }
 
-type ErrorJSONResponse Error
+type ErrorJSONResponse ErrorResponse
 
 type GetLivenessRequestObject struct {
 }
@@ -313,7 +343,7 @@ type GetLivenessResponseObject interface {
 	VisitGetLivenessResponse(w http.ResponseWriter) error
 }
 
-type GetLiveness200JSONResponse HealthStatus
+type GetLiveness200JSONResponse HealthResponse
 
 func (response GetLiveness200JSONResponse) VisitGetLivenessResponse(w http.ResponseWriter) error {
 
@@ -327,6 +357,23 @@ func (response GetLiveness200JSONResponse) VisitGetLivenessResponse(w http.Respo
 	return err
 }
 
+type GetLivenessdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response GetLivenessdefaultJSONResponse) VisitGetLivenessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetReadinessRequestObject struct {
 }
 
@@ -334,7 +381,7 @@ type GetReadinessResponseObject interface {
 	VisitGetReadinessResponse(w http.ResponseWriter) error
 }
 
-type GetReadiness200JSONResponse HealthStatus
+type GetReadiness200JSONResponse HealthResponse
 
 func (response GetReadiness200JSONResponse) VisitGetReadinessResponse(w http.ResponseWriter) error {
 
@@ -348,7 +395,7 @@ func (response GetReadiness200JSONResponse) VisitGetReadinessResponse(w http.Res
 	return err
 }
 
-type GetReadiness503JSONResponse HealthStatus
+type GetReadiness503JSONResponse HealthResponse
 
 func (response GetReadiness503JSONResponse) VisitGetReadinessResponse(w http.ResponseWriter) error {
 
@@ -362,6 +409,23 @@ func (response GetReadiness503JSONResponse) VisitGetReadinessResponse(w http.Res
 	return err
 }
 
+type GetReadinessdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response GetReadinessdefaultJSONResponse) VisitGetReadinessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetMetaRequestObject struct {
 }
 
@@ -369,7 +433,7 @@ type GetMetaResponseObject interface {
 	VisitGetMetaResponse(w http.ResponseWriter) error
 }
 
-type GetMeta200JSONResponse Meta
+type GetMeta200JSONResponse MetaResponse
 
 func (response GetMeta200JSONResponse) VisitGetMetaResponse(w http.ResponseWriter) error {
 
@@ -384,7 +448,7 @@ func (response GetMeta200JSONResponse) VisitGetMetaResponse(w http.ResponseWrite
 }
 
 type GetMetadefaultJSONResponse struct {
-	Body       Error
+	Body       ErrorResponse
 	StatusCode int
 }
 

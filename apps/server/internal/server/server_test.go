@@ -18,7 +18,6 @@ import (
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/api/gen"
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/config"
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/db/sqlc"
-	"github.com/Arab-OpenSource/dhow/apps/server/internal/httpx"
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/web"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
@@ -117,11 +116,17 @@ func TestReadiness(t *testing.T) {
 			if strings.Contains(rec.Body.String(), "hunter2") || strings.Contains(rec.Body.String(), "10.0.0.5") {
 				t.Fatal("readiness leaks internal error details")
 			}
-			var body gen.HealthStatus
+			var body gen.HealthResponse
 			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 				t.Fatal(err)
 			}
-			for _, c := range body.Checks {
+			if body.Data == nil {
+				t.Fatal("Data is null")
+			}
+			if body.Success != (tt.wantStatus == http.StatusOK) {
+				t.Errorf("Success = %v for status %d", body.Success, tt.wantStatus)
+			}
+			for _, c := range body.Data.Checks {
 				if c.Ok != tt.wantChecks[c.Name] {
 					t.Errorf("check %s ok = %v, want %v", c.Name, c.Ok, tt.wantChecks[c.Name])
 				}
@@ -134,10 +139,7 @@ func TestMeta(t *testing.T) {
 	build := buildinfo.Info{Version: "v0.1.0", Commit: "abc123"}
 	t.Run("setup required", func(t *testing.T) {
 		rec := do(t, newRouter(t, api.Deps{Build: build}), http.MethodGet, "/api/v1/meta")
-		var m gen.Meta
-		if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
-			t.Fatal(err)
-		}
+		m := decodeMeta(t, rec)
 		if rec.Code != http.StatusOK || !m.SetupRequired || m.Version != "v0.1.0" || m.Commit != "abc123" {
 			t.Fatalf("status=%d meta=%+v", rec.Code, m)
 		}
@@ -145,12 +147,8 @@ func TestMeta(t *testing.T) {
 	t.Run("setup done", func(t *testing.T) {
 		q := fakeQueries{inst: sqlc.Instance{SetupCompletedAt: pgtype.Timestamptz{Valid: true}}}
 		rec := do(t, newRouter(t, api.Deps{Queries: q}), http.MethodGet, "/api/v1/meta")
-		var m gen.Meta
-		if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
-			t.Fatal(err)
-		}
-		if m.SetupRequired {
-			t.Fatal("setupRequired = true after setup")
+		if decodeMeta(t, rec).SetupRequired {
+			t.Fatal("SetupRequired = true after setup")
 		}
 	})
 	t.Run("query error is generic", func(t *testing.T) {
@@ -205,6 +203,7 @@ func TestBodyLimitApplies(t *testing.T) {
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status = %d", rec.Code)
 	}
+	assertCode(t, rec, "payload_too_large")
 }
 
 func TestServerTimeouts(t *testing.T) {
@@ -223,27 +222,25 @@ func TestServerTimeouts(t *testing.T) {
 	}
 }
 
+func decodeMeta(t *testing.T, rec *httptest.ResponseRecorder) gen.Meta {
+	t.Helper()
+	var body gen.MetaResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if !body.Success || body.Data == nil || body.Error != nil {
+		t.Fatalf("not a success envelope: %s", rec.Body.String())
+	}
+	return *body.Data
+}
+
 func assertCode(t *testing.T, rec *httptest.ResponseRecorder, code string) {
 	t.Helper()
-	var body httpx.ErrorBody
+	var body gen.ErrorResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("not an error body: %q", rec.Body.String())
 	}
-	if body.Code != code {
-		t.Fatalf("code = %q, want %q", body.Code, code)
-	}
-}
-
-func TestGeneratedErrorMatchesMiddlewareError(t *testing.T) {
-	a, err := json.Marshal(gen.Error{Code: "c", Message: "m"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := json.Marshal(httpx.ErrorBody{Code: "c", Message: "m"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(a) != string(b) {
-		t.Fatalf("error shapes differ: %s vs %s", a, b)
+	if body.Success || body.Data != nil || body.Error == nil || body.Error.Code != code {
+		t.Fatalf("body = %s, want error code %q", rec.Body.String(), code)
 	}
 }

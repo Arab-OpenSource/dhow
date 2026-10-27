@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 	"time"
-)
 
-func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
+	"github.com/Arab-OpenSource/dhow/apps/server/internal/api/gen"
+)
 
 func TestSecurityHeaders(t *testing.T) {
 	tests := []struct {
@@ -159,14 +159,16 @@ func TestRecover(t *testing.T) {
 	}
 }
 
-func TestRecoverReraisesAbort(t *testing.T) {
-	h := Recover(discard())(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic(http.ErrAbortHandler) }))
-	defer func() {
-		if r := recover(); r != http.ErrAbortHandler { //nolint:errorlint // comparing the recovered sentinel value
-			t.Fatalf("recovered %v, want ErrAbortHandler", r)
-		}
-	}()
-	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", http.NoBody))
+func TestRecoverAbortHandler(t *testing.T) {
+	var logs bytes.Buffer
+	h := Recover(slog.New(slog.NewJSONHandler(&logs, nil)))(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		panic(http.ErrAbortHandler)
+	}))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
+	if rec.Body.Len() != 0 || strings.Contains(logs.String(), "stack") {
+		t.Fatalf("abort must not write a body or log a stack: body=%q logs=%s", rec.Body.String(), logs.String())
+	}
 }
 
 func TestRequestIDIgnoresClientValue(t *testing.T) {
@@ -176,7 +178,7 @@ func TestRequestIDIgnoresClientValue(t *testing.T) {
 	req.Header.Set("X-Request-ID", "attacker-chosen\nvalue")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
-	if seen == "" || strings.Contains(seen, "attacker") || rec.Header().Get("X-Request-ID") != seen || len(seen) != 24 {
+	if seen == "" || strings.Contains(seen, "attacker") || rec.Header().Get("X-Request-ID") != seen || len(seen) != 26 {
 		t.Fatalf("request id = %q", seen)
 	}
 }
@@ -207,12 +209,14 @@ func TestAccessLogOmitsQuery(t *testing.T) {
 
 func assertErrorBody(t *testing.T, rec *httptest.ResponseRecorder, code string) {
 	t.Helper()
-	var body ErrorBody
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("body is not the error schema: %v", err)
+	var body gen.ErrorResponse
+	dec := json.NewDecoder(rec.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&body); err != nil {
+		t.Fatalf("body is not the error envelope: %v", err)
 	}
-	if body.Code != code || body.Message == "" {
-		t.Fatalf("body = %+v, want code %q", body, code)
+	if body.Success || body.Data != nil || body.Error == nil || body.Error.Code != code || body.Error.Message == "" {
+		t.Fatalf("body = %+v, want error code %q", body, code)
 	}
 	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
 		t.Fatalf("Content-Type = %q", ct)

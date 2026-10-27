@@ -3,7 +3,6 @@ package httpx
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -13,6 +12,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
+
+	"github.com/Arab-OpenSource/dhow/apps/server/internal/api/gen"
 )
 
 type ctxKey int
@@ -22,35 +23,54 @@ const (
 	clientIPKey
 )
 
-type ErrorBody struct {
-	Code    string `json:"Code"`
-	Message string `json:"Message"`
+const (
+	CodeInternal         = "internal"
+	CodeNotFound         = "not_found"
+	CodeMethodNotAllowed = "method_not_allowed"
+	CodeBadRequest       = "bad_request"
+	CodePayloadTooLarge  = "payload_too_large"
+	CodeUnavailable      = "unavailable"
+
+	MessageInternal = "Something went wrong. Try again later."
+)
+
+const fallbackErrorBody = `{"Success":false,"Data":null,"Error":{"Code":"internal","Message":"Something went wrong. Try again later."}}` + "\n"
+
+func NewError(code, message string) gen.ErrorResponse {
+	return gen.ErrorResponse{Success: false, Data: nil, Error: &gen.ErrorDetail{Code: code, Message: message}}
 }
 
 func WriteError(w http.ResponseWriter, status int, code, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
+	body, err := json.Marshal(NewError(code, message))
+	if err != nil {
+		body = []byte(fallbackErrorBody)
+	} else {
+		body = append(body, '\n')
+	}
+	h := w.Header()
+	h.Set("Content-Type", "application/json")
+	h.Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(ErrorBody{Code: code, Message: message})
+	if _, err := w.Write(body); err != nil {
+		return
+	}
 }
 
 func writeInternal(w http.ResponseWriter) {
-	WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Try again later.")
+	WriteError(w, http.StatusInternalServerError, CodeInternal, MessageInternal)
 }
 
 func NotFound(w http.ResponseWriter, _ *http.Request) {
-	WriteError(w, http.StatusNotFound, "not_found", "The requested resource does not exist.")
+	WriteError(w, http.StatusNotFound, CodeNotFound, "The requested resource does not exist.")
 }
 
 func MethodNotAllowed(w http.ResponseWriter, _ *http.Request) {
-	WriteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "This method is not allowed here.")
+	WriteError(w, http.StatusMethodNotAllowed, CodeMethodNotAllowed, "This method is not allowed here.")
 }
 
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var b [12]byte
-		_, _ = rand.Read(b[:])
-		id := hex.EncodeToString(b[:])
+		id := rand.Text()
 		w.Header().Set("X-Request-ID", id)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestIDKey, id)))
 	})
@@ -135,7 +155,8 @@ func Recover(log *slog.Logger) func(http.Handler) http.Handler {
 
 func handlePanic(ctx context.Context, log *slog.Logger, w http.ResponseWriter, path string, rec any) {
 	if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
-		panic(rec)
+		log.WarnContext(ctx, "handler aborted", "request_id", RequestIDFrom(ctx), "path", path)
+		return
 	}
 	log.ErrorContext(ctx, "panic serving request",
 		"request_id", RequestIDFrom(ctx), "path", path, "panic", rec, "stack", string(debug.Stack()))
@@ -146,7 +167,7 @@ func BodyLimit(n int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.ContentLength > n {
-				WriteError(w, http.StatusRequestEntityTooLarge, "payload_too_large", "The request body is too large.")
+				WriteError(w, http.StatusRequestEntityTooLarge, CodePayloadTooLarge, "The request body is too large.")
 				return
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, n)

@@ -41,24 +41,25 @@ func New(d Deps) *Server { return &Server{d: d} }
 func Handler(s *Server, router chi.Router, baseURL string) http.Handler {
 	strict := gen.NewStrictHandlerWithOptions(s, nil, gen.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, _ error) {
-			httpx.WriteError(w, http.StatusBadRequest, "bad_request", "The request is not valid.")
+			httpx.WriteError(w, http.StatusBadRequest, httpx.CodeBadRequest, "The request is not valid.")
 		},
 		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			s.d.Log.ErrorContext(r.Context(), "api handler failed", "request_id", httpx.RequestIDFrom(r.Context()), "error", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Try again later.")
+			httpx.WriteError(w, http.StatusInternalServerError, httpx.CodeInternal, httpx.MessageInternal)
 		},
 	})
 	return gen.HandlerWithOptions(strict, gen.ChiServerOptions{
 		BaseURL:    baseURL,
 		BaseRouter: router,
 		ErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, _ error) {
-			httpx.WriteError(w, http.StatusBadRequest, "bad_request", "The request is not valid.")
+			httpx.WriteError(w, http.StatusBadRequest, httpx.CodeBadRequest, "The request is not valid.")
 		},
 	})
 }
 
 func (s *Server) GetLiveness(context.Context, gen.GetLivenessRequestObject) (gen.GetLivenessResponseObject, error) {
-	return gen.GetLiveness200JSONResponse{Status: gen.Ok, Checks: []gen.HealthCheck{}}, nil
+	body := gen.HealthStatus{Status: gen.Ok, Checks: []gen.HealthCheck{}}
+	return gen.GetLiveness200JSONResponse{Success: true, Data: &body}, nil
 }
 
 func (s *Server) GetReadiness(ctx context.Context, _ gen.GetReadinessRequestObject) (gen.GetReadinessResponseObject, error) {
@@ -79,9 +80,13 @@ func (s *Server) GetReadiness(ctx context.Context, _ gen.GetReadinessRequestObje
 	}
 	if !dbOK || !migOK {
 		body.Status = gen.Unavailable
-		return gen.GetReadiness503JSONResponse(body), nil
+		return gen.GetReadiness503JSONResponse{
+			Success: false,
+			Data:    &body,
+			Error:   &gen.ErrorDetail{Code: httpx.CodeUnavailable, Message: "The service is not ready."},
+		}, nil
 	}
-	return gen.GetReadiness200JSONResponse(body), nil
+	return gen.GetReadiness200JSONResponse{Success: true, Data: &body}, nil
 }
 
 type readinessError string
@@ -106,12 +111,13 @@ func (s *Server) GetMeta(ctx context.Context, _ gen.GetMetaRequestObject) (gen.G
 		s.d.Log.ErrorContext(ctx, "load instance", "error", err)
 		return gen.GetMetadefaultJSONResponse{
 			StatusCode: http.StatusInternalServerError,
-			Body:       gen.Error{Code: "internal", Message: "Something went wrong. Try again later."},
+			Body:       httpx.NewError(httpx.CodeInternal, httpx.MessageInternal),
 		}, nil
 	}
-	return gen.GetMeta200JSONResponse{
+	meta := gen.Meta{
 		Version:       s.d.Build.Version,
 		Commit:        s.d.Build.Commit,
 		SetupRequired: !inst.SetupCompletedAt.Valid,
-	}, nil
+	}
+	return gen.GetMeta200JSONResponse{Success: true, Data: &meta}, nil
 }

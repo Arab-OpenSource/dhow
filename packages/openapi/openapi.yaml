@@ -27,7 +27,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                $ref: "#/components/schemas/HealthResponse"
+        default:
+          $ref: "#/components/responses/Error"
   /health/ready:
     get:
       operationId: getReadiness
@@ -41,13 +43,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                $ref: "#/components/schemas/HealthResponse"
         "503":
-          description: Not ready. The body names the failing check without internal details.
+          description: >-
+            Not ready. Success is false, Error carries the code `unavailable`, and Data names each failing
+            check without internal details.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                $ref: "#/components/schemas/HealthResponse"
+        default:
+          $ref: "#/components/responses/Error"
   /meta:
     get:
       operationId: getMeta
@@ -61,7 +67,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Meta"
+                $ref: "#/components/schemas/MetaResponse"
         default:
           $ref: "#/components/responses/Error"
 components:
@@ -71,9 +77,49 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/Error"
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
-    Error:
+    Envelope:
+      type: object
+      required: [Success, Error]
+      properties:
+        Success:
+          type: boolean
+        Error:
+          allOf:
+            - $ref: "#/components/schemas/ErrorDetail"
+          nullable: true
+    ErrorResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          required: [Data]
+          properties:
+            Data:
+              type: object
+              nullable: true
+              maxProperties: 0
+    HealthResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          required: [Data]
+          properties:
+            Data:
+              allOf:
+                - $ref: "#/components/schemas/HealthStatus"
+              nullable: true
+    MetaResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          required: [Data]
+          properties:
+            Data:
+              allOf:
+                - $ref: "#/components/schemas/Meta"
+              nullable: true
+    ErrorDetail:
       type: object
       additionalProperties: false
       required: [Code, Message]
