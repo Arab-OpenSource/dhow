@@ -248,3 +248,35 @@ func TestLoadListenAddrOnly(t *testing.T) {
 		})
 	}
 }
+
+func TestBreachedPasswordCheck(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		want    bool
+		wantErr bool
+	}{
+		{"unset defaults to on", "", true, false},
+		{"blank defaults to on", "  ", true, false},
+		{"true", "true", true, false},
+		{"false for air-gapped networks", "false", false, false},
+		{"zero", "0", false, false},
+		{"one", "1", true, false},
+		{"garbage fails closed", "maybe", false, true},
+		{"yes is not accepted", "yes", false, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := valid()
+			m[config.EnvBreachedPasswordCheck] = tt.value
+			cfg, err := config.Load(env(m))
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), config.EnvBreachedPasswordCheck)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, cfg.BreachedPasswordCheck)
+		})
+	}
+}

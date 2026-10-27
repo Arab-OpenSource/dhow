@@ -29,3 +29,43 @@ const (
 	DatabaseConnTimeout = 10 * time.Second
 	DatabaseAppName     = "dhow-server"
 )
+
+const (
+	APIPrefix = "/api/v1"
+
+	SessionCookieName      = "__Host-dhow_session"
+	CSRFHeaderName         = "X-CSRF-Token"
+	SessionIdleTimeout     = 12 * time.Hour
+	SessionAbsoluteTimeout = 14 * 24 * time.Hour
+	SessionTouchInterval   = time.Minute
+	SessionTokenBytes      = 32
+)
+
+const (
+	SetupTokenTTL   = time.Hour
+	SetupTokenBytes = 32
+)
+
+const (
+	PasswordMinLength = 12
+	PasswordMaxLength = 128
+	AuthBodyMaxBytes  = 16 << 10
+)
+
+const (
+	AccountFreeAttempts = 5
+	IPFreeAttempts      = 20
+	ThrottleBaseLock    = 30 * time.Second
+	ThrottleMaxLock     = 15 * time.Minute
+	ThrottleResetAfter  = time.Hour
+)
+
+const (
+	BreachedCheckTimeout = 3 * time.Second
+	BreachedRangeURL     = "https://api.pwnedpasswords.com/range/"
+)
+
+const (
+	DefaultPageLimit = 25
+	MaxPageLimit     = 100
+)

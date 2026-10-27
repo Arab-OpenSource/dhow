@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -8,7 +9,12 @@ import (
 	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
 )
 
-func StrictRequestError(w http.ResponseWriter, r *http.Request, _ error) {
+func StrictRequestError(w http.ResponseWriter, r *http.Request, err error) {
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		response.Error(w, r, apperrors.PayloadTooLarge())
+		return
+	}
 	response.Error(w, r, apperrors.BadRequest())
 }
 

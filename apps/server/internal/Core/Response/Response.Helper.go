@@ -3,7 +3,9 @@ package response
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
+	"strconv"
 
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
@@ -32,6 +34,9 @@ func Success(w http.ResponseWriter, status int, data any, messageKey string, met
 func Error(w http.ResponseWriter, r *http.Request, ae *apperrors.AppError) {
 	if ae == nil {
 		ae = apperrors.Internal(nil)
+	}
+	if ae.RetryAfter > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(int(math.Ceil(ae.RetryAfter.Seconds()))))
 	}
 	write(w, ae.Status, Envelope{Success: false, Error: Localize(r.Context(), ae)})
 }
