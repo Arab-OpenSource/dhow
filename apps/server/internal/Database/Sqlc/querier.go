@@ -15,10 +15,10 @@ type Querier interface {
 	CompleteInstanceSetup(ctx context.Context, completedAt time.Time) error
 	CountAuditEvents(ctx context.Context, organizationID *uuid.UUID) (int64, error)
 	CountMembers(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	EnsureThrottle(ctx context.Context, arg EnsureThrottleParams) error
 	GetInstance(ctx context.Context) (Instance, error)
 	GetLastAuditHash(ctx context.Context, organizationID *uuid.UUID) ([]byte, error)
 	GetOrganizationForMember(ctx context.Context, arg GetOrganizationForMemberParams) (GetOrganizationForMemberRow, error)
-	GetThrottle(ctx context.Context, key string) (GetThrottleRow, error)
 	GetUsableSetupToken(ctx context.Context, arg GetUsableSetupTokenParams) (GetUsableSetupTokenRow, error)
 	GetUserForLogin(ctx context.Context, email string) (GetUserForLoginRow, error)
 	GetUserPasswordHash(ctx context.Context, id uuid.UUID) (string, error)
@@ -35,20 +35,21 @@ type Querier interface {
 	ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]ListUserMembershipsRow, error)
 	LockAuditChain(ctx context.Context, chainKey string) error
 	LockInstance(ctx context.Context) (*time.Time, error)
+	LockThrottle(ctx context.Context, key string) (LockThrottleRow, error)
 	LockUsableSetupToken(ctx context.Context, arg LockUsableSetupTokenParams) (uuid.UUID, error)
 	MarkSetupTokenUsed(ctx context.Context, arg MarkSetupTokenUsedParams) error
 	NextAuditId(ctx context.Context) (uuid.UUID, error)
-	RecordThrottleFailure(ctx context.Context, arg RecordThrottleFailureParams) (int32, error)
+	RefundThrottle(ctx context.Context, arg RefundThrottleParams) error
 	RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error
 	ResetThrottle(ctx context.Context, arg ResetThrottleParams) error
 	ResolveSession(ctx context.Context, arg ResolveSessionParams) (ResolveSessionRow, error)
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) (int64, error)
 	RevokeSessionByTokenHash(ctx context.Context, arg RevokeSessionByTokenHashParams) (int64, error)
 	RevokeUserSession(ctx context.Context, arg RevokeUserSessionParams) (int64, error)
-	SetThrottleLock(ctx context.Context, arg SetThrottleLockParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
+	UpdateThrottle(ctx context.Context, arg UpdateThrottleParams) error
 	WalkAuditChain(ctx context.Context, arg WalkAuditChainParams) ([]WalkAuditChainRow, error)
 }
 

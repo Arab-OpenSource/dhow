@@ -23,7 +23,7 @@ func (s *Service) Login(ctx context.Context, in models.LoginInput) (models.Login
 	email := auth.NormalizeEmail(in.Email)
 	account, byIP := accountKey(email), ipKey(meta.IPString())
 
-	wait, err := s.lockedFor(ctx, now, account, byIP)
+	wait, err := s.reserve(ctx, now, byIP, account)
 	if err != nil {
 		return models.LoginResult{}, err
 	}
@@ -40,9 +40,9 @@ func (s *Service) Login(ctx context.Context, in models.LoginInput) (models.Login
 		return models.LoginResult{}, err
 	}
 	if !verified {
-		return models.LoginResult{}, s.failLogin(ctx, now, email, user, found, account, byIP)
+		return models.LoginResult{}, s.failLogin(ctx, email, user, found)
 	}
-	if err := s.resetFailures(ctx, now, account); err != nil {
+	if err := s.settleSuccess(ctx, now, account, byIP); err != nil {
 		return models.LoginResult{}, err
 	}
 	if rehash {
@@ -69,10 +69,7 @@ func (s *Service) checkPassword(ctx context.Context, user sqlc.GetUserForLoginRo
 	return s.hasher.Verify(ctx, password, user.PasswordHash)
 }
 
-func (s *Service) failLogin(ctx context.Context, now time.Time, email string, user sqlc.GetUserForLoginRow, found bool, keys ...throttleKey) error {
-	if err := s.recordFailure(ctx, now, keys...); err != nil {
-		return err
-	}
+func (s *Service) failLogin(ctx context.Context, email string, user sqlc.GetUserForLoginRow, found bool) error {
 	meta := auth.RequestMetaFrom(ctx)
 	audited := eventbus.Audited{
 		TargetType: "user", IP: meta.IPString(), Data: map[string]string{"EmailDigest": emailDigest(email)},

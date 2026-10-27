@@ -176,10 +176,18 @@ func TestSuccessResetsTheAccountCounter(t *testing.T) {
 	assert.Equal(t, http.StatusOK, attempt(env, d.Email, d.Password, ip).Status, "four failures after a success do not lock")
 }
 
-func TestLockoutHoldsUnderConcurrentAttacks(t *testing.T) {
+func failedLoginEvents(t *testing.T, env *apptest.Env) int {
+	t.Helper()
+	var n int
+	require.NoError(t, env.Pool.QueryRow(context.Background(), `SELECT count(*) FROM "AuditEvents" WHERE "Action" = 'auth.login_failed'`).Scan(&n))
+	return n
+}
+
+func TestParallelGuessesAgainstOneAccountCannotExceedTheLimit(t *testing.T) {
 	env, d := setupEnv(t)
+	const burst = 40
 	var wg sync.WaitGroup
-	for i := range 30 {
+	for i := range burst {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -187,11 +195,57 @@ func TestLockoutHoldsUnderConcurrentAttacks(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	_, until := throttleRow(t, env, onlyAccountKey(t, env))
+	assert.Equal(t, 5, failedLoginEvents(t, env), "attempts are counted before the password is checked, so a burst gets exactly the free attempts")
+	failures, until := throttleRow(t, env, onlyAccountKey(t, env))
+	assert.Equal(t, 5, failures)
 	require.NotNil(t, until)
+
 	res := attempt(env, d.Email, d.Password, "198.51.100.77:1")
 	assert.Equal(t, http.StatusUnauthorized, res.Status)
 	assert.Positive(t, retryAfter(t, res))
+}
+
+func TestParallelGuessesFromOneAddressCannotExceedTheLimit(t *testing.T) {
+	env, _ := setupEnv(t)
+	const burst = 60
+	var wg sync.WaitGroup
+	for i := range burst {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			attempt(env, fmt.Sprintf("user%d@example.com", i), "wrong password", "203.0.113.50:4000")
+		}()
+	}
+	wg.Wait()
+	assert.Equal(t, 20, failedLoginEvents(t, env))
+}
+
+func TestSuccessfulSignInsDoNotCountAgainstTheAddress(t *testing.T) {
+	env, d := setupEnv(t)
+	const ip = "203.0.113.60:4000"
+	for i := range 30 {
+		res := attempt(env, d.Email, d.Password, ip)
+		require.Equal(t, http.StatusOK, res.Status, "sign-in %d", i)
+	}
+	failures, until := throttleRow(t, env, "ip:203.0.113.60")
+	assert.Zero(t, failures)
+	assert.Nil(t, until)
+}
+
+func TestASuccessCannotBuyBackTheFailuresOfAnAttacker(t *testing.T) {
+	env, d := setupEnv(t)
+	const ip = "203.0.113.61:4000"
+	for i := range 19 {
+		attempt(env, fmt.Sprintf("guess%d@example.com", i), "wrong password", ip)
+	}
+	require.Equal(t, http.StatusOK, attempt(env, d.Email, d.Password, ip).Status)
+	failures, _ := throttleRow(t, env, "ip:203.0.113.61")
+	assert.Equal(t, 19, failures, "a success cancels only its own reservation")
+
+	last := attempt(env, "guess19@example.com", "wrong password", ip)
+	assert.Zero(t, retryAfter(t, last))
+	locked := attempt(env, d.Email, d.Password, ip)
+	assert.Equal(t, 30, retryAfter(t, locked), "the twentieth failure locks the address")
 }
 
 func TestPasswordChangeCannotBeUsedToGuessThePassword(t *testing.T) {

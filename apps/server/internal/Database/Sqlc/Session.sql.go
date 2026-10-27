@@ -12,23 +12,20 @@ import (
 	"github.com/google/uuid"
 )
 
-const getThrottle = `-- name: GetThrottle :one
-SELECT "Failures", "LastFailureAt", "LockedUntil"
-FROM "LoginThrottles"
-WHERE "Key" = $1 AND NOT "IsDeleted"
+const ensureThrottle = `-- name: EnsureThrottle :exec
+INSERT INTO "LoginThrottles" ("Key", "Failures", "LastFailureAt", "CreatedAt", "UpdatedAt")
+VALUES ($1, 0, $2, $2, $2)
+ON CONFLICT ("Key") DO NOTHING
 `
 
-type GetThrottleRow struct {
-	Failures      int32
-	LastFailureAt time.Time
-	LockedUntil   *time.Time
+type EnsureThrottleParams struct {
+	Key string
+	Now time.Time
 }
 
-func (q *Queries) GetThrottle(ctx context.Context, key string) (GetThrottleRow, error) {
-	row := q.db.QueryRow(ctx, getThrottle, key)
-	var i GetThrottleRow
-	err := row.Scan(&i.Failures, &i.LastFailureAt, &i.LockedUntil)
-	return i, err
+func (q *Queries) EnsureThrottle(ctx context.Context, arg EnsureThrottleParams) error {
+	_, err := q.db.Exec(ctx, ensureThrottle, arg.Key, arg.Now)
+	return err
 }
 
 const getUserForLogin = `-- name: GetUserForLogin :one
@@ -200,29 +197,43 @@ func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]
 	return items, nil
 }
 
-const recordThrottleFailure = `-- name: RecordThrottleFailure :one
-INSERT INTO "LoginThrottles" ("Key", "Failures", "LastFailureAt", "CreatedAt", "UpdatedAt")
-VALUES ($1, 1, $2, $2, $2)
-ON CONFLICT ("Key") DO UPDATE
-SET "Failures" = CASE WHEN "LoginThrottles"."LastFailureAt" < $3 THEN 1 ELSE "LoginThrottles"."Failures" + 1 END,
-    "LastFailureAt" = $2,
-    "LockedUntil" = NULL,
-    "IsDeleted" = false,
-    "UpdatedAt" = $2
-RETURNING "Failures"
+const lockThrottle = `-- name: LockThrottle :one
+SELECT "Failures", "LastFailureAt", "LockedUntil"
+FROM "LoginThrottles"
+WHERE "Key" = $1
+FOR UPDATE
 `
 
-type RecordThrottleFailureParams struct {
-	Key         string
-	Now         time.Time
-	ResetBefore time.Time
+type LockThrottleRow struct {
+	Failures      int32
+	LastFailureAt time.Time
+	LockedUntil   *time.Time
 }
 
-func (q *Queries) RecordThrottleFailure(ctx context.Context, arg RecordThrottleFailureParams) (int32, error) {
-	row := q.db.QueryRow(ctx, recordThrottleFailure, arg.Key, arg.Now, arg.ResetBefore)
-	var Failures int32
-	err := row.Scan(&Failures)
-	return Failures, err
+func (q *Queries) LockThrottle(ctx context.Context, key string) (LockThrottleRow, error) {
+	row := q.db.QueryRow(ctx, lockThrottle, key)
+	var i LockThrottleRow
+	err := row.Scan(&i.Failures, &i.LastFailureAt, &i.LockedUntil)
+	return i, err
+}
+
+const refundThrottle = `-- name: RefundThrottle :exec
+UPDATE "LoginThrottles"
+SET "Failures" = GREATEST("Failures" - 1, 0),
+    "LockedUntil" = CASE WHEN "Failures" - 1 < $1::integer THEN NULL ELSE "LockedUntil" END,
+    "UpdatedAt" = $2
+WHERE "Key" = $3
+`
+
+type RefundThrottleParams struct {
+	Free int32
+	Now  time.Time
+	Key  string
+}
+
+func (q *Queries) RefundThrottle(ctx context.Context, arg RefundThrottleParams) error {
+	_, err := q.db.Exec(ctx, refundThrottle, arg.Free, arg.Now, arg.Key)
+	return err
 }
 
 const rehashUserPassword = `-- name: RehashUserPassword :exec
@@ -366,23 +377,6 @@ func (q *Queries) RevokeUserSession(ctx context.Context, arg RevokeUserSessionPa
 	return result.RowsAffected(), nil
 }
 
-const setThrottleLock = `-- name: SetThrottleLock :exec
-UPDATE "LoginThrottles"
-SET "LockedUntil" = $1::timestamptz, "UpdatedAt" = $2
-WHERE "Key" = $3
-`
-
-type SetThrottleLockParams struct {
-	LockedUntil time.Time
-	Now         time.Time
-	Key         string
-}
-
-func (q *Queries) SetThrottleLock(ctx context.Context, arg SetThrottleLockParams) error {
-	_, err := q.db.Exec(ctx, setThrottleLock, arg.LockedUntil, arg.Now, arg.Key)
-	return err
-}
-
 const setUserPassword = `-- name: SetUserPassword :exec
 UPDATE "Users"
 SET "PasswordHash" = $1, "PasswordChangedAt" = $2, "UpdatedAt" = $2
@@ -419,6 +413,29 @@ func (q *Queries) TouchSession(ctx context.Context, arg TouchSessionParams) erro
 		arg.IdleExpiresAt,
 		arg.ID,
 		arg.TouchBefore,
+	)
+	return err
+}
+
+const updateThrottle = `-- name: UpdateThrottle :exec
+UPDATE "LoginThrottles"
+SET "Failures" = $1, "LastFailureAt" = $2, "LockedUntil" = $3::timestamptz, "UpdatedAt" = $2
+WHERE "Key" = $4
+`
+
+type UpdateThrottleParams struct {
+	Failures    int32
+	Now         time.Time
+	LockedUntil *time.Time
+	Key         string
+}
+
+func (q *Queries) UpdateThrottle(ctx context.Context, arg UpdateThrottleParams) error {
+	_, err := q.db.Exec(ctx, updateThrottle,
+		arg.Failures,
+		arg.Now,
+		arg.LockedUntil,
+		arg.Key,
 	)
 	return err
 }

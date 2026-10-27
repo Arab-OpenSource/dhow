@@ -65,25 +65,27 @@ UPDATE "Users"
 SET "PasswordHash" = @password_hash, "UpdatedAt" = @now
 WHERE "Id" = @id AND NOT "IsDeleted" AND "PasswordHash" = @old_hash;
 
--- name: GetThrottle :one
+-- name: EnsureThrottle :exec
+INSERT INTO "LoginThrottles" ("Key", "Failures", "LastFailureAt", "CreatedAt", "UpdatedAt")
+VALUES (@key, 0, @now, @now, @now)
+ON CONFLICT ("Key") DO NOTHING;
+
+-- name: LockThrottle :one
 SELECT "Failures", "LastFailureAt", "LockedUntil"
 FROM "LoginThrottles"
-WHERE "Key" = @key AND NOT "IsDeleted";
+WHERE "Key" = @key
+FOR UPDATE;
 
--- name: RecordThrottleFailure :one
-INSERT INTO "LoginThrottles" ("Key", "Failures", "LastFailureAt", "CreatedAt", "UpdatedAt")
-VALUES (@key, 1, @now, @now, @now)
-ON CONFLICT ("Key") DO UPDATE
-SET "Failures" = CASE WHEN "LoginThrottles"."LastFailureAt" < @reset_before THEN 1 ELSE "LoginThrottles"."Failures" + 1 END,
-    "LastFailureAt" = @now,
-    "LockedUntil" = NULL,
-    "IsDeleted" = false,
-    "UpdatedAt" = @now
-RETURNING "Failures";
-
--- name: SetThrottleLock :exec
+-- name: UpdateThrottle :exec
 UPDATE "LoginThrottles"
-SET "LockedUntil" = @locked_until::timestamptz, "UpdatedAt" = @now
+SET "Failures" = @failures, "LastFailureAt" = @now, "LockedUntil" = sqlc.narg(locked_until)::timestamptz, "UpdatedAt" = @now
+WHERE "Key" = @key;
+
+-- name: RefundThrottle :exec
+UPDATE "LoginThrottles"
+SET "Failures" = GREATEST("Failures" - 1, 0),
+    "LockedUntil" = CASE WHEN "Failures" - 1 < @free::integer THEN NULL ELSE "LockedUntil" END,
+    "UpdatedAt" = @now
 WHERE "Key" = @key;
 
 -- name: ResetThrottle :exec

@@ -2,10 +2,7 @@ package session
 
 import (
 	"context"
-	"errors"
 	"time"
-
-	"github.com/jackc/pgx/v5"
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
@@ -26,44 +23,53 @@ func ipKey(ip string) throttleKey {
 	return throttleKey{key: auth.IPThrottleKey(ip), free: config.IPFreeAttempts}
 }
 
-func (s *Service) lockedFor(ctx context.Context, now time.Time, keys ...throttleKey) (time.Duration, error) {
-	q := s.queries()
+func (s *Service) reserve(ctx context.Context, now time.Time, keys ...throttleKey) (time.Duration, error) {
 	var wait time.Duration
-	for _, k := range keys {
-		row, err := q.GetThrottle(ctx, k.key)
-		if errors.Is(err, pgx.ErrNoRows) {
-			continue
-		}
-		if err != nil {
-			return 0, err
-		}
-		if row.LockedUntil != nil && row.LockedUntil.After(now) {
-			wait = max(wait, row.LockedUntil.Sub(now))
-		}
-	}
-	return wait, nil
-}
-
-func (s *Service) recordFailure(ctx context.Context, now time.Time, keys ...throttleKey) error {
-	for _, k := range keys {
-		err := dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-			failures, err := q.RecordThrottleFailure(ctx, sqlc.RecordThrottleFailureParams{
-				Key: k.key, Now: now, ResetBefore: now.Add(-config.ThrottleResetAfter),
-			})
+	err := dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		rows := make([]sqlc.LockThrottleRow, 0, len(keys))
+		for _, k := range keys {
+			if err := q.EnsureThrottle(ctx, sqlc.EnsureThrottleParams{Key: k.key, Now: now}); err != nil {
+				return err
+			}
+			row, err := q.LockThrottle(ctx, k.key)
 			if err != nil {
 				return err
 			}
-			lock := auth.LockDuration(int(failures), k.free, config.ThrottleBaseLock, config.ThrottleMaxLock)
-			if lock <= 0 {
-				return nil
+			if row.LockedUntil != nil && row.LockedUntil.After(now) {
+				wait = max(wait, row.LockedUntil.Sub(now))
 			}
-			return q.SetThrottleLock(ctx, sqlc.SetThrottleLockParams{Key: k.key, LockedUntil: now.Add(lock), Now: now})
-		})
-		if err != nil {
+			rows = append(rows, row)
+		}
+		if wait > 0 {
+			return nil
+		}
+		for i, k := range keys {
+			failures := rows[i].Failures + 1
+			if rows[i].LastFailureAt.Before(now.Add(-config.ThrottleResetAfter)) {
+				failures = 1
+			}
+			var until *time.Time
+			if lock := auth.LockDuration(int(failures), k.free, config.ThrottleBaseLock, config.ThrottleMaxLock); lock > 0 {
+				t := now.Add(lock)
+				until = &t
+			}
+			err := q.UpdateThrottle(ctx, sqlc.UpdateThrottleParams{Key: k.key, Failures: failures, Now: now, LockedUntil: until})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return wait, err
+}
+
+func (s *Service) settleSuccess(ctx context.Context, now time.Time, account, ip throttleKey) error {
+	return dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		if err := q.ResetThrottle(ctx, sqlc.ResetThrottleParams{Key: account.key, Now: now}); err != nil {
 			return err
 		}
-	}
-	return nil
+		return q.RefundThrottle(ctx, sqlc.RefundThrottleParams{Key: ip.key, Free: int32(ip.free), Now: now}) //nolint:gosec // ip.free is a small constant.
+	})
 }
 
 func (s *Service) resetFailures(ctx context.Context, now time.Time, k throttleKey) error {

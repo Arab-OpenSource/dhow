@@ -33,7 +33,7 @@ func (s *Service) ChangePassword(ctx context.Context, current, next string) (int
 	}
 	now := s.now()
 	account := accountKey(auth.NormalizeEmail(p.Email))
-	wait, err := s.lockedFor(ctx, now, account)
+	wait, err := s.reserve(ctx, now, account)
 	if err != nil {
 		return 0, err
 	}
@@ -52,9 +52,6 @@ func (s *Service) ChangePassword(ctx context.Context, current, next string) (int
 		return 0, err
 	}
 	if !ok {
-		if err := s.recordFailure(ctx, now, account); err != nil {
-			return 0, err
-		}
 		return 0, apperrors.InvalidCurrentPassword(0)
 	}
 	if err := s.resetFailures(ctx, now, account); err != nil {
