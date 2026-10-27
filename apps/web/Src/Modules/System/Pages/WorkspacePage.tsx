@@ -10,7 +10,7 @@ export const WorkspacePage = () => {
   const navigate = useNavigate();
 
   const OpenStatus = () => {
-    void navigate({ to: '/', search: (previous) => ({ ...previous, panel: 'system-status' }) });
+    void navigate({ to: '/', search: (previous) => ({ ...previous, stack: ['system-status'] }) });
   };
 
   return (

@@ -1,32 +1,59 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 
-import type { TPanelId, TPanelParam } from '@/App/Panels';
+import { UNKNOWN_STACK, type TFrameId } from '@/App/Panels';
 
 export interface IShellNavigation {
-  panel: TPanelParam | undefined;
-  openPanel: (id: TPanelId) => void;
-  closePanel: () => void;
-  discardPanel: () => void;
+  stack: TFrameId[];
+  invalidStack: boolean;
+  pushFrame: (id: TFrameId) => void;
+  openStack: (ids: TFrameId[]) => void;
+  popFrame: () => void;
+  jumpTo: (index: number) => void;
+  closeAll: () => void;
+  discardStack: () => void;
   goWorkspace: () => void;
 }
 
+const NO_FRAMES: TFrameId[] = [];
+
 export const useShellNavigation = (): IShellNavigation => {
   const navigate = useNavigate();
-  const { panel } = useSearch({ strict: false });
+  const { stack: param } = useSearch({ strict: false });
+  const invalidStack = param === UNKNOWN_STACK;
+  const stack = invalidStack || param === undefined ? NO_FRAMES : param;
+
+  const show = (ids: TFrameId[], replace = false) => {
+    void navigate({
+      to: '/',
+      search: (previous) => ({ ...previous, stack: ids.length > 0 ? ids : undefined }),
+      replace,
+    });
+  };
 
   return {
-    panel,
-    openPanel: (id) => {
-      void navigate({ to: '/', search: (previous) => ({ ...previous, panel: id }) });
+    stack,
+    invalidStack,
+    pushFrame: (id) => {
+      const at = stack.indexOf(id);
+      show(at >= 0 ? stack.slice(0, at + 1) : [...stack, id]);
     },
-    closePanel: () => {
-      void navigate({ to: '/', search: (previous) => ({ ...previous, panel: undefined }) });
+    openStack: (ids) => {
+      show(ids);
     },
-    discardPanel: () => {
-      void navigate({ to: '/', search: (previous) => ({ ...previous, panel: undefined }), replace: true });
+    popFrame: () => {
+      show(stack.slice(0, -1));
+    },
+    jumpTo: (index) => {
+      show(stack.slice(0, index + 1));
+    },
+    closeAll: () => {
+      show([]);
+    },
+    discardStack: () => {
+      show([], true);
     },
     goWorkspace: () => {
-      void navigate({ to: '/', search: (previous) => ({ ...previous, panel: undefined }) });
+      show([]);
     },
   };
 };

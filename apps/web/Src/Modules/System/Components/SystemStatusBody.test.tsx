@@ -1,23 +1,29 @@
 import { screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { apiDown, apiUp, envelope, META_BODY, READY_BODY, stubFetch } from '@/Core/Testing/Fetch';
+import { apiDown, apiUp, envelope, META_BODY, stubFetch } from '@/Core/Testing/Fetch';
 import { renderWithProviders } from '@/Core/Testing/Render';
 import { Ar } from '@/I18n/Locales/Ar';
-import { SystemStatusPanel } from '@/Modules/System/Components/SystemStatusPanel';
+import { SystemStatusBody } from '@/Modules/System/Components/SystemStatusBody';
+import { SystemStatusFooter } from '@/Modules/System/Components/SystemStatusFooter';
 
-const open = () => renderWithProviders(<SystemStatusPanel open onClose={() => undefined} />);
+const open = (onOpenCheck = vi.fn()) =>
+  renderWithProviders(
+    <>
+      <SystemStatusBody onOpenCheck={onOpenCheck} />
+      <SystemStatusFooter />
+    </>,
+  );
 
 const readinessCalls = (calls: Request[]) => calls.filter((call) => call.url.endsWith('/health/ready'));
 
-describe('SystemStatusPanel', () => {
+describe('SystemStatusBody', () => {
   it('shows the version, the commit and the setup state', async () => {
     apiUp();
     open();
-    const dialog = await screen.findByRole('dialog', { name: Ar['status.title'] });
-    expect(await within(dialog).findByText('v0.1.0')).toBeInTheDocument();
-    expect(within(dialog).getByText('2e39188')).toBeInTheDocument();
-    expect(within(dialog).getByText(Ar['status.build.setupDone'])).toBeInTheDocument();
+    expect(await screen.findByText('v0.1.0')).toBeInTheDocument();
+    expect(screen.getByText('2e39188')).toBeInTheDocument();
+    expect(screen.getByText(Ar['status.build.setupDone'])).toBeInTheDocument();
   });
 
   it('isolates version and commit values so they read correctly inside Arabic text', async () => {
@@ -99,10 +105,13 @@ describe('SystemStatusPanel', () => {
     });
   });
 
-  it('does not ask for readiness while the panel is closed', () => {
-    const { calls } = apiUp();
-    renderWithProviders(<SystemStatusPanel open={false} onClose={() => undefined} />);
-    expect(readinessCalls(calls)).toHaveLength(0);
-    expect(READY_BODY.Success).toBe(true);
+  it('opens the detail of a check from its row', async () => {
+    apiUp();
+    const onOpenCheck = vi.fn();
+    const { user } = open(onOpenCheck);
+    const row = (await screen.findByText(Ar['status.check.migrations'])).closest('button');
+    expect(row).not.toBeNull();
+    await user.click(row as HTMLElement);
+    expect(onOpenCheck).toHaveBeenCalledWith('migrations');
   });
 });

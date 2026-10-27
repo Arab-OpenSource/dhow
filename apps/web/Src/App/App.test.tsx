@@ -64,14 +64,13 @@ describe('app shell', () => {
     await user.type(await screen.findByRole('combobox'), Ar['notifications.title']);
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('dialog', { name: Ar['notifications.title'] })).toBeInTheDocument();
-    expect(router.state.location.search).toEqual({ panel: 'notifications' });
-    expect(router.state.location.href).toBe('/?panel=notifications');
+    expect(router.state.location.href).toBe('/?stack=notifications');
   });
 });
 
-describe('slide-over panels in the URL', () => {
+describe('slides in the URL', () => {
   it('opens a deep-linked panel on first render and focuses inside it', async () => {
-    await renderApp('/?panel=notifications');
+    await renderApp('/?stack=notifications');
     const dialog = await screen.findByRole('dialog', { name: Ar['notifications.title'] });
     expect(within(dialog).getByText(Ar['notifications.empty'])).toBeInTheDocument();
     await waitFor(() => {
@@ -84,21 +83,23 @@ describe('slide-over panels in the URL', () => {
     const bell = screen.getByRole('button', { name: Ar['shell.notifications'] });
     await user.click(bell);
     await screen.findByRole('dialog');
-    expect(router.state.location.search).toEqual({ panel: 'notifications' });
+    expect(router.state.location.href).toBe('/?stack=notifications');
     await user.keyboard('{Escape}');
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-    expect(router.state.location.search).toEqual({});
-    expect(bell).toHaveFocus();
+    expect(router.state.location.href).toBe('/');
+    await waitFor(() => {
+      expect(bell).toHaveFocus();
+    });
   });
 
-  it('keeps an unknown panel closed, says so in a toast and cleans the URL', async () => {
-    const { router } = await renderApp('/?panel=does-not-exist');
+  it('keeps an unknown slide closed, says so in a toast and cleans the URL', async () => {
+    const { router } = await renderApp('/?stack=does-not-exist');
     expect(await screen.findByText(Ar['toast.unknownPanel.title'])).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(router.state.location.search).toEqual({});
+      expect(router.state.location.href).toBe('/');
     });
   });
 });
@@ -134,7 +135,7 @@ describe('system module in the shell', () => {
     await user.click(screen.getByRole('button', { name: Ar['workspace.empty.action'] }));
     const dialog = await screen.findByRole('dialog', { name: Ar['status.title'] });
     expect(await within(dialog).findByText('v0.1.0')).toBeInTheDocument();
-    expect(router.state.location.href).toBe('/?panel=system-status');
+    expect(router.state.location.href).toBe('/?stack=system-status');
   });
 
   it('opens server status from the rail and from a deep link', async () => {
@@ -144,7 +145,7 @@ describe('system module in the shell', () => {
   });
 
   it('opens server status from a deep link', async () => {
-    await renderApp('/?panel=system-status');
+    await renderApp('/?stack=system-status');
     const dialog = await screen.findByRole('dialog', { name: Ar['status.title'] });
     expect(await within(dialog).findByText('2e39188')).toBeInTheDocument();
   });

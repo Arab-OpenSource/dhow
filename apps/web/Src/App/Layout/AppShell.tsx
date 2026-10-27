@@ -1,15 +1,13 @@
 import { Outlet } from '@tanstack/react-router';
-import { useEffect, useEffectEvent } from 'react';
+import { useEffect } from 'react';
 
-import { PanelHost } from '@/App/Layout/PanelHost';
 import { ShellRail } from '@/App/Layout/ShellRail';
 import { ShellTopBar } from '@/App/Layout/ShellTopBar';
+import { SlideHost } from '@/App/Layout/SlideHost';
 import { useCommandItems } from '@/App/Layout/useCommandItems';
-import { useShellNavigation } from '@/App/Layout/useShellNavigation';
-import { UNKNOWN_PANEL } from '@/App/Panels';
 import { useHotkey } from '@/Core/Hooks/useHotkey';
 import { usePaletteStore } from '@/Core/Store/usePaletteStore';
-import { useToastStore } from '@/Core/Store/useToastStore';
+import { useThemeStore } from '@/Core/Theme/useThemeStore';
 import { CommandPalette } from '@/Core/Ui/CommandPalette';
 import { Toaster } from '@/Core/Ui/Toaster';
 import { useT } from '@/I18n/useT';
@@ -17,28 +15,17 @@ import { SystemBanners } from '@/Modules/System/Components/SystemBanners';
 
 export const AppShell = () => {
   const t = useT();
-  const { panel, discardPanel } = useShellNavigation();
   const { items, run } = useCommandItems();
   const PaletteOpen = usePaletteStore((state) => state.Open);
   const SetPaletteOpen = usePaletteStore((state) => state.SetOpen);
   const TogglePalette = usePaletteStore((state) => state.Toggle);
-  const PushToast = useToastStore((state) => state.Push);
+  const BootTheme = useThemeStore((state) => state.Boot);
 
   useHotkey('k', TogglePalette);
 
-  const onUnknownPanel = useEffectEvent(() => {
-    PushToast({
-      Id: 'unknown-panel',
-      Accent: 'awaiting',
-      Title: t('toast.unknownPanel.title'),
-      Detail: t('toast.unknownPanel.detail'),
-    });
-    discardPanel();
-  });
-
   useEffect(() => {
-    if (panel === UNKNOWN_PANEL) onUnknownPanel();
-  }, [panel]);
+    BootTheme();
+  }, [BootTheme]);
 
   return (
     <div className="flex h-dvh bg-canvas max-md:flex-col">
@@ -60,7 +47,7 @@ export const AppShell = () => {
           <Outlet />
         </main>
       </div>
-      <PanelHost />
+      <SlideHost />
       <CommandPalette
         open={PaletteOpen}
         onOpenChange={SetPaletteOpen}

@@ -10,7 +10,7 @@ import { useI18n } from '@/I18n/useI18n';
 
 export const ShellTopBar = () => {
   const { Locale, SetLocale, t } = useI18n();
-  const { openPanel } = useShellNavigation();
+  const { openStack } = useShellNavigation();
   const SetPaletteOpen = usePaletteStore((state) => state.SetOpen);
   const target = otherLocale(Locale);
 
@@ -37,7 +37,7 @@ export const ShellTopBar = () => {
         size="lg"
         label={t('shell.notifications')}
         onClick={() => {
-          openPanel('notifications');
+          openStack(['notifications']);
         }}
       />
     </TopBar>

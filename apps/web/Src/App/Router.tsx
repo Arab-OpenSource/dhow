@@ -2,7 +2,7 @@ import { createRootRoute, createRoute, createRouter, type RouterHistory } from '
 
 import { AppShell } from '@/App/Layout/AppShell';
 import { NotFoundPage } from '@/App/Layout/NotFoundPage';
-import { parseShellSearch } from '@/App/Panels';
+import { parseShellSearch, stringifyShellSearch } from '@/App/Panels';
 import { WorkspacePage } from '@/Modules/System/Pages/WorkspacePage';
 
 const rootRoute = createRootRoute({
@@ -19,4 +19,5 @@ const workspaceRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([workspaceRoute]);
 
-export const createAppRouter = (history?: RouterHistory) => createRouter({ routeTree, history });
+export const createAppRouter = (history?: RouterHistory) =>
+  createRouter({ routeTree, history, stringifySearch: stringifyShellSearch });

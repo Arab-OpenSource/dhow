@@ -6,7 +6,7 @@ import { IconRail, type IRailItem } from '@/Core/Ui/IconRail';
 
 const build = (onSelect = vi.fn()): { items: IRailItem[]; bottom: IRailItem[] } => ({
   items: [{ id: 'workspace', icon: 'project', label: 'Workspace', href: '/', current: true, onSelect }],
-  bottom: [{ id: 'status', icon: 'health', label: 'System status', href: '/?panel=system-status', onSelect }],
+  bottom: [{ id: 'status', icon: 'health', label: 'System status', href: '/?stack=system-status', onSelect }],
 });
 
 describe('IconRail', () => {
@@ -21,7 +21,7 @@ describe('IconRail', () => {
   it('keeps real hrefs so links can be opened in a new tab', () => {
     const { items, bottom } = build();
     renderUi(<IconRail label="Main navigation" items={items} bottom={bottom} />);
-    expect(screen.getByRole('link', { name: 'System status' })).toHaveAttribute('href', '/?panel=system-status');
+    expect(screen.getByRole('link', { name: 'System status' })).toHaveAttribute('href', '/?stack=system-status');
   });
 
   it('handles a plain click in the app and leaves modified clicks to the browser', () => {

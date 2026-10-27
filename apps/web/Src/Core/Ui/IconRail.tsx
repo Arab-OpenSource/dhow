@@ -38,7 +38,7 @@ const RailLink = ({ item }: { item: IRailItem }) => (
       }}
       className={cx(
         'grid size-11 place-items-center rounded-full no-underline transition-colors duration-140',
-        item.current ? 'bg-aurora text-on-light' : 'text-tertiary hover:bg-surface-raised hover:text-primary',
+        item.current ? 'bg-orb text-on-light' : 'text-tertiary hover:bg-surface-raised hover:text-primary',
       )}
     >
       <Icon name={item.icon} size={20} />
@@ -50,9 +50,9 @@ export const IconRail = ({ label, items, bottom = [] }: IIconRailProps) => (
   <nav
     aria-label={label}
     className={cx(
-      'flex items-center gap-1.5 bg-rail',
+      'pointer-events-auto flex items-center gap-1.5 bg-rail',
       'max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-30 max-md:h-16 max-md:justify-around max-md:px-3',
-      'md:w-rail md:flex-col md:py-[18px]',
+      'md:relative md:z-30 md:w-rail md:flex-col md:py-[18px]',
     )}
   >
     <Mark className="mb-[22px] max-md:hidden" />
