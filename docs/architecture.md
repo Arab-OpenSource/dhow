@@ -53,7 +53,7 @@ flowchart TB
 
 ### 2.1 Control plane (`apps/server`, Go — ADR-0003)
 
-A modular monolith shipped as a single binary. The modules are listed below; each one has its own package and owns its own tables.
+A modular monolith shipped as a single binary. The modules are listed below; each one has its own package and owns its own tables. On disk, `apps/server/internal` holds `App` (router and bootstrap), `Config`, `Core` (errors, response envelope, i18n, middleware, event bus), `Database` (migrations and generated queries) and `Modules/<Name>` (routes, controller, service, models, queries, generated API code and tests). Only `App` imports modules, and modules talk to each other through the event bus.
 
 | Module | Responsibility |
 |---|---|
