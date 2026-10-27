@@ -3,6 +3,7 @@ import { useEffect, useEffectEvent, useState } from 'react';
 import { buildSlide } from '@/App/Layout/FrameSlides';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
 import { isThemeEditFrame, themeOf } from '@/App/Panels';
+import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useThemeStore } from '@/Core/Theme/useThemeStore';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { SlideStack } from '@/Core/Ui/SlideStack';
@@ -11,6 +12,7 @@ import { useT } from '@/I18n/useT';
 export const SlideHost = () => {
   const t = useT();
   const navigation = useShellNavigation();
+  const role = useCurrentMembership()?.Role;
   const draftName = useThemeStore((state) => state.Draft?.Name);
   const customThemes = useThemeStore((state) => state.CustomThemes);
   const DiscardDraft = useThemeStore((state) => state.DiscardDraft);
@@ -42,7 +44,7 @@ export const SlideHost = () => {
     if (invalidStack || missingOnLoad) rejectLink();
   }, [invalidStack, missingOnLoad]);
 
-  const slides = stack.map((id) => buildSlide(id, { t, navigation, draftName, customThemes }));
+  const slides = stack.map((id) => buildSlide(id, { t, navigation, draftName, customThemes, role }));
 
   return (
     <SlideStack

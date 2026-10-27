@@ -14,6 +14,12 @@ servers:
 tags:
   - name: system
     description: Health and instance metadata. Served by the System module.
+  - name: identity
+    description: First-owner setup, organizations and members. Served by the Identity module.
+  - name: session
+    description: Sign-in, sign-out, the current user, own sessions and password change. Served by the Session module.
+  - name: audit
+    description: The tamper-evident audit log. Served by the Audit module.
 paths:
   /health/live:
     get:
@@ -71,7 +77,323 @@ paths:
                 $ref: "#/components/schemas/MetaResponse"
         default:
           $ref: "#/components/responses/Error"
+  /setup:
+    post:
+      operationId: setupInstance
+      tags: [identity]
+      summary: Create the first owner and organization
+      description: >-
+        Works only while no owner exists. The setup token is the one logged at boot as
+        `${PUBLIC_URL}/setup#<token>`, is valid for one hour and is single use. The request is atomic: two concurrent
+        calls can never both succeed. The response sets no session: sign in afterwards.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetupRequest"
+      responses:
+        "200":
+          description: The owner and the organization were created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetupResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions:
+    post:
+      operationId: login
+      tags: [session]
+      summary: Sign in with email and password
+      description: >-
+        Failure is always `INVALID_CREDENTIALS` with the same body whether the account exists or not. A throttled
+        account or address gets the same error plus a `Retry-After` header. Success sets the
+        `__Host-dhow_session` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`), replaces any session cookie the
+        request carried, and returns the CSRF token the client must send as `X-CSRF-Token` on every non-GET request.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Signed in.
+          headers:
+            Set-Cookie:
+              description: The session cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    get:
+      operationId: listSessions
+      tags: [session]
+      summary: List the signed-in user's own sessions
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: Active sessions of the current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/current:
+    delete:
+      operationId: logout
+      tags: [session]
+      summary: Sign out of the current session
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      responses:
+        "200":
+          description: The session was revoked and the cookie cleared.
+          headers:
+            Set-Cookie:
+              description: An expired session cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/revoke-others:
+    post:
+      operationId: revokeOtherSessions
+      tags: [session]
+      summary: Sign out of every other device
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      responses:
+        "200":
+          description: Every session except the current one was revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokedCountResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /sessions/{id}:
+    delete:
+      operationId: revokeSession
+      tags: [session]
+      summary: Revoke one of the user's own sessions
+      description: Another user's session id answers 404, exactly like an id that does not exist.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The session was revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        default:
+          $ref: "#/components/responses/Error"
+  /me:
+    get:
+      operationId: getMe
+      tags: [session]
+      summary: The signed-in user, memberships and CSRF token
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The current user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/password:
+    put:
+      operationId: changePassword
+      tags: [session]
+      summary: Change the signed-in user's password
+      description: >-
+        Needs the current password. The new one is 12 to 128 characters, must differ from the current one and must not
+        appear in a known breach (Have I Been Pwned k-anonymity range check, when enabled). Every other session of the
+        user is revoked.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          description: The password was changed and the other sessions were revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokedCountResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}:
+    get:
+      operationId: getOrganization
+      tags: [identity]
+      summary: Read an organization
+      description: Needs `org.read`. A caller who is not a member gets 404.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateOrganization
+      tags: [identity]
+      summary: Rename an organization
+      description: Needs `org.update`. A caller who is not a member gets 404.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationRequest"
+      responses:
+        "200":
+          description: The updated organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/members:
+    get:
+      operationId: listMembers
+      tags: [identity]
+      summary: List the members of an organization
+      description: Needs `member.read`. A caller who is not a member gets 404.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of members.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/audit-events:
+    get:
+      operationId: listAuditEvents
+      tags: [audit]
+      summary: List the audit events of an organization
+      description: Needs `audit.read`. Newest first. A caller who is not a member gets 404.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of audit events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/audit-events/verify:
+    get:
+      operationId: verifyAuditChain
+      tags: [audit]
+      summary: Verify the hash chain of an organization's audit log
+      description: >-
+        Needs `audit.read`. Walks the chain from the oldest event and reports the first event whose hash or link is
+        wrong.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The verification result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditVerifyResponse"
+        default:
+          $ref: "#/components/responses/Error"
 components:
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-dhow_session
+    CsrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: Page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: Limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
   responses:
     Error:
       description: An error. Never contains internal details.
@@ -136,7 +458,9 @@ components:
           type: string
           description: >-
             Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`,
-            `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE` or `SERVICE_UNAVAILABLE`.
+            `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`,
+            `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`,
+            `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID` or `CONFLICT`.
           example: INTERNAL
         Message:
           type: string
@@ -191,3 +515,318 @@ components:
         SetupRequired:
           type: boolean
           description: True until the first owner completes setup.
+    SetupRequest:
+      type: object
+      additionalProperties: false
+      required: [SetupToken, OwnerName, Email, Password, OrganizationName, OrganizationSlug]
+      properties:
+        SetupToken:
+          type: string
+          minLength: 1
+          maxLength: 256
+        OwnerName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        Email:
+          type: string
+          maxLength: 254
+        Password:
+          type: string
+          maxLength: 1024
+          description: 12 to 128 characters. Never returned and never logged.
+        OrganizationName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        OrganizationSlug:
+          type: string
+          maxLength: 63
+          description: Lowercase letters, digits and single hyphens. Unique among organizations.
+        Locale:
+          $ref: "#/components/schemas/Locale"
+    SetupResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/SetupResult"
+    SetupResult:
+      type: object
+      additionalProperties: false
+      required: [User, Organization]
+      properties:
+        User:
+          $ref: "#/components/schemas/User"
+        Organization:
+          $ref: "#/components/schemas/Organization"
+    Locale:
+      type: string
+      enum: [ar, en]
+    User:
+      type: object
+      additionalProperties: false
+      required: [Id, Email, Name, Locale]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Email:
+          type: string
+        Name:
+          type: string
+        Locale:
+          $ref: "#/components/schemas/Locale"
+    Role:
+      type: string
+      enum: [owner, admin, maintainer, developer, viewer]
+    Organization:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Slug, CreatedAt]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        Slug:
+          type: string
+        CreatedAt:
+          type: string
+          format: date-time
+    OrganizationResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Organization"
+    UpdateOrganizationRequest:
+      type: object
+      additionalProperties: false
+      required: [Name]
+      properties:
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    Member:
+      type: object
+      additionalProperties: false
+      required: [UserId, Name, Email, Role, JoinedAt]
+      properties:
+        UserId:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        Email:
+          type: string
+        Role:
+          $ref: "#/components/schemas/Role"
+        JoinedAt:
+          type: string
+          format: date-time
+    MemberListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Member"
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [Email, Password]
+      properties:
+        Email:
+          type: string
+          maxLength: 254
+        Password:
+          type: string
+          maxLength: 1024
+          description: Never returned and never logged.
+    LoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/LoginResult"
+    LoginResult:
+      type: object
+      additionalProperties: false
+      required: [User, CsrfToken, ExpiresAt]
+      properties:
+        User:
+          $ref: "#/components/schemas/User"
+        CsrfToken:
+          type: string
+          description: Send as the `X-CSRF-Token` header on every non-GET request.
+        ExpiresAt:
+          type: string
+          format: date-time
+          description: When the session ends at the latest (absolute timeout).
+    MembershipView:
+      type: object
+      additionalProperties: false
+      required: [OrganizationId, OrganizationName, OrganizationSlug, Role]
+      properties:
+        OrganizationId:
+          type: string
+          format: uuid
+        OrganizationName:
+          type: string
+        OrganizationSlug:
+          type: string
+        Role:
+          $ref: "#/components/schemas/Role"
+    MeResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Me"
+    Me:
+      type: object
+      additionalProperties: false
+      required: [User, Memberships, CsrfToken, SessionId, ExpiresAt]
+      properties:
+        User:
+          $ref: "#/components/schemas/User"
+        Memberships:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembershipView"
+        CsrfToken:
+          type: string
+        SessionId:
+          type: string
+          format: uuid
+        ExpiresAt:
+          type: string
+          format: date-time
+    SessionView:
+      type: object
+      additionalProperties: false
+      required: [Id, CreatedAt, LastSeenAt, ExpiresAt, UserAgent, IpAddress, Current]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        CreatedAt:
+          type: string
+          format: date-time
+        LastSeenAt:
+          type: string
+          format: date-time
+        ExpiresAt:
+          type: string
+          format: date-time
+        UserAgent:
+          type: string
+        IpAddress:
+          type: string
+        Current:
+          type: boolean
+    SessionListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/SessionView"
+    RevokedCountResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/RevokedCount"
+    RevokedCount:
+      type: object
+      additionalProperties: false
+      required: [Revoked]
+      properties:
+        Revoked:
+          type: integer
+          minimum: 0
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [CurrentPassword, NewPassword]
+      properties:
+        CurrentPassword:
+          type: string
+          maxLength: 1024
+        NewPassword:
+          type: string
+          maxLength: 1024
+          description: 12 to 128 characters.
+    AuditEvent:
+      type: object
+      additionalProperties: false
+      required: [Id, CreatedAt, Action, TargetType, TargetId, Ip, Data]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        CreatedAt:
+          type: string
+          format: date-time
+        OrganizationId:
+          type: string
+          format: uuid
+        ActorUserId:
+          type: string
+          format: uuid
+        Action:
+          type: string
+          example: auth.login
+        TargetType:
+          type: string
+        TargetId:
+          type: string
+        Ip:
+          type: string
+        Data:
+          type: object
+          additionalProperties:
+            type: string
+          description: Context of the event. Never contains a secret.
+    AuditEventListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AuditEvent"
+    AuditVerifyResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/AuditVerifyResult"
+    AuditVerifyResult:
+      type: object
+      additionalProperties: false
+      required: [Valid, Checked]
+      properties:
+        Valid:
+          type: boolean
+        Checked:
+          type: integer
+          minimum: 0
+        FirstBrokenId:
+          type: string
+          format: uuid

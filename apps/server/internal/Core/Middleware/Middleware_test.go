@@ -3,6 +3,7 @@ package middleware_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -244,6 +245,12 @@ func TestStrictErrors(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assertErrorBody(t, rec, "BAD_REQUEST")
 		assert.NotContains(t, rec.Body.String(), "EOF")
+	})
+	t.Run("an oversized body is payload too large", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		middleware.StrictRequestError(rec, httptest.NewRequest(http.MethodPost, "/", http.NoBody), fmt.Errorf("decode: %w", &http.MaxBytesError{Limit: 10}))
+		assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+		assertErrorBody(t, rec, "PAYLOAD_TOO_LARGE")
 	})
 	t.Run("unknown error is internal and logged", func(t *testing.T) {
 		rec := httptest.NewRecorder()

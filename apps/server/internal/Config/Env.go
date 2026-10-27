@@ -22,6 +22,8 @@ const (
 	EnvTrustedProxies = "DHOW_TRUSTED_PROXIES"
 	EnvLogLevel       = "DHOW_LOG_LEVEL"
 	EnvDev            = "DHOW_DEV"
+
+	EnvBreachedPasswordCheck = "DHOW_BREACHED_PASSWORD_CHECK" //nolint:gosec // The name of an environment variable, not a credential.
 )
 
 type Config struct {
@@ -32,6 +34,8 @@ type Config struct {
 	TrustedProxies []netip.Prefix
 	LogLevel       slog.Level
 	Dev            bool
+
+	BreachedPasswordCheck bool
 }
 
 func LoadFromEnv() (Config, error) { return Load(os.Getenv) }
@@ -46,6 +50,9 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	cfg.Dev = dev
 
+	if cfg.BreachedPasswordCheck, err = parseBoolDefault(getenv(EnvBreachedPasswordCheck), true); err != nil {
+		errs = append(errs, fmt.Errorf("%s: %w", EnvBreachedPasswordCheck, err))
+	}
 	if cfg.SecretKey, err = parseSecretKey(getenv(EnvSecretKey)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvSecretKey, err))
 	}
@@ -83,6 +90,13 @@ func parseBool(v string) (bool, error) {
 		return false, errors.New("must be true or false")
 	}
 	return b, nil
+}
+
+func parseBoolDefault(v string, def bool) (bool, error) {
+	if strings.TrimSpace(v) == "" {
+		return def, nil
+	}
+	return parseBool(strings.TrimSpace(v))
 }
 
 var placeholderMarkers = []string{

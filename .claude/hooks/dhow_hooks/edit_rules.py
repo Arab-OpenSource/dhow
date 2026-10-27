@@ -19,6 +19,14 @@ PASCAL_DIR = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 PASCAL_GO_FILE = re.compile(r"^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*\.go$")
 GO_IMPORT_PATH = re.compile(r'"' + re.escape(SERVER_IMPORT_PREFIX) + r'([^"]+)"')
 
+ROUTES_FILE = re.compile(r"(^|/)Modules/[^/]+/[^/]+\.Routes\.go$")
+GO_RAW_ROUTE = re.compile(
+    r"\b\w+\.(Get|Post|Put|Patch|Delete|Head|Options|Connect|Trace|Handle|HandleFunc|Method|MethodFunc|Mount)\(\s*[\"`]")
+GO_GENERATED_ROUTES = re.compile(r"\bgen\.(HandlerWithOptions|HandlerFromMux\w*|Handler)\(")
+GO_POLICY_RULE = re.compile(r"\bpolicy\.(Public|Authenticated|Organization)\(")
+GO_POLICY_TABLE = re.compile(r"\bpolicy\.NewTable\(")
+GO_ROUTE_MIDDLEWARES = re.compile(r"\bMiddlewares\s*:")
+
 MIGRATION_SQL = re.compile(r"(^|/)migrations/[^/]+\.sql$", re.IGNORECASE)
 MODULE_QUERY_SQL = re.compile(r"(^|/)Modules/[^/]+/Queries/[^/]+\.sql$", re.IGNORECASE)
 BASE_COLUMN_TABLE_ALLOWLIST = ('"Instance"',)
@@ -231,6 +239,23 @@ def check_server_imports(rel, added, old, **_):
     return None
 
 
+def check_route_policies(rel, added, old, final_content, **_):
+    if not ROUTES_FILE.search(rel) or is_test(rel):
+        return None
+    m = GO_RAW_ROUTE.search("\n".join(new_lines(added, old)))
+    if m:
+        return (f"{rel}: do not register routes by hand (`{m.group(0).strip()}`). Add the operation to "
+                "packages/openapi/openapi.yaml, run `make gen`, and declare its policy in Policies() with "
+                "policy.Public, policy.Authenticated or policy.Organization.")
+    text = final_content if final_content is not None else added
+    if GO_GENERATED_ROUTES.search(text) and not (
+            GO_POLICY_RULE.search(text) and GO_POLICY_TABLE.search(text) and GO_ROUTE_MIDDLEWARES.search(text)):
+        return (f"{rel}: every route needs a declared policy. Declare each route in Policies() with policy.Public, "
+                "policy.Authenticated or policy.Organization, build policy.NewTable(Policies()...) and pass "
+                "guard.Middleware(table) in the generated ChiServerOptions.Middlewares.")
+    return None
+
+
 def check_ts(rel, added, old, **_):
     if not is_ts(rel):
         return None
@@ -386,6 +411,7 @@ CHECKS = (
     check_go,
     check_server_layout,
     check_server_imports,
+    check_route_policies,
     check_ts,
     web_rules.check_web_imports,
     web_rules.check_web_text,

@@ -5,12 +5,100 @@
 package sqlc
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
+
+	"github.com/google/uuid"
 )
+
+type AuditEvent struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	Seq            int64
+	OrganizationId *uuid.UUID
+	ActorUserId    *uuid.UUID
+	Action         string
+	TargetType     string
+	TargetId       string
+	Ip             string
+	Data           []byte
+	PrevHash       []byte
+	Hash           []byte
+}
 
 type Instance struct {
 	Id               int16
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-	SetupCompletedAt pgtype.Timestamptz
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	SetupCompletedAt *time.Time
+}
+
+type LoginThrottle struct {
+	Id            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsDeleted     bool
+	Key           string
+	Failures      int32
+	LastFailureAt time.Time
+	LockedUntil   *time.Time
+}
+
+type Membership struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	UserId         uuid.UUID
+	OrganizationId uuid.UUID
+	Role           string
+}
+
+type Organization struct {
+	Id        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	IsDeleted bool
+	Name      string
+	Slug      string
+}
+
+type Session struct {
+	Id            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsDeleted     bool
+	UserId        uuid.UUID
+	TokenHash     []byte
+	CsrfHash      []byte
+	LastSeenAt    time.Time
+	ExpiresAt     time.Time
+	IdleExpiresAt time.Time
+	RevokedAt     *time.Time
+	UserAgent     string
+	IpAddress     string
+}
+
+type SetupToken struct {
+	Id        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	IsDeleted bool
+	TokenHash []byte
+	ExpiresAt time.Time
+	UsedAt    *time.Time
+}
+
+type User struct {
+	Id                uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	IsDeleted         bool
+	Email             string
+	Name              string
+	PasswordHash      string
+	PasswordChangedAt time.Time
+	Locale            string
+	Disabled          bool
 }

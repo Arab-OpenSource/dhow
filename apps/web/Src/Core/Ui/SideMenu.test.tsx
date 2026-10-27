@@ -7,10 +7,13 @@ import { SideMenu, type ISideMenuProps } from '@/Core/Ui/SideMenu';
 const build = (onSelect = vi.fn()): ISideMenuProps => ({
   label: 'Main navigation',
   brand: <span>Brand</span>,
-  items: [{ id: 'home', icon: 'home', label: 'Home', href: '/', current: true, onSelect }],
-  pending: [{ id: 'projects', icon: 'layers', label: 'Projects', hint: 'Coming soon' }],
+  items: [
+    { id: 'home', icon: 'home', label: 'Home', href: '/', current: true, onSelect },
+    { id: 'projects', icon: 'layers', label: 'Projects', hint: 'Coming soon' },
+    { id: 'team', icon: 'users', label: 'Team', href: '/?stack=organization', onSelect },
+  ],
   bottom: [{ id: 'settings', icon: 'settings', label: 'Settings', href: '/?stack=appearance', onSelect }],
-  account: { id: 'account', icon: 'user', avatar: 'user', label: 'My account', hint: 'Coming soon' },
+  account: { id: 'account', name: 'Sabry', label: 'Sabry Dawood', href: '/?stack=account', onSelect },
 });
 
 describe('SideMenu', () => {
@@ -60,10 +63,27 @@ describe('SideMenu', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Coming soon');
   });
 
+  it('makes the account row a real link that marks the open account slide', () => {
+    renderUi(<SideMenu {...build()} />);
+    expect(screen.getByRole('link', { name: 'Sabry Dawood' })).toHaveAttribute('href', '/?stack=account');
+  });
+
+  it('offers a sign-out button next to the account link and keeps it off the phone bar', async () => {
+    const onSignOut = vi.fn();
+    const props = build();
+    const { user } = renderUi(
+      <SideMenu {...props} account={{ ...props.account, signOut: { label: 'Sign out', busy: false, onSelect: onSignOut } }} />,
+    );
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    expect(button.parentElement).toHaveClass('max-md:hidden');
+    await user.click(button);
+    expect(onSignOut).toHaveBeenCalledOnce();
+  });
+
   it('puts the settings link and the account row after the sections', () => {
     renderUi(<SideMenu {...build()} />);
     const nav = screen.getByRole('navigation');
     const names = [...nav.querySelectorAll('a, button')].map((node) => node.textContent);
-    expect(names).toEqual(['Home', 'Projects', 'Settings', 'My account']);
+    expect(names).toEqual(['Home', 'Projects', 'Team', 'Settings', 'SSabry Dawood']);
   });
 });
