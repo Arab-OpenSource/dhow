@@ -9,9 +9,9 @@ export const NotFoundPage = () => {
 
   return (
     <EmptyState
-      icon="project"
+      icon="layers"
       text={t('notFound.text')}
-      action={<Button onClick={goWorkspace}>{t('notFound.action')}</Button>}
+      action={<Button variant="primary" onClick={goWorkspace}>{t('notFound.action')}</Button>}
     />
   );
 };

@@ -1,6 +1,7 @@
 import type { IShellNavigation } from '@/App/Layout/useShellNavigation';
 import { checkFrame, checkOf, themeEditFrame, themeOf, type TFrameId } from '@/App/Panels';
 import type { ICustomTheme } from '@/Core/Theme/ThemeTokens';
+import { Card } from '@/Core/Ui/Card';
 import { EmptyState } from '@/Core/Ui/EmptyState';
 import type { ISlide } from '@/Core/Ui/SlideStack';
 import type { TTranslate } from '@/I18n/I18nContext';
@@ -63,7 +64,11 @@ export const buildSlide = (id: TFrameId, context: IFrameContext): ISlide => {
     return {
       id,
       title: t('notifications.title'),
-      children: <EmptyState icon="bell" text={t('notifications.empty')} />,
+      children: (
+        <Card>
+          <EmptyState icon="bell" text={t('notifications.empty')} />
+        </Card>
+      ),
     };
   }
   if (id === 'appearance') {
