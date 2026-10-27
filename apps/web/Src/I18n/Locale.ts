@@ -27,3 +27,8 @@ export const storeLocale = (locale: TLocale): void => {
 };
 
 export const otherLocale = (locale: TLocale): TLocale => (locale === 'ar' ? 'en' : 'ar');
+
+export const documentLocale = (): TLocale => {
+  const lang = document.documentElement.lang;
+  return isLocale(lang) ? lang : readStoredLocale();
+};

@@ -9,7 +9,7 @@ import { CUSTOM_THEMES_KEY } from '@/Core/Theme/ThemeStorage';
 import { DEFAULT_COLORS, SYSTEM_THEMES, type TThemeToken } from '@/Core/Theme/ThemeTokens';
 import { useThemeStore } from '@/Core/Theme/useThemeStore';
 import { Ar } from '@/I18n/Locales/Ar';
-import { ThemeEditor } from '@/Modules/Appearance/Components/ThemeEditor';
+import { ThemeEditorBody } from '@/Modules/Appearance/Components/ThemeEditorBody';
 import { ThemeEditorFooter } from '@/Modules/Appearance/Components/ThemeEditorFooter';
 
 const html = document.documentElement;
@@ -26,7 +26,7 @@ const mount = async (sourceId?: string) => {
   const onCancel = vi.fn();
   const view = renderWithProviders(
     <>
-      <ThemeEditor sourceId={sourceId} onDone={onDone} />
+      <ThemeEditorBody sourceId={sourceId} onDone={onDone} />
       <ThemeEditorFooter onCancel={onCancel} onDone={onDone} />
     </>,
   );

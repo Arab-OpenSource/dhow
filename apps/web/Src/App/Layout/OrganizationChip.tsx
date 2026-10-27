@@ -1,3 +1,4 @@
+import { preloadFrame } from '@/App/Layout/LazyFrames';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { cx } from '@/Core/Ui/ClassNames';
@@ -7,6 +8,10 @@ export interface IOrganizationChipProps {
   className?: string;
 }
 
+const preloadOrganization = () => {
+  void preloadFrame('organization');
+};
+
 export const OrganizationChip = ({ className }: IOrganizationChipProps) => {
   const { openStack } = useShellNavigation();
   const membership = useCurrentMembership();
@@ -15,6 +20,8 @@ export const OrganizationChip = ({ className }: IOrganizationChipProps) => {
   return (
     <button
       type="button"
+      onPointerEnter={preloadOrganization}
+      onFocus={preloadOrganization}
       onClick={() => {
         openStack(['organization']);
       }}

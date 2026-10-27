@@ -20,5 +20,6 @@ export default defineConfig({
   build: {
     sourcemap: false,
     assetsInlineLimit: 0,
+    modulePreload: { polyfill: false },
   },
 });
