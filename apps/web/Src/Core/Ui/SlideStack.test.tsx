@@ -152,6 +152,24 @@ describe('SlideStack', () => {
     expect(await screen.findByRole('dialog', { name: 'Alpha' })).toBeInTheDocument();
   });
 
+  it('shows each slide its own place in the stack', async () => {
+    renderWithProviders(<Harness initial={['a', 'b', 'c']} />);
+    await screen.findByRole('dialog', { name: 'Charlie' });
+    for (const label of ['1 من 3', '2 من 3', '3 من 3']) {
+      expect(document.body).toHaveTextContent(label);
+    }
+    expect(within(topSlide()).getByText('3 من 3')).toBeInTheDocument();
+  });
+
+  it('closes every slide at once', async () => {
+    const { user } = renderWithProviders(<Harness initial={['a', 'b', 'c']} />);
+    await screen.findByRole('dialog', { name: 'Charlie' });
+    await user.click(within(topSlide()).getByRole('button', { name: Ar['slides.closeAll'] }));
+    await gone();
+  });
+});
+
+describe('SlideStack in direction A', () => {
   it('leaves out the trail while only one slide is open, since it would repeat the title', async () => {
     renderWithProviders(<Harness initial={['a']} />);
     await screen.findByRole('dialog', { name: 'Alpha' });
@@ -171,22 +189,6 @@ describe('SlideStack', () => {
     renderWithProviders(<Harness initial={['a']} />);
     await screen.findByRole('dialog', { name: 'Alpha' });
     expect(topSlide()).toHaveClass('rounded-lg', 'border-line-2', 'bg-canvas');
-  });
-
-  it('shows each slide its own place in the stack', async () => {
-    renderWithProviders(<Harness initial={['a', 'b', 'c']} />);
-    await screen.findByRole('dialog', { name: 'Charlie' });
-    for (const label of ['1 من 3', '2 من 3', '3 من 3']) {
-      expect(document.body).toHaveTextContent(label);
-    }
-    expect(within(topSlide()).getByText('3 من 3')).toBeInTheDocument();
-  });
-
-  it('closes every slide at once', async () => {
-    const { user } = renderWithProviders(<Harness initial={['a', 'b', 'c']} />);
-    await screen.findByRole('dialog', { name: 'Charlie' });
-    await user.click(within(topSlide()).getByRole('button', { name: Ar['slides.closeAll'] }));
-    await gone();
   });
 });
 

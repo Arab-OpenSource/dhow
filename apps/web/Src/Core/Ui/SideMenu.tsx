@@ -41,7 +41,7 @@ const isPlainClick = (event: MouseEvent<HTMLAnchorElement>): boolean =>
   event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 
 const MenuLink = ({ item }: { item: IMenuItem }) => (
-  <Tooltip label={item.label} side="top">
+  <Tooltip label={item.label} side="top" phoneOnly>
     <a
       href={item.href}
       aria-current={item.current ? 'page' : undefined}
