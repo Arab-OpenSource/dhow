@@ -1,6 +1,4 @@
-# Dhow developer tasks. CI runs the same targets.
 GO       ?= go
-# Build tools with the toolchain pinned in go.mod so they understand the module's Go version.
 export GOTOOLCHAIN := $(shell awk '/^toolchain/ {print $$2}' go.mod)
 PKG      := ./...
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -29,7 +27,7 @@ help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
 .PHONY: check
-check: lint lint-actions test vuln ## Everything CI checks
+check: lint lint-actions test vuln hooks-test ## Everything CI checks
 
 .PHONY: fmt
 fmt: ## Format Go code
@@ -42,6 +40,10 @@ lint: ## Run golangci-lint
 .PHONY: lint-actions
 lint-actions: ## Lint GitHub Actions workflows
 	$(GO) run github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
+
+.PHONY: hooks-test
+hooks-test: ## Test the Claude Code project hooks
+	python3 -B .claude/hooks/tests/test_hooks.py
 
 .PHONY: test
 test: ## Run Go tests with the race detector

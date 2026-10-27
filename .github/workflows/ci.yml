@@ -49,7 +49,6 @@ jobs:
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15.0
-          # Build from source with the pinned toolchain; prebuilt binaries may target an older Go.
           install-mode: goinstall
       - name: Test
         run: make test
@@ -59,3 +58,5 @@ jobs:
         run: make lint-actions
       - name: Build
         run: make build
+      - name: Test Claude Code hooks
+        run: make hooks-test

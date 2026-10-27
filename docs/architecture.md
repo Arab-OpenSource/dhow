@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Draft v0.1** (design phase). Decisions referenced as ADR-NNNN live in [`adr/`](adr/).
+Status: **Draft v0.1** (design phase). Decisions referenced as ADR-NNNN live in [`Plan/ADR/`](../Plan/ADR/).
 
 ## 1. Overview
 

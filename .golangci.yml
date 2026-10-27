@@ -29,10 +29,9 @@ linters:
     funlen:
       lines: 100
       statements: -1
+      ignore-comments: false
     revive:
       rules:
-        - name: exported
-          arguments: ["disableStutteringCheck"]
         - name: file-length-limit
           arguments:
             - max: 500
@@ -40,6 +39,8 @@ linters:
               skipBlankLines: false
   exclusions:
     generated: strict
+    presets:
+      - comments
     rules:
       - path: _test\.go
         linters: [gosec, unparam, noctx]
