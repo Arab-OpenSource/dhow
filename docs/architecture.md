@@ -74,27 +74,44 @@ A modular monolith shipped as a single binary. The modules are listed below; eac
 
 **API surfaces (ADR-0005):**
 - **Public REST + OpenAPI 3.1** for the UI, CLI, Terraform provider and third parties. The spec is the source of truth, and the TypeScript client for the UI is generated from it.
-- **Connect/gRPC** between runners and the control plane. It carries job leasing, log streaming, artifact upload and status updates, with protobuf contracts in `packages/proto`.
+- **Connect** between runners and the control plane, mounted at `/runner-api/` (or on a dedicated TLS listener). It carries registration, job leasing, log chunks, artifact upload and status updates, with protobuf contracts in `packages/proto`. Only unary RPCs are used, so the runner plane works over HTTP/1.1 or HTTP/2 through any reverse proxy (ADR-0042).
 - **SSE** for live UI updates (logs and status). It works through proxies and is authenticated with the session cookie.
 
-### 2.2 Runner (`apps/runner`, Go — ADR-0003, ADR-0007)
+### 2.2 Runner (`apps/runner`, Go — ADR-0003, ADR-0007, ADR-0041 to ADR-0048)
 
-- Ships as a single static binary for linux/amd64, linux/arm64, windows/amd64 and darwin/arm64.
-- **Registration.** The runner presents a one-time registration token and receives a runner identity: an Ed25519 keypair whose public key is pinned server-side, plus a short-lived access token that it refreshes with a signed challenge. Admins can revoke a runner instantly.
-- **Pull-based and outbound only.** The runner long-polls or streams `LeaseJob` and never opens an inbound port.
-- **Executes each job in a fresh sandbox:**
-  - **Default:** a rootless Docker/Podman container with CPU, memory, PIDs, disk and wall-clock limits. Network egress is denied by default and opened through an allowlist in the job definition. The root filesystem is read-only except `/workspace` and `/tmp`, and no host mounts are allowed.
+- Ships as a single static binary for linux/amd64 and linux/arm64. Jobs only run on Linux; Windows and macOS runners are deferred until they have a sandbox driver.
+- **Registration and identity (ADR-0041).**
+  - An admin creates a registration token. It is single-use by default, scoped to one organization and its labels, and expires within 24 hours.
+  - The runner generates an Ed25519 signing key and an HPKE (MLKEM768-X25519) encryption key locally. The server pins both public keys, and the private keys never leave the host.
+  - The runner exchanges a signed challenge for a 15-minute access token. Starting a job needs a fresh signature, so a stolen token alone cannot fetch secrets.
+  - The runner verifies the server with TLS and with a pinned Ed25519 key that signs every lease grant.
+  - Admins can revoke a runner instantly. There is no mTLS and no internal CA, because TLS terminates at the reverse proxy.
+- **Pull-based and outbound only (ADR-0042).**
+  - The runner long-polls `Lease` (up to 25 s) and never opens an inbound port.
+  - A lease lasts 45 s and is renewed by a heartbeat every 10 s. Every attempt carries a fencing token, and every mutating call is checked against it.
+  - The runner kills its own sandbox before the server can consider the lease lost, so two attempts never overlap.
+- **Executes each job in a fresh sandbox (ADR-0043, ADR-0044):**
+  - **Default:** a rootless Podman container (crun) running our own Podman configuration. After it is created, the runner inspects the container and fails closed on any mismatch.
+    - All capabilities are dropped, with `no-new-privileges`, our seccomp profile, and a separate user-namespace range per job.
+    - cgroup v2 limits cover CPU, memory, PIDs and disk (`/workspace` is a sized tmpfs), plus a wall-clock limit.
+    - The root filesystem is read-only except `/workspace` and `/tmp`, and no host mounts are allowed.
+    - PID 1 is the runner's own agent. It runs the steps, and it exits (killing the container) if the runner goes away.
+  - **Network:** always `--network=none`. Egress is opened only through a per-job proxy in the runner, reached through the agent on `127.0.0.1:3128`, with a hostname allowlist from the job definition. There is no DNS inside the sandbox, and private, loopback, link-local and metadata ranges are always denied.
   - **Hardened (optional):** gVisor (`runsc`) or a Firecracker microVM. Firecracker as the default isolation level is an Enterprise feature; gVisor is available in Community.
-  - **Teardown:** the sandbox, its workspace and any injected secrets are destroyed after every job.
-- **Secret masking happens in the runner.** The runner masks secrets on the line-buffered output stream *before* anything leaves the host. It also masks the common encodings of each secret (base64 and URL-encoded).
-- **Shared code with the server:** the YAML schema, the CEL evaluator, and the protocol.
+  - **Kubernetes:** the runner creates one restricted Pod per job (optionally with a gVisor `RuntimeClass` on a dedicated node pool) instead of running containers itself (ADR-0048).
+  - **Teardown:** the sandbox, its workspace and any injected secrets are destroyed after every job. On restart, the runner removes any container it left behind.
+- **Secrets (ADR-0045).**
+  - Secrets arrive once per attempt, sealed with HPKE to the runner's pinned key and bound to the lease and the fencing token.
+  - They live only in memory and in the step's environment or a container-private tmpfs, never in container configuration or on disk.
+- **Secret masking happens in the runner.** The runner masks secrets on the line-buffered output stream *before* anything is spilled to disk or leaves the host. It also masks the common encodings of each secret (base64, URL-encoded, JSON-escaped, and each line of a multi-line secret).
+- **Shared code with the server:** the job spec validator, the YAML schema, the CEL evaluator, and the protocol.
 
 ### 2.3 Storage (ADR-0006)
 
 | Store | Use | Notes |
 |---|---|---|
 | **PostgreSQL 18** (required, for native `uuidv7()`) | All state, plus the job queue (`FOR UPDATE SKIP LOCKED`), advisory locks (migrations, environment locks), and `LISTEN/NOTIFY` for intra-cluster events | The only required stateful dependency. Migrations run as a separate locked step. |
-| **Object storage** (required, with a disk default) | Logs, artifacts and build cache | S3-compatible (AWS S3, R2, MinIO) or local disk for single-node installs. |
+| **Object storage** (required from M4, with a disk default) | Artifacts, build cache, and compacted log segments (live logs stay in Postgres) | S3-compatible (AWS S3, R2, MinIO) or local disk for single-node installs. |
 | **Redis** (optional) | Cross-instance pub/sub fan-out, distributed rate limits, and hot caches at high scale | When Redis is absent, the same interfaces fall back to Postgres. |
 
 ## 3. Data model (core)
@@ -142,8 +159,9 @@ trigger (push / tag / PR / manual / API / external-CI artifact / schedule)
 
 ## 5. Logs
 
-- The runner sends **sequenced chunks** of the form `(job_id, seq, ts, stream, bytes)`. The control plane writes them to object storage in segments and indexes the offsets.
-- The UI reads history with `GET /logs?from=seq`, then follows over SSE. Clients resume from the last `seq` they saw, so there are no gaps and no duplicates.
+- The runner sends **sequenced chunks** of the form `(attempt_id, seq, ts, stream, bytes)`. `seq` starts at 1 and has no gaps, so appends are idempotent and gaps are detected (ADR-0046).
+- From M3, chunks are stored in a Postgres table partitioned by day. Retention drops whole partitions. With M4's blob store, finished attempts are compacted into object-storage segments with an offset index.
+- The UI reads history with `GET .../jobs/{jobId}/logs?FromSeq=`, then follows over SSE. Clients resume with `Last-Event-ID` from the last `seq` they saw, so there are no gaps and no duplicates. Instances fan out new chunks through `LISTEN/NOTIFY`.
 - Steps are collapsible groups, and the UI parses ANSI into styled spans. Raw output is never injected as HTML.
 - Logs have a size cap per job (configurable) and a retention policy per organization.
 

@@ -50,13 +50,13 @@
 | `Main.tsx` | الملف الوحيد المسموح في جذر `Src` |
 | `App/` | الـ router والـ providers والـ layout (`Layout/`)، وهو الوحيد اللي بيستورد `Modules/` |
 | `Core/<X>/` | `Ui` (مكوّنات الـ Design System) و`Api` (`Schema.d.ts` متولّد و`Client.ts`) و`Hooks` و`Store` و`Testing` |
-| `I18n/` | `Locales/{Ar,En}.ts` بنفس المفاتيح و`I18nProvider` و`useT` |
+| `I18n/` | `Locales/{Boot,Workspace}/{Ar,En}.ts` بنفس المفاتيح (و`Locales/{Ar,En}.ts` الكاملين للأنواع والاختبارات) و`I18nProvider` و`useT` |
 | `Styles/` | `Tokens.json` مصدر الـ tokens، و`Themes.json` ألوان ثيمات النظام، و`Tokens.css` متولّد منهم، و`Globals.css` (Tailwind v4 بـ `@theme`) |
 | `Modules/<Name>/<Folder>/` | `Pages` و`Components` و`Hooks` و`Api` و`Store` و`Types` |
 
 - PascalCase للفولدرات والملفات والـ components والـ state والـ handlers، والـ hooks بس `useX.ts` بـ `use` صغيرة. الاختبار جنب الملف: `X.test.tsx`.
 - module ممنوع يستورد module تاني، و`Core` و`I18n` و`Styles` ممنوع يستوردوا `Modules` أو `App`، و`Modules` ممنوع يستورد `App`. الاستيراد بـ `@/` (مثلًا `@/Core/Ui/Button`).
-- ممنوع أي نص مكتوب في الـ JSX أو في `aria-label` و`title` و`placeholder`: كل نص مفتاح في `Ar.ts` و`En.ts` بنفس المفاتيح، ويتعرض بـ `t('key')`.
+- ممنوع أي نص مكتوب في الـ JSX أو في `aria-label` و`title` و`placeholder`: كل نص مفتاح بنفس المفاتيح في العربي والإنجليزي، ويتعرض بـ `t('key')`. نصوص الدخول والتنصيب وإطار الـ shell في `I18n/Locales/Boot/{Ar,En}.ts`، والباقي في `I18n/Locales/Workspace/{Ar,En}.ts` (ADR-0049).
 - الألوان من الـ tokens بس (`bg-canvas` و`text-secondary`)، ومفيش hex في الكود. الزرار الأساسي `bg-accent text-on-accent`، والخطوط الرفيعة `border-line` و`border-line-2`. ممنوع أي gradient أو edge-light في المكوّنات (بيفضل في اللوجو بس، ومختبر)، وممنوع drop shadow على الكروت، وممنوع نص أصغر من 13px ([ADR-0034](Plan/ADR/0034-ui-direction-calm-and-organized.md)).
 - الـ CSP هي `'self'`: ممنوع inline scripts أو styles، وممنوع `Dialog.Overlay` من Radix لأنه بيحقن `<style>` (استخدم الـ backdrop اللي في `SlideStack`، واختبارات `SlideStack` و`CommandPalette` بتتأكد إن مفيش `<style>` اتحقن). وzod لازم يشتغل بـ `z.config({ jitless: true })` (في `ThemeForm.ts`) لأن الـ JIT بيجرّب `new Function` وده بيطلّع violation.
 - `Schema.d.ts` بيتولّد بـ `pnpm gen:api` من `packages/openapi/openapi.yaml`، و`Tokens.css` بـ `pnpm gen:tokens`، وممنوع تعديلهم بإيدك.

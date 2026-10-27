@@ -1,0 +1,8 @@
+mode: native
+domain: dhow.e2e.test
+database:
+  mode: install
+proxy:
+  kind: none
+install_packages: true
+breached_password_check: false

@@ -1,0 +1,82 @@
+name: Installer
+
+on:
+  pull_request:
+    paths:
+      - apps/server/internal/Core/Installer/**
+      - apps/server/internal/Config/**
+      - apps/server/cmd/dhow-server/**
+      - deploy/**
+      - .github/workflows/installer.yml
+      - .github/workflows/release.yml
+      - Makefile
+      - go.mod
+      - go.sum
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scripts:
+    name: Scripts and the systemd unit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the shell scripts
+        run: |
+          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh
+          shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh
+      - name: Rate the systemd unit
+        run: |
+          systemd-analyze security --offline=yes --no-pager deploy/systemd/dhow.service | tail -1 | tee rating.txt
+          grep -Eq 'exposure level for dhow.service: [0-9.]+ (OK|SAFE|PERFECT)' rating.txt
+
+  build:
+    name: Build dhow-server
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: make build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dhow-server
+          path: bin/dhow-server
+          if-no-files-found: error
+          retention-days: 3
+
+  e2e:
+    name: Install, doctor and uninstall on ${{ matrix.base }}
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        base: ["debian:12", "ubuntu:24.04", "rockylinux/rockylinux:9", "fedora:latest"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dhow-server
+          path: bin
+      - name: Run the installer end to end in a systemd container
+        env:
+          BASE: ${{ matrix.base }}
+        run: |
+          chmod +x bin/dhow-server
+          deploy/install/e2e/run.sh "$BASE" bin/dhow-server
