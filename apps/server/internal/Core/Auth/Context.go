@@ -21,6 +21,7 @@ type RequestMeta struct {
 	IP           netip.Addr
 	UserAgent    string
 	SessionToken string
+	MfaToken     string
 }
 
 type principalKey struct{}

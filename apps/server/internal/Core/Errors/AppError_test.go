@@ -37,6 +37,11 @@ func TestConstructors(t *testing.T) {
 		{"setup completed", apperrors.SetupCompleted(), http.StatusConflict, "SETUP_COMPLETED", "errors.setupCompleted"},
 		{"setup token invalid", apperrors.SetupTokenInvalid(), http.StatusForbidden, "SETUP_TOKEN_INVALID", "errors.setupTokenInvalid"},
 		{"conflict", apperrors.Conflict(), http.StatusConflict, "CONFLICT", "errors.conflict"},
+		{"mfa challenge expired", apperrors.MfaChallengeExpired(), http.StatusUnauthorized, "MFA_CHALLENGE_EXPIRED", "errors.mfaChallengeExpired"},
+		{"invalid mfa code", apperrors.InvalidMfaCode(0), http.StatusUnauthorized, "INVALID_MFA_CODE", "errors.invalidMfaCode"},
+		{"invalid current factor", apperrors.InvalidCurrentFactor(0), http.StatusForbidden, "INVALID_CURRENT_FACTOR", "errors.invalidCurrentFactor"},
+		{"enrollment expired", apperrors.EnrollmentExpired(), http.StatusConflict, "ENROLLMENT_EXPIRED", "errors.enrollmentExpired"},
+		{"passkey rejected", apperrors.PasskeyRejected(), http.StatusUnprocessableEntity, "PASSKEY_REJECTED", "errors.passkeyRejected"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

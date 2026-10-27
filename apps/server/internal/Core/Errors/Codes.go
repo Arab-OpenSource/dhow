@@ -20,6 +20,11 @@ const (
 	CodeSetupCompleted         = "SETUP_COMPLETED"
 	CodeSetupTokenInvalid      = "SETUP_TOKEN_INVALID" //nolint:gosec // A public error code, not a credential.
 	CodeConflict               = "CONFLICT"
+	CodeMfaChallengeExpired    = "MFA_CHALLENGE_EXPIRED"
+	CodeInvalidMfaCode         = "INVALID_MFA_CODE"
+	CodeInvalidCurrentFactor   = "INVALID_CURRENT_FACTOR"
+	CodeEnrollmentExpired      = "ENROLLMENT_EXPIRED"
+	CodePasskeyRejected        = "PASSKEY_REJECTED"
 )
 
 const (
@@ -42,4 +47,9 @@ const (
 	KeySetupCompleted         = "errors.setupCompleted"
 	KeySetupTokenInvalid      = "errors.setupTokenInvalid"
 	KeyConflict               = "errors.conflict"
+	KeyMfaChallengeExpired    = "errors.mfaChallengeExpired"
+	KeyInvalidMfaCode         = "errors.invalidMfaCode"
+	KeyInvalidCurrentFactor   = "errors.invalidCurrentFactor"
+	KeyEnrollmentExpired      = "errors.enrollmentExpired"
+	KeyPasskeyRejected        = "errors.passkeyRejected"
 )

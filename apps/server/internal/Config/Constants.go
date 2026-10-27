@@ -42,6 +42,21 @@ const (
 )
 
 const (
+	MfaCookieName           = "__Host-dhow_mfa"
+	MfaPendingTTL           = 5 * time.Minute
+	MfaMaxChallengeAttempts = 5
+	MfaFreeAttempts         = 5
+	TotpEnrollmentTTL       = 10 * time.Minute
+	TotpIssuer              = "Dhow"
+	TotpSealLabel           = "dhow/totp-secret/v1"
+	WebAuthnChallengeTTL    = 5 * time.Minute
+	WebAuthnDisplayName     = "Dhow"
+	WebAuthnHandleBytes     = 32
+	PasskeyNameMaxLength    = 64
+	MfaCodeMaxBytes         = 64
+)
+
+const (
 	SetupTokenTTL   = time.Hour
 	SetupTokenBytes = 32
 )

@@ -13,6 +13,17 @@ const (
 	AuthPasswordChanged       = "auth.password_changed"
 	AuthSessionRevoked        = "auth.session_revoked"
 	AuthSessionsRevokedOthers = "auth.sessions_revoked_others"
+
+	AuthMfaPending                = "auth.mfa_pending"
+	AuthMfaFailed                 = "auth.mfa_failed"
+	AuthRecoveryCodeUsed          = "auth.recovery_code_used"
+	AuthTotpEnabled               = "auth.totp_enabled"
+	AuthTotpDisabled              = "auth.totp_disabled"
+	AuthRecoveryCodesRegenerated  = "auth.recovery_codes_regenerated"
+	AuthPasskeyAdded              = "auth.passkey_added"                //nolint:gosec // An audit action name, not a credential.
+	AuthPasskeyRenamed            = "auth.passkey_renamed"              //nolint:gosec // An audit action name, not a credential.
+	AuthPasskeyRemoved            = "auth.passkey_removed"              //nolint:gosec // An audit action name, not a credential.
+	AuthPasskeySignCountRegressed = "auth.passkey_sign_count_regressed" //nolint:gosec // An audit action name, not a credential.
 )
 
 func AuditedEvents() []string {
@@ -25,6 +36,16 @@ func AuditedEvents() []string {
 		AuthPasswordChanged,
 		AuthSessionRevoked,
 		AuthSessionsRevokedOthers,
+		AuthMfaPending,
+		AuthMfaFailed,
+		AuthRecoveryCodeUsed,
+		AuthTotpEnabled,
+		AuthTotpDisabled,
+		AuthRecoveryCodesRegenerated,
+		AuthPasskeyAdded,
+		AuthPasskeyRenamed,
+		AuthPasskeyRemoved,
+		AuthPasskeySignCountRegressed,
 	}
 }
 
