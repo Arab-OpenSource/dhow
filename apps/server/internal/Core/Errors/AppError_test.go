@@ -28,6 +28,15 @@ func TestConstructors(t *testing.T) {
 		{"payload too large", apperrors.PayloadTooLarge(), http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "errors.payloadTooLarge"},
 		{"service unavailable", apperrors.ServiceUnavailable(), http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "errors.serviceUnavailable"},
 		{"internal", apperrors.Internal(errors.New("boom")), http.StatusInternalServerError, "INTERNAL", "errors.internal"},
+		{"unauthenticated", apperrors.Unauthenticated(), http.StatusUnauthorized, "UNAUTHENTICATED", "errors.unauthenticated"},
+		{"forbidden", apperrors.Forbidden(), http.StatusForbidden, "FORBIDDEN", "errors.forbidden"},
+		{"csrf failed", apperrors.CSRFFailed(), http.StatusForbidden, "CSRF_FAILED", "errors.csrfFailed"},
+		{"invalid credentials", apperrors.InvalidCredentials(0), http.StatusUnauthorized, "INVALID_CREDENTIALS", "errors.invalidCredentials"},
+		{"invalid current password", apperrors.InvalidCurrentPassword(0), http.StatusForbidden, "INVALID_CURRENT_PASSWORD", "errors.invalidCurrentPassword"},
+		{"password breached", apperrors.PasswordBreached(), http.StatusUnprocessableEntity, "PASSWORD_BREACHED", "errors.passwordBreached"},
+		{"setup completed", apperrors.SetupCompleted(), http.StatusConflict, "SETUP_COMPLETED", "errors.setupCompleted"},
+		{"setup token invalid", apperrors.SetupTokenInvalid(), http.StatusForbidden, "SETUP_TOKEN_INVALID", "errors.setupTokenInvalid"},
+		{"conflict", apperrors.Conflict(), http.StatusConflict, "CONFLICT", "errors.conflict"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

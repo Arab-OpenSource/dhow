@@ -1,24 +1,63 @@
 package app
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
+	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
+	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
+	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
+	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
+	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
 )
 
 type Options struct {
-	Config config.Config
-	Log    *slog.Logger
-	System system.Deps
-	Web    http.Handler
+	Config   config.Config
+	Log      *slog.Logger
+	System   system.Deps
+	Identity *identity.Service
+	Session  *session.Service
+	Audit    *audit.Service
+	CSRF     *auth.CSRF
+	Now      func() time.Time
+	Web      http.Handler
+}
+
+func Policies() []policy.Rule {
+	var rules []policy.Rule
+	rules = append(rules, system.Policies()...)
+	rules = append(rules, identity.Policies()...)
+	rules = append(rules, session.Policies()...)
+	rules = append(rules, audit.Policies()...)
+	return rules
+}
+
+type noSessions struct{}
+
+func (noSessions) Resolve(context.Context, []byte, time.Time) (auth.Resolved, error) {
+	return auth.Resolved{}, auth.ErrNoSession
+}
+
+func (o Options) guard() *auth.Guard {
+	var resolver auth.Resolver = noSessions{}
+	if o.Session != nil {
+		resolver = o.Session
+	}
+	csrf := o.CSRF
+	if csrf == nil {
+		csrf = auth.NewCSRF(o.Config.SecretKey)
+	}
+	return auth.NewGuard(auth.GuardOptions{Resolver: resolver, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now})
 }
 
 func NewRouter(o Options) http.Handler {
@@ -34,10 +73,21 @@ func NewRouter(o Options) http.Handler {
 	)
 	r.MethodNotAllowed(methodNotAllowed)
 
-	r.Route("/api/v1", func(api chi.Router) {
+	guard := o.guard()
+	r.Route(config.APIPrefix, func(api chi.Router) {
 		api.Use(middleware.Timeout(config.APITimeout), middleware.NoStore)
 		api.NotFound(notFound)
+		o.System.Guard = guard
 		system.Routes(api, o.System)
+		if o.Identity != nil {
+			identity.Routes(api, identity.Deps{Service: o.Identity, Guard: guard, Log: o.Log})
+		}
+		if o.Session != nil {
+			session.Routes(api, session.Deps{Service: o.Session, Guard: guard, Log: o.Log})
+		}
+		if o.Audit != nil {
+			audit.Routes(api, audit.Deps{Service: o.Audit, Guard: guard, Log: o.Log})
+		}
 	})
 
 	web := o.Web

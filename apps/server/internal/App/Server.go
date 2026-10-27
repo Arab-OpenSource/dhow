@@ -12,8 +12,6 @@ import (
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	migrations "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Migrations"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
 
@@ -53,18 +51,18 @@ func Run(ctx context.Context) error {
 	}
 	log.Info("database schema is current", "version", version)
 
-	handler := NewRouter(Options{
-		Config: cfg,
-		Log:    log,
-		System: system.Deps{
-			DB:         pool,
-			Migrations: migrator,
-			Queries:    sqlc.New(pool),
-			Build:      build,
-			Log:        log,
-		},
-	})
-	return serve(ctx, NewHTTPServer(cfg, handler, log), log, "public_url", cfg.PublicURL.String())
+	wired, err := Build(ctx, Infra{Config: cfg, Log: log, Pool: pool, Migrations: migrator, Build: build})
+	if err != nil {
+		return err
+	}
+	setupURL, created, err := wired.Identity.EnsureSetupToken(ctx)
+	if err != nil {
+		return fmt.Errorf("prepare first-run setup: %w", err)
+	}
+	if created {
+		log.Info("first-run setup is required: open this link within one hour to create the owner account", "setup_url", setupURL)
+	}
+	return serve(ctx, NewHTTPServer(cfg, wired.Handler, log), log, "public_url", cfg.PublicURL.String())
 }
 
 func NewHTTPServer(cfg config.Config, handler http.Handler, log *slog.Logger) *http.Server {

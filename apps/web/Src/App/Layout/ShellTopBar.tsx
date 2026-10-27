@@ -1,3 +1,4 @@
+import { OrganizationChip } from '@/App/Layout/OrganizationChip';
 import { shortcutLabel } from '@/App/Layout/ShortcutLabel';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
 import { usePaletteStore } from '@/Core/Store/usePaletteStore';
@@ -15,6 +16,7 @@ export const ShellTopBar = () => {
 
   return (
     <TopBar
+      start={<OrganizationChip className="md:hidden" />}
       searchLabel={t('shell.search')}
       shortcut={shortcutLabel()}
       onSearch={() => {
