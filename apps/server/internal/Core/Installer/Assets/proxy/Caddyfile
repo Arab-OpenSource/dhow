@@ -1,0 +1,14 @@
+dhow.example.com {
+	header >Strict-Transport-Security "max-age=63072000; includeSubDomains"
+
+	request_body {
+		max_size 2MB
+	}
+
+	reverse_proxy 127.0.0.1:8080 {
+		flush_interval -1
+		transport http {
+			read_timeout 1h
+		}
+	}
+}
