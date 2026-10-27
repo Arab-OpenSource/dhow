@@ -188,4 +188,27 @@ export const En: TMessages = {
   'api.error.network': 'We cannot reach the server. Check your network and try again.',
   'api.error.invalid': 'The server sent a reply we do not understand. Try again.',
   'api.error.unknown': 'Something went wrong. Try again.',
+
+  'password.show': 'Show password',
+  'password.hide': 'Hide password',
+  'password.strength.label': 'Password strength',
+  'password.strength.empty': 'Type a password and we will rate it',
+  'password.strength.weak': 'Weak',
+  'password.strength.ok': 'Fair',
+  'password.strength.good': 'Good',
+  'password.strength.strong': 'Strong',
+  'password.hint': 'At least 12 characters. We check it is not in a known breach, without sending the password to anyone.',
+
+  'pager.label': 'Page navigation',
+  'pager.previous': 'Previous page',
+  'pager.next': 'Next page',
+  'pager.status': 'Page {page} of {pages}',
+
+  'time.now': 'Just now',
+  'time.minute.one': '1 minute ago',
+  'time.minutes': '{count} minutes ago',
+  'time.hour.one': '1 hour ago',
+  'time.hours': '{count} hours ago',
+  'time.day.one': '1 day ago',
+  'time.days': '{count} days ago',
 };

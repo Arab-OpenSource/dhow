@@ -186,4 +186,27 @@ export const Ar = {
   'api.error.network': 'مش قادرين نوصل للسيرفر. اتأكد إن النت واصل وجرّب تاني.',
   'api.error.invalid': 'السيرفر رد برد مش مفهوم. جرّب تاني.',
   'api.error.unknown': 'حصلت مشكلة. جرّب تاني.',
+
+  'password.show': 'اعرض كلمة السر',
+  'password.hide': 'اخفي كلمة السر',
+  'password.strength.label': 'قوة كلمة السر',
+  'password.strength.empty': 'اكتب كلمة السر وهنقولك قوتها',
+  'password.strength.weak': 'ضعيفة',
+  'password.strength.ok': 'مقبولة',
+  'password.strength.good': 'كويسة',
+  'password.strength.strong': 'قوية',
+  'password.hint': '12 حرف على الأقل. هنتأكد إنها مش ضمن كلمات سر مسرّبة، من غير ما نبعتها لأي حد.',
+
+  'pager.label': 'التنقّل بين الصفحات',
+  'pager.previous': 'الصفحة اللي قبلها',
+  'pager.next': 'الصفحة اللي بعدها',
+  'pager.status': 'صفحة {page} من {pages}',
+
+  'time.now': 'دلوقتي',
+  'time.minute.one': 'من دقيقة',
+  'time.minutes': 'من {count} دقيقة',
+  'time.hour.one': 'من ساعة',
+  'time.hours': 'من {count} ساعة',
+  'time.day.one': 'من يوم',
+  'time.days': 'من {count} يوم',
 } as const;

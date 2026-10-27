@@ -4,6 +4,7 @@ import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 
 import { DEFAULT_THEME_ID } from '@/Core/Theme/ThemeTokens';
+import { useCsrfStore } from '@/Core/Store/useCsrfStore';
 import { useThemeStore } from '@/Core/Theme/useThemeStore';
 
 window.scrollTo = vi.fn();
@@ -39,6 +40,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   window.localStorage.clear();
+  useCsrfStore.getState().Clear();
   document.documentElement.lang = 'ar';
   document.documentElement.dir = 'rtl';
   document.documentElement.removeAttribute('data-theme');
