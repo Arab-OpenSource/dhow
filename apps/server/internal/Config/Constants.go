@@ -21,6 +21,8 @@ const (
 	ShutdownTimeout   = 20 * time.Second
 )
 
+const HealthcheckTimeout = 3 * time.Second
+
 const (
 	DatabaseMaxConns    = 20
 	DatabaseMaxIdleTime = 5 * time.Minute
