@@ -45,7 +45,7 @@ func NewRouter(o Options) http.Handler {
 		web = WebHandler()
 	}
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
-		if strings.HasPrefix(req.URL.Path, "/api/") {
+		if req.URL.Path == "/api" || strings.HasPrefix(req.URL.Path, "/api/") {
 			notFound(w, req)
 			return
 		}

@@ -11,10 +11,23 @@ GOVULNCHECK_VERSION   := v1.8.0
 ACTIONLINT_VERSION    := v1.7.12
 OAPI_CODEGEN_VERSION  := v2.8.1
 SQLC_VERSION          := v1.31.1
+WEB_DIST              := apps/server/internal/App/WebDist
 
 .PHONY: build
 build: ## Build bin/dhow-server
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o bin/dhow-server ./apps/server/cmd/dhow-server
+
+.PHONY: web
+web: ## Build the web app and copy it into the server embed directory
+	pnpm -C apps/web install --frozen-lockfile
+	pnpm -C apps/web build
+	find $(WEB_DIST) -mindepth 1 ! -name .keep -delete
+	cp -R apps/web/dist/. $(WEB_DIST)/
+
+.PHONY: release
+release: ## Build bin/dhow-server with the web app embedded
+	$(MAKE) web
+	$(MAKE) build
 
 .PHONY: gen
 gen: ## Regenerate code from the OpenAPI spec (one config per module) and SQL queries
