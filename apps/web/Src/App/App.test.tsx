@@ -30,17 +30,17 @@ afterEach(() => {
 });
 
 describe('app shell', () => {
-  it('renders Arabic and right to left by default with one workspace area', async () => {
+  it('renders Arabic and right to left by default with one main area', async () => {
     await renderApp();
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
     expect(screen.getAllByRole('main')).toHaveLength(1);
-    expect(screen.getByRole('heading', { level: 1, name: Ar['workspace.title'] })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: Ar['home.title'] })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: Ar['shell.nav.label'] })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: Ar['shell.nav.workspace'] })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: Ar['shell.nav.home'] })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('has a skip link that moves focus to the workspace', async () => {
+  it('has a skip link that moves focus to the main area', async () => {
     const { user } = await renderApp();
     await user.click(screen.getByText(Ar['shell.skipToContent']));
     expect(screen.getByRole('main')).toHaveFocus();
@@ -110,8 +110,8 @@ describe('language switch', () => {
     await user.click(screen.getByRole('button', { name: Ar['shell.language.switch'].replace('{language}', Ar['language.en']) }));
     expect(document.documentElement.dir).toBe('ltr');
     expect(document.documentElement.lang).toBe('en');
-    expect(screen.getByRole('heading', { level: 1, name: En['workspace.title'] })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: En['shell.nav.workspace'] })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: En['home.title'] })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: En['shell.nav.home'] })).toBeInTheDocument();
     expect(window.localStorage.getItem('dhow.lang')).toBe('en');
     await user.click(screen.getByRole('button', { name: En['shell.language.switch'].replace('{language}', En['language.ar']) }));
     expect(document.documentElement.dir).toBe('rtl');
@@ -119,7 +119,7 @@ describe('language switch', () => {
 });
 
 describe('unknown routes', () => {
-  it('shows a not-found state that leads back to the workspace', async () => {
+  it('shows a not-found state that leads back to Home', async () => {
     const { router, user } = await renderApp('/nowhere');
     expect(await screen.findByText(Ar['notFound.text'])).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: Ar['notFound.action'] }));
@@ -130,18 +130,12 @@ describe('unknown routes', () => {
 });
 
 describe('system module in the shell', () => {
-  it('opens server status from the workspace action and shows the build', async () => {
+  it('opens server status from the Home list and shows the build', async () => {
     const { router, user } = await renderApp();
-    await user.click(screen.getByRole('button', { name: Ar['workspace.empty.action'] }));
+    await user.click(screen.getByRole('button', { name: new RegExp(Ar['status.title']) }));
     const dialog = await screen.findByRole('dialog', { name: Ar['status.title'] });
     expect(await within(dialog).findByText('v0.1.0')).toBeInTheDocument();
     expect(router.state.location.href).toBe('/?stack=system-status');
-  });
-
-  it('opens server status from the rail and from a deep link', async () => {
-    const { user } = await renderApp();
-    await user.click(screen.getByRole('link', { name: Ar['shell.nav.systemStatus'] }));
-    expect(await screen.findByRole('dialog', { name: Ar['status.title'] })).toBeInTheDocument();
   });
 
   it('opens server status from a deep link', async () => {

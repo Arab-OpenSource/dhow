@@ -9,7 +9,7 @@ export interface IIconProps {
   className?: string;
 }
 
-export const Icon = ({ name, size = 18, weight = 1.6, label, className }: IIconProps) => (
+export const Icon = ({ name, size = 18, weight = 1.7, label, className }: IIconProps) => (
   <svg
     viewBox="0 0 24 24"
     width={size}

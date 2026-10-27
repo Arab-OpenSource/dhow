@@ -13,20 +13,17 @@ export const Toast = ({ accent = 'live', title, detail, dismissLabel, onDismiss 
   <div
     role="status"
     data-accent={accent}
-    className={
-      'flex min-w-[300px] items-center gap-3 rounded-lg bg-card-gradient px-4 py-3 text-[14px] ' +
-      '[box-shadow:var(--shadow-card),var(--shadow-overlay)]'
-    }
+    className="flex min-w-[300px] items-center gap-3 rounded-lg border border-line-2 bg-surface px-4 py-3 text-body-sm shadow-overlay"
   >
-    <i aria-hidden="true" className={cx('size-1.5 flex-none rounded-full', ACCENT_DOT[accent])} />
-    <span className="grid flex-1">
+    <i aria-hidden="true" className={cx('size-2 flex-none rounded-full', ACCENT_DOT[accent])} />
+    <span className="grid flex-1 gap-px">
       {title}
-      {detail ? <span className="text-caption text-tertiary">{detail}</span> : null}
+      {detail ? <span className="text-caption text-secondary">{detail}</span> : null}
     </span>
     <button
       type="button"
       onClick={onDismiss}
-      className="cursor-pointer border-0 bg-transparent text-caption text-tertiary hover:text-primary"
+      className="h-btn-sm cursor-pointer rounded-btn border-0 bg-transparent px-2.5 text-label-sm text-secondary hover:bg-hover hover:text-primary"
     >
       {dismissLabel}
     </button>

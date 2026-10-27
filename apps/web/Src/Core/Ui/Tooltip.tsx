@@ -2,11 +2,13 @@ import * as RadixTooltip from '@radix-ui/react-tooltip';
 import type { ReactElement, ReactNode } from 'react';
 
 import { useDocumentDirection } from '@/Core/Hooks/useDocumentDirection';
+import { cx } from '@/Core/Ui/ClassNames';
 import type { TDirection } from '@/I18n/Locale';
 
 export interface ITooltipProps {
   label: string;
   side?: 'start' | 'end' | 'top' | 'bottom';
+  phoneOnly?: boolean;
   children: ReactElement;
 }
 
@@ -23,7 +25,7 @@ const physicalSide = (side: NonNullable<ITooltipProps['side']>, dir: TDirection)
   return startIsLeft ? 'right' : 'left';
 };
 
-export const Tooltip = ({ label, side = 'top', children }: ITooltipProps) => {
+export const Tooltip = ({ label, side = 'top', phoneOnly = false, children }: ITooltipProps) => {
   const dir = useDocumentDirection();
   return (
     <RadixTooltip.Root>
@@ -32,7 +34,10 @@ export const Tooltip = ({ label, side = 'top', children }: ITooltipProps) => {
         <RadixTooltip.Content
           side={physicalSide(side, dir)}
           sideOffset={8}
-          className="z-50 rounded-md border border-default bg-surface-top px-3 py-1.5 text-caption whitespace-nowrap text-primary"
+          className={cx(
+            'z-50 rounded-sm border border-line-2 bg-surface-top px-3 py-1.5 text-caption whitespace-nowrap text-primary',
+            phoneOnly && 'md:hidden',
+          )}
         >
           {label}
         </RadixTooltip.Content>

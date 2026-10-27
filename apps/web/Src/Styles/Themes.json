@@ -1,6 +1,6 @@
 {
  "name": "داو",
- "version": 1,
+ "version": 2,
  "default": "sea",
  "groups": [
   "bg",
@@ -20,37 +20,37 @@
    "key": "rail",
    "variable": "--color-rail",
    "group": "bg",
-   "usage": "The icon rail, one step lighter than canvas."
+   "usage": "The side menu and the bottom bar, one step lighter than canvas."
   },
   {
    "key": "input",
    "variable": "--color-input",
    "group": "bg",
-   "usage": "Deepest well: the log viewer and command palette input."
+   "usage": "Deepest well: inputs, the log viewer and the command palette input."
   },
   {
    "key": "inset",
    "variable": "--color-surface-inset",
    "group": "bg",
-   "usage": "Rows and inputs placed inside a card; table header."
+   "usage": "Banners and quiet blocks placed on canvas."
   },
   {
    "key": "surface",
    "variable": "--color-surface",
    "group": "bg",
-   "usage": "Card body (end of the card gradient)."
+   "usage": "Card body and slide body."
   },
   {
    "key": "raised",
    "variable": "--color-surface-raised",
    "group": "bg",
-   "usage": "Hover and selected rows; skeleton blocks."
+   "usage": "Hover and selected rows, secondary button hover, skeleton blocks."
   },
   {
    "key": "top",
    "variable": "--color-surface-top",
    "group": "bg",
-   "usage": "Card top (start of the card gradient); selected segment."
+   "usage": "The highest surface: tooltips."
   },
   {
    "key": "track",
@@ -68,13 +68,13 @@
    "key": "t2",
    "variable": "--color-secondary",
    "group": "text",
-   "usage": "Labels, list items, icons at rest on canvas and surfaces (≥8:1)."
+   "usage": "Labels, row sub-lines, icons at rest on canvas and surfaces (≥7:1)."
   },
   {
    "key": "t3",
    "variable": "--color-tertiary",
    "group": "text",
-   "usage": "Meta, timestamps, placeholders, inactive rail icons on canvas and surfaces (≥5:1). The lowest tier for readable information."
+   "usage": "Meta, timestamps, hints, placeholders on canvas and surfaces (≥4.5:1). The lowest tier for readable information."
   },
   {
    "key": "t4",
@@ -86,49 +86,49 @@
    "key": "a1",
    "variable": "--color-aurora-1",
    "group": "aurora",
-   "usage": "Aurora dusk stop 1, amber: the leading edge of the brand gradient."
+   "usage": "Primary button fill, the selected menu icon and the logo sail. Dark text on it keeps ≥4.5:1."
   },
   {
    "key": "a2",
    "variable": "--color-aurora-2",
    "group": "aurora",
-   "usage": "Aurora dusk stop 2, apricot."
+   "usage": "Logo gradient stop 2. Used nowhere else."
   },
   {
    "key": "a3",
    "variable": "--color-aurora-3",
    "group": "aurora",
-   "usage": "Aurora dusk stop 3, pearl: the bright centre that makes aurora read as light."
+   "usage": "Logo gradient stop 3, the bright centre."
   },
   {
    "key": "a4",
    "variable": "--color-aurora-4",
    "group": "aurora",
-   "usage": "Aurora dusk stop 4, blush."
+   "usage": "Logo gradient stop 4."
   },
   {
    "key": "a5",
    "variable": "--color-aurora-5",
    "group": "aurora",
-   "usage": "Aurora dusk stop 5, pink."
+   "usage": "Logo gradient stop 5."
   },
   {
    "key": "a6",
    "variable": "--color-aurora-6",
    "group": "aurora",
-   "usage": "Aurora dusk stop 6, rose: the trailing edge."
+   "usage": "Logo gradient stop 6, the trailing end."
   },
   {
    "key": "edge-warm",
    "variable": "--color-edge-warm",
    "group": "edge",
-   "usage": "Edge light, leading (warm) end. Interactive outlines only."
+   "usage": "Kept for saved themes. No component uses it since ADR-0034."
   },
   {
    "key": "edge-cool",
    "variable": "--color-edge-cool",
    "group": "edge",
-   "usage": "Edge light, trailing (cool violet) end. Interactive outlines only."
+   "usage": "Kept for saved themes. No component uses it since ADR-0034."
   },
   {
    "key": "green",
@@ -140,19 +140,19 @@
    "key": "blue",
    "variable": "--color-accent-blue",
    "group": "status",
-   "usage": "Category: building / running; also the focus ring and primary data series."
+   "usage": "Category: building / running; also the focus ring."
   },
   {
    "key": "amber",
    "variable": "--color-accent-amber",
    "group": "status",
-   "usage": "Category: awaiting approval. Saturated amber is a state, never the brand (the brand is the pale aurora)."
+   "usage": "Category: awaiting approval and warnings."
   },
   {
    "key": "coral",
    "variable": "--color-accent-coral",
    "group": "status",
-   "usage": "Category: failed; destructive text actions."
+   "usage": "Category: failed; destructive actions."
   },
   {
    "key": "violet-soft",
@@ -174,9 +174,9 @@
     "top": "#1c3842",
     "track": "#27464f",
     "t1": "#f3f4f6",
-    "t2": "#b3c2c6",
-    "t3": "#86979c",
-    "t4": "#5e636b",
+    "t2": "#c3d0d3",
+    "t3": "#93a5aa",
+    "t4": "#6b7e83",
     "a1": "#2ec4b6",
     "a2": "#7fe0d3",
     "a3": "#e8f6ef",
@@ -204,8 +204,8 @@
     "top": "#2e2720",
     "track": "#3d342b",
     "t1": "#f3f4f6",
-    "t2": "#c2b8ad",
-    "t3": "#968b80",
+    "t2": "#cec6be",
+    "t3": "#a2998f",
     "t4": "#5e636b",
     "a1": "#c98a3b",
     "a2": "#e6b56d",
@@ -234,8 +234,8 @@
     "top": "#2a2e31",
     "track": "#34383d",
     "t1": "#f3f4f6",
-    "t2": "#b4b8bf",
-    "t3": "#8a8f97",
+    "t2": "#c4c7cc",
+    "t3": "#989da4",
     "t4": "#5e636b",
     "a1": "#f2b66b",
     "a2": "#f6cb98",
@@ -264,8 +264,8 @@
     "top": "#24274f",
     "track": "#31355f",
     "t1": "#f3f4f6",
-    "t2": "#b6b8d4",
-    "t3": "#8a8cab",
+    "t2": "#c8cadf",
+    "t3": "#9a9bb6",
     "t4": "#5e636b",
     "a1": "#6f6cf6",
     "a2": "#a9a6ff",

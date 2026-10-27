@@ -43,9 +43,9 @@ afterEach(() => {
 });
 
 describe('opening appearance', () => {
-  it('opens from the settings button on the rail', async () => {
+  it('opens from the settings link in the side menu', async () => {
     const { router, user } = await renderApp();
-    await user.click(screen.getByRole('link', { name: Ar['shell.nav.appearance'] }));
+    await user.click(screen.getByRole('link', { name: Ar['shell.nav.settings'] }));
     expect(await screen.findByRole('dialog', { name: Ar['appearance.title'] })).toBeInTheDocument();
     expect(router.state.location.href).toBe('/?stack=appearance');
   });

@@ -1,7 +1,7 @@
 import { Outlet } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
-import { ShellRail } from '@/App/Layout/ShellRail';
+import { ShellMenu } from '@/App/Layout/ShellMenu';
 import { ShellTopBar } from '@/App/Layout/ShellTopBar';
 import { SlideHost } from '@/App/Layout/SlideHost';
 import { useCommandItems } from '@/App/Layout/useCommandItems';
@@ -35,11 +35,11 @@ export const AppShell = () => {
           event.preventDefault();
           document.getElementById('main')?.focus();
         }}
-        className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-pill focus:bg-surface-top focus:px-4 focus:py-2"
+        className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-50 focus:rounded-btn focus:bg-surface-top focus:px-4 focus:py-2"
       >
         {t('shell.skipToContent')}
       </a>
-      <ShellRail />
+      <ShellMenu />
       <div className="flex min-w-0 flex-1 flex-col">
         <ShellTopBar />
         <main id="main" tabIndex={-1} className="flex-1 overflow-auto px-4 pt-4 pb-24 md:px-6 md:pt-6 md:pb-6">

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cx } from '@/Core/Ui/ClassNames';
-import { IconWell } from '@/Core/Ui/IconWell';
+import { Icon } from '@/Core/Ui/Icon';
 import type { TIconName } from '@/Core/Ui/Icons';
 
 export interface IEmptyStateProps {
@@ -13,8 +13,10 @@ export interface IEmptyStateProps {
 
 export const EmptyState = ({ icon, text, action, className }: IEmptyStateProps) => (
   <div className={cx('grid justify-items-center gap-3 px-5 py-8 text-center', className)}>
-    <IconWell icon={icon} />
-    <p className="m-0 max-w-[40ch] text-caption text-tertiary">{text}</p>
+    <span aria-hidden="true" className="inline-grid size-11 place-items-center rounded-md border border-line text-secondary">
+      <Icon name={icon} size={22} />
+    </span>
+    <p className="m-0 max-w-[40ch] text-body-sm text-secondary">{text}</p>
     {action}
   </div>
 );

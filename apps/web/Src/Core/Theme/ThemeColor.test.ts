@@ -8,7 +8,7 @@ import {
   deriveBackgrounds,
   hexToHsl,
   hslToHex,
-  ON_LIGHT,
+  onAccent,
   similarStatusPairs,
 } from '@/Core/Theme/ThemeColor';
 import { DEFAULT_COLORS, SYSTEM_THEMES } from '@/Core/Theme/ThemeTokens';
@@ -32,7 +32,7 @@ describe('contrast checks', () => {
   it('reports the three pairs for every system theme and all of them pass', () => {
     for (const theme of SYSTEM_THEMES) {
       const checks = contrastChecks(theme.Colors);
-      expect(checks.map((check) => check.Id)).toEqual(['textOnCards', 'secondaryOnCanvas', 'textOnGradient']);
+      expect(checks.map((check) => check.Id)).toEqual(['textOnCards', 'secondaryOnCanvas', 'textOnPrimary']);
       for (const check of checks) expect(check.Ok, `${theme.Id} ${check.Id} ${check.Ratio.toFixed(2)}`).toBe(true);
     }
   });
@@ -44,10 +44,33 @@ describe('contrast checks', () => {
     expect(high?.Ok).toBe(true);
   });
 
-  it('checks the dark text on the gradient with the on-light colour', () => {
-    const [, , gradient] = contrastChecks({ ...DEFAULT_COLORS, a3: '#000000' });
-    expect(gradient?.Ratio).toBeCloseTo(contrastRatio(ON_LIGHT, '#000000'), 5);
-    expect(gradient?.Ok).toBe(false);
+  it('checks the label on the primary button with the colour derived from a1', () => {
+    const [, , primary] = contrastChecks({ ...DEFAULT_COLORS, a1: '#000000' });
+    expect(primary?.Ratio).toBeCloseTo(contrastRatio(onAccent('#000000'), '#000000'), 5);
+    expect(primary?.Ok).toBe(false);
+  });
+
+  it('keeps the primary button label at 4.5 to 1 or better in every system theme', () => {
+    for (const theme of SYSTEM_THEMES) {
+      const ratio = contrastRatio(onAccent(theme.Colors.a1), theme.Colors.a1);
+      expect(ratio, theme.Id).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('derives the label by darkening a1 the same way the CSS does', () => {
+    expect(onAccent('#2ec4b6')).toBe('#04100f');
+    expect(onAccent('#ffffff')).toBe('#141414');
+  });
+
+  it('keeps secondary and tertiary text readable on every surface of every system theme', () => {
+    const surfaces = ['canvas', 'rail', 'input', 'inset', 'surface', 'raised', 'top'] as const;
+    for (const theme of SYSTEM_THEMES) {
+      for (const surface of surfaces) {
+        const on = theme.Colors[surface];
+        expect(contrastRatio(theme.Colors.t2, on), `${theme.Id} t2 on ${surface}`).toBeGreaterThanOrEqual(7);
+        expect(contrastRatio(theme.Colors.t3, on), `${theme.Id} t3 on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 });
 

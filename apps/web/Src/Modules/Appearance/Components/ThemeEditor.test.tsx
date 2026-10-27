@@ -1,5 +1,6 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { renderWithProviders } from '@/Core/Testing/Render';
@@ -34,15 +35,27 @@ const mount = async (sourceId?: string) => {
 };
 
 describe('ThemeEditor form', () => {
-  it('starts from the active theme with a default name, five groups and 25 colour rows', async () => {
+  it('starts from the active theme with a default name, four groups and 23 colour rows', async () => {
     await mount();
     expect(screen.getByLabelText(Ar['themeEditor.name'])).toHaveValue(Ar['themeEditor.defaultName']);
-    for (const group of ['bg', 'text', 'aurora', 'edge', 'status'] as const) {
+    for (const group of ['bg', 'text', 'aurora', 'status'] as const) {
       expect(screen.getByRole('heading', { name: Ar[`theme.group.${group}`] })).toBeInTheDocument();
     }
-    expect(document.querySelectorAll('input[type="color"]')).toHaveLength(26);
-    expect(document.querySelectorAll('input[type="text"][dir="ltr"]')).toHaveLength(25);
+    expect(document.querySelectorAll('input[type="color"]')).toHaveLength(24);
+    expect(document.querySelectorAll('input[type="text"][dir="ltr"]')).toHaveLength(23);
     expect(hexOf('canvas')).toHaveValue(DEFAULT_COLORS.canvas);
+  });
+
+  it('does not offer the two edge colours that no component uses any more', async () => {
+    await mount();
+    expect(screen.queryByRole('heading', { name: Ar['theme.group.edge'] })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(Ar['theme.token.edge-warm'])).not.toBeInTheDocument();
+  });
+
+  it('labels a1 as the primary button colour', async () => {
+    await mount();
+    expect(hexOf('a1')).toHaveValue(DEFAULT_COLORS.a1);
+    expect(Ar['theme.token.a1']).toContain('الزرار الأساسي');
   });
 
   it('shows a colour change on the whole app as it happens', async () => {
@@ -89,11 +102,22 @@ describe('ThemeEditor feedback and saving', () => {
   it('shows the three contrast pairs and flags one under 4.5 to 1', async () => {
     await mount();
     const list = screen.getByRole('list', { name: Ar['themeEditor.contrast'] });
-    expect(list.querySelectorAll('li[data-ok="true"]')).toHaveLength(3);
+    expect(list.querySelectorAll('[data-tone="ok"]')).toHaveLength(3);
+    expect(screen.getByText(Ar['themeEditor.contrast.good.title'])).toBeInTheDocument();
     type(hexOf('t1'), DEFAULT_COLORS.surface);
-    const failing = list.querySelector('li[data-ok="false"]');
+    const failing = list.querySelector('[data-tone="bad"]')?.closest('li');
     expect(failing).toHaveTextContent(Ar['themeEditor.contrast.textOnCards']);
     expect(failing).toHaveTextContent('1.0:1');
+    expect(screen.getByText(Ar['themeEditor.contrast.bad.title'])).toBeInTheDocument();
+  });
+
+  it('checks the label on the primary button against a1', async () => {
+    await mount();
+    const list = screen.getByRole('list', { name: Ar['themeEditor.contrast'] });
+    const row = within(list).getByText(Ar['themeEditor.contrast.textOnPrimary']).closest('li');
+    expect(row?.querySelector('[data-tone="ok"]')).not.toBeNull();
+    type(hexOf('a1'), '#000000');
+    expect(within(list).getByText(Ar['themeEditor.contrast.textOnPrimary']).closest('li')?.querySelector('[data-tone="bad"]')).not.toBeNull();
   });
 
   it('warns when two status colours are too alike', async () => {
@@ -153,5 +177,12 @@ describe('ThemeEditor feedback and saving', () => {
     expect(screen.queryByRole('button', { name: Ar['themeEditor.delete'] })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: Ar['themeEditor.cancel'] }));
     expect(onCancel).toHaveBeenCalled();
+  });
+});
+
+describe('ThemeEditor under a strict content security policy', () => {
+  it('turns off zod code generation, which would probe eval and raise a script-src violation', async () => {
+    await import('@/Modules/Appearance/Types/ThemeForm');
+    expect(z.config().jitless).toBe(true);
   });
 });

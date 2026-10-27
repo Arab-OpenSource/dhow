@@ -57,8 +57,8 @@
 - PascalCase للفولدرات والملفات والـ components والـ state والـ handlers، والـ hooks بس `useX.ts` بـ `use` صغيرة. الاختبار جنب الملف: `X.test.tsx`.
 - module ممنوع يستورد module تاني، و`Core` و`I18n` و`Styles` ممنوع يستوردوا `Modules` أو `App`، و`Modules` ممنوع يستورد `App`. الاستيراد بـ `@/` (مثلًا `@/Core/Ui/Button`).
 - ممنوع أي نص مكتوب في الـ JSX أو في `aria-label` و`title` و`placeholder`: كل نص مفتاح في `Ar.ts` و`En.ts` بنفس المفاتيح، ويتعرض بـ `t('key')`.
-- الألوان من الـ tokens بس (`bg-canvas` و`text-secondary`)، ومفيش hex في الكود. الـ gradient (aurora) بحد أقصى 3 عناصر في الشاشة، وممنوع drop shadow على الكروت (الـ `shadow-card` highlight بس).
-- الـ CSP هي `'self'`: ممنوع inline scripts أو styles، وممنوع `Dialog.Overlay` من Radix لأنه بيحقن `<style>` (استخدم الـ backdrop اللي في `SlideStack`، واختبارات `SlideStack` و`CommandPalette` بتتأكد إن مفيش `<style>` اتحقن).
+- الألوان من الـ tokens بس (`bg-canvas` و`text-secondary`)، ومفيش hex في الكود. الزرار الأساسي `bg-accent text-on-accent`، والخطوط الرفيعة `border-line` و`border-line-2`. ممنوع أي gradient أو edge-light في المكوّنات (بيفضل في اللوجو بس، ومختبر)، وممنوع drop shadow على الكروت، وممنوع نص أصغر من 13px ([ADR-0034](Plan/ADR/0034-ui-direction-calm-and-organized.md)).
+- الـ CSP هي `'self'`: ممنوع inline scripts أو styles، وممنوع `Dialog.Overlay` من Radix لأنه بيحقن `<style>` (استخدم الـ backdrop اللي في `SlideStack`، واختبارات `SlideStack` و`CommandPalette` بتتأكد إن مفيش `<style>` اتحقن). وzod لازم يشتغل بـ `z.config({ jitless: true })` (في `ThemeForm.ts`) لأن الـ JIT بيجرّب `new Function` وده بيطلّع violation.
 - `Schema.d.ts` بيتولّد بـ `pnpm gen:api` من `packages/openapi/openapi.yaml`، و`Tokens.css` بـ `pnpm gen:tokens`، وممنوع تعديلهم بإيدك.
 
 ممنوع ملفات Markdown بره `docs/` و`Plan/` و`.github/` و`.claude/`. الاستثناء: README وREADME.ar وCLAUDE وCONTRIBUTING وSECURITY وLICENSE في الـ root.
@@ -118,7 +118,7 @@
   - الـ components arrow functions.
   - PascalCase للـ public methods وللـ handlers (`HandleSubmit`) ولمتغيرات الـ state (`const [Loading, setLoading]`).
   - ممنوع `any` و`console.*`.
-- **الواجهة:** العربي هو اللغة الأساسية، والـ RTL هو الاتجاه الافتراضي، والـ CSS بالـ logical properties بس. الـ Design System قواعد `aurora-dark-ui` بألوان الغروب: الـ gradient عنبري ← وردي، وبيظهر بحد أقصى 3 مرات في الشاشة، والحدود edge-light، ومفيش زجاج blur ولا hover lift. والنصوص بالمصري المهذّب، والزرار بيقول هيعمل إيه بالظبط.
+- **الواجهة:** العربي هو اللغة الأساسية، والـ RTL هو الاتجاه الافتراضي، والـ CSS بالـ logical properties بس. الاتجاه «هادي ومنظّم» ([ADR-0034](Plan/ADR/0034-ui-direction-calm-and-organized.md)): قايمة جانبية بعرض 216px بأسماء الأقسام (شريط تحت على الموبايل)، وكروت مسطّحة بخط رفيع، وزرار أساسي واحد مصمت في كل منطقة والخطر مرجاني بأيقونة، ومفيش blur ولا hover lift. والمصطلحات العربي أولًا من `Plan/Glossary.md`، والنصوص بالمصري المهذّب، والزرار بيقول هيعمل إيه بالظبط.
 
 ## الـ git
 

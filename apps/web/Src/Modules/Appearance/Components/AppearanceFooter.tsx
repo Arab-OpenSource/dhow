@@ -11,7 +11,7 @@ export const AppearanceFooter = ({ onCreate }: IAppearanceFooterProps) => {
   return (
     <>
       <span className="flex-1" />
-      <Button size="sm" iconStart="plus" onClick={onCreate}>
+      <Button variant="primary" iconStart="plus" onClick={onCreate}>
         {t('appearance.create')}
       </Button>
     </>

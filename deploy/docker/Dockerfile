@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM node:26-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS web
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable && corepack prepare pnpm@10.28.0 --activate
+RUN npm install --global corepack@0.36.0 && corepack enable && corepack prepare pnpm@10.28.0 --activate
 
 WORKDIR /src/apps/web
 COPY apps/web/package.json apps/web/pnpm-lock.yaml ./

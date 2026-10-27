@@ -88,7 +88,7 @@ describe('stacked slides from the URL', () => {
     await screen.findByRole('dialog', { name: Ar['status.check.database'] });
     const top = within(topSlide());
     expect(await top.findByText(Ar['checkDetail.failNow'])).toBeInTheDocument();
-    expect(top.getByText(Ar['status.state.failed'])).toBeInTheDocument();
+    expect(top.getByText(Ar['checkDetail.fail.title'])).toBeInTheDocument();
     expect(top.getByText(Ar['checkDetail.database.fix2'])).toBeInTheDocument();
   });
 
@@ -134,7 +134,7 @@ describe('stacked slides from the URL', () => {
     const { calls } = apiUp();
     const { router, user } = await renderApp();
     expect(calls.filter((call) => call.url.endsWith('/health/ready'))).toHaveLength(0);
-    await user.click(screen.getByRole('link', { name: Ar['shell.nav.systemStatus'] }));
+    await user.click(screen.getByRole('button', { name: new RegExp(Ar['status.title']) }));
     await screen.findByText('2e39188');
     expect(calls.filter((call) => call.url.endsWith('/health/ready')).length).toBeGreaterThan(0);
     expect(router.state.location.href).toBe('/?stack=system-status');
@@ -152,7 +152,7 @@ describe('stacks that are not valid', () => {
     '/?stack=system-status,notifications,appearance,theme-edit,check-database,check-migrations,x',
     '/?stack=%3Cscript%3E',
     '/?stack=5',
-  ])('drops %s, says so and shows the workspace', async (url) => {
+  ])('drops %s, says so and shows Home', async (url) => {
     const { router } = await renderApp(url);
     expect(await screen.findByText(Ar['toast.unknownPanel.title'])).toBeInTheDocument();
     await waitFor(() => {
