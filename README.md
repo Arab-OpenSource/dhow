@@ -49,12 +49,12 @@ See [docs/editions-and-licensing.md](docs/editions-and-licensing.md).
 | [UI principles](docs/ui-principles.md) | Arabic-first design, navigation model, performance budgets |
 | [Editions & licensing](docs/editions-and-licensing.md) | Open-core model, feature matrix, license enforcement |
 | [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
-| [ADRs](docs/adr/) | Every architectural and product decision, with alternatives |
+| [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
 
 ## Relationship to Deploy Center
 
 Dhow is the from-scratch successor to **Deploy Center v3**. Deploy Center receives security fixes only,
-and a migration tool will import its projects into Dhow. See [ADR-0002](docs/adr/0002-rewrite-with-v3-hotfix.md).
+and a migration tool will import its projects into Dhow. See [ADR-0002](Plan/ADR/0002-rewrite-with-v3-hotfix.md).
 
 ## License
 
