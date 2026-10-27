@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/react-router';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -105,6 +105,17 @@ describe('stacked slides from the URL', () => {
     await user.click(within(check).getByRole('button', { name: Ar['slides.back'] }));
     await screen.findByRole('dialog', { name: Ar['status.title'] });
     expect(router.state.location.href).toBe('/?stack=system-status');
+  });
+
+  it('returns to a lower slide when its edge is pressed and says so', async () => {
+    const { router } = await renderApp('/?stack=system-status,check-database');
+    await screen.findByRole('dialog', { name: Ar['status.check.database'] });
+    const target = document.querySelector('[data-slide-return]');
+    expect(target).not.toBeNull();
+    fireEvent.click(target as Element);
+    await screen.findByRole('dialog', { name: Ar['status.title'] });
+    expect(router.state.location.href).toBe('/?stack=system-status');
+    expect(screen.getByText(Ar['slides.returned.title'])).toBeInTheDocument();
   });
 
   it('round-trips: the URL of an open stack opens the same stack again', async () => {

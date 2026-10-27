@@ -130,3 +130,16 @@
   - حالة السيرفر وتفاصيل كل فحص هيتعرضوا كشريحتين فوق بعض.
   - المظهر ومحرر الثيم هيتعرضوا كشريحتين فوق بعض.
   - الإشعارات شريحة واحدة.
+
+### اللي اتنفّذ فعلًا من التعديل ده
+- **`Core/Ui/SlideStack`** بدل `SlideOver`. الـ stack في search param اسمه `stack` (مثلًا `?stack=system-status,check-database`)، وبيتفحص على registry للـ frames في `App/Panels.ts`. أي frame مش معروف أو متكرر، أو أكتر من 6، أو محرر ثيم تاني: الـ stack بيتشال وبيظهر الـ Toast الموجود. رابط `?panel=` القديم مابقاش مدعوم.
+- **الـ frames:** `system-status` و`check-database` و`check-migrations` و`notifications` و`appearance` و`theme-edit` (جديد) و`theme-edit-<id>` (ثيم مخصص موجود).
+- **الثيمات:** `Src/Styles/Themes.json` فيه الـ 25 token للأربع ثيمات، و`GenTokens.mjs` بيولّد `:root` للافتراضي (بحر الليل) وبلوك `[data-theme]` لكل ثيم. الـ `frame` والـ `bubble` والتدرّجات متشتقة بـ `color-mix`. المحرك في `Core/Theme` (تحقق صارم وتخزين بـ try/catch وstore بـ Zustand)، و`public/ThemeInit.js` بيطبّق الثيم قبل أول رسم.
+- **المحرر:** `Modules/Appearance`، ومحرر الثيم بيتحمّل lazy عشان `react-hook-form` وzod ما يزوّدوش حجم الـ JS الأولاني (حوالي 160 KB من 180).
+- **اختلافات:**
+  - نقطة التحويل للموبايل بقت 721px (كانت 768px) عشان تطابق الـ 720px في النموذج، وعرض الشريحة 500px (كان 480px).
+  - `@hookform/resolvers` اتضاف مع `react-hook-form` وzod عشان يربط الـ schema بالفورم. النسخ اللي عدّى عليها أكتر من 10 أيام: `react-hook-form` 7.90.0 وzod 4.6.7 و`@hookform/resolvers` 5.9.2.
+  - الشريحة اللي تحت `inert` والضغط عليها بيتم من زرار شفاف جنبها، لأن `inert` بيمنع أحداث الماوس. الـ Tab بيلف جوه الشريحة اللي فوق بمستمع خاص، لأن Radix بيحسب الشرايح الـ inert في حواف الـ focus trap.
+  - الـ focus بيرجع للزرار الأصلي بعد ما حركة الخروج تخلص (450ms)، عشان مايتحطش على عنصر جوه `aria-hidden`.
+  - الـ rail فوق الـ backdrop وبيفضل شغّال زي النموذج.
+

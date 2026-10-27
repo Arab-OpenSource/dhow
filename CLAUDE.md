@@ -51,14 +51,14 @@
 | `App/` | الـ router والـ providers والـ layout (`Layout/`)، وهو الوحيد اللي بيستورد `Modules/` |
 | `Core/<X>/` | `Ui` (مكوّنات الـ Design System) و`Api` (`Schema.d.ts` متولّد و`Client.ts`) و`Hooks` و`Store` و`Testing` |
 | `I18n/` | `Locales/{Ar,En}.ts` بنفس المفاتيح و`I18nProvider` و`useT` |
-| `Styles/` | `Tokens.json` مصدر الـ tokens، و`Tokens.css` متولّد، و`Globals.css` (Tailwind v4 بـ `@theme`) |
+| `Styles/` | `Tokens.json` مصدر الـ tokens، و`Themes.json` ألوان ثيمات النظام، و`Tokens.css` متولّد منهم، و`Globals.css` (Tailwind v4 بـ `@theme`) |
 | `Modules/<Name>/<Folder>/` | `Pages` و`Components` و`Hooks` و`Api` و`Store` و`Types` |
 
 - PascalCase للفولدرات والملفات والـ components والـ state والـ handlers، والـ hooks بس `useX.ts` بـ `use` صغيرة. الاختبار جنب الملف: `X.test.tsx`.
 - module ممنوع يستورد module تاني، و`Core` و`I18n` و`Styles` ممنوع يستوردوا `Modules` أو `App`، و`Modules` ممنوع يستورد `App`. الاستيراد بـ `@/` (مثلًا `@/Core/Ui/Button`).
 - ممنوع أي نص مكتوب في الـ JSX أو في `aria-label` و`title` و`placeholder`: كل نص مفتاح في `Ar.ts` و`En.ts` بنفس المفاتيح، ويتعرض بـ `t('key')`.
 - الألوان من الـ tokens بس (`bg-canvas` و`text-secondary`)، ومفيش hex في الكود. الـ gradient (aurora) بحد أقصى 3 عناصر في الشاشة، وممنوع drop shadow على الكروت (الـ `shadow-card` highlight بس).
-- الـ CSP هي `'self'`: ممنوع inline scripts أو styles، وممنوع `Dialog.Overlay` من Radix لأنه بيحقن `<style>` (استخدم الـ backdrop اللي في `SlideOver`، واختبارات `SlideOver` و`CommandPalette` بتتأكد إن مفيش `<style>` اتحقن).
+- الـ CSP هي `'self'`: ممنوع inline scripts أو styles، وممنوع `Dialog.Overlay` من Radix لأنه بيحقن `<style>` (استخدم الـ backdrop اللي في `SlideStack`، واختبارات `SlideStack` و`CommandPalette` بتتأكد إن مفيش `<style>` اتحقن).
 - `Schema.d.ts` بيتولّد بـ `pnpm gen:api` من `packages/openapi/openapi.yaml`، و`Tokens.css` بـ `pnpm gen:tokens`، وممنوع تعديلهم بإيدك.
 
 ممنوع ملفات Markdown بره `docs/` و`Plan/` و`.github/` و`.claude/`. الاستثناء: README وREADME.ar وCLAUDE وCONTRIBUTING وSECURITY وLICENSE في الـ root.
