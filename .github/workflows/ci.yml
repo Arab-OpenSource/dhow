@@ -60,3 +60,40 @@ jobs:
         run: make build
       - name: Test Claude Code hooks
         run: make hooks-test
+
+  web:
+    name: Web (lint, typecheck, test, build, size)
+    runs-on: ubuntu-24.04
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Enable pnpm from the packageManager field
+        run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Verify generated files are current
+        run: |
+          pnpm gen:api
+          pnpm gen:tokens
+          git diff --exit-code -- Src/Core/Api/Schema.d.ts Src/Styles/Tokens.css
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test
+      - name: Build
+        run: pnpm build
+      - name: Check the bundle size budget
+        run: pnpm size
