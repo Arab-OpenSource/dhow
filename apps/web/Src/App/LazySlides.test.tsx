@@ -74,6 +74,8 @@ describe('a slide body that is still loading', () => {
   it('shows the skeleton in place of the body until its chunk arrives', async () => {
     vi.resetModules();
     apiUp();
+    const { loadWorkspaceMessages } = await import('@/I18n/WorkspaceCatalog');
+    await loadWorkspaceMessages('ar');
     const { renderWithProviders } = await import('@/Core/Testing/Render');
     const { LazyAppearanceBody } = await import('@/App/Layout/LazyFrames');
     renderWithProviders(<LazyAppearanceBody onEdit={() => undefined} />);
