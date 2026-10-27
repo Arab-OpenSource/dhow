@@ -34,4 +34,6 @@
 | [0030](0030-server-modular-monolith.md) | هيكل السيرفر: Modular Monolith بتكييف Go |
 | [0031](0031-web-structure-and-ui-components.md) | هيكل الواجهة بالـ Modules، وأسماء الـ hooks، وcomponents مكتوبة بإيدينا فوق Radix |
 | [0032](0032-stacked-slides-and-themes.md) | الشرائح المتراكبة من اليمين، وثيمات النظام الأربعة، والثيم المخصص |
+| [0033](0033-browser-sessions-invites-breached-passwords.md) | جلسات المتصفح بـ cookie في السيرفر، والدعوات برابط وSMTP اختياري، وفحص كلمات السر المسرّبة |
 | [0034](0034-ui-direction-calm-and-organized.md) | اتجاه التصميم «هادي ومنظّم» |
+
