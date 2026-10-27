@@ -13,7 +13,33 @@ MARKDOWN_DIRS = ("docs/", "Plan/", ".github/", ".claude/")
 
 GENERATED_PATH = re.compile(
     r"(^|/)(gen|sqlc)/|\.gen\.go$|_gen\.go$|(^|/)apps/web/src/api/schema\.d\.ts$|"
-    r"(^|/)(go\.sum|pnpm-lock\.yaml)$")
+    r"(^|/)(go\.sum|pnpm-lock\.yaml)$", re.IGNORECASE)
+
+SERVER_INTERNAL = "apps/server/internal/"
+SERVER_IMPORT_PREFIX = "github.com/Arab-OpenSource/dhow/apps/server/internal/"
+SERVER_TOP_LEVEL = ("App", "Config", "Core", "Database", "Modules")
+SERVER_NESTED = ("Core", "Database", "Modules")
+PASCAL_DIR = re.compile(r"^[A-Z][A-Za-z0-9]*$")
+PASCAL_GO_FILE = re.compile(r"^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*\.go$")
+GO_IMPORT_PATH = re.compile(r'"' + re.escape(SERVER_IMPORT_PREFIX) + r'([^"]+)"')
+
+MIGRATION_SQL = re.compile(r"(^|/)migrations/[^/]+\.sql$", re.IGNORECASE)
+MODULE_QUERY_SQL = re.compile(r"(^|/)Modules/[^/]+/Queries/[^/]+\.sql$", re.IGNORECASE)
+BASE_COLUMN_TABLE_ALLOWLIST = ('"Instance"',)
+BASE_COLUMNS = (
+    (re.compile(r'(?i)"Id"\s+uuid\s+PRIMARY\s+KEY\s+DEFAULT\s+uuidv7\(\)'), '"Id" uuid PRIMARY KEY DEFAULT uuidv7()'),
+    (re.compile(r'(?i)"CreatedAt"\s+timestamptz\s+NOT\s+NULL\s+DEFAULT\s+now\(\)'), '"CreatedAt" timestamptz NOT NULL DEFAULT now()'),
+    (re.compile(r'(?i)"UpdatedAt"\s+timestamptz\s+NOT\s+NULL\s+DEFAULT\s+now\(\)'), '"UpdatedAt" timestamptz NOT NULL DEFAULT now()'),
+    (re.compile(r'(?i)"IsDeleted"\s+boolean\s+NOT\s+NULL\s+DEFAULT\s+false'), '"IsDeleted" boolean NOT NULL DEFAULT false'),
+)
+SQL_TABLE_HEAD = re.compile(r"(?i)\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?([^\s(]+)\s*\(")
+SQL_TIMESTAMP_NO_TZ = re.compile(r"(?i)\btimestamp\b(?!\s*(?:\(\d+\))?\s*with\s+time\s+zone)")
+SQL_VARCHAR = re.compile(r"(?i)\b(varchar|character\s+varying)\b")
+SQL_TRANSLATED_COLUMN = re.compile(r'(?m)^\s*"([A-Z][A-Za-z0-9]*[a-z0-9](?:Ar|En))"\s+[A-Za-z]')
+SQL_DELETE_FROM = re.compile(r"(?i)\bdelete\s+from\b")
+OPENAPI_PATH_KEY = re.compile(r"""^\s*["']?(/[^\s:"']*)["']?:\s*$""")
+KEBAB_SEGMENT = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+PATH_PARAM_SEGMENT = re.compile(r"^\{[A-Za-z][A-Za-z0-9_]*\}$")
 
 SECRET_PATTERNS = (
     (re.compile(r"-----BEGIN (RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY-----"), "a private key"),
@@ -33,6 +59,7 @@ GO_SQL_FMT = re.compile(
 GO_SQL_CONCAT = re.compile(
     r"[\"`]\s*(?i:select|insert\s+into|update|delete\s+from)\b[^\"`]*[\"`]\s*\+")
 GO_ENV = re.compile(r"\bos\.(Getenv|LookupEnv|Environ)\(")
+GO_CONFIG_DIR = re.compile(r"(^|/)internal/[Cc]onfig/")
 GO_PRINT = re.compile(r"\b(fmt\.Print(ln|f)?|log\.(Print|Fatal|Panic)(ln|f)?)\(")
 
 TS_ANY = re.compile(r"(:\s*any\b|\bas\s+any\b|<any>|\bany\[\]|Array<any>|Record<[^>]*\bany\b)")
@@ -151,8 +178,73 @@ def check_go(rel, added, old, **_):
         return f"{rel}: no panic in production code. Return a wrapped error (`fmt.Errorf(\"...: %w\", err)`)."
     if GO_PRINT.search(text) and "/cmd/" not in rel:
         return f"{rel}: use the structured logger (log/slog), not fmt.Print or log.Print."
-    if GO_ENV.search(text) and "/internal/config/" not in rel and not rel.startswith("internal/config/"):
+    if GO_ENV.search(text) and not GO_CONFIG_DIR.search(rel):
         return f"{rel}: read environment variables only in the config package, which validates them and fails closed."
+    return None
+
+
+def server_area(path):
+    parts = path.split("/")
+    if parts[0] in SERVER_NESTED and len(parts) > 1:
+        return (parts[0], parts[1])
+    return (parts[0], None)
+
+
+def check_server_layout(rel, **_):
+    if not is_go(rel) or not rel.startswith(SERVER_INTERNAL) or GENERATED_PATH.search(rel):
+        return None
+    parts = rel[len(SERVER_INTERNAL):].split("/")
+    layers = "App, Config, Core/<Name>, Database/<Name> or Modules/<Module>/..."
+    if len(parts) < 2 or parts[0] not in SERVER_TOP_LEVEL:
+        return (f"{rel}: Go code under apps/server/internal must live in {layers}. "
+                "Put cross-cutting code in Core, wiring in App, and feature code in a module.")
+    if parts[0] in SERVER_NESTED and len(parts) < 3:
+        return f"{rel}: files under {parts[0]}/ sit in a named subfolder ({parts[0]}/<Name>/File.go), not directly in {parts[0]}/."
+    for folder in parts[:-1]:
+        if not PASCAL_DIR.match(folder):
+            return f"{rel}: folder `{folder}` must be PascalCase (Modules/System/Test/Unit)."
+    name = parts[-1]
+    if not name.endswith("_test.go") and not PASCAL_GO_FILE.match(name):
+        return f"{rel}: Go file names are PascalCase with dot roles (System.Service.go, Instance.Model.go), not `{name}`."
+    return None
+
+
+def import_violation(src, dst):
+    s_top, s_name = src
+    d_top, d_name = dst
+    if d_top == "Modules":
+        if s_top == "App":
+            return None
+        if s_top == "Modules":
+            if s_name == d_name:
+                return None
+            return (f"Modules/{s_name} must not import Modules/{d_name}. Modules talk to each other through "
+                    "Core/EventBus events, never through direct imports.")
+        return f"{s_top} must not import Modules. Only App imports modules."
+    if d_top == "App" and s_top != "App":
+        return f"{s_top} must not import App. App is the composition root and depends on everything else."
+    if d_top == "Core" and s_top in ("Config", "Database"):
+        return f"{s_top} must not import Core. Allowed direction: App > Modules > Core > (Config, Database)."
+    return None
+
+
+def check_server_imports(rel, added, old, **_):
+    if not is_go(rel) or not rel.startswith(SERVER_INTERNAL) or is_test(rel) or GENERATED_PATH.search(rel):
+        return None
+    if "/Test/" in rel:
+        return None
+    parts = rel[len(SERVER_INTERNAL):].split("/")
+    if parts[0] not in SERVER_TOP_LEVEL:
+        return None
+    src = server_area("/".join(parts))
+    for line in new_lines(added, old):
+        for m in GO_IMPORT_PATH.finditer(line):
+            target = m.group(1).split("/")
+            if target[0] not in SERVER_TOP_LEVEL:
+                continue
+            reason = import_violation(src, server_area("/".join(target)))
+            if reason:
+                return f"{rel}: forbidden import of internal/{m.group(1)}. {reason}"
     return None
 
 
@@ -216,6 +308,59 @@ def check_sql(rel, added, old, **_):
     return None
 
 
+def table_bodies(text):
+    for m in SQL_TABLE_HEAD.finditer(text):
+        depth, i = 1, m.end()
+        while i < len(text) and depth:
+            depth += {"(": 1, ")": -1}.get(text[i], 0)
+            i += 1
+        yield m.group(1), text[m.start():i], text[m.end():i]
+
+
+def check_migration_rules(rel, added, old, **_):
+    if not MIGRATION_SQL.search(rel):
+        return None
+    for name, statement, body in table_bodies(added):
+        if name in BASE_COLUMN_TABLE_ALLOWLIST or statement in old:
+            continue
+        for pattern, wanted in BASE_COLUMNS:
+            if not pattern.search(body):
+                return (f"{rel}: table {name} is missing the base column `{wanted}`. Every table has \"Id\", "
+                        "\"CreatedAt\", \"UpdatedAt\" and \"IsDeleted\" (only \"Instance\" is exempt).")
+    text = "\n".join(new_lines(added, old))
+    if SQL_TIMESTAMP_NO_TZ.search(text):
+        return f"{rel}: use timestamptz (UTC), never timestamp without time zone."
+    if SQL_VARCHAR.search(text):
+        return f"{rel}: use TEXT, never VARCHAR."
+    m = SQL_TRANSLATED_COLUMN.search(text)
+    if m:
+        return (f"{rel}: column {m.group(1)} looks like a translated column. Put translations in a separate "
+                "<Entity>Translations table, never in NameAr/NameEn style columns.")
+    return None
+
+
+def check_module_queries(rel, added, old, **_):
+    if not MODULE_QUERY_SQL.search(rel):
+        return None
+    if SQL_DELETE_FROM.search("\n".join(new_lines(added, old))):
+        return f"{rel}: no DELETE FROM in module queries. Deletion is soft: UPDATE ... SET \"IsDeleted\" = true, \"UpdatedAt\" = now()."
+    return None
+
+
+def check_openapi_paths(rel, added, old, **_):
+    if not rel.endswith("openapi.yaml"):
+        return None
+    for line in new_lines(added, old):
+        m = OPENAPI_PATH_KEY.match(line)
+        if not m:
+            continue
+        for segment in m.group(1).split("/")[1:]:
+            if segment and not KEBAB_SEGMENT.match(segment) and not PATH_PARAM_SEGMENT.match(segment):
+                return (f"{rel}: API path segments are kebab-case (`/health-checks`), not `{segment}` in {m.group(1)}. "
+                        "Path parameters are written {Name}.")
+    return None
+
+
 def migration_on_main(root, rel):
     if not re.search(r"(^|/)migrations/[^/]+\.sql$", rel):
         return False
@@ -255,9 +400,14 @@ CHECKS = (
     check_migration_immutable,
     check_comments,
     check_go,
+    check_server_layout,
+    check_server_imports,
     check_ts,
     check_direction,
     check_sql,
+    check_migration_rules,
+    check_module_queries,
+    check_openapi_paths,
     check_length,
 )
 
