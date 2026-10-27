@@ -150,17 +150,15 @@ describe('system module in the shell', () => {
     expect(await screen.findByText(Ar['setup.banner.title'])).toBeInTheDocument();
   });
 
-  it('keeps the shell working with an error banner while the API is down', async () => {
+  it('cannot open the shell while the API is down, and recovers when the person retries', async () => {
     apiDown();
-    const { user } = await renderApp();
-    expect(await screen.findByRole('alert')).toHaveTextContent(Ar['apiDown.title']);
-    await user.click(screen.getByRole('button', { name: Ar['shell.search'] }));
-    expect(await screen.findByRole('combobox')).toBeInTheDocument();
-    await user.keyboard('{Escape}');
-    await waitFor(() => {
-      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    });
-    await user.click(screen.getByRole('button', { name: Ar['shell.notifications'] }));
-    expect(await screen.findByRole('dialog', { name: Ar['notifications.title'] })).toBeInTheDocument();
+    const router = createAppRouter(createMemoryHistory({ initialEntries: ['/'] }));
+    const user = userEvent.setup();
+    render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
+    expect(await screen.findByRole('heading', { level: 1, name: Ar['apiDown.title'] })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: Ar['shell.nav.label'] })).not.toBeInTheDocument();
+    apiUp();
+    await user.click(screen.getByRole('button', { name: Ar['apiDown.retry'] }));
+    expect(await screen.findByRole('navigation', { name: Ar['shell.nav.label'] })).toBeInTheDocument();
   });
 });

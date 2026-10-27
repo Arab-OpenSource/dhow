@@ -249,4 +249,15 @@ export const Ar = {
   'setup.completed.title': 'الإعداد خلص قبل كده',
   'setup.completed.lead': 'السيرفر ده ليه صاحب بالفعل، والتسجيل مقفول. ادخل بحسابك، أو اطلب دعوة من صاحب المؤسسة.',
   'setup.completed.action': 'روح لتسجيل الدخول',
+
+  'login.title': 'أهلًا بيك تاني',
+  'login.lead': 'ادخل بالإيميل وكلمة السر بتوعك.',
+  'login.submit': 'ادخل',
+  'login.submitting': 'بندخّلك',
+  'login.retryIn': 'جرّب تاني بعد {time}',
+  'login.locked.title': 'الدخول اتقفل مؤقتًا بسبب محاولات كتير.',
+  'login.locked.hint': 'ده بيحمي حسابك. تقدر تجرّب تاني لما العدّاد يخلص:',
+  'login.locked.announce': 'الدخول اتقفل مؤقتًا. جرّب تاني بعد {seconds} ثانية.',
+  'login.footer': 'التسجيل مقفول. الحساب بيتعمل بدعوة من صاحب المؤسسة.',
+  'login.error.password': 'اكتب كلمة السر.',
 } as const;

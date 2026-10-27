@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 
+import { EMAIL_MAX, NAME_MAX } from '@/Core/Forms/Fields';
 import { useFormMessage } from '@/Core/Hooks/useFormMessage';
 import { Field } from '@/Core/Ui/Field';
 import { Input } from '@/Core/Ui/Input';
 import { PasswordInput } from '@/Core/Ui/PasswordInput';
 import { StrengthMeter } from '@/Core/Ui/StrengthMeter';
 import { useT } from '@/I18n/useT';
-import { EMAIL_MAX, NAME_MAX, SLUG_MAX, slugify, type TSetupForm } from '@/Modules/Identity/Types/SetupForm';
+import { SLUG_MAX, slugify, type TSetupForm } from '@/Modules/Identity/Types/SetupForm';
 
 export interface ISetupFieldsProps {
   form: UseFormReturn<TSetupForm>;

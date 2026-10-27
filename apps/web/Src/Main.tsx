@@ -2,8 +2,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from '@/App/App';
+import { takeSetupTokenFromLocation } from '@/Modules/Identity/Store/SetupToken';
 import '@/Styles/Fonts.css';
 import '@/Styles/Globals.css';
+
+takeSetupTokenFromLocation();
 
 const container = document.getElementById('root');
 if (!container) throw new Error('root element is missing');

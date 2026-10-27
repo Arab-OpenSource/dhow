@@ -251,4 +251,15 @@ export const En: TMessages = {
   'setup.completed.title': 'Setup is already done',
   'setup.completed.lead': 'This server already has an owner and sign-up is closed. Sign in, or ask the organization owner for an invitation.',
   'setup.completed.action': 'Go to sign-in',
+
+  'login.title': 'Welcome back',
+  'login.lead': 'Sign in with your email and password.',
+  'login.submit': 'Sign in',
+  'login.submitting': 'Signing you in',
+  'login.retryIn': 'Try again in {time}',
+  'login.locked.title': 'Sign-in is paused for a moment because of too many attempts.',
+  'login.locked.hint': 'This protects your account. You can try again when the timer ends:',
+  'login.locked.announce': 'Sign-in is paused. Try again in {seconds} seconds.',
+  'login.footer': 'Sign-up is closed. Accounts are created by invitation from the organization owner.',
+  'login.error.password': 'Enter the password.',
 };
