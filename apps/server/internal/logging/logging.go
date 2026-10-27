@@ -1,4 +1,3 @@
-// Package logging builds the control plane's JSON logger with secret redaction.
 package logging
 
 import (
@@ -7,14 +6,12 @@ import (
 	"strings"
 )
 
-// Redacted replaces the value of any attribute whose key looks sensitive.
 const Redacted = "[REDACTED]"
 
 var sensitiveParts = []string{
 	"password", "passwd", "secret", "token", "authorization", "cookie", "apikey", "privatekey", "credential", "session",
 }
 
-// IsSensitiveKey reports whether a log attribute key must never carry its value.
 func IsSensitiveKey(key string) bool {
 	k := strings.ToLower(key)
 	k = strings.NewReplacer("_", "", "-", "", ".", "").Replace(k)
@@ -29,7 +26,6 @@ func IsSensitiveKey(key string) bool {
 	return false
 }
 
-// New returns a JSON logger at level that redacts sensitive attributes, including inside groups.
 func New(w io.Writer, level slog.Leveler) *slog.Logger {
 	return slog.New(slog.NewJSONHandler(w, &slog.HandlerOptions{
 		Level:       level,

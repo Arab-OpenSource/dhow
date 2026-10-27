@@ -1,4 +1,3 @@
-// Package httpx holds the HTTP middleware every control plane request passes through.
 package httpx
 
 import (
@@ -23,54 +22,45 @@ const (
 	clientIPKey
 )
 
-// ErrorBody is the public error shape. It matches the OpenAPI Error schema and never carries internal details.
 type ErrorBody struct {
 	Code    string `json:"Code"`
 	Message string `json:"Message"`
 }
 
-// WriteError writes a JSON error with the given status.
 func WriteError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(ErrorBody{Code: code, Message: message}) // The client may be gone; there is nothing useful to do with the error.
+	_ = json.NewEncoder(w).Encode(ErrorBody{Code: code, Message: message})
 }
 
-// Common errors.
 func writeInternal(w http.ResponseWriter) {
 	WriteError(w, http.StatusInternalServerError, "internal", "Something went wrong. Try again later.")
 }
 
-// NotFound answers unknown routes.
 func NotFound(w http.ResponseWriter, _ *http.Request) {
 	WriteError(w, http.StatusNotFound, "not_found", "The requested resource does not exist.")
 }
 
-// MethodNotAllowed answers known routes called with the wrong method.
 func MethodNotAllowed(w http.ResponseWriter, _ *http.Request) {
 	WriteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "This method is not allowed here.")
 }
 
-// RequestID gives every request a fresh random ID, ignoring any client-supplied value.
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var b [12]byte
-		_, _ = rand.Read(b[:]) // crypto/rand.Read never fails on supported platforms.
+		_, _ = rand.Read(b[:])
 		id := hex.EncodeToString(b[:])
 		w.Header().Set("X-Request-ID", id)
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestIDKey, id)))
 	})
 }
 
-// RequestIDFrom returns the request ID set by RequestID.
 func RequestIDFrom(ctx context.Context) string {
 	id, _ := ctx.Value(requestIDKey).(string)
 	return id
 }
 
-// ClientIP resolves the real client address. X-Forwarded-For is honored only when the direct peer is a
-// trusted proxy, and only up to the first untrusted hop (walking from the right), so clients cannot spoof it.
 func ClientIP(trusted []netip.Prefix) func(http.Handler) http.Handler {
 	isTrusted := func(a netip.Addr) bool {
 		for _, p := range trusted {
@@ -97,7 +87,6 @@ func ClientIP(trusted []netip.Prefix) func(http.Handler) http.Handler {
 	}
 }
 
-// ClientIPFrom returns the address resolved by ClientIP (invalid if unknown).
 func ClientIPFrom(ctx context.Context) netip.Addr {
 	ip, _ := ctx.Value(clientIPKey).(netip.Addr)
 	return ip
@@ -121,7 +110,6 @@ func forwardedHops(values []string) []netip.Addr {
 		for _, part := range strings.Split(v, ",") {
 			a, err := netip.ParseAddr(strings.TrimSpace(part))
 			if err != nil {
-				// A malformed hop ends the trusted chain: stop at what we can verify.
 				out = out[:0]
 				continue
 			}
@@ -131,7 +119,6 @@ func forwardedHops(values []string) []netip.Addr {
 	return out
 }
 
-// Recover turns a panic into a generic 500 and logs it with the request ID. http.ErrAbortHandler is re-raised.
 func Recover(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -155,8 +142,6 @@ func handlePanic(ctx context.Context, log *slog.Logger, w http.ResponseWriter, p
 	writeInternal(w)
 }
 
-// BodyLimit caps request bodies at n bytes. Declared oversize bodies are rejected before the handler runs;
-// undeclared ones fail on read with *http.MaxBytesError.
 func BodyLimit(n int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +155,6 @@ func BodyLimit(n int64) func(http.Handler) http.Handler {
 	}
 }
 
-// Timeout bounds the request context. Handlers must respect ctx; the server's WriteTimeout is the backstop.
 func Timeout(d time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -181,11 +165,9 @@ func Timeout(d time.Duration) func(http.Handler) http.Handler {
 	}
 }
 
-// ContentSecurityPolicy is strict: same-origin only, no inline script, no framing.
 const ContentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
 	"font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; form-action 'self'"
 
-// SecurityHeaders sets the browser hardening headers. HSTS is sent only when the public URL is HTTPS.
 func SecurityHeaders(hsts bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -229,8 +211,6 @@ func (s *statusRecorder) Write(b []byte) (int, error) {
 
 func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
 
-// AccessLog logs one line per request. It logs the path only, never the query string, headers or body,
-// because those can carry tokens.
 func AccessLog(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,3 @@
-// Package api implements the public REST API defined in packages/openapi/openapi.yaml.
 package api
 
 import (
@@ -15,17 +14,14 @@ import (
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
 
-// Pinger checks database connectivity.
 type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// MigrationStatus reports whether the schema is fully migrated.
 type MigrationStatus interface {
 	Current(ctx context.Context) (bool, error)
 }
 
-// Deps are the API's dependencies.
 type Deps struct {
 	DB         Pinger
 	Migrations MigrationStatus
@@ -34,18 +30,14 @@ type Deps struct {
 	Log        *slog.Logger
 }
 
-// readinessTimeout bounds each readiness check so a stuck database fails the probe quickly.
 const readinessTimeout = 2 * time.Second
 
-// Server implements gen.StrictServerInterface.
 type Server struct{ d Deps }
 
 var _ gen.StrictServerInterface = (*Server)(nil)
 
-// New returns the API implementation.
 func New(d Deps) *Server { return &Server{d: d} }
 
-// Handler mounts the API on a chi-compatible router at baseURL with generic error handling.
 func Handler(s *Server, router chi.Router, baseURL string) http.Handler {
 	strict := gen.NewStrictHandlerWithOptions(s, nil, gen.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, _ error) {
@@ -65,12 +57,10 @@ func Handler(s *Server, router chi.Router, baseURL string) http.Handler {
 	})
 }
 
-// GetLiveness answers while the process runs.
 func (s *Server) GetLiveness(context.Context, gen.GetLivenessRequestObject) (gen.GetLivenessResponseObject, error) {
 	return gen.GetLiveness200JSONResponse{Status: gen.Ok, Checks: []gen.HealthCheck{}}, nil
 }
 
-// GetReadiness checks the database and the schema version.
 func (s *Server) GetReadiness(ctx context.Context, _ gen.GetReadinessRequestObject) (gen.GetReadinessResponseObject, error) {
 	dbOK := s.check(ctx, "database", func(ctx context.Context) error { return s.d.DB.Ping(ctx) })
 	migOK := dbOK && s.check(ctx, "migrations", func(ctx context.Context) error {
@@ -110,7 +100,6 @@ func (s *Server) check(ctx context.Context, name string, fn func(context.Context
 	return true
 }
 
-// GetMeta returns public instance metadata.
 func (s *Server) GetMeta(ctx context.Context, _ gen.GetMetaRequestObject) (gen.GetMetaResponseObject, error) {
 	inst, err := s.d.Queries.GetInstance(ctx)
 	if err != nil {

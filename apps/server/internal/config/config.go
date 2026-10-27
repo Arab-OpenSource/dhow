@@ -1,7 +1,3 @@
-// Package config loads and validates the control plane configuration from environment variables.
-//
-// Loading fails closed: a missing, placeholder or weak secret, a plain-HTTP public URL or an unencrypted
-// database connection stops the process at boot unless DHOW_DEV=true. Error messages never echo secret values.
 package config
 
 import (
@@ -17,7 +13,6 @@ import (
 	"strings"
 )
 
-// Environment variable names.
 const (
 	EnvDatabaseURL    = "DHOW_DATABASE_URL"
 	EnvSecretKey      = "DHOW_SECRET_KEY"
@@ -28,13 +23,10 @@ const (
 	EnvDev            = "DHOW_DEV"
 )
 
-// DefaultListenAddr binds to loopback so the server is only reachable through a reverse proxy by default.
 const DefaultListenAddr = "127.0.0.1:8080"
 
-// MinSecretKeyBytes is the minimum decoded length of DHOW_SECRET_KEY.
 const MinSecretKeyBytes = 32
 
-// Config is the validated configuration.
 type Config struct {
 	DatabaseURL    string
 	SecretKey      []byte
@@ -45,8 +37,6 @@ type Config struct {
 	Dev            bool
 }
 
-// Load reads the configuration through getenv (usually os.Getenv) and validates every field.
-// All problems are reported together.
 func Load(getenv func(string) string) (Config, error) {
 	var cfg Config
 	var errs []error
@@ -93,8 +83,6 @@ func parseBool(v string) (bool, error) {
 	return b, nil
 }
 
-// Words that appear in copied example values. All are five letters or longer, so a random
-// base64 key is practically never rejected by accident; hex keys cannot contain them at all.
 var placeholderMarkers = []string{
 	"change", "replace", "example", "placeholder", "secret", "password", "default", "dummy",
 }
@@ -123,7 +111,6 @@ func parseSecretKey(v string) ([]byte, error) {
 	return key, nil
 }
 
-// decodeKey accepts hex first (unambiguous), then standard or URL-safe base64 with or without padding.
 func decodeKey(v string) ([]byte, error) {
 	if b, err := hex.DecodeString(v); err == nil {
 		return b, nil
@@ -136,8 +123,6 @@ func decodeKey(v string) ([]byte, error) {
 	return nil, errors.New("must be hex or base64")
 }
 
-// looksRandom rejects keys with very few distinct bytes (for example a repeated character).
-// 32 random bytes have about 30 distinct values; 16 is a conservative floor.
 func looksRandom(key []byte) bool {
 	seen := make(map[byte]struct{}, len(key))
 	for _, b := range key {
@@ -153,7 +138,6 @@ func parseDatabaseURL(v string, dev bool) (string, error) {
 		return "", errors.New("is required")
 	}
 	u, err := url.Parse(v)
-	// Never wrap the parse error: it can contain the password.
 	if err != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") {
 		return "", errors.New("must be a postgres:// URL")
 	}

@@ -133,7 +133,6 @@ func TestDevRelaxesTransportRules(t *testing.T) {
 	if !cfg.Dev {
 		t.Fatal("Dev = false")
 	}
-	// Dev never relaxes the secret rules.
 	m[EnvSecretKey] = "dev"
 	if _, err := Load(env(m)); err == nil {
 		t.Fatal("weak secret accepted in dev mode")

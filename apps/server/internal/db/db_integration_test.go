@@ -23,7 +23,6 @@ import (
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/web"
 )
 
-// testPool connects to DHOW_TEST_DATABASE_URL. Locally the test is skipped without it; in CI it must exist.
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	dsn := os.Getenv("DHOW_TEST_DATABASE_URL")
@@ -62,7 +61,6 @@ func TestMigrationsAndReadiness(t *testing.T) {
 	ctx := context.Background()
 	m := newTestMigrator(t, pool)
 
-	// Start from an empty schema.
 	if err := m.DownTo(ctx, 0); err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +87,6 @@ func TestMigrationsAndReadiness(t *testing.T) {
 		t.Fatalf("ready before migrations = %d", rec.Code)
 	}
 
-	// Several instances booting together: the session lock serializes them and each migration runs once.
 	var wg sync.WaitGroup
 	errs := make(chan error, 4)
 	for range 4 {
@@ -129,7 +126,6 @@ func TestMigrationsAndReadiness(t *testing.T) {
 		t.Fatalf("meta = %d %+v, want setupRequired on a fresh instance", rec.Code, meta)
 	}
 
-	// The singleton row cannot be duplicated.
 	if _, err := pool.Exec(ctx, `INSERT INTO "Instance" ("Id") VALUES (2)`); err == nil {
 		t.Fatal("instance table accepted a second row")
 	}

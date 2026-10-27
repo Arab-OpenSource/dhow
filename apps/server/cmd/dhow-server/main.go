@@ -1,4 +1,3 @@
-// Command dhow-server runs the Dhow control plane.
 package main
 
 import (
@@ -25,7 +24,6 @@ const shutdownTimeout = 20 * time.Second
 
 func main() {
 	if err := run(); err != nil {
-		// The logger may not exist yet (bad config), so the last word goes to stderr as JSON-free text.
 		fmt.Fprintln(os.Stderr, "dhow-server:", err)
 		os.Exit(1)
 	}

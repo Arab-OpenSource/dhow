@@ -1,4 +1,3 @@
-// Package server assembles the HTTP router and server for the control plane.
 package server
 
 import (
@@ -14,9 +13,8 @@ import (
 	"github.com/Arab-OpenSource/dhow/apps/server/internal/httpx"
 )
 
-// Limits applied to every request.
 const (
-	MaxBodyBytes      = 1 << 20 // 1 MiB; uploads get their own routes and limits.
+	MaxBodyBytes      = 1 << 20
 	APITimeout        = 15 * time.Second
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 30 * time.Second
@@ -25,7 +23,6 @@ const (
 	maxHeaderBytes    = 64 << 10
 )
 
-// Options configure the router.
 type Options struct {
 	Config config.Config
 	API    *api.Server
@@ -33,7 +30,6 @@ type Options struct {
 	Log    *slog.Logger
 }
 
-// Router builds the full handler: global middleware, the API under /api/v1 and the web UI for everything else.
 func Router(o Options) http.Handler {
 	r := chi.NewRouter()
 	r.Use(
@@ -63,7 +59,6 @@ func Router(o Options) http.Handler {
 	return r
 }
 
-// noStore keeps API responses out of shared caches.
 func noStore(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
@@ -71,7 +66,6 @@ func noStore(next http.Handler) http.Handler {
 	})
 }
 
-// New returns an http.Server with conservative timeouts.
 func New(o Options) *http.Server {
 	return &http.Server{
 		Addr:              o.Config.ListenAddr,
