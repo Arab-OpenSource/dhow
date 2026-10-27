@@ -149,6 +149,8 @@ const (
 	KeyStepDatabaseURL       Key = "step.database.u.r.l"
 	KeyStepDropDatabase      Key = "step.drop.database"
 	KeyStepEPEL              Key = "step.e.p.e.l"
+	KeyStepDnfDropInDir      Key = "step.dnf.drop.in.dir"
+	KeyStepFedoraExclude     Key = "step.fedora.exclude"
 	KeyStepEnvFile           Key = "step.env.file"
 	KeyStepFirewall          Key = "step.firewall"
 	KeyStepGateway           Key = "step.gateway"

@@ -117,6 +117,11 @@ func (b *Builder) dnfSteps(missing []string, needPGDG bool) []Step {
 			steps = append(steps, CommandStep(b.Sys, b.M.T(KeyStepModuleDisable), nil,
 				[]Command{Cmd("dnf", "-qy", "module", "disable", "postgresql")}, nil))
 		}
+		if d.Fedora {
+			steps = append(steps,
+				DirStep(b.Sys, b.M.T(KeyStepDnfDropInDir), parentDir(DnfExcludePath), modePublicDir),
+				FileStep(b.Sys, b.M.T(KeyStepFedoraExclude), DnfExcludePath, []byte("[main]\nexcludepkgs=postgresql,postgresql-*\n"), modeRootPublic))
+		}
 	}
 	return append(steps, b.dnfInstall(b.M.T(KeyStepPackages), missing))
 }

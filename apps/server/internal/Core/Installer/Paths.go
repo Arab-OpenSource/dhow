@@ -46,6 +46,7 @@ const (
 	AptSourcePath  = "/etc/apt/sources.list.d/dhow-pgdg.sources"
 	DnfKeyPath     = "/etc/pki/rpm-gpg/RPM-GPG-KEY-dhow-pgdg"
 	DnfRepoPath    = "/etc/yum.repos.d/dhow-pgdg.repo"
+	DnfExcludePath = "/etc/dnf/libdnf5.conf.d/90-dhow-pgdg.conf"
 	AptKeyURL      = "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
 	DnfKeyURL      = "https://download.postgresql.org/pub/repos/yum/keys/PGDG-RPM-GPG-KEY-RHEL"
 	AptKeyFinger   = "B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8"

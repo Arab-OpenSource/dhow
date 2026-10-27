@@ -13,10 +13,10 @@ func TestUninstallKeepsDataAndSecrets(t *testing.T) {
 	f, _ := installedHost(t)
 	app, out := newApp(f, "")
 	require.NoError(t, app.Uninstall(context.Background(), UninstallOptions{Yes: true}), out.String())
-	for _, gone := range []string{UnitPath, BinaryPath, EnvFilePath, AnswersPath} {
+	for _, gone := range []string{UnitPath, BinaryPath, EnvFilePath} {
 		assert.False(t, f.has(gone), gone)
 	}
-	for _, kept := range []string{SecretKeyPath, DatabaseURLPath} {
+	for _, kept := range []string{SecretKeyPath, DatabaseURLPath, AnswersPath} {
 		assert.True(t, f.has(kept), kept)
 	}
 	assert.True(t, f.ran("systemctl disable --now dhow"))
@@ -26,6 +26,12 @@ func TestUninstallKeepsDataAndSecrets(t *testing.T) {
 
 	app, out = newApp(f, "")
 	require.NoError(t, app.Uninstall(context.Background(), UninstallOptions{Yes: true}), out.String())
+
+	app, out = newApp(f, PurgePhrase+"\n")
+	require.NoError(t, app.Uninstall(context.Background(), UninstallOptions{Purge: true}), out.String())
+	assert.False(t, f.has(SecretKeyPath), "purge after a plain uninstall still deletes the data")
+	assert.True(t, f.ran("userdel dhow"))
+	assert.Contains(t, strings.Join(f.stdins, ""), "DROP DATABASE IF EXISTS dhow")
 }
 
 func TestUninstallPurgeNeedsTheTypedPhrase(t *testing.T) {

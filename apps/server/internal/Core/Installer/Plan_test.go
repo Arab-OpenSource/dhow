@@ -95,6 +95,18 @@ func planCases() []planCase {
 			absent:       []string{"apt-get", "ufw"},
 		},
 		{
+			name: "fedora keeps the PGDG packages",
+			host: func() *fakeSys {
+				f := debianHost()
+				f.put(OSReleasePath, "ID=fedora\nVERSION_ID=44\nPRETTY_NAME=\"Fedora Linux 44\"\n", 0o644)
+				return f
+			},
+			yaml:         "mode: native\ndomain: dhow.example.com\ndatabase: {mode: install}\nproxy: {kind: none}\ninstall_packages: true\n",
+			wantCommands: []string{"dnf install -y postgresql18-server", "/usr/pgsql-18/bin/postgresql-18-setup initdb"},
+			wantFiles:    []string{DnfExcludePath, DnfRepoPath},
+			absent:       []string{"module disable", "epel-release"},
+		},
+		{
 			name:      "existing database and proxy install nothing",
 			host:      debianHost,
 			yaml:      "mode: native\ndomain: dhow.example.com\ndatabase: {mode: existing, url_file: /root/db}\nproxy: {kind: existing, trusted_proxies: 10.0.0.2}\n",

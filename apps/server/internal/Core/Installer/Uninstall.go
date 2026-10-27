@@ -21,7 +21,7 @@ func (app App) Uninstall(ctx context.Context, opts UninstallOptions) error {
 	}
 	det := Detect(ctx, app.Sys)
 	if !found {
-		if !det.Existing && !exists(app.Sys, BinaryPath) {
+		if !det.Existing && !exists(app.Sys, BinaryPath) && !exists(app.Sys, ConfigDir) && !exists(app.Sys, StateDir) {
 			app.say("%s\n", m.T(KeyNothingInstalled))
 			return nil
 		}
@@ -56,7 +56,7 @@ func (app App) Uninstall(ctx context.Context, opts UninstallOptions) error {
 			return errors.New(m.T(KeyAborted))
 		}
 	} else {
-		app.say("\n%s\n", m.T(KeyUninstallKeeps, CredentialsDir, StateDir))
+		app.say("\n%s\n", m.T(KeyUninstallKeeps, ConfigDir, StateDir))
 		if !opts.Yes {
 			yes, err := p.Confirm(m.T(KeyConfirmUninstall), false)
 			if err != nil {
@@ -140,7 +140,7 @@ func (u uninstaller) nativeSteps() []Step {
 		stop,
 		unit,
 		u.removeStep(u.m.T(KeyStepRemoveBinary), BinaryPath),
-		u.removeStep(u.m.T(KeyStepRemoveConfig), EnvFilePath, AnswersPath),
+		u.removeStep(u.m.T(KeyStepRemoveConfig), EnvFilePath),
 	}
 }
 
@@ -158,7 +158,7 @@ func (u uninstaller) composeSteps(purge bool) []Step {
 			return err
 		},
 	}
-	return []Step{stop, u.removeStep(u.m.T(KeyStepRemoveConfig), ComposeFilePath, AnswersPath)}
+	return []Step{stop, u.removeStep(u.m.T(KeyStepRemoveConfig), ComposeFilePath)}
 }
 
 func (u uninstaller) proxySteps() []Step {
