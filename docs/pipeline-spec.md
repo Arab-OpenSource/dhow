@@ -121,9 +121,9 @@ jobs:
 | `jobs.<id>.strategy.matrix` | map | Cartesian product; `include` and `exclude` are supported; `max_parallel` |
 | `jobs.<id>.image` | string | Must be digest-pinned for production environments (enforced by policy) |
 | `jobs.<id>.environment` | string | Binds protection rules, secrets and targets |
-| `jobs.<id>.network.egress` | list | Host allowlist; empty means deny-all |
+| `jobs.<id>.network.egress` | list | Host allowlist (`host`, `host:port` or `*.domain`; no IP literals; at most 64); empty means deny-all. Traffic goes through the runner's proxy (`HTTPS_PROXY` / `HTTP_PROXY`), so clients must be proxy-aware; SSH can use `ProxyCommand=/run/dhow/bin/connect %h %p`. Private, loopback, link-local and metadata addresses are always denied (ADR-0044) |
 | `jobs.<id>.if` / `steps[].if` | CEL bool | — |
-| `steps[].run` | string | Executed by `/bin/sh -e` **inside the sandbox** (or by `shell:`) |
+| `steps[].run` | string | Executed by `/bin/sh -e` **inside the sandbox** (or by `shell:`); the script is passed on stdin, and the image must provide the shell |
 | `steps[].uses` | image ref | Plugin; must be digest-pinned; `with:` holds typed inputs declared by the plugin manifest |
 | `steps[].env` | map | Values may reference `secrets.*` and `vars.*` |
 | `artifacts` | list | Content-addressed upload; `retention` overridable down to the org policy minimum |
