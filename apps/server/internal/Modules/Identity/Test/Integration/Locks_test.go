@@ -70,3 +70,38 @@ func TestAcceptSeesADemotionOfTheInviterThatCommitsWhileItWaits(t *testing.T) {
 		`SELECT count(*) FROM "Memberships" m JOIN "Users" u ON u."Id" = m."UserId" WHERE u."Email" = 'new@example.com'`).Scan(&members))
 	assert.Zero(t, members)
 }
+
+func TestTeamWritesSeeADemotionOfTheActorThatCommitsWhileTheyWait(t *testing.T) {
+	cases := []struct {
+		name    string
+		request func(c *apptest.Client, org uuid.UUID, team, user string) apptest.Request
+	}{
+		{"create", func(_ *apptest.Client, org uuid.UUID, _, _ string) apptest.Request {
+			return apptest.Request{Method: http.MethodPost, Path: apptest.OrgPath(org, "/teams"), Body: map[string]string{"Name": "Late"}}
+		}},
+		{"update", func(_ *apptest.Client, org uuid.UUID, team, _ string) apptest.Request {
+			return apptest.Request{Method: http.MethodPatch, Path: apptest.OrgPath(org, "/teams/"+team), Body: map[string]string{"Name": "Renamed"}}
+		}},
+		{"add member", func(_ *apptest.Client, org uuid.UUID, team, user string) apptest.Request {
+			return apptest.Request{Method: http.MethodPost, Path: apptest.OrgPath(org, "/teams/"+team+"/members"), Body: map[string]string{"UserId": user}}
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			env := apptest.New(t)
+			owner, d := env.SetupAndLogin()
+			org := env.OrganizationID(d.OrgSlug)
+			admin, adminID := env.SignedIn(org, "admin@example.com", "admin")
+			_, viewer := env.SignedIn(org, "viewer@example.com", "viewer")
+			created := owner.Do(apptest.Request{Method: http.MethodPost, Path: apptest.OrgPath(org, "/teams"), Body: map[string]string{"Name": "Plain"}})
+			require.Equal(t, http.StatusCreated, created.Status, string(created.Raw))
+			var team struct{ Id string }
+			created.Decode(t, &team)
+
+			req := c.request(admin, org, team.Id, viewer.String())
+			status, waited := demoteWhileLocked(t, env, org, adminID, "developer", func() int { return admin.Do(req).Status })
+			assert.True(t, waited, "the write waits for the organization lock")
+			assert.Equal(t, http.StatusForbidden, status, "the actor is a developer when the write commits")
+		})
+	}
+}

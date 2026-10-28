@@ -68,6 +68,20 @@ func uniqueConstraint(err error) string {
 	return ""
 }
 
+func managerIn(ctx context.Context, q *sqlc.Queries, org, user uuid.UUID) (policy.Role, error) {
+	if err := lockOrganization(ctx, q, org); err != nil {
+		return "", err
+	}
+	self, err := loadMember(ctx, q, org, user)
+	if err != nil {
+		return "", err
+	}
+	if !policy.Allows(self.Effective, policy.MemberManage) {
+		return "", apperrors.Forbidden()
+	}
+	return self.Effective, nil
+}
+
 func (s *Service) ListTeams(ctx context.Context, org uuid.UUID) ([]models.Team, error) {
 	q := s.queries()
 	rows, err := q.ListTeams(ctx, org)
@@ -129,7 +143,7 @@ func loadTeam(ctx context.Context, q *sqlc.Queries, org, team uuid.UUID) (models
 }
 
 func (s *Service) CreateTeam(ctx context.Context, org uuid.UUID, in models.TeamInput) (models.TeamDetail, error) {
-	_, actor, err := actorIn(ctx, org)
+	p, actor, err := actorIn(ctx, org)
 	if err != nil {
 		return models.TeamDetail{}, err
 	}
@@ -142,6 +156,13 @@ func (s *Service) CreateTeam(ctx context.Context, org uuid.UUID, in models.TeamI
 	now := s.now()
 	var team models.TeamDetail
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		fresh, err := managerIn(ctx, q, org, p.UserID)
+		if err != nil {
+			return err
+		}
+		if in.Role != "" && !policy.CanGrant(fresh, policy.Role(in.Role)) {
+			return apperrors.RoleNotAllowed()
+		}
 		row, err := q.InsertTeam(ctx, sqlc.InsertTeamParams{OrganizationID: org, Name: in.Name, Description: in.Description, Now: now})
 		if err != nil {
 			return err
@@ -168,14 +189,18 @@ func (s *Service) CreateTeam(ctx context.Context, org uuid.UUID, in models.TeamI
 }
 
 func (s *Service) UpdateTeam(ctx context.Context, org, team uuid.UUID, in models.TeamInput) (models.TeamDetail, error) {
-	if _, _, err := actorIn(ctx, org); err != nil {
+	p, _, err := actorIn(ctx, org)
+	if err != nil {
 		return models.TeamDetail{}, err
 	}
 	if ae := validateTeam(&in, false); ae != nil {
 		return models.TeamDetail{}, ae
 	}
 	var out models.TeamDetail
-	err := dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		if _, err := managerIn(ctx, q, org, p.UserID); err != nil {
+			return err
+		}
 		_, err := q.UpdateTeam(ctx, sqlc.UpdateTeamParams{ID: team, OrganizationID: org, Name: in.Name, Description: in.Description, Now: s.now()})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apperrors.NotFound()
@@ -205,7 +230,8 @@ type teamTx struct {
 }
 
 func (s *Service) beginTeamChange(ctx context.Context, q *sqlc.Queries, t *teamTx, extra ...uuid.UUID) error {
-	if err := lockOrganization(ctx, q, t.org); err != nil {
+	actor, err := managerIn(ctx, q, t.org, t.p.UserID)
+	if err != nil {
 		return err
 	}
 	if _, err := q.LockTeam(ctx, sqlc.LockTeamParams{ID: t.team, OrganizationID: t.org}); errors.Is(err, pgx.ErrNoRows) {
@@ -213,11 +239,7 @@ func (s *Service) beginTeamChange(ctx context.Context, q *sqlc.Queries, t *teamT
 	} else if err != nil {
 		return err
 	}
-	self, err := loadMember(ctx, q, t.org, t.p.UserID)
-	if err != nil {
-		return err
-	}
-	t.actor = self.Effective
+	t.actor = actor
 	bindings, err := q.ListTeamBindings(ctx, sqlc.ListTeamBindingsParams{TeamID: &t.team, OrganizationID: t.org})
 	if err != nil {
 		return err
