@@ -160,14 +160,15 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'pager.next': 'Next page',
   'pager.status': 'Page {page} of {pages}',
 
-
   'palette.command.account': 'Open my account',
   'palette.command.password': 'Change password',
   'palette.command.signOut': 'Sign out',
 
   'account.title': 'My account',
   'account.error.title': 'We could not load your account',
-  'account.summary.title': 'You are signed in',
+  'account.summary.strong.title': 'Your account has two-step verification',
+  'account.summary.weak.title': 'Turn on two-step verification',
+  'account.summary.weak.sub': 'Only your password protects your account. Add authenticator codes or a passkey in the two-step section below.',
   'account.summary.sub': 'This session ends {date}, or after 12 hours without activity.',
   'account.profile.title': 'Your details',
   'account.profile.name': 'Name',

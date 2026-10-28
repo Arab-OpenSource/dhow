@@ -159,14 +159,15 @@ export const WorkspaceAr = {
   'pager.next': 'الصفحة اللي بعدها',
   'pager.status': 'صفحة {page} من {pages}',
 
-
   'palette.command.account': 'افتح حسابي',
   'palette.command.password': 'غيّر كلمة السر',
   'palette.command.signOut': 'اخرج من الحساب',
 
   'account.title': 'حسابي',
   'account.error.title': 'مقدرناش نحمّل بيانات حسابك',
-  'account.summary.title': 'إنت داخل بحسابك',
+  'account.summary.strong.title': 'حسابك محمي بخطوة ثانية',
+  'account.summary.weak.title': 'فعّل الخطوة الثانية لحماية حسابك',
+  'account.summary.weak.sub': 'حسابك محمي بكلمة السر فقط. أضف كودًا من تطبيق المصادقة أو مفتاح مرور من قسم الخطوة الثانية أدناه.',
   'account.summary.sub': 'الجلسة دي بتنتهي {date}، أو بعد 12 ساعة من غير نشاط.',
   'account.profile.title': 'بياناتك',
   'account.profile.name': 'الاسم',
