@@ -56,15 +56,20 @@ func (h *hub) subscribeLog(attempt uuid.UUID) (<-chan struct{}, func()) {
 func (h *hub) signal(set waiters, key uuid.UUID, all bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for k, chans := range set {
-		if !all && k != key {
-			continue
-		}
-		for ch := range chans {
-			select {
-			case ch <- struct{}{}:
-			default:
-			}
+	if !all {
+		poke(set[key])
+		return
+	}
+	for _, chans := range set {
+		poke(chans)
+	}
+}
+
+func poke(chans map[chan struct{}]struct{}) {
+	for ch := range chans {
+		select {
+		case ch <- struct{}{}:
+		default:
 		}
 	}
 }
