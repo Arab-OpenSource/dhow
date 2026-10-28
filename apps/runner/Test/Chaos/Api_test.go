@@ -25,6 +25,7 @@ const (
 type api struct {
 	base   string
 	cookie string
+	csrf   string
 	org    string
 }
 
@@ -90,6 +91,9 @@ func (a *api) call(method, path string, body any, out any) (int, error) {
 	if a.cookie != "" {
 		req.Header.Set("Cookie", a.cookie)
 	}
+	if a.csrf != "" {
+		req.Header.Set("X-CSRF-Token", a.csrf)
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, err
@@ -126,14 +130,16 @@ func (a *api) setupE(setupToken string) error {
 		return err
 	}
 	a.org = res.Organization.ID
-	if a.cookie == "" {
-		if _, err := a.call(http.MethodPost, "/sessions", map[string]string{"Email": ownerEmail, "Password": ownerPassword}, nil); err != nil {
-			return err
-		}
+	var login struct {
+		CsrfToken string `json:"CsrfToken"`
 	}
-	if a.cookie == "" {
-		return fmt.Errorf("neither setup nor sign-in returned a session cookie")
+	if _, err := a.call(http.MethodPost, "/sessions", map[string]string{"Email": ownerEmail, "Password": ownerPassword}, &login); err != nil {
+		return err
 	}
+	if a.cookie == "" || login.CsrfToken == "" {
+		return fmt.Errorf("sign-in returned no session cookie or CSRF token")
+	}
+	a.csrf = login.CsrfToken
 	return nil
 }
 
