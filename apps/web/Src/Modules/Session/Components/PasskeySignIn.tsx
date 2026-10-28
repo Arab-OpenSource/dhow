@@ -37,16 +37,11 @@ export const PasskeySignIn = ({ onSignedIn }: IPasskeySignInProps) => {
   };
 
   return (
-    <div className="grid gap-4">
+    <>
       {Notice ? <InlineAlert accent="failed" title={Notice} /> : null}
       <Button iconStart="key" className="w-full" disabled={Busy} onClick={() => void HandleClick()}>
         {Busy ? t('login.passkey.busy') : t('login.passkey')}
       </Button>
-      <p className="m-0 flex items-center gap-3 text-caption text-tertiary">
-        <span className="h-px flex-1 bg-line" />
-        {t('login.or')}
-        <span className="h-px flex-1 bg-line" />
-      </p>
-    </div>
+    </>
   );
 };

@@ -14,9 +14,11 @@ import { ShellGate } from '@/App/Layout/ShellGate';
 import { parseShellSearch, stringifyShellSearch, UNKNOWN_STACK } from '@/App/Panels';
 import { LoginRoute, preloadLoginPage } from '@/App/Routes/LoginRoute';
 import { InviteRoute, preloadInvitePage } from '@/App/Routes/InviteRoute';
+import { OidcCallbackRoute, preloadOidcCallbackPage } from '@/App/Routes/OidcCallbackRoute';
 import { preloadSetupPage, SetupRoute } from '@/App/Routes/SetupRoute';
 import { INVITE_PATH, takeInviteTokenFromHash } from '@/Modules/Identity/Store/InviteToken';
 import { SETUP_PATH, takeSetupTokenFromHash } from '@/Modules/Identity/Store/SetupToken';
+import { OIDC_CALLBACK_PATH, takeOidcCallbackFromSearch } from '@/Modules/Session/Store/OidcCallback';
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -75,7 +77,25 @@ const loginRoute = createRoute({
   component: LoginRoute,
 });
 
-const routeTree = rootRoute.addChildren([shellRoute.addChildren([workspaceRoute, shellNotFoundRoute]), setupRoute, inviteRoute, loginRoute]);
+const oidcCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: OIDC_CALLBACK_PATH,
+  beforeLoad: ({ location, params }) => {
+    if (takeOidcCallbackFromSearch(location.pathname, location.searchStr)) {
+      throw redirect({ to: OIDC_CALLBACK_PATH, params: { provider: params.provider }, search: {}, replace: true });
+    }
+  },
+  loader: preloadOidcCallbackPage,
+  component: OidcCallbackRoute,
+});
+
+const routeTree = rootRoute.addChildren([
+  shellRoute.addChildren([workspaceRoute, shellNotFoundRoute]),
+  setupRoute,
+  inviteRoute,
+  loginRoute,
+  oidcCallbackRoute,
+]);
 
 export const createAppRouter = (history?: RouterHistory) =>
   createRouter({ routeTree, history, stringifySearch: stringifyShellSearch });

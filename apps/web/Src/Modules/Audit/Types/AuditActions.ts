@@ -24,6 +24,9 @@ const ACTIONS: Record<string, IAuditAction> = {
   'auth.passkey_renamed': { Icon: 'key', Bad: false },
   'auth.passkey_removed': { Icon: 'key', Bad: true },
   'auth.passkey_sign_count_regressed': { Icon: 'alert', Bad: true },
+  'auth.oidc_login_failed': { Icon: 'alert', Bad: true },
+  'auth.identity_linked': { Icon: 'user', Bad: false },
+  'auth.identity_unlinked': { Icon: 'user', Bad: true },
   'identity.organization.updated': { Icon: 'building', Bad: false },
   'system.instance.setupCompleted': { Icon: 'shield', Bad: false },
 };

@@ -8,14 +8,16 @@ import { Card } from '@/Core/Ui/Card';
 import { Row, Rows } from '@/Core/Ui/Row';
 import { Summary } from '@/Core/Ui/Summary';
 import { useT } from '@/I18n/useT';
+import { IdentitiesCard } from '@/Modules/Session/Components/IdentitiesCard';
 import { SessionsCard } from '@/Modules/Session/Components/SessionsCard';
 
 export interface IAccountBodyProps {
   me: TMe;
   security?: ReactNode;
+  tokens?: ReactNode;
 }
 
-export const AccountBody = ({ me, security }: IAccountBodyProps) => {
+export const AccountBody = ({ me, security, tokens }: IAccountBodyProps) => {
   const t = useT();
   const time = useRelativeTime();
   const membership = useCurrentMembership();
@@ -43,6 +45,8 @@ export const AccountBody = ({ me, security }: IAccountBodyProps) => {
         </Rows>
       </Card>
       {security}
+      <IdentitiesCard />
+      {tokens}
       <SessionsCard />
     </>
   );

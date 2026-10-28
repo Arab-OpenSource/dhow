@@ -96,6 +96,16 @@ export const membersFixture = (): IMemberFixture[] => [
 
 export type TRouteHandler = (request: Request, url: URL) => Response | undefined;
 
+export interface IPreferencesFixture {
+  Locale: string;
+  ThemeId: string;
+  CustomThemes: unknown[];
+  OrganizationId: string | null;
+  Saved: boolean;
+}
+
+export const defaultPreferences = (): IPreferencesFixture => ({ Locale: 'ar', ThemeId: 'sea', CustomThemes: [], OrganizationId: null, Saved: true });
+
 export interface IBackendOptions {
   role?: string;
   signedIn?: boolean;
@@ -108,6 +118,10 @@ export interface IBackendOptions {
   verify?: () => Response;
   renameReply?: () => Response;
   mfa?: IMfaFixture;
+  providers?: unknown[];
+  identities?: unknown[];
+  tokens?: unknown[];
+  preferences?: IPreferencesFixture;
 }
 
 export interface IBackendState {
@@ -117,6 +131,7 @@ export interface IBackendState {
   csrf: string;
   orgName: string;
   mfa: IMfaFixture;
+  preferences: IPreferencesFixture;
 }
 
 const failure = (Code: string, Message: string, status: number, headers: Record<string, string> = {}): Response =>
@@ -137,6 +152,7 @@ export const startBackend = (options: IBackendOptions = {}) => {
     csrf: 'csrf-token-1',
     orgName: 'Future Solution',
     mfa: options.mfa ?? { TotpEnabled: false, RecoveryCodesRemaining: 0, Passkeys: [] },
+    preferences: options.preferences ?? defaultPreferences(),
   };
   const stub = stubFetch(async (request) => {
     const url = new URL(request.url);
@@ -152,6 +168,8 @@ export const startBackend = (options: IBackendOptions = {}) => {
     if (pathname.endsWith('/me') && request.method === 'GET') {
       return state.signedIn ? envelope(meBody(state.role, state.csrf, state.orgName)) : envelope(UNAUTHENTICATED_BODY, 401);
     }
+    const access = await accessReply(request, pathname, options, state);
+    if (access) return access;
     const mfa = await mfaReply(request, pathname, state.mfa);
     if (mfa) return mfa;
     const org = /\/organizations\/[0-9a-f-]{36}(\/[a-z-]+)*$/.exec(pathname);
@@ -180,6 +198,20 @@ export const startBackend = (options: IBackendOptions = {}) => {
     return failure('NOT_FOUND', 'x', 404);
   });
   return { ...stub, state, orgId: ORG_ID };
+};
+
+const accessReply = async (request: Request, pathname: string, options: IBackendOptions, state: IBackendState): Promise<Response | null> => {
+  if (pathname.endsWith('/oidc/providers')) return envelope({ Success: true, Data: options.providers ?? [] });
+  if (pathname.endsWith('/me/identities') && request.method === 'GET') return envelope({ Success: true, Data: options.identities ?? [] });
+  if (pathname.endsWith('/me/api-tokens') && request.method === 'GET') return envelope({ Success: true, Data: options.tokens ?? [] });
+  if (pathname.endsWith('/me/preferences')) {
+    if (request.method === 'PUT') {
+      const body = (await request.clone().json()) as Omit<IPreferencesFixture, 'Saved'>;
+      state.preferences = { ...body, Saved: true };
+    }
+    return envelope({ Success: true, Data: state.preferences });
+  }
+  return null;
 };
 
 const pageOf = (items: readonly unknown[], url: URL): Response => {
