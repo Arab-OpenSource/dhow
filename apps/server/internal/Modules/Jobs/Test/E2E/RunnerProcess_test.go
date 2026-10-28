@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,7 +14,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -33,12 +31,6 @@ const (
 	procRegisterCmd = "register"
 )
 
-var procBinary struct {
-	once sync.Once
-	path string
-	err  error
-}
-
 func procModuleRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()
@@ -55,23 +47,14 @@ func procModuleRoot(t *testing.T) string {
 
 func procBuild(t *testing.T) string {
 	t.Helper()
-	procBinary.once.Do(func() {
-		out, err := os.MkdirTemp("", "dhow-runner-e2e-")
-		if err != nil {
-			procBinary.err = err
-			return
-		}
-		procBinary.path = filepath.Join(out, "dhow-runner")
-		ctx, cancel := context.WithTimeout(context.Background(), procBuildWait)
-		defer cancel()
-		cmd := exec.CommandContext(ctx, "go", "build", "-tags", "dhowtest", "-o", procBinary.path, "./apps/runner/cmd/dhow-runner")
-		cmd.Dir = procModuleRoot(t)
-		if raw, err := cmd.CombinedOutput(); err != nil {
-			procBinary.err = errors.Join(err, errors.New(string(raw)))
-		}
-	})
-	require.NoError(t, procBinary.err, "build the runner with the fake driver")
-	return procBinary.path
+	path := filepath.Join(t.TempDir(), "dhow-runner")
+	ctx, cancel := context.WithTimeout(t.Context(), procBuildWait)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "go", "build", "-tags", "dhowtest", "-o", path, "./apps/runner/cmd/dhow-runner")
+	cmd.Dir = procModuleRoot(t)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "build the runner with the fake driver: %s", out)
+	return path
 }
 
 type procRunner struct {
