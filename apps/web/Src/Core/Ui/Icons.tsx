@@ -29,7 +29,10 @@ export type TIconName =
   | 'eye'
   | 'eyeOff'
   | 'copy'
-  | 'swap';
+  | 'swap'
+  | 'play'
+  | 'terminal'
+  | 'stop';
 
 export const MIRRORED_ICONS: readonly TIconName[] = ['back', 'next'];
 
@@ -177,4 +180,17 @@ export const ICONS: Record<TIconName, ReactElement> = {
     </>
   ),
   swap: <path d="M7 4L3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7" />,
+  play: <path d="M7 4.5v15l12-7.5z" />,
+  terminal: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="m7 9 3 3-3 3M12 15h5" />
+    </>
+  ),
+  stop: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9 9h6v6H9z" />
+    </>
+  ),
 };

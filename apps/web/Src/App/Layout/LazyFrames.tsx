@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { checkOf, isThemeEditFrame, memberOf, teamOf, type TFrameId } from '@/App/Panels';
+import { checkOf, isThemeEditFrame, jobOf, memberOf, teamOf, type TFrameId } from '@/App/Panels';
 import { lazyComponent, type IPreloadable, type TLazyComponent } from '@/Core/Ui/LazyComponent';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
@@ -22,7 +22,9 @@ type TFramePart =
   | 'organization-transfer'
   | 'team-new'
   | 'team'
-  | 'member';
+  | 'member'
+  | 'jobs'
+  | 'job';
 
 const SystemStatusBody = lazyComponent(() =>
   import('@/Modules/System/Components/SystemStatusBody').then((module) => module.SystemStatusBody),
@@ -79,6 +81,9 @@ const AuditFooter = lazyComponent(() =>
   import('@/Modules/Audit/Components/AuditFooter').then((module) => module.AuditFooter),
 );
 
+const JobsBody = lazyComponent(() => import('@/Modules/Jobs/Components/JobsBody').then((module) => module.JobsBody));
+const JobBody = lazyComponent(() => import('@/Modules/Jobs/Components/JobBody').then((module) => module.JobBody));
+
 const organizationSlide = () => import('@/Modules/Organization/Components/OrganizationSlide');
 const OrganizationSlide = lazyComponent(() => organizationSlide().then((module) => module.OrganizationSlide));
 const OrganizationSubtitle = lazyComponent(() => organizationSlide().then((module) => module.OrganizationSubtitle));
@@ -118,6 +123,8 @@ const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   'team-new': [TeamNewBody],
   team: [TeamBody],
   member: [MemberBody],
+  jobs: [JobsBody],
+  job: [JobBody],
 };
 
 const isPart = (id: string): id is TFramePart => Object.hasOwn(PARTS, id);
@@ -127,6 +134,7 @@ const partOf = (id: TFrameId): TFramePart | null => {
   if (isThemeEditFrame(id)) return 'theme-edit';
   if (memberOf(id)) return 'member';
   if (teamOf(id)) return 'team';
+  if (jobOf(id)) return 'job';
   return isPart(id) ? id : null;
 };
 
@@ -200,3 +208,6 @@ export const LazyTransferBody = withSkeleton(TransferBody);
 export const LazyTeamNewBody = withSkeleton(TeamNewBody);
 export const LazyTeamBody = withSkeleton(TeamBody);
 export const LazyMemberBody = withSkeleton(MemberBody);
+
+export const LazyJobsBody = withSkeleton(JobsBody);
+export const LazyJobBody = withSkeleton(JobBody);

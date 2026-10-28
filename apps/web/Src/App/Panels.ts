@@ -17,6 +17,7 @@ const STATIC_FRAMES = [
   'account-totp',
   'account-token-new',
   'audit',
+  'jobs',
   'organization',
   'organizations',
   'organization-new',
@@ -28,6 +29,7 @@ const CHECK_PREFIX = 'check-';
 const THEME_EDIT_PREFIX = 'theme-edit-';
 const MEMBER_PREFIX = 'member-';
 const TEAM_PREFIX = 'team-';
+const JOB_PREFIX = 'job-';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export type TStaticFrameId = (typeof STATIC_FRAMES)[number];
@@ -35,7 +37,8 @@ export type TCheckFrameId = `check-${TCheckName}`;
 export type TThemeEditFrameId = `theme-edit-${string}`;
 export type TMemberFrameId = `member-${string}`;
 export type TTeamFrameId = `team-${string}`;
-export type TFrameId = TStaticFrameId | TCheckFrameId | TThemeEditFrameId | TMemberFrameId | TTeamFrameId;
+export type TJobFrameId = `job-${string}`;
+export type TFrameId = TStaticFrameId | TCheckFrameId | TThemeEditFrameId | TMemberFrameId | TTeamFrameId | TJobFrameId;
 
 export interface IShellSearch {
   stack?: TFrameId[] | typeof UNKNOWN_STACK;
@@ -45,6 +48,7 @@ export const checkFrame = (name: TCheckName): TCheckFrameId => `${CHECK_PREFIX}$
 export const themeEditFrame = (id: string): TThemeEditFrameId => `${THEME_EDIT_PREFIX}${id}`;
 export const memberFrame = (id: string): TMemberFrameId => `${MEMBER_PREFIX}${id}`;
 export const teamFrame = (id: string): TTeamFrameId => `${TEAM_PREFIX}${id}`;
+export const jobFrame = (id: string): TJobFrameId => `${JOB_PREFIX}${id}`;
 
 export const isFrameId = (value: unknown): value is TFrameId => {
   if (typeof value !== 'string') return false;
@@ -53,6 +57,7 @@ export const isFrameId = (value: unknown): value is TFrameId => {
   if (value.startsWith(THEME_EDIT_PREFIX)) return isCustomThemeId(value.slice(THEME_EDIT_PREFIX.length));
   if (value.startsWith(MEMBER_PREFIX)) return UUID.test(value.slice(MEMBER_PREFIX.length));
   if (value.startsWith(TEAM_PREFIX)) return UUID.test(value.slice(TEAM_PREFIX.length));
+  if (value.startsWith(JOB_PREFIX)) return UUID.test(value.slice(JOB_PREFIX.length));
   return false;
 };
 
@@ -63,6 +68,11 @@ export const memberOf = (id: TFrameId): string | null => {
 
 export const teamOf = (id: TFrameId): string | null => {
   const rest = id.startsWith(TEAM_PREFIX) ? id.slice(TEAM_PREFIX.length) : '';
+  return UUID.test(rest) ? rest : null;
+};
+
+export const jobOf = (id: TFrameId): string | null => {
+  const rest = id.startsWith(JOB_PREFIX) ? id.slice(JOB_PREFIX.length) : '';
   return UUID.test(rest) ? rest : null;
 };
 

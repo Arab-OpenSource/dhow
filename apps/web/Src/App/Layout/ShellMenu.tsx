@@ -24,6 +24,17 @@ export const ShellMenu = () => {
   const items: TMenuEntry[] = [
     { id: 'home', icon: 'home', label: t('shell.nav.home'), href: '/', current: stack.length === 0, onSelect: goWorkspace },
     { id: 'projects', icon: 'layers', label: t('shell.nav.projects'), hint: t('shell.soon') },
+    {
+      id: 'jobs',
+      icon: 'play',
+      label: t('shell.nav.jobs'),
+      href: '/?stack=jobs',
+      current: stack.some((frame) => frame === 'jobs' || frame.startsWith('job-')),
+      onSelect: () => {
+        openStack(['jobs']);
+      },
+      onIntent: intentFor('jobs'),
+    },
     { id: 'runners', icon: 'server', label: t('shell.nav.runners'), hint: t('shell.soon') },
     {
       id: 'team',
