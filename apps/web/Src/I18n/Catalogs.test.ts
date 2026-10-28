@@ -11,7 +11,12 @@ import { WorkspaceAr } from '@/I18n/Locales/Workspace/Ar';
 import { WorkspaceEn } from '@/I18n/Locales/Workspace/En';
 
 const SRC = join(process.cwd(), 'Src');
-const ENTRIES = ['Main.tsx', 'Modules/Session/Pages/LoginPage.tsx', 'Modules/Identity/Pages/SetupPage.tsx'];
+const ENTRIES = [
+  'Main.tsx',
+  'Modules/Session/Pages/LoginPage.tsx',
+  'Modules/Identity/Pages/SetupPage.tsx',
+  'Modules/Identity/Pages/InvitePage.tsx',
+];
 const STATIC_IMPORT = /^\s*(?:import|export)\s+(?!type\b)(?:[^'";]*?\bfrom\s*)?['"]([^'"]+)['"]/gm;
 const KEY_LITERAL = /['"`]([a-zA-Z][\w.]*)['"`]/g;
 const KEY_TEMPLATE = /`([a-zA-Z][\w.]*\.)\$\{/g;
