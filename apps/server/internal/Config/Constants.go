@@ -83,4 +83,5 @@ const (
 const (
 	DefaultPageLimit = 25
 	MaxPageLimit     = 100
+	MaxPage          = 100_000
 )
