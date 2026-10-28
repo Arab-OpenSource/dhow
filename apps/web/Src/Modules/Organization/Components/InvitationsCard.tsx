@@ -68,43 +68,41 @@ const InvitationRow = ({ invitation, organizationId, role, onIssued }: {
       title={<bdi dir="ltr">{invitation.Email}</bdi>}
       sub={
         <>
-          {t(`role.${invitation.Role}`)} · {invitation.Expired ? t('invitations.expired') : t('invitations.expires', { when: time.ago(invitation.ExpiresAt) })}
+          {t(`role.${invitation.Role}`)} · {invitation.Expired ? t('invitations.expired') : t('invitations.expires', { when: time.full(invitation.ExpiresAt) })}
           {' · '}
           {t('invitations.by', { name: invitation.InvitedByName })}
-        </>
-      }
-      end={
-        <>
-          {invitation.EmailStatus === 'sent' ? <Badge tone="ok">{t('invitations.email.sent')}</Badge> : null}
-          {invitation.EmailStatus === 'failed' ? <Badge tone="warn">{t('invitations.email.failed')}</Badge> : null}
-          {invitation.Expired ? <Badge tone="bad">{t('invitations.expired')}</Badge> : null}
-          {allowed ? (
-            <>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={busy}
-                aria-label={t('invitations.resendLabel', { email: invitation.Email })}
-                onClick={() => {
-                  resend.mutate();
-                }}
-              >
-                {t('invitations.resend')}
-              </Button>
-              <Button
-                size="sm"
-                variant="danger"
-                iconStart="close"
-                disabled={busy}
-                aria-label={t('invitations.revokeLabel', { email: invitation.Email })}
-                onClick={() => {
-                  revoke.mutate();
-                }}
-              >
-                {t('invitations.revoke')}
-              </Button>
-            </>
-          ) : null}
+          <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {invitation.EmailStatus === 'sent' ? <Badge tone="ok">{t('invitations.email.sent')}</Badge> : null}
+            {invitation.EmailStatus === 'failed' ? <Badge tone="warn">{t('invitations.email.failed')}</Badge> : null}
+            {invitation.Expired ? <Badge tone="bad">{t('invitations.expired')}</Badge> : null}
+            {allowed ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  aria-label={t('invitations.resendLabel', { email: invitation.Email })}
+                  onClick={() => {
+                    resend.mutate();
+                  }}
+                >
+                  {t('invitations.resend')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  iconStart="close"
+                  disabled={busy}
+                  aria-label={t('invitations.revokeLabel', { email: invitation.Email })}
+                  onClick={() => {
+                    revoke.mutate();
+                  }}
+                >
+                  {t('invitations.revoke')}
+                </Button>
+              </>
+            ) : null}
+          </span>
         </>
       }
     />

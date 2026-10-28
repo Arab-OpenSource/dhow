@@ -41,9 +41,12 @@ const MemberSub = ({ member, manager }: { member: TMember; manager: boolean }) =
   const time = useRelativeTime();
   return (
     <>
-      <bdi dir="ltr" className="block font-mono">
+      <bdi dir="ltr" className="block truncate font-mono">
         {member.Email}
       </bdi>
+      <span className="mt-1 flex flex-wrap gap-1.5 sm:hidden">
+        <MemberBadges member={member} manager={manager} />
+      </span>
       <span className="block">
         {member.EffectiveRole === member.Role ? null : `${t('members.viaTeam', { role: t(`role.${member.EffectiveRole}`) })} · `}
         {manager && member.Mfa !== undefined && member.Mfa !== 'none' ? `${t(`members.mfa.${member.Mfa}`)} · ` : null}
@@ -90,7 +93,11 @@ const MembersList = ({ organizationId, role, onOpenMember }: IMembersCardProps) 
             start={<Avatar name={member.Name} size="sm" />}
             title={member.UserId === me ? `${member.Name} (${t('members.you')})` : member.Name}
             sub={<MemberSub member={member} manager={manager} />}
-            end={<MemberBadges member={member} manager={manager} />}
+            end={
+              <span className="hidden items-center gap-1.5 sm:flex">
+                <MemberBadges member={member} manager={manager} />
+              </span>
+            }
             onSelect={
               onOpenMember === undefined
                 ? undefined

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '@/App/App';
 import { createAppRouter } from '@/App/Router';
 import { createQueryClient } from '@/Core/Api/QueryClient';
+import { formatDateTime } from '@/Core/Format/TimeFormat';
 import { useOrganizationStore } from '@/Core/Store/useOrganizationStore';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
@@ -73,6 +74,7 @@ describe('inviting a member', () => {
     const { user, dialog, calls } = await open('/?stack=organization', Ar['organization.title']);
     const list = await within(dialog).findByRole('list', { name: Ar['invitations.title'] });
     expect(list).toHaveTextContent('ali@future.dev');
+    expect(list).toHaveTextContent(Ar['invitations.expires'].replace('{when}', formatDateTime('2026-11-03T08:00:00Z', 'ar')));
     await user.click(within(list).getByRole('button', { name: Ar['invitations.resendLabel'].replace('{email}', 'ali@future.dev') }));
     expect(await within(dialog).findByText(INVITE_LINK)).toBeInTheDocument();
     await user.click(within(list).getByRole('button', { name: Ar['invitations.revokeLabel'].replace('{email}', 'ali@future.dev') }));
