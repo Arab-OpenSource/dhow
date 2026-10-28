@@ -9,9 +9,12 @@ export const SCOPES: readonly TApiTokenScope[] = [
   'audit.read',
   'runner.read',
   'runner.manage',
+  'job.read',
+  'job.cancel',
 ];
 
-const READ_ONLY: readonly TApiTokenScope[] = ['org.read', 'member.read', 'runner.read'];
+const DEVELOPER: readonly TApiTokenScope[] = ['org.read', 'member.read', 'runner.read', 'job.read'];
+const MAINTAINER: readonly TApiTokenScope[] = [...DEVELOPER, 'job.cancel'];
 
 export const scopesFor = (role: TRole): readonly TApiTokenScope[] => {
   switch (role) {
@@ -19,10 +22,11 @@ export const scopesFor = (role: TRole): readonly TApiTokenScope[] => {
     case 'admin':
       return SCOPES;
     case 'maintainer':
+      return MAINTAINER;
     case 'developer':
-      return READ_ONLY;
+      return DEVELOPER;
     case 'viewer':
-      return ['org.read'];
+      return ['org.read', 'job.read'];
     default:
       return [];
   }

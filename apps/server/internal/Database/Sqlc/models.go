@@ -29,6 +29,22 @@ type ApiToken struct {
 	LastUsedIp      string
 }
 
+type AttemptStep struct {
+	Id            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsDeleted     bool
+	AttemptId     uuid.UUID
+	Index         int32
+	Name          string
+	Mutating      bool
+	State         string
+	StartedAt     time.Time
+	FinishedAt    *time.Time
+	ExitCode      pgtype.Int4
+	FailureReason string
+}
+
 type AuditEvent struct {
 	Id             uuid.UUID
 	CreatedAt      time.Time
@@ -86,6 +102,72 @@ type Invitation struct {
 	AcceptedAt       *time.Time
 	AcceptedByUserId *uuid.UUID
 	RevokedAt        *time.Time
+}
+
+type Job struct {
+	Id                uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	IsDeleted         bool
+	OrganizationId    uuid.UUID
+	CreatedByUserId   uuid.UUID
+	Name              string
+	Spec              []byte
+	SpecDigest        []byte
+	Image             string
+	Labels            []string
+	Isolation         string
+	Priority          int32
+	State             string
+	FailureReason     string
+	QueuedAt          time.Time
+	StartedAt         *time.Time
+	FinishedAt        *time.Time
+	Deadline          *time.Time
+	QueueDeadline     time.Time
+	CancelRequestedAt *time.Time
+	CancelRequestedBy *uuid.UUID
+	AttemptCount      int32
+	MaxInfraRetries   int32
+}
+
+type JobAttempt struct {
+	Id                uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	IsDeleted         bool
+	JobId             uuid.UUID
+	OrganizationId    uuid.UUID
+	RunnerId          uuid.UUID
+	Number            int32
+	FencingToken      int64
+	State             string
+	FailureReason     string
+	ExitCode          pgtype.Int4
+	LeasedAt          time.Time
+	StartedAt         *time.Time
+	FinishedAt        *time.Time
+	MutationStartedAt *time.Time
+	CompletionDigest  []byte
+	LastSeq           int64
+	LogBytes          int64
+}
+
+type Lease struct {
+	Id              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	IsDeleted       bool
+	AttemptId       uuid.UUID
+	JobId           uuid.UUID
+	OrganizationId  uuid.UUID
+	RunnerId        uuid.UUID
+	FencingToken    int64
+	GrantDigest     []byte
+	State           string
+	ExpiresAt       time.Time
+	LastHeartbeatAt time.Time
+	EndedAt         *time.Time
 }
 
 type LoginThrottle struct {

@@ -57,6 +57,9 @@ const (
 	RunnerKeysRotated              = "runner.keys_rotated"
 	RunnerRegistrationTokenCreated = "runner.registration_token_created"
 	RunnerRegistrationTokenRevoked = "runner.registration_token_revoked"
+
+	JobCreated         = "job.created"
+	JobCancelRequested = "job.cancel_requested"
 )
 
 func AuditedEvents() []string {
@@ -109,6 +112,8 @@ func AuditedEvents() []string {
 		RunnerKeysRotated,
 		RunnerRegistrationTokenCreated,
 		RunnerRegistrationTokenRevoked,
+		JobCreated,
+		JobCancelRequested,
 	}
 }
 

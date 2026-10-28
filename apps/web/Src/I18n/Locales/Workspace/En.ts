@@ -242,6 +242,8 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'scope.audit.read': 'Read the audit log',
   'scope.runner.read': 'Read runners',
   'scope.runner.manage': 'Manage runners and their registration tokens',
+  'scope.job.read': 'Read jobs and their specs',
+  'scope.job.cancel': 'Cancel jobs',
 
   'sessions.current': 'This device',
   'sessions.device': '{browser} on {os}',

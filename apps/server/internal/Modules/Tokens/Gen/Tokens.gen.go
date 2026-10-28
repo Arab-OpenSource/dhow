@@ -19,6 +19,8 @@ import (
 // Defines values for ApiTokenScope.
 const (
 	AuditRead    ApiTokenScope = "audit.read"
+	JobCancel    ApiTokenScope = "job.cancel"
+	JobRead      ApiTokenScope = "job.read"
 	MemberManage ApiTokenScope = "member.manage"
 	MemberRead   ApiTokenScope = "member.read"
 	OrgRead      ApiTokenScope = "org.read"
@@ -31,6 +33,10 @@ const (
 func (e ApiTokenScope) Valid() bool {
 	switch e {
 	case AuditRead:
+		return true
+	case JobCancel:
+		return true
+	case JobRead:
 		return true
 	case MemberManage:
 		return true

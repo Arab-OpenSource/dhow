@@ -2,7 +2,7 @@
 
 - **الحالة:** مقبول
 - **التاريخ:** 2026-10-28
-- **بيكمّل:** [ADR-0013](0013-authentication-methods.md) و[ADR-0033](0033-browser-sessions-invites-breached-passwords.md) و[ADR-0035](0035-identity-core-implementation.md) و[ADR-0037](0037-mfa-implementation.md) و[ADR-0038](0038-orgs-teams-invites-implementation.md).
+- **بيكمّل:** [ADR-0013](0013-authentication-methods.md) و[ADR-0033](0033-browser-sessions-invites-breached-passwords.md) و[ADR-0035](0035-identity-core-implementation.md) و[ADR-0037](0037-mfa-implementation.md) و[ADR-0038](0038-orgs-teams-invites-implementation.md) و[ADR-0047](0047-job-state-machine-and-reconciliation.md).
 
 ## السياق
 خطة M2 (القسم 4 و7 و9) قالت: دخول بـ GitHub وGoogle وأي IdP بيدعم OIDC بـ PKCE وstate وnonce، والربط بالـ `sub` مش بالإيميل، وقايمة دومينات اختيارية، وAPI tokens بتبدأ بـ `dhow_pat_` ومتخزّنة HMAC وليها scope وانتهاء إجباري وعمرها ما تعدّي صلاحيات اللي عملها، والثيم والتفضيلات تتنقل من `localStorage` للسيرفر. التنفيذ طلّع أسئلة لازم تتقفل: المزوّدين بيتظبطوا فين، GitHub مش OIDC أصلًا، الـ callback يرجع للسيرفر ولا للواجهة، الـ token يعرف صلاحياته إزاي من غير ما يتجمّد على دور قديم، وإزاي الـ Bearer ما يفتحش ثغرة جنب الـ cookie والـ CSRF.
@@ -43,7 +43,11 @@
 
 ### API tokens
 - **الصيغة:** `dhow_pat_` وبعدها 32 byte عشوائي base64url (43 حرف). المتخزّن HMAC-SHA256 بمفتاح مشتق من `DHOW_SECRET_KEY` (`dhow/api-token/v1`). القيمة بتظهر في رد الإنشاء بس.
-- **الـ scopes هي actions الـ policy نفسها** (`policy.TokenActions()`): `org.read` و`org.update` و`member.read` و`member.manage` و`audit.read` و`runner.read` و`runner.manage`. مفيش scope للخروج من المؤسسة ولا نقل الملكية ولا إدارة الـ tokens ولا الجلسة.
+- **الـ scopes هي actions الـ policy نفسها** (`policy.TokenActions()`): `org.read` و`org.update` و`member.read` و`member.manage` و`audit.read` و`runner.read` و`runner.manage` و`job.read` و`job.cancel`. مفيش scope للخروج من المؤسسة ولا نقل الملكية ولا إدارة الـ tokens ولا الجلسة.
+- **actions الـ jobs اللي جت مع M3.3 (ADR-0047):**
+  - `job.read` و`job.cancel` مفتوحين للـ tokens، لأن الـ CI محتاج يتابع الـ job ويلغيه، والإلغاء بيقلّل مش بيزوّد.
+  - `job.create` للمتصفح بس. الـ job بيشغّل أي image على أي runner في المؤسسة من غير مراجعة كود (ADR-0047)، فـ token متسرّب فيه `job.create` يبقى تشغيل كود على كل الـ runners. التشغيل من بره هيبقى من خلال الـ pipelines والنشر في M4، بـ scope ليه حدود المشروع والبيئة، مش من خلال jobs خام.
+  - الـ `job.read` بيكشف الـ spec بالـ env والـ scripts، زي ما هو للـ Viewer (ADR-0051).
 - **الصلاحية بتتحسب مع كل طلب:** `policy.Can()` لـ subject جاي من token بيطلب الـ action يبقى في الـ scopes **وفي** الدور الفعلي الحالي لصاحب الـ token في المؤسسة (ADR-0038). التنزيل بيقلّل الـ token على طول، والرفع عمره ما يدّيه scope ما اتعملش بيه. وقت الإنشاء كل scope لازم دور اللي بيعمله يسمح بيه، وإلا `403 SCOPE_NOT_ALLOWED`.
 - **مربوط بصف العضوية** (`"MembershipId"`): الخروج من المؤسسة أو الشيل بيوقف الـ token للأبد حتى لو العضو رجع، والحساب المقفول بيوقفه، والمؤسسة الممسوحة بتوقفه.
 - **الانتهاء إجباري** من يوم لـ 366 يوم، والحد 50 token شغّال لكل مستخدم (بـ lock على صف المستخدم).
@@ -74,7 +78,7 @@
 
 ### الاعتماديات والـ migration
 - `github.com/coreos/go-oidc/v3` v3.21.0 و`golang.org/x/oauth2` v0.37.0، ومعاهم `github.com/go-jose/go-jose/v4` v4.1.4 بشكل غير مباشر. التحقق من توقيعات JWT واكتشاف المزوّد مش حاجة نكتبها بإيدينا.
-- migration `00008_identities_tokens_preferences.sql`. الرقم 00031 محجوز لـ M3.3.
+- migration `00032_identities_tokens_preferences.sql`، بعد `00031_jobs.sql` بتاع M3.3، لأن Goose شغّال من غير allow-missing وبيرفض migration رقمه أقل من آخر واحد اتطبّق. لسه مفيش نسخة طالعة، فالرقم ده من غير تمن.
 
 ## البدائل اللي اتدرست
 - **المزوّدين في قاعدة البيانات بسر مشفّر:** محتاج شاشة إدارة وقرار تدوير مفاتيح، ومن غيرهم مفيش فايدة عن الـ env.
@@ -88,11 +92,10 @@
 
 ## العواقب
 - أي route مؤسسة جديد لازم يقرر يفتح للـ tokens ولا لأ، ويعلن ده في `openapi.yaml` كمان، وإلا الاختبار بيقع.
-- أي action جديد ممكن يبقى scope بإضافته لـ `TokenActions()` وللـ CHECK في الجدول بـ migration جديد.
+- أي action جديد ممكن يبقى scope بإضافته لـ `TokenActions()` وللـ CHECK في الجدول بـ migration جديد، وبقرار مكتوب زي قرار الـ jobs.
 - **قيود معروفة:**
   - مفيش دخول لأول مرة بالـ IdP ولا قبول دعوة بيه: الحساب لازم يتعمل بكلمة سر الأول ويتربط من حسابي.
   - `POST /oidc/authorize` و`/oidc/callback` عامين ومن غير throttle، وصفوف `"OidcFlows"` المنتهية ما بتتنضفش. ده مع rate limiting العام والتنضيف في M2.5.
   - جلسة داو مستقلة عن جلسة الـ IdP: الخروج من الـ IdP أو قفل الحساب هناك ما بيخرّجش حد من داو (مفيش back-channel logout)، والمزوّد اللي اتشال من الإعداد ما بيلغيش الجلسات اللي اتفتحت بيه.
   - الواجهة مفيهاش لسه شاشة لـ tokens المؤسسة كلها، الـ API موجود (`GET` و`POST .../api-tokens/{tokenId}/revoke`).
   - الـ tokens على مستوى المؤسسة بس، وscope المشروع والبيئة مع M4.
-  - Goose شغّال من غير allow-missing، فقاعدة بيانات طبّقت `00030` قبل ما `00008` يتدمج (زي `00007` في M2.3) لازم تتعمل من الأول. لسه مفيش تثبيت حقيقي.

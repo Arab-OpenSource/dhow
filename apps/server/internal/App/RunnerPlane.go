@@ -5,12 +5,16 @@ import (
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
+	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 )
 
 func RunnerPlane(o Options) http.Handler {
 	mux := http.NewServeMux()
 	runners.ConnectRoutes(mux, runners.Deps{Service: o.Runners, Gate: o.Gate, Log: o.Log})
+	if o.Jobs != nil {
+		jobs.ConnectRoutes(mux, jobs.Deps{Service: o.Jobs, Gate: o.Gate, Log: o.Log})
+	}
 	h := http.StripPrefix(config.RunnerAPIPrefix, mux)
 	stack := []func(http.Handler) http.Handler{
 		middleware.RequestID,

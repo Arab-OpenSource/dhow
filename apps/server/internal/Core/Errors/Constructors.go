@@ -180,3 +180,15 @@ func ApiTokenLimit() *AppError {
 func ScopeNotAllowed() *AppError {
 	return New(http.StatusForbidden, CodeScopeNotAllowed, KeyScopeNotAllowed)
 }
+
+func SecretsUnavailable() *AppError {
+	return New(http.StatusUnprocessableEntity, CodeSecretsUnavailable, KeySecretsUnavailable)
+}
+
+func JobFinished() *AppError {
+	return New(http.StatusConflict, CodeJobFinished, KeyJobFinished)
+}
+
+func JobQueueFull() *AppError {
+	return New(http.StatusTooManyRequests, CodeJobQueueFull, KeyJobQueueFull)
+}

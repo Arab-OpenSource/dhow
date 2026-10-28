@@ -1,0 +1,278 @@
+package jobspec
+
+import (
+	"fmt"
+	"net"
+	"regexp"
+	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+
+	"google.golang.org/protobuf/proto"
+
+	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+)
+
+const (
+	imageDomain    = `(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)(?:\.(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?))*(?::[0-9]{1,5})?`
+	imageComponent = `[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*`
+	imageTag       = `[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}`
+	hostLabel      = `[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?`
+	maxPort        = 65535
+)
+
+var (
+	imagePattern = regexp.MustCompile(`^(?:` + imageDomain + `/)?` + imageComponent + `(?:/` + imageComponent + `)*(?::` + imageTag + `)?@sha256:[a-f0-9]{64}$`)
+	imageAnyRef  = regexp.MustCompile(`^(?:` + imageDomain + `/)?` + imageComponent + `(?:/` + imageComponent + `)*(?::` + imageTag + `)?$`)
+	envName      = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	secretName   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	secretFile   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	egressHost   = regexp.MustCompile(`^(?:\*\.)?` + hostLabel + `(?:\.` + hostLabel + `)*$`)
+	labelPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?(=[A-Za-z0-9]([A-Za-z0-9._-]{0,62}[A-Za-z0-9])?)?$`)
+)
+
+type checker struct {
+	violations []Violation
+}
+
+func (c *checker) add(field, reason string) {
+	c.violations = append(c.violations, Violation{Field: field, Reason: reason})
+}
+
+func at(field string, i int) string { return fmt.Sprintf("%s[%d]", field, i) }
+
+func Validate(spec *runnerv1.JobSpec) error {
+	if spec == nil {
+		return ErrNilSpec
+	}
+	c := &checker{}
+	if proto.Size(spec) > MaxSpecBytes {
+		c.add("Spec", ReasonTooLong)
+		return &Error{Violations: c.violations}
+	}
+	c.image(spec.GetImage())
+	c.steps(spec.GetSteps(), spec.GetTimeoutSeconds())
+	c.env("Env", spec.GetEnv())
+	c.secrets(spec)
+	c.resources(spec.GetResources())
+	if t := spec.GetTimeoutSeconds(); t < MinTimeoutSeconds || t > MaxTimeoutSeconds {
+		c.add("TimeoutSeconds", ReasonOutOfRange)
+	}
+	c.egress(spec.GetNetwork().GetEgress())
+	if IsolationName(spec.GetIsolation()) == "" {
+		c.add("Isolation", ReasonInvalid)
+	}
+	c.labels(spec.GetLabels())
+	if len(c.violations) > 0 {
+		return &Error{Violations: c.violations}
+	}
+	return nil
+}
+
+func (c *checker) image(v string) {
+	switch {
+	case v == "":
+		c.add("Image", ReasonRequired)
+	case len(v) > MaxImageLength:
+		c.add("Image", ReasonTooLong)
+	case imagePattern.MatchString(v):
+	case imageAnyRef.MatchString(v):
+		c.add("Image", ReasonNotPinned)
+	default:
+		c.add("Image", ReasonInvalid)
+	}
+}
+
+func validText(v string, maxRunes int) string {
+	switch {
+	case strings.TrimSpace(v) == "":
+		return ReasonRequired
+	case utf8.RuneCountInString(v) > maxRunes:
+		return ReasonTooLong
+	case !utf8.ValidString(v) || strings.IndexFunc(v, unicode.IsControl) >= 0:
+		return ReasonInvalid
+	default:
+		return ""
+	}
+}
+
+func (c *checker) steps(steps []*runnerv1.Step, jobTimeout int32) {
+	switch {
+	case len(steps) == 0:
+		c.add("Steps", ReasonRequired)
+		return
+	case len(steps) > MaxSteps:
+		c.add("Steps", ReasonTooMany)
+		return
+	}
+	for i, s := range steps {
+		field := at("Steps", i)
+		if r := validText(s.GetName(), MaxStepNameLength); r != "" {
+			c.add(field+".Name", r)
+		}
+		switch {
+		case strings.TrimSpace(s.GetRun()) == "":
+			c.add(field+".Run", ReasonRequired)
+		case len(s.GetRun()) > MaxRunBytes:
+			c.add(field+".Run", ReasonTooLong)
+		case strings.ContainsRune(s.GetRun(), 0):
+			c.add(field+".Run", ReasonInvalid)
+		}
+		c.env(field+".Env", s.GetEnv())
+		if t := s.GetTimeoutSeconds(); t < 0 || t > jobTimeout {
+			c.add(field+".TimeoutSeconds", ReasonOutOfRange)
+		}
+	}
+}
+
+func (c *checker) envName(field, name string) {
+	switch {
+	case name == "" || !envName.MatchString(name):
+		c.add(field, ReasonInvalid)
+	case len(name) > MaxEnvNameLength:
+		c.add(field, ReasonTooLong)
+	case strings.HasPrefix(strings.ToUpper(name), ReservedEnvPrefix):
+		c.add(field, ReasonReserved)
+	}
+}
+
+func (c *checker) env(field string, env map[string]string) {
+	if len(env) > MaxEnvEntries {
+		c.add(field, ReasonTooMany)
+		return
+	}
+	for _, name := range sortedKeys(env) {
+		c.envName(field+"."+name, name)
+		v := env[name]
+		switch {
+		case len(v) > MaxEnvValueBytes:
+			c.add(field+"."+name, ReasonTooLong)
+		case strings.ContainsRune(v, 0):
+			c.add(field+"."+name, ReasonInvalid)
+		}
+	}
+}
+
+func (c *checker) secrets(spec *runnerv1.JobSpec) {
+	secrets := spec.GetSecrets()
+	if len(secrets) > MaxSecrets {
+		c.add("Secrets", ReasonTooMany)
+		return
+	}
+	targets := map[string]bool{}
+	for i, s := range secrets {
+		field := at("Secrets", i)
+		switch {
+		case s.GetName() == "" || !secretName.MatchString(s.GetName()):
+			c.add(field+".Name", ReasonInvalid)
+		case len(s.GetName()) > MaxSecretNameLength:
+			c.add(field+".Name", ReasonTooLong)
+		}
+		target := c.secretTarget(field, s, spec)
+		if target != "" && targets[target] {
+			c.add(field, ReasonDuplicate)
+		}
+		targets[target] = true
+		for _, idx := range s.GetStepIndexes() {
+			if idx < 0 || int(idx) >= len(spec.GetSteps()) {
+				c.add(field+".Steps", ReasonOutOfRange)
+				break
+			}
+		}
+	}
+}
+
+func (c *checker) secretTarget(field string, s *runnerv1.SecretRef, spec *runnerv1.JobSpec) string {
+	switch t := s.GetTarget().(type) {
+	case *runnerv1.SecretRef_AsEnv:
+		c.envName(field+".AsEnv", t.AsEnv)
+		if usesEnv(spec, t.AsEnv) {
+			c.add(field+".AsEnv", ReasonDuplicate)
+		}
+		return "env:" + t.AsEnv
+	case *runnerv1.SecretRef_AsFile:
+		name := t.AsFile
+		switch {
+		case name == "." || name == ".." || !secretFile.MatchString(name):
+			c.add(field+".AsFile", ReasonInvalid)
+		case len(name) > MaxSecretFileLength:
+			c.add(field+".AsFile", ReasonTooLong)
+		}
+		return "file:" + name
+	default:
+		c.add(field+".AsEnv", ReasonRequired)
+		return ""
+	}
+}
+
+func usesEnv(spec *runnerv1.JobSpec, name string) bool {
+	if _, ok := spec.GetEnv()[name]; ok {
+		return true
+	}
+	for _, s := range spec.GetSteps() {
+		if _, ok := s.GetEnv()[name]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *checker) resources(r *runnerv1.Resources) {
+	bounds := []struct {
+		field    string
+		v        int64
+		min, max int64
+	}{
+		{"Resources.CpuMillis", r.GetCpuMillis(), MinCPUMillis, MaxCPUMillis},
+		{"Resources.MemoryBytes", r.GetMemoryBytes(), MinMemoryBytes, MaxMemoryBytes},
+		{"Resources.Pids", r.GetPids(), MinPids, MaxPids},
+		{"Resources.DiskBytes", r.GetDiskBytes(), MinDiskBytes, MaxDiskBytes},
+	}
+	for _, b := range bounds {
+		if b.v < b.min || b.v > b.max {
+			c.add(b.field, ReasonOutOfRange)
+		}
+	}
+}
+
+func (c *checker) egress(entries []string) {
+	if len(entries) > MaxEgressEntries {
+		c.add("Network.Egress", ReasonTooMany)
+		return
+	}
+	for i, e := range entries {
+		if !validEgress(e) {
+			c.add(at("Network.Egress", i), ReasonInvalid)
+		}
+	}
+}
+
+func validEgress(e string) bool {
+	if e == "" || len(e) > MaxEgressEntryLength {
+		return false
+	}
+	host, port, hasPort := strings.Cut(e, ":")
+	if hasPort {
+		n, err := strconv.Atoi(port)
+		if err != nil || n < 1 || n > maxPort || strconv.Itoa(n) != port {
+			return false
+		}
+	}
+	if net.ParseIP(host) != nil {
+		return false
+	}
+	return len(host) <= 253 && egressHost.MatchString(host)
+}
+
+func (c *checker) labels(labels []string) {
+	if len(labels) > MaxLabels {
+		c.add("Labels", ReasonTooMany)
+		return
+	}
+	for i, l := range labels {
+		if len(l) > MaxLabelLength || !labelPattern.MatchString(l) {
+			c.add(at("Labels", i), ReasonInvalid)
+		}
+	}
+}

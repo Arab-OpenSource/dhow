@@ -46,7 +46,7 @@ CREATE TABLE "ApiTokens" (
     "TokenHash"       bytea NOT NULL CHECK (octet_length("TokenHash") = 32),
     "Scopes"          TEXT[] NOT NULL CHECK (
         cardinality("Scopes") BETWEEN 1 AND 16
-        AND "Scopes" <@ ARRAY['org.read', 'org.update', 'member.read', 'member.manage', 'audit.read', 'runner.read', 'runner.manage']::text[]
+        AND "Scopes" <@ ARRAY['org.read', 'org.update', 'member.read', 'member.manage', 'audit.read', 'runner.read', 'runner.manage', 'job.read', 'job.cancel']::text[]
     ),
     "ExpiresAt"       timestamptz NOT NULL,
     "RevokedAt"       timestamptz,

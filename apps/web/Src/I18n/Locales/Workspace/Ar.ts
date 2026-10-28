@@ -241,6 +241,8 @@ export const WorkspaceAr = {
   'scope.audit.read': 'يقرا سجل الأحداث',
   'scope.runner.read': 'يشوف أجهزة التشغيل',
   'scope.runner.manage': 'يدير أجهزة التشغيل وتوكنات تسجيلها',
+  'scope.job.read': 'يشوف الشغل اللي على أجهزة التشغيل وتفاصيله',
+  'scope.job.cancel': 'يلغي الشغل اللي على أجهزة التشغيل',
 
   'sessions.current': 'الجهاز ده',
   'sessions.device': '{browser} على {os}',

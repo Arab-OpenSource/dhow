@@ -45,17 +45,20 @@ const (
 	RunnerManage      Action = "runner.manage"
 	TokenCreate       Action = "token.create"
 	TokenManage       Action = "token.manage"
+	JobRead           Action = "job.read"
+	JobCreate         Action = "job.create"
+	JobCancel         Action = "job.cancel"
 )
 
 func Actions() []Action {
 	return []Action{
 		OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, OrgCreate,
-		RunnerRead, RunnerManage, TokenCreate, TokenManage,
+		RunnerRead, RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel,
 	}
 }
 
 func TokenActions() []Action {
-	return []Action{OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, RunnerRead, RunnerManage}
+	return []Action{OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, RunnerRead, RunnerManage, JobRead, JobCancel}
 }
 
 func IsTokenAction(a Action) bool { return slices.Contains(TokenActions(), a) }
@@ -76,17 +79,19 @@ func Grants(role Role) []Action {
 	case RoleOwner:
 		return []Action{
 			OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
-			TokenCreate, TokenManage,
+			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel,
 		}
 	case RoleAdmin:
 		return []Action{
 			OrgRead, OrgUpdate, OrgLeave, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
-			TokenCreate, TokenManage,
+			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel,
 		}
-	case RoleMaintainer, RoleDeveloper:
-		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, TokenCreate}
+	case RoleMaintainer:
+		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, JobCancel, TokenCreate}
+	case RoleDeveloper:
+		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, TokenCreate}
 	case RoleViewer:
-		return []Action{OrgRead, OrgLeave, SessionManageSelf, TokenCreate}
+		return []Action{OrgRead, OrgLeave, SessionManageSelf, JobRead, TokenCreate}
 	default:
 		return nil
 	}

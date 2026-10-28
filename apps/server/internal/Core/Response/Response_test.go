@@ -2,6 +2,7 @@ package response_test
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
 	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
@@ -143,12 +145,14 @@ func TestPageParams(t *testing.T) {
 		{"explicit", ptr(3), ptr(10), 3, 10},
 		{"limit is capped", ptr(1), ptr(5000), 1, 100},
 		{"zero and negative fall back", ptr(0), ptr(-4), 1, 25},
+		{"page is capped so the offset fits in int32", ptr(math.MaxInt), ptr(100), config.MaxPage, 100},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			page, limit := response.PageParams(tt.page, tt.limit)
 			assert.Equal(t, tt.wantPage, page)
 			assert.Equal(t, tt.wantLimit, limit)
+			assert.LessOrEqual(t, (page-1)*limit, math.MaxInt32, "the SQL offset is an int32")
 		})
 	}
 }

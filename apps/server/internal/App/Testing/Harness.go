@@ -104,6 +104,7 @@ func (fakeMigrations) Current(context.Context) (bool, error) { return true, nil 
 
 type Env struct {
 	T       *testing.T
+	Secrets *FakeSecrets
 	Pool    *pgxpool.Pool
 	Wired   *app.Wired
 	Handler http.Handler
@@ -136,6 +137,7 @@ type Options struct {
 	Profile       func(*config.Config)
 	Clock         *Clock
 	OidcTransport http.RoundTripper
+	Secrets       *FakeSecrets
 }
 
 func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) *Env {
@@ -146,6 +148,11 @@ func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) 
 func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func(*config.Config)) *Env {
 	t.Helper()
 	return NewWithOptions(t, Options{Pool: pool, Params: &params, Profile: configure})
+}
+
+func NewWithSecrets(t *testing.T, secrets *FakeSecrets) *Env {
+	t.Helper()
+	return NewWithOptions(t, Options{Secrets: secrets})
 }
 
 func NewWithOptions(t *testing.T, o Options) *Env {
@@ -176,14 +183,22 @@ func NewWithOptions(t *testing.T, o Options) *Env {
 		clock = NewClock(time.Now().UTC().Truncate(time.Second))
 	}
 	breach := &FakeBreach{}
-	wired, err := app.Build(t.Context(), app.Infra{
+	infra := app.Infra{
 		Config: cfg, Log: log, Pool: pool, Migrations: fakeMigrations{}, Build: buildinfo.Info{Version: "test", Commit: "test"},
 		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer, OidcTransport: o.OidcTransport,
-	})
+	}
+	if o.Secrets != nil {
+		infra.Secrets = o.Secrets
+	}
+	wired, err := app.Build(t.Context(), infra)
 	require.NoError(t, err)
+	startListener(t, wired)
 	hasher, err := auth.NewHasher(t.Context(), params, 4)
 	require.NoError(t, err)
-	return &Env{T: t, Pool: pool, Wired: wired, Handler: wired.Handler, Logs: logs, Clock: clock, Breach: breach, Hasher: hasher, Config: cfg}
+	return &Env{
+		T: t, Pool: pool, Wired: wired, Handler: wired.Handler, Logs: logs, Clock: clock, Breach: breach, Hasher: hasher, Config: cfg,
+		Secrets: o.Secrets,
+	}
 }
 
 type Response struct {
