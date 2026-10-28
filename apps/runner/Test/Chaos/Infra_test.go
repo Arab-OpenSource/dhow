@@ -28,7 +28,6 @@ const (
 	slowPort      = "5001"
 	pgContainer   = "dhow-chaos-postgres"
 	regContainer  = "dhow-chaos-registry"
-	pgPassword    = "chaos-db-password"
 	commandWait   = 5 * time.Minute
 )
 
@@ -83,7 +82,7 @@ func writeCerts(dir string) (string, error) {
 		filepath.Join(dir, "registry.key"): pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}),
 	}
 	for name, body := range files {
-		if err := os.WriteFile(name, body, 0o644); err != nil {
+		if err := os.WriteFile(name, body, 0o600); err != nil {
 			return "", err
 		}
 	}
@@ -107,10 +106,10 @@ func trustRegistry(home, caPath string) error {
 	return nil
 }
 
-func startPostgres(port string) error {
+func startPostgres(port, password string) error {
 	_, _ = podman("rm", "--force", pgContainer)
 	if _, err := podman("run", "--detach", "--name", pgContainer, "--publish", "127.0.0.1:"+port+":5432",
-		"--env", "POSTGRES_PASSWORD="+pgPassword, "--env", "POSTGRES_DB=dhow", postgresImage); err != nil {
+		"--env", "POSTGRES_PASSWORD="+password, "--env", "POSTGRES_DB=dhow", postgresImage); err != nil {
 		return err
 	}
 	return waitPostgres()

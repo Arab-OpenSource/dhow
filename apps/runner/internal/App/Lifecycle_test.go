@@ -14,6 +14,7 @@ import (
 	runnertest "github.com/Khaymah/dhow/apps/runner/internal/App/Testing"
 	executor "github.com/Khaymah/dhow/apps/runner/internal/Executor"
 	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
 	fake "github.com/Khaymah/dhow/apps/runner/internal/Sandbox/Fake"
 	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 	"github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
@@ -285,4 +286,18 @@ func TestProcessesThatSurviveTheKillFailTheAttempt(t *testing.T) {
 	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_FAILED, out.Result)
 	assert.Equal(t, runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, out.Reason, "a canceled job whose processes outlive the kill is a sandbox failure")
 	assert.Equal(t, []syscall.Signal{syscall.SIGTERM, syscall.SIGKILL}, signals(running.Driver.Events()), "the kill comes after SIGTERM and SIGKILL")
+}
+
+func TestProcessesLeftAfterTheJobEndedFailTheAttempt(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	srv.Enqueue(runnertest.Spec(), nil)
+	running := r.Start(fake.Recording{DestroySurvivors: true}, runnertest.StartOptions{})
+	out := running.Next(t, finishWithin)
+	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_FAILED, out.Result)
+	assert.Equal(t, runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, out.Reason, "a job that left processes behind its last step is a sandbox failure")
+	assert.True(t, out.Survivors)
+	assert.ErrorIs(t, running.Ended(t, finishWithin), sandbox.ErrSurvivors, "the runner takes no more work and stops")
+	srv.Enqueue(runnertest.Spec(), nil)
+	assert.Len(t, srv.Leases(), 1, "the stopped runner leased nothing else")
 }

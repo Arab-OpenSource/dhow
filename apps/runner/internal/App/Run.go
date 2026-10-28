@@ -174,19 +174,21 @@ func (r *Runner) loop(ctx context.Context) error {
 	defer wg.Wait()
 	slots := make(chan struct{}, r.cfg.Capacity)
 	freed := make(chan struct{}, 1)
-	for n := 0; ctx.Err() == nil; {
+	leaseCtx, quarantine := context.WithCancel(ctx)
+	defer quarantine()
+	for n := 0; leaseCtx.Err() == nil; {
 		free := r.cfg.Capacity - len(slots)
 		if free == 0 {
 			select {
 			case <-freed:
-			case <-ctx.Done():
+			case <-leaseCtx.Done():
 			}
 			continue
 		}
 		sent := time.Now()
-		grant, err := r.client.Lease(ctx, int32(free), r.wait) //nolint:gosec // At most 16 slots.
+		grant, err := r.client.Lease(leaseCtx, int32(free), r.wait) //nolint:gosec // At most 16 slots.
 		if err != nil {
-			if ctx.Err() != nil {
+			if leaseCtx.Err() != nil {
 				break
 			}
 			if client.Fatal(err) {
@@ -201,7 +203,7 @@ func (r *Runner) loop(ctx context.Context) error {
 			continue
 		}
 		n = 0
-		if grant == nil {
+		if grant == nil || leaseCtx.Err() != nil {
 			continue
 		}
 		slots <- struct{}{}
@@ -209,6 +211,10 @@ func (r *Runner) loop(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			out := r.exec.Run(ctx, grant, sent)
+			if out.Survivors {
+				r.log.Error("processes of a job survived the kill; the runner takes no more work and stops once its other jobs end", "lease", out.LeaseID)
+				quarantine()
+			}
 			<-slots
 			select {
 			case freed <- struct{}{}:
@@ -219,8 +225,12 @@ func (r *Runner) loop(ctx context.Context) error {
 			}
 		}()
 	}
+	wg.Wait()
 	if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
+	}
+	if leaseCtx.Err() != nil && ctx.Err() == nil {
+		return fmt.Errorf("stop the runner: %w", sandbox.ErrSurvivors)
 	}
 	return nil
 }

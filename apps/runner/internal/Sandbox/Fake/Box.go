@@ -211,6 +211,9 @@ func (b *box) Destroy(ctx context.Context) error {
 	}
 	b.gone = true
 	b.d.record(Event{Kind: EventDestroy, AttemptID: b.attempt})
+	if b.d.rec.DestroySurvivors {
+		return sandbox.ErrSurvivors
+	}
 	return nil
 }
 

@@ -42,6 +42,7 @@ type Recording struct {
 	PrepareError       string `json:"PrepareError"`
 	PrepareDelayMillis int    `json:"PrepareDelayMillis"`
 	KillSurvivors      bool   `json:"KillSurvivors"`
+	DestroySurvivors   bool   `json:"DestroySurvivors"`
 }
 
 type EventKind string

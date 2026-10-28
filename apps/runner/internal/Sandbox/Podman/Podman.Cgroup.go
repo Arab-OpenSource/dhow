@@ -126,7 +126,7 @@ func populated(dir string) (bool, error) {
 			return strings.TrimSpace(v) != "0", nil
 		}
 	}
-	return false, nil
+	return false, fmt.Errorf("%s has no populated line", filepath.Join(dir, "cgroup.events"))
 }
 
 func drained(ctx context.Context, dir string, wait time.Duration) bool {

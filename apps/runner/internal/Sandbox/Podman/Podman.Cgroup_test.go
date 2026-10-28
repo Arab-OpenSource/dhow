@@ -117,6 +117,12 @@ func TestKillCgroupWritesCgroupKillOnlyWhenPodmanKillLeftProcesses(t *testing.T)
 	require.NoError(t, readErr)
 	assert.Equal(t, "1", string(written))
 
+	unknown := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(unknown, "cgroup.events"), []byte("frozen 0\n"), 0o600))
+	_, err = populated(unknown)
+	require.Error(t, err, "cgroup.events without a populated line is not read as empty")
+	assert.ErrorIs(t, killCgroup(ctx, unknown, 50*time.Millisecond), sandbox.ErrSurvivors)
+
 	freed := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(freed, "cgroup.events"), []byte("populated 1\n"), 0o600))
 	go func() {

@@ -56,7 +56,7 @@ func setUp() ([]func(), error) {
 		return nil, err
 	}
 	certs := filepath.Join(work, "certs")
-	if err := os.MkdirAll(certs, 0o755); err != nil {
+	if err := os.MkdirAll(certs, 0o700); err != nil {
 		return nil, err
 	}
 	caPath, err := writeCerts(certs)
@@ -80,7 +80,8 @@ func setUpServices(s *stack, work, certs, caPath string, cleanups *[]func()) err
 	if err != nil {
 		return err
 	}
-	if err := startPostgres(pgPort); err != nil {
+	pgPassword := randomHex(16)
+	if err := startPostgres(pgPort, pgPassword); err != nil {
 		return err
 	}
 	*cleanups = append(*cleanups, func() { _, _ = podman("rm", "--force", pgContainer) })

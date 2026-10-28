@@ -32,7 +32,7 @@ func (a *attempt) finish(ctx context.Context, r result) Outcome {
 	}
 	out := Outcome{
 		LeaseID: a.ref.GetLeaseId(), Result: r.state, Reason: r.reason, ExitCode: r.exitCode,
-		SelfFenced: errors.Is(a.fence.LostErr(), ErrSelfFenced),
+		SelfFenced: errors.Is(a.fence.LostErr(), ErrSelfFenced), Survivors: survivors,
 	}
 	a.mu.Lock()
 	out.KilledAt = a.killedAt

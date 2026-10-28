@@ -86,12 +86,10 @@ func (b *box) Start(ctx context.Context) error {
 		return err
 	}
 	if err := b.d.closeRunroot(); err != nil {
-		_ = b.Kill(ctx)
-		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
+		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, errors.Join(err, b.Kill(ctx)))
 	}
 	if err := b.enforced(ctx); err != nil {
-		_ = b.Kill(ctx)
-		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
+		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, errors.Join(err, b.Kill(ctx)))
 	}
 	conn, err := b.accept(ctx)
 	if err != nil {
@@ -265,16 +263,17 @@ func (b *box) Destroy(ctx context.Context) error {
 		}
 	}
 	_, err := b.d.runner().run(ctx, "rm", "--force", "--volumes", "--", b.name)
+	survivors := killCgroup(ctx, b.cgroupDir(), killDrainWait)
 	if err != nil && !isGone(err) {
-		return err
+		return errors.Join(err, survivors)
 	}
 	b.d.untrack(b.name)
 	for _, dir := range b.owned {
 		if err := b.d.removeOwned(ctx, dir); err != nil {
-			return err
+			return errors.Join(err, survivors)
 		}
 	}
-	return nil
+	return survivors
 }
 
 func (b *box) Inspect(ctx context.Context) (sandbox.Inspection, error) {

@@ -184,6 +184,7 @@ func (a *attempt) destroy(ctx context.Context) {
 	defer cancel()
 	if err := box.Destroy(dctx); err != nil {
 		a.log.Error("could not remove the sandbox", "error", a.masked(err))
+		a.noteSurvivors(err)
 	}
 }
 

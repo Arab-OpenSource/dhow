@@ -15,6 +15,9 @@ M3.9 كمان بيطلب إثبات إن الـ runner والسيرفر بيتع
 - بعد `podman kill`، الـ Podman driver بيستنى لحد 5 ثواني لحد ما `cgroup.events` يقول `populated 0` على الـ cgroup بتاع الحاوية. ده نفس الـ cgroup اللي اتفحص وقت الـ start في ADR-0056.
 - لو الـ cgroup لسه فيه processes، الـ driver بيكتب `1` في `cgroup.kill` وبيستنى 5 ثواني كمان.
 - لو لسه فيه processes بعد كده، بيرجّع `sandbox.ErrSurvivors`. والـ executor بيقفل الـ attempt `SANDBOX_FAILED` بدل `canceled` أو `timed_out`، وبيكتب السبب في log الـ job.
+- **نفس الفحص وقت شيل الـ sandbox:** بعد `podman rm --force`، في أي نهاية للـ attempt (نجاح أو فشل أو إلغاء)، الـ driver بيعمل نفس الفحص. لو الـ cgroup اختفى، الفحص بيعدّي من غير انتظار. ده عشان step ممكن يخلص بنفسه ويسيب process عمله بـ `setsid`، وفي الحالة دي `podman kill` مابيتنادىش أصلًا.
+- **`cgroup.events` من غير سطر `populated`:** بيتحسب إن فيه processes (fail closed)، مش إن الحاوية فاضية.
+- **الـ runner بيوقف نفسه:** أي attempt فضل فيه processes، حتى لو نتيجته `lost`، بيخلّي الـ runner يبطّل يطلب شغل جديد. بيستنى الـ jobs اللي معاه تخلص، وبعدين بيقفل بـ `sandbox.ErrSurvivors`. والـ systemd بيعيد تشغيله (`Restart=on-failure`)، فالتنضيف اللي وقت الإقلاع بيشيل اللي فاضل. ده عشان الـ server ممكن يعيد الـ job على runner تاني، فمايبقاش فيه نسختين شغّالين من نفس الـ job وواحدة منهم على host مش نضيف.
 - **ليه `SANDBOX_FAILED`:** process فاضل عايش معناه إن الـ sandbox ماعزلش زي ما المفروض. والسبب ده retryable بحد `MaxInfraRetries`، فالـ job ممكن يتعاد على runner تاني.
 - **الـ cgroup مختفي:** لو Podman شاله، الـ driver بيعتبر إن الحاوية فاضية خلاص.
 - **الـ sandbox ماقامش:** لو الـ start ماحصلش، مفيش cgroup معروف، فالمرحلة دي بتتعدّى.
