@@ -142,7 +142,7 @@ The web UI and the API are served from the same origin, so browsers use **server
 - The audit log is append-only, and each event includes `PrevHash`, which makes the log **tamper-evident**.
   - Every event stores `Hash = SHA-256(PrevHash ‖ canonical JSON of the event)`, and events form one chain per organization (plus one for instance-level events). Writers take a per-chain advisory lock, so the chain never forks.
   - A database trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` on the table. `GET /api/v1/organizations/{id}/audit-events/verify` walks a chain and reports the first event whose hash or link is wrong.
-  - Event data never carries a secret: passwords, tokens and cookies are not recorded, and keys that look sensitive are dropped before the write.
+  - Event data never carries a secret: passwords, tokens and cookies are not recorded. Only fields on an explicit allowlist are written, and anything else is dropped with a warning; a value that contains a Dhow credential prefix (`dhow_pat_`, `dhow_rat_`, `dhow_rrt_`) is dropped too. A test scans the modules for every field they write and fails if one is missing from the allowlist, and every end-to-end test fails if a real event loses a field.
   - An action made with an API token records `Via=api_token` and `ViaId` (the token id) next to the actor. Creating and revoking a token, linking and unlinking an identity, and failed provider sign-ins after a valid flow (with the reason and a digest of the issuer and subject) are audited.
 - Every security-relevant action is recorded, including auth events, role changes, secret writes, approvals, deployments and runner registration.
 - **Retention:** Community keeps 90 days. Business and Enterprise get longer retention, export, and SIEM streaming.

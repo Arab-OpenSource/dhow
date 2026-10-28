@@ -45,7 +45,7 @@ func newOrg(t *testing.T, pool *pgxpool.Pool, slug string) uuid.UUID {
 func (f fixture) record(t *testing.T, action string, orgs ...uuid.UUID) {
 	t.Helper()
 	err := f.service.Handle(context.Background(), eventbus.Event{Name: action, Payload: eventbus.Audited{
-		OrganizationIDs: orgs, TargetType: "test", TargetID: action, IP: "203.0.113.7", Data: map[string]string{"n": action},
+		OrganizationIDs: orgs, TargetType: "test", TargetID: action, IP: "203.0.113.7", Data: map[string]string{"Name": action},
 	}})
 	require.NoError(t, err)
 }

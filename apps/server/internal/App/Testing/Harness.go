@@ -181,6 +181,11 @@ func NewWithOptions(t *testing.T, o Options) *Env {
 	}
 	logs := &SyncBuffer{}
 	log := logging.New(logs, slog.LevelDebug)
+	t.Cleanup(func() {
+		if strings.Contains(logs.String(), AuditFieldDropped) {
+			t.Errorf("the audit log dropped a field of a real event; add it to the allowlist in Modules/Audit or stop sending it:\n%s", droppedLines(logs.String()))
+		}
+	})
 	clock := o.Clock
 	if clock == nil {
 		clock = NewClock(time.Now().UTC().Truncate(time.Second))
@@ -204,6 +209,18 @@ func NewWithOptions(t *testing.T, o Options) *Env {
 		T: t, Pool: pool, Wired: wired, Handler: wired.Handler, Logs: logs, Clock: clock, Breach: breach, Hasher: hasher, Config: cfg,
 		Secrets: o.Secrets,
 	}
+}
+
+const AuditFieldDropped = "audit data field dropped"
+
+func droppedLines(logs string) string {
+	var out []string
+	for _, line := range strings.Split(logs, "\n") {
+		if strings.Contains(line, AuditFieldDropped) {
+			out = append(out, line)
+		}
+	}
+	return strings.Join(out, "\n")
 }
 
 type Response struct {
