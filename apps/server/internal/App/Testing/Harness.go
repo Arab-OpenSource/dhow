@@ -103,6 +103,7 @@ func (fakeMigrations) Current(context.Context) (bool, error) { return true, nil 
 
 type Env struct {
 	T       *testing.T
+	Secrets *FakeSecrets
 	Pool    *pgxpool.Pool
 	Wired   *app.Wired
 	Handler http.Handler
@@ -135,6 +136,16 @@ func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) 
 
 func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func(*config.Config)) *Env {
 	t.Helper()
+	return newEnv(t, pool, params, configure, nil)
+}
+
+func NewWithSecrets(t *testing.T, secrets *FakeSecrets) *Env {
+	t.Helper()
+	return newEnv(t, dbtest.NewPool(t), TestParams(), nil, secrets)
+}
+
+func newEnv(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func(*config.Config), secrets *FakeSecrets) *Env {
+	t.Helper()
 	secret := make([]byte, 32)
 	_, err := rand.Read(secret)
 	require.NoError(t, err)
@@ -150,14 +161,22 @@ func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configu
 	log := logging.New(logs, slog.LevelDebug)
 	clock := NewClock(time.Now().UTC().Truncate(time.Second))
 	breach := &FakeBreach{}
-	wired, err := app.Build(t.Context(), app.Infra{
+	infra := app.Infra{
 		Config: cfg, Log: log, Pool: pool, Migrations: fakeMigrations{}, Build: buildinfo.Info{Version: "test", Commit: "test"},
 		Breach: breach, HashParams: &params, Now: clock.Now,
-	})
+	}
+	if secrets != nil {
+		infra.Secrets = secrets
+	}
+	wired, err := app.Build(t.Context(), infra)
 	require.NoError(t, err)
+	startListener(t, wired)
 	hasher, err := auth.NewHasher(t.Context(), params, 4)
 	require.NoError(t, err)
-	return &Env{T: t, Pool: pool, Wired: wired, Handler: wired.Handler, Logs: logs, Clock: clock, Breach: breach, Hasher: hasher, Config: cfg}
+	return &Env{
+		T: t, Pool: pool, Wired: wired, Handler: wired.Handler, Logs: logs, Clock: clock, Breach: breach, Hasher: hasher, Config: cfg,
+		Secrets: secrets,
+	}
 }
 
 type Response struct {

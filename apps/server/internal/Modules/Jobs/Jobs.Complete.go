@@ -1,0 +1,193 @@
+package jobs
+
+import (
+	"bytes"
+	"context"
+	"crypto/subtle"
+	"errors"
+	"fmt"
+	"slices"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
+	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
+	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
+	"github.com/Arab-OpenSource/dhow/internal/runnersig"
+	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+)
+
+var retryableFailures = []string{
+	failureName(runnerv1.FailureReason_FAILURE_REASON_IMAGE_PULL_FAILED),
+	failureName(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED),
+	failureName(runnerv1.FailureReason_FAILURE_REASON_RUNNER_DISK_FULL),
+	failureName(runnerv1.FailureReason_FAILURE_REASON_RESOURCE_REQUEST_EXCEEDS_RUNNER),
+}
+
+type CompleteInput struct {
+	Lease    *runnerv1.LeaseRef
+	Result   runnerv1.AttemptResult
+	ExitCode int32
+	Reason   runnerv1.FailureReason
+	Digest   []byte
+}
+
+func outcomeOf(in CompleteInput) (models.Outcome, error) {
+	reason := failureName(in.Reason)
+	out := models.Outcome{FailureReason: reason, LeaseState: models.LeaseReleased, Digest: in.Digest}
+	exit := in.ExitCode
+	out.ExitCode = &exit
+	defaultReason := func(r runnerv1.FailureReason) {
+		if out.FailureReason == "" {
+			out.FailureReason = failureName(r)
+		}
+	}
+	switch in.Result {
+	case runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED:
+		if in.ExitCode != 0 || reason != "" {
+			return out, runnerauth.ValidationFailed("Result")
+		}
+		out.State = models.AttemptSucceeded
+	case runnerv1.AttemptResult_ATTEMPT_RESULT_FAILED:
+		out.State = models.AttemptFailed
+		defaultReason(runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED)
+	case runnerv1.AttemptResult_ATTEMPT_RESULT_CANCELED:
+		out.State = models.AttemptCanceled
+		defaultReason(runnerv1.FailureReason_FAILURE_REASON_CANCELED)
+	case runnerv1.AttemptResult_ATTEMPT_RESULT_TIMED_OUT:
+		out.State = models.AttemptTimedOut
+		defaultReason(runnerv1.FailureReason_FAILURE_REASON_TIMED_OUT)
+	case runnerv1.AttemptResult_ATTEMPT_RESULT_LOST:
+		out.State = models.AttemptLost
+		defaultReason(runnerv1.FailureReason_FAILURE_REASON_LEASE_LOST)
+	default:
+		return out, runnerauth.ValidationFailed("Result")
+	}
+	return out, nil
+}
+
+func (s *Service) Complete(ctx context.Context, in CompleteInput) error {
+	p, err := runnerPrincipal(ctx)
+	if err != nil {
+		return err
+	}
+	r, err := parseRef(in.Lease)
+	if err != nil {
+		return err
+	}
+	outcome, err := outcomeOf(in)
+	if err != nil {
+		return err
+	}
+	if len(in.Digest) != runnersig.DigestSize {
+		return runnerauth.ValidationFailed("Digest")
+	}
+	return dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		row, err := q.LockLeaseForCompletion(ctx, sqlc.LockLeaseForCompletionParams{LeaseID: r.id, FencingToken: r.fencing, RunnerID: p.RunnerID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return leaseLost()
+		}
+		if err != nil {
+			return err
+		}
+		want := runnersig.CompletionDigest(row.AttemptId.String(), r.fencing, int32(in.Result), in.ExitCode, int32(in.Reason))
+		if subtle.ConstantTimeCompare(want, in.Digest) != 1 {
+			return runnerauth.ValidationFailed("Digest")
+		}
+		if models.AttemptFinished(row.AttemptState) {
+			switch {
+			case bytes.Equal(row.CompletionDigest, in.Digest):
+				return nil
+			case row.CompletionDigest != nil:
+				return completionConflict()
+			default:
+				return leaseLost()
+			}
+		}
+		if row.State != models.LeaseActive || !row.Live {
+			s.log.InfoContext(ctx, "a runner completed an attempt after its lease ended",
+				"attempt_id", row.AttemptId.String(), "result", outcome.State, "failure_reason", outcome.FailureReason)
+			return leaseLost()
+		}
+		if !models.AttemptCanMove(row.AttemptState, outcome.State) {
+			return notRunning()
+		}
+		return s.finalize(ctx, q, row.Id, outcome)
+	})
+}
+
+func (s *Service) finalize(ctx context.Context, q *sqlc.Queries, leaseID uuid.UUID, o models.Outcome) error {
+	lease, err := q.GetLeaseAttempt(ctx, leaseID)
+	if err != nil {
+		return err
+	}
+	if !models.AttemptCanMove(lease.AttemptState, o.State) {
+		o.State, o.FailureReason = models.AttemptLost, models.ReasonLeaseLost
+	}
+	exit := pgtype.Int4{}
+	if o.ExitCode != nil {
+		exit = pgtype.Int4{Int32: *o.ExitCode, Valid: true}
+	}
+	attempt, err := q.FinishAttempt(ctx, sqlc.FinishAttemptParams{
+		State: o.State, FailureReason: o.FailureReason, ExitCode: exit, CompletionDigest: o.Digest, ID: lease.AttemptId,
+	})
+	if err != nil {
+		return fmt.Errorf("finish attempt: %w", err)
+	}
+	if _, err := q.EndLease(ctx, sqlc.EndLeaseParams{State: o.LeaseState, ID: leaseID}); err != nil {
+		return err
+	}
+	if err := q.InterruptAttemptSteps(ctx, attempt.Id); err != nil {
+		return err
+	}
+	job, err := q.LockJobByID(ctx, lease.JobId)
+	if err != nil {
+		return err
+	}
+	to, reason := decide(job, attempt)
+	if !models.JobCanMove(job.State, to) {
+		return fmt.Errorf("job %s from %s to %s: %w", job.Id, job.State, to, errInvalidTransition)
+	}
+	if to == models.JobQueued {
+		if _, err := q.RequeueJob(ctx, sqlc.RequeueJobParams{ID: job.Id, FromState: job.State}); err != nil {
+			return err
+		}
+		return q.NotifyJobsQueued(ctx, job.OrganizationId.String())
+	}
+	_, err = q.FinishJob(ctx, sqlc.FinishJobParams{ID: job.Id, State: to, FailureReason: reason, FromState: job.State})
+	return err
+}
+
+func decide(job sqlc.Job, attempt sqlc.JobAttempt) (string, string) {
+	switch attempt.State {
+	case models.AttemptSucceeded:
+		return models.JobSucceeded, ""
+	case models.AttemptCanceled:
+		return models.JobCanceled, models.ReasonCanceled
+	case models.AttemptTimedOut:
+		return models.JobTimedOut, attempt.FailureReason
+	case models.AttemptFailed:
+		if !slices.Contains(retryableFailures, attempt.FailureReason) {
+			return models.JobFailed, attempt.FailureReason
+		}
+	}
+	final := models.JobLost
+	if attempt.State == models.AttemptFailed {
+		final = models.JobFailed
+	}
+	switch {
+	case job.CancelRequestedAt != nil:
+		return models.JobCanceled, models.ReasonCanceled
+	case attempt.MutationStartedAt != nil && final == models.JobLost:
+		return models.JobLost, models.ReasonLostAfterMutation
+	case attempt.MutationStartedAt != nil:
+		return models.JobFailed, attempt.FailureReason
+	case job.AttemptCount < 1+job.MaxInfraRetries:
+		return models.JobQueued, ""
+	default:
+		return final, models.ReasonRetriesExhausted
+	}
+}

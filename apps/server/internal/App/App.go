@@ -18,6 +18,7 @@ import (
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
+	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
@@ -31,6 +32,7 @@ type Options struct {
 	Session  *session.Service
 	Audit    *audit.Service
 	Runners  *runners.Service
+	Jobs     *jobs.Service
 	Gate     *runnerauth.Gate
 	CSRF     *auth.CSRF
 	Now      func() time.Time
@@ -44,11 +46,12 @@ func Policies() []policy.Rule {
 	rules = append(rules, session.Policies()...)
 	rules = append(rules, audit.Policies()...)
 	rules = append(rules, runners.Policies()...)
+	rules = append(rules, jobs.Policies()...)
 	return rules
 }
 
 func RunnerPolicies() []policy.Rule {
-	return runners.Procedures()
+	return append(runners.Procedures(), jobs.Procedures()...)
 }
 
 type noSessions struct{}
@@ -110,6 +113,9 @@ func publicRouter(o Options) chi.Router {
 		}
 		if o.Runners != nil {
 			runners.Routes(api, runners.Deps{Service: o.Runners, Guard: guard, Log: o.Log})
+		}
+		if o.Jobs != nil {
+			jobs.Routes(api, jobs.Deps{Service: o.Jobs, Guard: guard, Log: o.Log})
 		}
 	})
 

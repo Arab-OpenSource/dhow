@@ -62,6 +62,11 @@ func Run(ctx context.Context) error {
 	if created {
 		log.Info("first-run setup is required: open this link within one hour to create the owner account", "setup_url", setupURL)
 	}
+	stopJobs, err := StartJobs(ctx, wired.Jobs, log)
+	if err != nil {
+		return err
+	}
+	defer stopJobs()
 	servers := []served{{srv: NewHTTPServer(cfg, wired.Handler, log), attrs: []any{"public_url", cfg.PublicURL.String()}}}
 	if wired.RunnerHandler != nil {
 		runner := NewHTTPServer(cfg, wired.RunnerHandler, log)
@@ -70,6 +75,9 @@ func Run(ctx context.Context) error {
 		if !cfg.RunnerPlaneTLS() {
 			log.Warn("the runner listener serves plain HTTP because DHOW_DEV=true. Never use this in production.")
 		}
+	}
+	for _, s := range servers {
+		s.srv.RegisterOnShutdown(wired.Jobs.Drain)
 	}
 	return serveAll(ctx, servers, log)
 }

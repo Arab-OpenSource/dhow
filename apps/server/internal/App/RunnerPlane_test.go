@@ -91,7 +91,7 @@ func TestEveryMountedRunnerProcedureDeclaresAPolicy(t *testing.T) {
 	for p := range declared {
 		assert.True(t, mounted[p], "%s has a policy but is not mounted", p)
 	}
-	assert.Len(t, mounted, 4, "M3.2 mounts RegistrationService and AuthService only")
+	assert.Len(t, mounted, 10, "RegistrationService, AuthService and LeaseService are mounted; LogService comes with M3.4")
 }
 
 type runnerCaller struct {
@@ -243,7 +243,9 @@ func TestTheRunnerPlaneIsMountedOnThePublicHandlerByDefault(t *testing.T) {
 	res := callProcedure(t, env.Handler, "/dhow.runner.v1.AuthService/Challenge", nil)
 	assert.Equal(t, "VALIDATION_FAILED: Runner", res.message)
 	res = callProcedure(t, env.Handler, "/dhow.runner.v1.LeaseService/Lease", nil)
-	assert.Equal(t, http.StatusNotFound, res.status, "M3.3 mounts the lease service")
+	assert.Equal(t, "UNAUTHENTICATED", res.message, "the lease service is mounted behind the gate")
+	res = callProcedure(t, env.Handler, "/dhow.runner.v1.LogService/Append", nil)
+	assert.Equal(t, http.StatusNotFound, res.status, "M3.4 mounts the log service")
 }
 
 type protocolTransport struct {

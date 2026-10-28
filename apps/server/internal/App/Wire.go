@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
@@ -17,6 +18,7 @@ import (
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
+	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
@@ -30,6 +32,7 @@ type Infra struct {
 	Migrations system.MigrationStatus
 	Build      buildinfo.Info
 	Breach     auth.BreachChecker
+	Secrets    jobs.SecretResolver
 	HashParams *auth.Params
 	Now        func() time.Time
 	Web        http.Handler
@@ -40,6 +43,7 @@ type Wired struct {
 	Handler       http.Handler
 	RunnerHandler http.Handler
 	Identity      *identity.Service
+	Jobs          *jobs.Service
 }
 
 func Build(ctx context.Context, in Infra) (*Wired, error) {
@@ -93,6 +97,11 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Log: in.Log, Now: in.Now,
 	})
 	gate := runnerauth.NewGate(runnerauth.GateOptions{Verifier: runnersService, Log: in.Log, Now: in.Now})
+	jobsService := jobs.NewService(jobs.Options{
+		DB: in.Pool, Keys: runnerKeys, Secrets: in.Secrets, Bus: bus, Listen: listener(in.Pool),
+		MaxPolls: in.Config.RunnerMaxPolls, Log: in.Log,
+	})
+	jobs.Subscribe(bus, jobsService)
 
 	opts := Options{
 		Config: in.Config,
@@ -104,14 +113,24 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Session:  sessionService,
 		Audit:    auditService,
 		Runners:  runnersService,
+		Jobs:     jobsService,
 		Gate:     gate,
 		CSRF:     csrf,
 		Now:      in.Now,
 		Web:      in.Web,
 	}
-	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService}
+	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService}
 	if in.Config.RunnerPlaneSeparate() {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
 	}
 	return wired, nil
+}
+
+func listener(pool *pgxpool.Pool) jobs.Listener {
+	if pool == nil {
+		return nil
+	}
+	return func(ctx context.Context) (*pgx.Conn, error) {
+		return pgx.ConnectConfig(ctx, pool.Config().ConnConfig.Copy())
+	}
 }
