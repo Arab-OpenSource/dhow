@@ -40,9 +40,14 @@
 
 الأرقام: migration `00035` وADR-0054 والقسم 6 في سجل اليوم.
 
+**الحالة:** commit واحد على الـ branch، بيتبني ومتعملهوش `make check` ولا مراجعة.
+- اتعمل: الـ migration، وإعداد المؤسسة والمهلة واختبارات الـ route-table، وسياسة الجلسة، وكارت الواجهة.
+- لسه: اختبارات الساعة الوهمية للحدود والترقية، والإيميلات (T3) كلها، وADR-0054، وسجل التقدّم، والـ `openapi.yaml` لو ناقص.
+
 ### M3.6: driver الـ Podman والـ agent والـ seccomp (`m3/podman`)
 
-- اتعمل: طبقة `Agent` في قواعد الاستيراد، وdriver الـ Podman rootless، والـ agent كـ PID 1، والـ seccomp.
+- اتعمل (commitين على الـ branch): طبقة `Agent` في قواعد الاستيراد، وdriver الـ Podman rootless، والـ agent كـ PID 1، وقناة `Wire`، والـ seccomp واختباره.
+- لسه: الـ escape suite والـ limits suite، وjob الـ `isolation` في الـ CI، وADR-0055، والوثائق، وسجل التقدّم.
 - التحقق في job اسمه `isolation` على GitHub Actions بـ `ubuntu-24.04` (قرار Sabry).
 - الأرقام: ADR-0055 والقسم 7 في سجل اليوم.
 
