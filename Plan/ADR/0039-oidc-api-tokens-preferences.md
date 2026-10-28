@@ -37,7 +37,7 @@
 - الربط والفك بيخرّجوا كل الجلسات التانية وبيتسجّلوا (`auth.identity_linked` و`auth.identity_unlinked`). الهوية اللي مزوّدها اتشال من الإعداد بتفضل ظاهرة وتتفك.
 
 ### الـ audit بتاع OIDC
-- الدخول الناجح هو `auth.login` بـ `Method=oidc:<id>`.
+- الدخول الناجح هو `auth.login` بـ `Method=oidc:<id>`. ولو فيه خطوة تانية، الـ challenge بيشيل الخطوة الأولى (`"AuthChallenges"."FirstMethod"`)، فالحدث بيبقى `Method` للخطوة التانية و`FirstMethod` للأولى (`oidc:<id>` أو `password`).
 - الفشل بعد ما الـ flow يتأكد هو `auth.oidc_login_failed` بالمزوّد والسبب (`rejected` و`domain` و`not_linked` و`disabled` و`unavailable`) وdigest للـ issuer والـ subject. الهوية المجهولة بتتكتب في سلسلة الـ instance.
 - فشل الـ flow نفسه (cookie ناقصة أو state غلط) مش بيتسجّل، زي المحاولات اللي بتتمنع بالقفل في ADR-0035، عشان محدش يملّى الجدول من غير ما يعدّي أي فحص.
 

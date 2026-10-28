@@ -46,8 +46,9 @@ func (s *Service) CompleteOidcLogin(ctx context.Context, in models.OidcCallback)
 	if err != nil {
 		return models.LoginResult{}, err
 	}
+	method := models.MethodOidc + ":" + t.row.Provider
 	if hasMfa(factors) {
-		return s.issuePending(ctx, now, who, factors, meta)
+		return s.issuePending(ctx, now, who, factors, meta, method)
 	}
-	return s.openSession(ctx, now, who, meta, models.MethodOidc+":"+t.row.Provider)
+	return s.openSession(ctx, now, who, meta, method, "")
 }

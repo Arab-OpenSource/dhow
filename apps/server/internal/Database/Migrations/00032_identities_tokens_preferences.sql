@@ -77,7 +77,10 @@ CREATE TABLE "UserPreferences" (
 
 CREATE UNIQUE INDEX "UX_UserPreferences_User" ON "UserPreferences" ("UserId") WHERE NOT "IsDeleted";
 
+ALTER TABLE "AuthChallenges" ADD COLUMN "FirstMethod" TEXT NOT NULL DEFAULT '' CHECK (char_length("FirstMethod") <= 64);
+
 -- +goose Down
+ALTER TABLE "AuthChallenges" DROP COLUMN "FirstMethod";
 DROP TABLE "UserPreferences";
 DROP TABLE "ApiTokens";
 DROP TABLE "OidcFlows";

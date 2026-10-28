@@ -76,6 +76,7 @@ type AuthChallenge struct {
 	Attempts        int32
 	ExpiresAt       time.Time
 	UsedAt          *time.Time
+	FirstMethod     string
 }
 
 type Instance struct {

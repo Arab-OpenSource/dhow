@@ -135,6 +135,20 @@ func TestOidcSignInGoesThroughTheSecondStep(t *testing.T) {
 	require.Equal(t, http.StatusOK, done.Status, string(done.Raw))
 	assert.NotEmpty(t, signedIn.Cookie)
 	assert.Equal(t, "owner@example.com", signedIn.Me().User.Email)
+	assert.Equal(t, map[string]string{"Method": "totp", "FirstMethod": "oidc:" + apptest.OidcProvider}, lastLogin(t, env),
+		"the audit records both steps")
+
+	_, done = env.CompleteMfa(env.StartMfa("owner@example.com", d.Password), nextCode(), nil)
+	require.Equal(t, http.StatusOK, done.Status, string(done.Raw))
+	assert.Equal(t, map[string]string{"Method": "totp", "FirstMethod": "password"}, lastLogin(t, env))
+}
+
+func lastLogin(t *testing.T, env *apptest.Env) map[string]string {
+	t.Helper()
+	var data map[string]string
+	require.NoError(t, env.Pool.QueryRow(context.Background(),
+		`SELECT "Data" FROM "AuditEvents" WHERE "Action" = 'auth.login' ORDER BY "Seq" DESC LIMIT 1`).Scan(&data))
+	return data
 }
 
 func TestOidcNeverTakesOverAnAccountByEmail(t *testing.T) {
