@@ -86,12 +86,10 @@ func (b *box) Start(ctx context.Context) error {
 		return err
 	}
 	if err := b.d.closeRunroot(); err != nil {
-		_ = b.Kill(ctx)
-		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
+		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, errors.Join(err, b.Kill(ctx)))
 	}
 	if err := b.enforced(ctx); err != nil {
-		_ = b.Kill(ctx)
-		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
+		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, errors.Join(err, b.Kill(ctx)))
 	}
 	conn, err := b.accept(ctx)
 	if err != nil {
@@ -239,10 +237,10 @@ func (b *box) Kill(ctx context.Context) error {
 	if conn != nil {
 		_ = conn.Close()
 	}
-	if err != nil && !isGone(err) {
-		return err
+	if err != nil && !isGone(err) && !notRunning(err) {
+		return errors.Join(err, killCgroup(ctx, b.cgroupDir(), killDrainWait))
 	}
-	return nil
+	return killCgroup(ctx, b.cgroupDir(), killDrainWait)
 }
 
 func (b *box) Destroy(ctx context.Context) error {
@@ -265,16 +263,17 @@ func (b *box) Destroy(ctx context.Context) error {
 		}
 	}
 	_, err := b.d.runner().run(ctx, "rm", "--force", "--volumes", "--", b.name)
+	survivors := killCgroup(ctx, b.cgroupDir(), killDrainWait)
 	if err != nil && !isGone(err) {
-		return err
+		return errors.Join(err, survivors)
 	}
 	b.d.untrack(b.name)
 	for _, dir := range b.owned {
 		if err := b.d.removeOwned(ctx, dir); err != nil {
-			return err
+			return errors.Join(err, survivors)
 		}
 	}
-	return nil
+	return survivors
 }
 
 func (b *box) Inspect(ctx context.Context) (sandbox.Inspection, error) {
@@ -292,6 +291,10 @@ func (b *box) Inspect(ctx context.Context) (sandbox.Inspection, error) {
 		return sandbox.Inspection{}, err
 	}
 	return sandbox.Inspection{Running: in.State.Running}, nil
+}
+
+func notRunning(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "can only kill running containers")
 }
 
 func isGone(err error) bool {

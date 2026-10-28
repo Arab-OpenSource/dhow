@@ -1,10 +1,15 @@
 package podman
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
@@ -90,4 +95,46 @@ func TestOomKillsReadsTheCounter(t *testing.T) {
 	if got := oomKills(""); got != 0 {
 		t.Fatalf("no cgroup means no OOM kills, got %d", got)
 	}
+}
+
+func TestKillCgroupWritesCgroupKillOnlyWhenPodmanKillLeftProcesses(t *testing.T) {
+	ctx := context.Background()
+	empty := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(empty, "cgroup.events"), []byte("populated 0\nfrozen 0\n"), 0o600))
+	require.NoError(t, killCgroup(ctx, empty, 50*time.Millisecond))
+	_, err := os.Stat(filepath.Join(empty, "cgroup.kill"))
+	assert.ErrorIs(t, err, os.ErrNotExist, "an empty cgroup is not killed again")
+
+	require.NoError(t, killCgroup(ctx, filepath.Join(t.TempDir(), "gone"), 50*time.Millisecond), "a removed cgroup is done")
+	require.NoError(t, killCgroup(ctx, "", 50*time.Millisecond), "a sandbox that never started has no cgroup")
+
+	stuck := t.TempDir()
+	events := filepath.Join(stuck, "cgroup.events")
+	require.NoError(t, os.WriteFile(events, []byte("populated 1\nfrozen 0\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(stuck, "cgroup.kill"), nil, 0o600))
+	err = killCgroup(ctx, stuck, 50*time.Millisecond)
+	assert.ErrorIs(t, err, sandbox.ErrSurvivors)
+	written, readErr := os.ReadFile(filepath.Join(stuck, "cgroup.kill"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "1", string(written))
+
+	unknown := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(unknown, "cgroup.events"), []byte("frozen 0\n"), 0o600))
+	_, err = populated(unknown)
+	require.Error(t, err, "cgroup.events without a populated line is not read as empty")
+	assert.ErrorIs(t, killCgroup(ctx, unknown, 50*time.Millisecond), sandbox.ErrSurvivors)
+
+	freed := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(freed, "cgroup.events"), []byte("populated 1\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(freed, "cgroup.kill"), nil, 0o600))
+	go func() {
+		for {
+			if got, err := os.ReadFile(filepath.Join(freed, "cgroup.kill")); err == nil && string(got) == "1" {
+				_ = os.WriteFile(filepath.Join(freed, "cgroup.events"), []byte("populated 0\n"), 0o600)
+				return
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+	}()
+	assert.NoError(t, killCgroup(ctx, freed, time.Second), "cgroup.kill emptied the cgroup")
 }
