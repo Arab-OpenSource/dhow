@@ -222,16 +222,29 @@ func checkMachine(l Limits, m Machine, cfg Config) []error {
 		errs = append(errs, fmt.Errorf("%s: %d bytes of memory per job (with the tmpfs disk) %w (%d); lower %s or %s, or set %s=%s",
 			EnvMaxMemory, memory, ErrAboveMachine, m.MemoryBytes, EnvMaxMemory, EnvMaxDisk, EnvDiskMode, DiskModeDirectory))
 	}
-	if cfg.DiskMode == DiskModeDirectory && m.DiskFree != nil {
+	if m.DiskFree != nil {
+		jobs := int64(max(cfg.Capacity, 1))
+		need := jobs * LogSpillBytes
+		if cfg.DiskMode == DiskModeDirectory {
+			need += jobs * l.DiskBytes
+		}
 		free, err := m.DiskFree(existingParent(cfg.StateDir))
 		switch {
 		case err != nil:
-			errs = append(errs, fmt.Errorf("%s: %w", EnvMaxDisk, err))
-		case l.DiskBytes > free:
-			errs = append(errs, fmt.Errorf("%s: %d bytes %w (%d free under %s)", EnvMaxDisk, l.DiskBytes, ErrAboveMachine, free, cfg.StateDir))
+			errs = append(errs, fmt.Errorf("%s: %w", EnvStateDir, err))
+		case need > free:
+			errs = append(errs, fmt.Errorf("%s: %d jobs need %d bytes for log spill files%s, which %w (%d free under %s)",
+				EnvStateDir, jobs, need, diskNote(cfg.DiskMode), ErrAboveMachine, free, cfg.StateDir))
 		}
 	}
 	return errs
+}
+
+func diskNote(mode string) string {
+	if mode == DiskModeDirectory {
+		return " and " + EnvMaxDisk
+	}
+	return ""
 }
 
 func existingParent(dir string) string {

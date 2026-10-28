@@ -120,6 +120,20 @@ func TestLimitsAboveTheMachineFailClosed(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestTheStateDiskMustHoldTheLogSpillFiles(t *testing.T) {
+	m := big8()
+	m.DiskFree = func(string) (int64, error) { return 100 << 20, nil }
+	_, err := load(t, base(t), false, m)
+	assert.ErrorIs(t, err, config.ErrAboveMachine, "a 256 MiB spill file per job does not fit 100 MiB")
+	m.DiskFree = func(string) (int64, error) { return 600 << 20, nil }
+	e := base(t)
+	_, err = load(t, e, false, m)
+	assert.NoError(t, err)
+	e[config.EnvCapacity] = "3"
+	_, err = load(t, e, false, m)
+	assert.ErrorIs(t, err, config.ErrAboveMachine, "three jobs need three spill files")
+}
+
 func TestInvalidValuesAreRefused(t *testing.T) {
 	cases := map[string]string{
 		config.EnvCapacity: "17", config.EnvMaxMemory: "lots", config.EnvMaxTimeout: "48h", config.EnvCancelGrace: "2m",
