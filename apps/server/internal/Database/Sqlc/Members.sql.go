@@ -89,16 +89,18 @@ func (q *Queries) GetMember(ctx context.Context, arg GetMemberParams) (GetMember
 }
 
 const getOrganizationByID = `-- name: GetOrganizationByID :one
-SELECT "Id", "Name", "Slug", "CreatedAt"
+SELECT "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
 FROM "Organizations"
 WHERE "Id" = $1 AND NOT "IsDeleted"
 `
 
 type GetOrganizationByIDRow struct {
-	Id        uuid.UUID
-	Name      string
-	Slug      string
-	CreatedAt time.Time
+	Id                       uuid.UUID
+	Name                     string
+	Slug                     string
+	CreatedAt                time.Time
+	RequireSecondFactor      string
+	RequireSecondFactorSince *time.Time
 }
 
 func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (GetOrganizationByIDRow, error) {
@@ -109,6 +111,8 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (GetOrg
 		&i.Name,
 		&i.Slug,
 		&i.CreatedAt,
+		&i.RequireSecondFactor,
+		&i.RequireSecondFactorSince,
 	)
 	return i, err
 }
@@ -242,17 +246,19 @@ func (q *Queries) ListUserRoles(ctx context.Context, userID uuid.UUID) ([]ListUs
 }
 
 const lockOrganization = `-- name: LockOrganization :one
-SELECT "Id", "Name", "Slug", "CreatedAt"
+SELECT "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
 FROM "Organizations"
 WHERE "Id" = $1 AND NOT "IsDeleted"
 FOR UPDATE
 `
 
 type LockOrganizationRow struct {
-	Id        uuid.UUID
-	Name      string
-	Slug      string
-	CreatedAt time.Time
+	Id                       uuid.UUID
+	Name                     string
+	Slug                     string
+	CreatedAt                time.Time
+	RequireSecondFactor      string
+	RequireSecondFactorSince *time.Time
 }
 
 func (q *Queries) LockOrganization(ctx context.Context, id uuid.UUID) (LockOrganizationRow, error) {
@@ -263,6 +269,8 @@ func (q *Queries) LockOrganization(ctx context.Context, id uuid.UUID) (LockOrgan
 		&i.Name,
 		&i.Slug,
 		&i.CreatedAt,
+		&i.RequireSecondFactor,
+		&i.RequireSecondFactorSince,
 	)
 	return i, err
 }

@@ -195,7 +195,11 @@ const resolveApiToken = `-- name: ResolveApiToken :one
 SELECT t."Id", t."UserId", t."OrganizationId", t."Scopes", t."ExpiresAt", t."LastUsedAt",
        u."Email", u."Name", u."Locale", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
-             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles"
+             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
+       o."RequireSecondFactor", o."RequireSecondFactorSince", m."CreatedAt" AS "JoinedAt",
+       (EXISTS (SELECT 1 FROM "TotpFactors" f
+                WHERE f."UserId" = t."UserId" AND f."ConfirmedAt" IS NOT NULL AND NOT f."IsDeleted")
+        OR EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = t."UserId" AND NOT p."IsDeleted"))::boolean AS "HasSecondFactor"
 FROM "ApiTokens" t
 JOIN "Users" u ON u."Id" = t."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
 JOIN "Memberships" m ON m."Id" = t."MembershipId" AND m."UserId" = t."UserId" AND m."OrganizationId" = t."OrganizationId"
@@ -210,17 +214,21 @@ type ResolveApiTokenParams struct {
 }
 
 type ResolveApiTokenRow struct {
-	Id             uuid.UUID
-	UserId         uuid.UUID
-	OrganizationId uuid.UUID
-	Scopes         []string
-	ExpiresAt      time.Time
-	LastUsedAt     *time.Time
-	Email          string
-	Name           string
-	Locale         string
-	Role           string
-	TeamRoles      []string
+	Id                       uuid.UUID
+	UserId                   uuid.UUID
+	OrganizationId           uuid.UUID
+	Scopes                   []string
+	ExpiresAt                time.Time
+	LastUsedAt               *time.Time
+	Email                    string
+	Name                     string
+	Locale                   string
+	Role                     string
+	TeamRoles                []string
+	RequireSecondFactor      string
+	RequireSecondFactorSince *time.Time
+	JoinedAt                 time.Time
+	HasSecondFactor          bool
 }
 
 func (q *Queries) ResolveApiToken(ctx context.Context, arg ResolveApiTokenParams) (ResolveApiTokenRow, error) {
@@ -238,6 +246,10 @@ func (q *Queries) ResolveApiToken(ctx context.Context, arg ResolveApiTokenParams
 		&i.Locale,
 		&i.Role,
 		&i.TeamRoles,
+		&i.RequireSecondFactor,
+		&i.RequireSecondFactorSince,
+		&i.JoinedAt,
+		&i.HasSecondFactor,
 	)
 	return i, err
 }

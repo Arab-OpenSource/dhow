@@ -37,7 +37,7 @@ WHERE "Id" = @id;
 -- name: InsertOrganization :one
 INSERT INTO "Organizations" ("Name", "Slug", "CreatedAt", "UpdatedAt")
 VALUES (@name, @slug, @now, @now)
-RETURNING "Id", "Name", "Slug", "CreatedAt";
+RETURNING "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince";
 
 -- name: InsertUser :one
 INSERT INTO "Users" ("Email", "Name", "PasswordHash", "PasswordChangedAt", "Locale", "CreatedAt", "UpdatedAt")
@@ -49,7 +49,7 @@ INSERT INTO "Memberships" ("UserId", "OrganizationId", "Role", "CreatedAt", "Upd
 VALUES (@user_id, @organization_id, @role, @now, @now);
 
 -- name: GetOrganizationForMember :one
-SELECT o."Id", o."Name", o."Slug", o."CreatedAt"
+SELECT o."Id", o."Name", o."Slug", o."CreatedAt", o."RequireSecondFactor", o."RequireSecondFactorSince"
 FROM "Organizations" o
 JOIN "Memberships" m ON m."OrganizationId" = o."Id" AND m."UserId" = @user_id AND NOT m."IsDeleted"
 WHERE o."Id" = @id AND NOT o."IsDeleted";
@@ -59,7 +59,13 @@ UPDATE "Organizations" o
 SET "Name" = @name, "UpdatedAt" = @now
 WHERE o."Id" = @id AND NOT o."IsDeleted"
   AND EXISTS (SELECT 1 FROM "Memberships" m WHERE m."OrganizationId" = o."Id" AND m."UserId" = @user_id AND NOT m."IsDeleted")
-RETURNING o."Id", o."Name", o."Slug", o."CreatedAt";
+RETURNING o."Id", o."Name", o."Slug", o."CreatedAt", o."RequireSecondFactor", o."RequireSecondFactorSince";
+
+-- name: SetOrganizationSecondFactor :one
+UPDATE "Organizations"
+SET "RequireSecondFactor" = @rule, "RequireSecondFactorSince" = sqlc.narg(since)::timestamptz, "UpdatedAt" = @now
+WHERE "Id" = @id AND NOT "IsDeleted"
+RETURNING "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince";
 
 -- name: MarkInstanceOwner :exec
 UPDATE "Users"

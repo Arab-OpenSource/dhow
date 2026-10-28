@@ -133,6 +133,9 @@ func (s *Service) openSession(ctx context.Context, now time.Time, user sessionUs
 				return err
 			}
 		}
+		if memberships, err = q.ListUserMemberships(ctx, user.ID); err != nil {
+			return err
+		}
 		row, err := q.InsertSession(ctx, sqlc.InsertSessionParams{
 			UserID: user.ID, TokenHash: tokenHash, CsrfHash: s.csrf.Hash(csrfToken), Now: now, ExpiresAt: expires,
 			IdleExpiresAt: now.Add(config.SessionIdleTimeout), UserAgent: meta.UserAgent, IpAddress: meta.IPString(),
@@ -141,8 +144,7 @@ func (s *Service) openSession(ctx context.Context, now time.Time, user sessionUs
 			return err
 		}
 		sessionID = row.Id
-		memberships, err = q.ListUserMemberships(ctx, user.ID)
-		return err
+		return nil
 	})
 	if err != nil {
 		return models.LoginResult{}, err

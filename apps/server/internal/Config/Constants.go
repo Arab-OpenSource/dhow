@@ -39,6 +39,7 @@ const (
 	SessionAbsoluteTimeout = 14 * 24 * time.Hour
 	SessionTouchInterval   = time.Minute
 	SessionTokenBytes      = 32
+	SecondFactorGrace      = 7 * 24 * time.Hour
 )
 
 const (

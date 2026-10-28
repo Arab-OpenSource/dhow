@@ -226,7 +226,13 @@ const pageOf = (items: readonly unknown[], url: URL): Response => {
 
 const organizationReply = async (request: Request, url: URL, options: IBackendOptions, state: IBackendState): Promise<Response> => {
   const { pathname } = url;
-  const organization = (name: string) => ({ Id: ORG_ID, Name: name, Slug: 'future-solution', CreatedAt: '2026-10-01T08:00:00Z' });
+  const organization = (name: string) => ({
+    Id: ORG_ID,
+    Name: name,
+    Slug: 'future-solution',
+    CreatedAt: '2026-10-01T08:00:00Z',
+    RequireSecondFactor: 'off',
+  });
   if (pathname.endsWith('/audit-events/verify')) {
     return options.verify?.() ?? envelope({ Success: true, Data: { Valid: true, Checked: (options.audit ?? []).length } });
   }

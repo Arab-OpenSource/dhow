@@ -57,6 +57,7 @@ const (
 	CodeSessionRequired         = "SESSION_REQUIRED"
 	CodeApiTokenLimit           = "API_TOKEN_LIMIT" //nolint:gosec // A public error code, not a credential.
 	CodeScopeNotAllowed         = "SCOPE_NOT_ALLOWED"
+	CodeSecondFactorRequired    = "SECOND_FACTOR_REQUIRED"
 )
 
 const (
@@ -116,4 +117,5 @@ const (
 	KeySessionRequired         = "errors.sessionRequired"
 	KeyApiTokenLimit           = "errors.apiTokenLimit"
 	KeyScopeNotAllowed         = "errors.scopeNotAllowed"
+	KeySecondFactorRequired    = "errors.secondFactorRequired"
 )

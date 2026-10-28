@@ -40,7 +40,7 @@ func (s *Service) CreateOrganization(ctx context.Context, name, slug string) (mo
 		if err != nil {
 			return err
 		}
-		org = models.Organization{ID: row.Id, Name: row.Name, Slug: row.Slug, CreatedAt: row.CreatedAt}
+		org = organizationOf(row.Id, row.Name, row.Slug, row.CreatedAt, row.RequireSecondFactor, row.RequireSecondFactorSince)
 		return q.InsertMembership(ctx, sqlc.InsertMembershipParams{
 			UserID: p.UserID, OrganizationID: row.Id, Role: string(policy.RoleOwner), Now: now,
 		})

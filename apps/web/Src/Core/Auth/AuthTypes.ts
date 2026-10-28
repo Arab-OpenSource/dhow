@@ -7,10 +7,14 @@ export type TBindableRole = TSchemas['BindableRole'];
 export type TUser = TSchemas['User'];
 export type TMembership = TSchemas['MembershipView'];
 export type TOrganization = TSchemas['Organization'];
+export type TSecondFactorRule = TSchemas['SecondFactorRule'];
 export type TMe = Omit<TSchemas['Me'], 'CsrfToken'>;
 
 export const ROLES: readonly TRole[] = ['owner', 'admin', 'maintainer', 'developer', 'viewer'];
 export const BINDABLE_ROLES: readonly TBindableRole[] = ['admin', 'maintainer', 'developer', 'viewer'];
+export const SECOND_FACTOR_RULES: readonly TSecondFactorRule[] = ['off', 'admins', 'everyone'];
+
+export const ruleReach = (rule: TSecondFactorRule): number => SECOND_FACTOR_RULES.indexOf(rule);
 
 const AUDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const ORGANIZATION_EDIT_ROLES: readonly TRole[] = ['owner', 'admin'];

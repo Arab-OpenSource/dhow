@@ -40,8 +40,15 @@ func (s *Service) ResolveToken(ctx context.Context, hash []byte, now time.Time) 
 			s.log.WarnContext(ctx, "touch api token failed", "error", touchErr)
 		}
 	}
+	rule, known := policy.ParseSecondFactorRule(row.RequireSecondFactor)
+	if !known {
+		rule = policy.SecondFactorEveryone
+	}
+	due := policy.SecondFactorDue(policy.SecondFactorState{
+		Rule: rule, Since: row.RequireSecondFactorSince, JoinedAt: row.JoinedAt, Role: role, HasFactor: row.HasSecondFactor,
+	}, config.SecondFactorGrace)
 	return auth.ResolvedToken{
 		TokenID: row.Id, UserID: row.UserId, OrganizationID: row.OrganizationId, Role: role, Scopes: scopes,
-		ExpiresAt: row.ExpiresAt, Email: row.Email, Name: row.Name, Locale: row.Locale,
+		ExpiresAt: row.ExpiresAt, SecondFactorDue: due, Email: row.Email, Name: row.Name, Locale: row.Locale,
 	}, nil
 }

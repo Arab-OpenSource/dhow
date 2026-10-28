@@ -1,5 +1,5 @@
 -- name: LockOrganization :one
-SELECT "Id", "Name", "Slug", "CreatedAt"
+SELECT "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
 FROM "Organizations"
 WHERE "Id" = @id AND NOT "IsDeleted"
 FOR UPDATE;
@@ -93,7 +93,7 @@ SET "MfaResetAt" = @now::timestamptz, "UpdatedAt" = @now
 WHERE "Id" = @id AND NOT "IsDeleted";
 
 -- name: GetOrganizationByID :one
-SELECT "Id", "Name", "Slug", "CreatedAt"
+SELECT "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
 FROM "Organizations"
 WHERE "Id" = @id AND NOT "IsDeleted";
 

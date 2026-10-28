@@ -167,6 +167,27 @@ func (e Role) Valid() bool {
 	}
 }
 
+// Defines values for SecondFactorRule.
+const (
+	Admins   SecondFactorRule = "admins"
+	Everyone SecondFactorRule = "everyone"
+	Off      SecondFactorRule = "off"
+)
+
+// Valid indicates whether the value is a known member of the SecondFactorRule enum.
+func (e SecondFactorRule) Valid() bool {
+	switch e {
+	case Admins:
+		return true
+	case Everyone:
+		return true
+	case Off:
+		return true
+	default:
+		return false
+	}
+}
+
 // AcceptInvitationRequest defines model for AcceptInvitationRequest.
 type AcceptInvitationRequest struct {
 	Locale *Locale `json:"Locale,omitempty"`
@@ -264,7 +285,7 @@ type Envelope struct {
 
 // ErrorDetail defines model for ErrorDetail.
 type ErrorDetail struct {
-	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH` or `INVITATION_ACCOUNT_EXISTS`.
+	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS` or `SECOND_FACTOR_REQUIRED`.
 	//
 	// Example: INTERNAL
 	Code    string              `json:"Code"`
@@ -472,7 +493,13 @@ type Organization struct {
 	CreatedAt time.Time          `json:"CreatedAt"`
 	Id        openapi_types.UUID `json:"Id"`
 	Name      string             `json:"Name"`
-	Slug      string             `json:"Slug"`
+
+	// RequireSecondFactor Who must use two-step verification in the organization.
+	RequireSecondFactor SecondFactorRule `json:"RequireSecondFactor"`
+
+	// RequireSecondFactorSince When the rule last reached more roles. Absent while the rule is `off`.
+	RequireSecondFactorSince *time.Time `json:"RequireSecondFactorSince,omitempty"`
+	Slug                     string     `json:"Slug"`
 }
 
 // OrganizationResponse defines model for OrganizationResponse.
@@ -527,6 +554,9 @@ type RoleBinding struct {
 	// Scope Where a binding applies. `project` and `environment` arrive with projects.
 	Scope BindingScope `json:"Scope"`
 }
+
+// SecondFactorRule Who must use two-step verification in the organization.
+type SecondFactorRule string
 
 // SetupRequest defines model for SetupRequest.
 type SetupRequest struct {
@@ -656,6 +686,15 @@ type UpdateRoleBindingRequest struct {
 	Role BindableRole `json:"Role"`
 }
 
+// UpdateSecondFactorRuleRequest defines model for UpdateSecondFactorRuleRequest.
+type UpdateSecondFactorRuleRequest struct {
+	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+	CurrentFactor CurrentFactor `json:"CurrentFactor"`
+
+	// RequireSecondFactor Who must use two-step verification in the organization.
+	RequireSecondFactor SecondFactorRule `json:"RequireSecondFactor"`
+}
+
 // UpdateTeamRequest defines model for UpdateTeamRequest.
 type UpdateTeamRequest struct {
 	Description *string `json:"Description,omitempty"`
@@ -727,6 +766,9 @@ type ChangeMemberRoleJSONRequestBody = ChangeMemberRoleRequest
 // ResetMemberMfaJSONRequestBody defines body for ResetMemberMfa for application/json ContentType.
 type ResetMemberMfaJSONRequestBody = CurrentFactorRequest
 
+// UpdateSecondFactorRuleJSONRequestBody defines body for UpdateSecondFactorRule for application/json ContentType.
+type UpdateSecondFactorRuleJSONRequestBody = UpdateSecondFactorRuleRequest
+
 // CreateTeamJSONRequestBody defines body for CreateTeam for application/json ContentType.
 type CreateTeamJSONRequestBody = CreateTeamRequest
 
@@ -795,6 +837,9 @@ type ServerInterface interface {
 	// ResetMemberMfa Reset a member's two-step verification
 	// (POST /organizations/{id}/members/{userId}/mfa-reset)
 	ResetMemberMfa(w http.ResponseWriter, r *http.Request, id Id, userId UserId)
+	// UpdateSecondFactorRule Choose who must use two-step verification
+	// (PUT /organizations/{id}/second-factor-rule)
+	UpdateSecondFactorRule(w http.ResponseWriter, r *http.Request, id Id)
 	// ListTeams List the teams of an organization
 	// (GET /organizations/{id}/teams)
 	ListTeams(w http.ResponseWriter, r *http.Request, id Id)
@@ -924,6 +969,12 @@ func (_ Unimplemented) ChangeMemberRole(w http.ResponseWriter, r *http.Request, 
 // ResetMemberMfa Reset a member's two-step verification
 // (POST /organizations/{id}/members/{userId}/mfa-reset)
 func (_ Unimplemented) ResetMemberMfa(w http.ResponseWriter, r *http.Request, id Id, userId UserId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateSecondFactorRule Choose who must use two-step verification
+// (PUT /organizations/{id}/second-factor-rule)
+func (_ Unimplemented) UpdateSecondFactorRule(w http.ResponseWriter, r *http.Request, id Id) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1415,6 +1466,32 @@ func (siw *ServerInterfaceWrapper) ResetMemberMfa(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ResetMemberMfa(w, r, id, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateSecondFactorRule operation middleware
+func (siw *ServerInterfaceWrapper) UpdateSecondFactorRule(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateSecondFactorRule(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1947,6 +2024,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Patch(options.BaseURL+"/organizations/{id}", wrapper.UpdateOrganization)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/organizations/{id}/second-factor-rule", wrapper.UpdateSecondFactorRule)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/organizations/{id}/members", wrapper.ListMembers)
@@ -2618,6 +2698,46 @@ func (response ResetMemberMfadefaultJSONResponse) VisitResetMemberMfaResponse(w 
 	return err
 }
 
+type UpdateSecondFactorRuleRequestObject struct {
+	Id   Id `json:"id"`
+	Body *UpdateSecondFactorRuleJSONRequestBody
+}
+
+type UpdateSecondFactorRuleResponseObject interface {
+	VisitUpdateSecondFactorRuleResponse(w http.ResponseWriter) error
+}
+
+type UpdateSecondFactorRule200JSONResponse OrganizationResponse
+
+func (response UpdateSecondFactorRule200JSONResponse) VisitUpdateSecondFactorRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSecondFactorRuledefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response UpdateSecondFactorRuledefaultJSONResponse) VisitUpdateSecondFactorRuleResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListTeamsRequestObject struct {
 	Id Id `json:"id"`
 }
@@ -3150,6 +3270,9 @@ type StrictServerInterface interface {
 	// ResetMemberMfa Reset a member's two-step verification
 	// (POST /organizations/{id}/members/{userId}/mfa-reset)
 	ResetMemberMfa(ctx context.Context, request ResetMemberMfaRequestObject) (ResetMemberMfaResponseObject, error)
+	// UpdateSecondFactorRule Choose who must use two-step verification
+	// (PUT /organizations/{id}/second-factor-rule)
+	UpdateSecondFactorRule(ctx context.Context, request UpdateSecondFactorRuleRequestObject) (UpdateSecondFactorRuleResponseObject, error)
 	// ListTeams List the teams of an organization
 	// (GET /organizations/{id}/teams)
 	ListTeams(ctx context.Context, request ListTeamsRequestObject) (ListTeamsResponseObject, error)
@@ -3664,6 +3787,39 @@ func (sh *strictHandler) ResetMemberMfa(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ResetMemberMfaResponseObject); ok {
 		if err := validResponse.VisitResetMemberMfaResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateSecondFactorRule operation middleware
+func (sh *strictHandler) UpdateSecondFactorRule(w http.ResponseWriter, r *http.Request, id Id) {
+	var request UpdateSecondFactorRuleRequestObject
+
+	request.Id = id
+
+	var body UpdateSecondFactorRuleJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateSecondFactorRule(ctx, request.(UpdateSecondFactorRuleRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateSecondFactorRule")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateSecondFactorRuleResponseObject); ok {
+		if err := validResponse.VisitUpdateSecondFactorRuleResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

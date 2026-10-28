@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -110,7 +111,10 @@ func (c *Client) ChangeRole(org uuid.UUID, user, role string, factor map[string]
 
 type MeView struct {
 	User                   struct{ Id, Email string }
-	Memberships            []struct{ OrganizationId, Role string }
+	Memberships            []struct {
+		OrganizationId, Role string
+		SecondFactorDue      *time.Time
+	}
 	CanCreateOrganizations bool
 	MfaReenrollRequired    bool
 }

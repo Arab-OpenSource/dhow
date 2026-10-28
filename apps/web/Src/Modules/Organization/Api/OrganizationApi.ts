@@ -1,7 +1,7 @@
 import { ApiClient, request, requestVoid } from '@/Core/Api/Client';
 import type { components } from '@/Core/Api/Schema';
 import type { TCurrentFactor } from '@/Core/Auth/Factor';
-import type { TBindableRole, TOrganization, TRole } from '@/Core/Auth/AuthTypes';
+import type { TBindableRole, TOrganization, TRole, TSecondFactorRule } from '@/Core/Auth/AuthTypes';
 
 type TSchemas = components['schemas'];
 
@@ -29,6 +29,11 @@ export const leaveOrganization = (id: string): Promise<void> =>
 export const transferOwnership = (id: string, userId: string, factor: TCurrentFactor): Promise<TMemberChange> =>
   request(() =>
     ApiClient.POST('/organizations/{id}/transfer-ownership', { params: org(id), body: { UserId: userId, CurrentFactor: factor } }),
+  );
+
+export const changeSecondFactorRule = (id: string, rule: TSecondFactorRule, factor: TCurrentFactor): Promise<TOrganization> =>
+  request(() =>
+    ApiClient.PUT('/organizations/{id}/second-factor-rule', { params: org(id), body: { RequireSecondFactor: rule, CurrentFactor: factor } }),
   );
 
 const member = (id: string, userId: string) => ({ path: { id, userId } });
