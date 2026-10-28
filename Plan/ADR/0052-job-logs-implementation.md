@@ -9,9 +9,9 @@ ADR-0046 حدّد شكل التخزين والقراية: `"LogChunks"` مقسّ
 
 ## القرار
 
-### قاعدة البيانات (`00032_job_logs.sql`)
+### قاعدة البيانات (`00033_job_logs.sql`)
 - **`"LogChunks"`** بالأعمدة الأساسية الأربعة، و`"Id" uuid NOT NULL DEFAULT uuidv7()` مع `PRIMARY KEY ("Id", "CreatedAt")`، و`PARTITION BY RANGE ("CreatedAt")`. و`"Seq"` من 1، و`"Stream"` IN (`stdout`, `stderr`, `system`)، و`"StepIndex"` من 0 لـ 99 أو فاضي، و`"EmittedAt"` (وقت الـ runner، للعرض بس)، و`"Data"` من 1 لـ 65536 byte.
-- **FK مركّب** (`"AttemptId"`, `"JobId"`, `"OrganizationId"`) على `"JobAttempts"`، ومعاه unique index جديد على نفس الأعمدة. يعني قاعدة البيانات نفسها بترفض chunk بمؤسسة أو job مش بتوع الـ attempt.
+- **مفيش FK على `"JobAttempts"`** (اتشال بعد المراجعة الأمنية): اختبار بـ `pg_locks` بيّن إن عمل partition لجدول عليه FK بياخد `ShareRowExclusiveLock` على `"JobAttempts"`، يعني كل تغيير حالة وكل `Append` بيستنى الـ DDL. السلامة بتيجي من الكود: `"OrganizationId"` و`"JobId"` و`"AttemptId"` بيتنسخوا من صف الـ attempt المقفول جوه `Append` نفسه، ومفيش كود تاني بيكتب في الجدول.
 - **index** على (`"AttemptId"`, `"Seq"`) بيتعمل في كل partition. مفيش unique عليه لأن Postgres مايقدرش يفرضه في جدول مقسّم بالوقت، والترتيب بيتضمن بقفل الـ attempt.
 - **عمودين جداد في `"JobAttempts"`:** `"LogTruncatedAt"` (اتقص إمتى) و`"LateResultLoggedAt"` (سطر النتيجة المتأخرة اتكتب إمتى).
 - **الـ trigger بتاع الـ attempt اتعدّل** (`CREATE OR REPLACE` في نفس الـ migration، والـ `down` بيرجّع نسخة 00031 بالظبط):
@@ -19,8 +19,11 @@ ADR-0046 حدّد شكل التخزين والقراية: `"LogChunks"` مقسّ
   - الـ attempt اللي خلص يقدر يزوّد `"LastSeq"` و`"LogBytes"` ويحط `"LateResultLoggedAt"`، عشان سطر النتيجة المتأخرة بييجي غالبًا بعد ما الـ reconciler قفل الـ attempt. أي عمود تاني فاضل مقفول زي ADR-0051.
 - **الـ partitions من functions في الـ migration** مش من Go، عشان الـ DDL محتاج اسم متغيّر وممنوع نبني SQL كنص:
   - `"LogPartitionName"(date)` بيرجّع `LogChunks_YYYYMMDD`، و`"LogPartitionBound"(date)` بيرجّع `YYYY-MM-DD 00:00:00+00` (صيغة ISO بتتقري صح مهما كان الـ `DateStyle`)، و`"LogPartitionToday"()` هو يوم UTC من `now()` بتاع قاعدة البيانات.
-  - `"EnsureLogPartitions"(n)` بيعمل النهارده و`n` يوم قدّام (من 0 لـ 31) في نفس schema الجدول الأب، بـ `format('%I.%I')`.
-  - `"DropLogPartitions"(days)` بيعمل `DROP` لأي partition متركّبة على `"LogChunks"` واسمها بالصيغة دي ويومها أقدم من النهارده ناقص `days`. يعني مع 30 يوم، الـ log بيعيش من 30 لـ 31 يوم. وأي جدول تاني اسمه شبهه بيفضل.
+  - `"EnsureLogPartitions"(n)` بيعمل النهارده و`n` يوم قدّام (من 0 لـ 31) في نفس schema الجدول الأب: `CREATE TABLE ... (LIKE "LogChunks" INCLUDING ALL)` وبعدين `ATTACH PARTITION`. الـ `ATTACH` بياخد `ShareUpdateExclusiveLock` بس على الأب، فالقراية والـ `Append` مابيقفوش، بدل `AccessExclusiveLock` بتاع `CREATE TABLE ... PARTITION OF`. ولو فيه جدول بنفس الاسم ومش متركّب partition، الدالة بترفع خطأ (`object_not_in_prerequisite_state`) بدل ما تعدّيه، والصيانة بتفشل وبتتسجّل.
+  - `"LogPartitionDay"(name)` بيرجّع يوم الـ partition من اسمها، أو `NULL` لأي اسم مش بالصيغة أو تاريخ مش صالح (`LogChunks_20261399` مثلًا).
+  - `"DropLogPartitions"(days)` بيعمل `DROP` لأي partition متركّبة على `"LogChunks"` يومها أقدم من النهارده ناقص `days`. يعني مع 30 يوم، الـ log بيعيش من 30 لـ 31 يوم. والـ partition اللي اسمها مايتقريش بتتساب، و`"UnreadableLogPartitions"()` بيرجّع أسماءها والسيرفر بيسجّلها تحذير، فاسم غلط عمره ما بيوقّف الصيانة.
+  - **الـ `DROP` بياخد `AccessExclusiveLock` على `"LogChunks"`** (ومفيش قفل على `"JobAttempts"`، والاختبار بيثبّت الاتنين). `DETACH PARTITION ... CONCURRENTLY` كان هيتجنّبه، لكنه مايشتغلش جوه function ولا transaction، ومحتاج اسم متغيّر، يعني SQL مبني كنص من Go، وده ممنوع. فالقفل ده مقبول: مرة في اليوم، ومحدود بـ `lock_timeout` 2 ثانية.
+  - **كل الـ functions ليها `search_path` ثابت** (`pg_catalog, <schema>, pg_temp`) بيتحط في الـ migration بـ `ALTER FUNCTION` على `current_schema()`، والأسماء في الـ DDL مؤهّلة بالـ schema أو بالـ `regclass`. فـ `search_path` الجلسة اللي بتنادي مالوش أثر، واختبار بيتأكد من الإعداد على الـ 8 functions.
   - `"LogPartitionReady"()` بيقول الـ partition بتاعة النهارده متركّبة ولا لأ.
   - الـ migration نفسها بتنادي `"EnsureLogPartitions"(3)`، فقاعدة بيانات جديدة بتقدر تستقبل logs قبل أول صيانة.
 
@@ -56,11 +59,17 @@ ADR-0046 حدّد شكل التخزين والقراية: `"LogChunks"` مقسّ
 ### الصيانة والجاهزية
 - **`MaintainLogPartitions`** في transaction واحدة:
   1. `pg_try_advisory_xact_lock('dhow.log-partitions')`. لو instance تانية ماسكاه، الدورة بتتخطّى (`Skipped`) بدل ما تستنى. ده فرق عن `pg_advisory_lock` في ADR-0046: الانتظار كان ممكن يوقّف الإقلاع.
-  2. `lock_timeout` 5 ثواني جوه الـ transaction، لأن الـ DDL بياخد قفل قوي على الجدول الأب، ومن غير timeout أي استنى وراه بيوقّف كل الـ Appends.
+  2. `lock_timeout` 2 ثانية جوه الـ transaction، لأن الـ `DROP` بياخد قفل قوي على الجدول الأب، ومن غير timeout أي استنى وراه بيوقّف كل الـ Appends.
   3. `"EnsureLogPartitions"(3)` وبعدين `"DropLogPartitions"(DHOW_LOG_RETENTION_DAYS)`.
 - **عند الإقلاع** قبل الـ reconciler، ولو فشلت السيرفر مابيقومش (fail closed، زي الـ reconciler). وبعدين كل ساعة في الخلفية، والفشل بيتسجّل والدورة الجاية بتعيد.
-- **`/health/ready`:** فحص جديد `log_partitions` بيسأل `"LogPartitionReady"()`، ولو مش موجودة الرد `503`. الفحوصات الإضافية بتتركّب من `App` في `system.Deps.Checks` (موديول `System` مابيستوردش `Jobs`)، وبتتخطّى لو الـ migrations مش كاملة. والواجهة بتعرض الفحص الجديد في صفحة حالة السيرفر بنصوص عربي وإنجليزي.
+- **`/health/ready`:** (اتأكد بعد المراجعة: الـ partition الناقصة بتخلّي الـ readiness `503`، لأن مبدأ المشروع fail closed، والـ instance اللي مش هتقدر تستقبل logs مش جاهزة.) فحص جديد `log_partitions` بيسأل `"LogPartitionReady"()`، ولو مش موجودة الرد `503`. الفحوصات الإضافية بتتركّب من `App` في `system.Deps.Checks` (موديول `System` مابيستوردش `Jobs`)، وبتتخطّى لو الـ migrations مش كاملة. والواجهة بتعرض الفحص الجديد في صفحة حالة السيرفر بنصوص عربي وإنجليزي.
 - **`DHOW_LOG_RETENTION_DAYS`** من 1 لـ 3650 (افتراضيًا 30).
+
+### pool للقراية لوحده
+- **التاريخ والـ streams بيقروا من `pgxpool` لوحده** (`DHOW_LOG_READ_CONNS`، افتراضيًا 4، من 1 لـ 20)، جنب الـ 20 اتصال بتوع الـ API والـ runner plane. فـ streams كتير ممكن تبطّأ بعض، لكن مابتجوّعش باقي Dhow. والـ `Append` والـ `finalize` فاضلين على الـ pool الرئيسي.
+- **`statement_timeout` 5 ثواني** على اتصالات الـ pool ده (runtime parameter)، والـ pool الرئيسي من غيره.
+- **كل قراية ليها 10 ثواني** للاتصال والتنفيذ مع بعض. ولو خلصوا، التاريخ بيرجّع `503 SERVICE_UNAVAILABLE` والـ stream بيتقفل والمتصفح بيرجع.
+- **فحص الجلسة** فاضل على الـ pool الرئيسي (اتصال قصير كل 15 ثانية لكل stream، يعني 133 في الثانية بالكتير مع 2000 stream).
 
 ### القراية (`GET .../jobs/{jobId}/logs`)
 - `log.read` (كل الأدوار ما عدا الـ Viewer، ADR-0047). الـ job لازم في المؤسسة اللي في المسار وإلا `404 NOT_FOUND`، والـ attempt (`Attempt`، أو الأخير من غيره) لازم يكون موجود وإلا `404 ATTEMPT_NOT_FOUND`.
@@ -72,14 +81,17 @@ ADR-0046 حدّد شكل التخزين والقراية: `"LogChunks"` مقسّ
 
 ### الـ SSE (`GET .../jobs/{jobId}/logs/stream`)
 - **الـ route من الـ generated strict handler** (الـ hook بيمنع تسجيل route بإيدينا): الـ controller بيرجّع object بيعمل `VisitStreamJobLogsResponse`، والـ stream كله جوه الـ Visit.
-- **الاستكمال:** `Last-Event-ID` (header، رقم من 0) وإلا `FromSeq`، والـ `id` بتاع كل حدث هو الـ seq.
+- **الاستكمال:** الـ `id` بتاع كل حدث `chunk` هو `<attempt>:<seq>`، و`Last-Event-ID` لازم بنفس الصيغة (الـ attempt من 1 لـ 2147483647، والـ seq من 0 لأقل من أقصى int64، وغير كده `422`).
+  - لو الـ `Last-Event-ID` من الـ attempt اللي الـ stream ماشي عليه، الـ stream بيكمّل بعده.
+  - لو من attempt تاني (الـ job اتعاد والمتصفح رجع على الأخير)، بيتجاهل، والـ attempt الجديد بيبدأ من `FromSeq` أو من الأول. من غير ده، seq الـ attempt القديم كان هيعدّي أول الـ attempt الجديد.
+  - و`Attempt` في التاريخ والـ stream لحد 2147483647 في `openapi.yaml` وفي الـ controller.
 - **الأحداث:** `status` (أول حاجة ومع أي تغيير في حالة الـ attempt أو القص)، و`chunk`، و`end` بعد آخر chunk لـ attempt خلص، وبعده الـ stream بيتقفل. والـ data JSON بأسماء PascalCase زي `JobLogChunk` في `openapi.yaml`، فمفيش newline ممكن يكسر صيغة الحدث.
 - **الـ stream لـ attempt واحد:** لو الـ job اتعاد، الـ attempt القديم بيخلص (`end`)، والواجهة بتفتح الـ attempt الجديد. ومفيش attempt خالص: `404 ATTEMPT_NOT_FOUND`.
 - **`retry: 3000`** في الأول، و`X-Accel-Buffering: no` (nginx بيحترمه لوحده)، و`Cache-Control: no-store`.
 - **الوقت:**
   - routes الـ `Jobs` اتشالت من مجموعة `middleware.Timeout` في `App`، والموديول بيحطّ `RouteTimeout` لكل route بتاعه ما عدا الـ stream، ومعاه اختبار بيتأكد إن كل route تاني ليه deadline.
   - الـ stream بيشيل الـ read deadline بتاع الاتصال (`ReadTimeout` كان هيلغي الـ context بعد 30 ثانية)، وبيحط write deadline 10 ثواني مع كل كتابة بـ `http.ResponseController`.
-- **فحص الجلسة كل 15 ثانية** مع الـ comment، بـ `Guard.Reauthorize` الجديد في `Core/Auth`: نفس الـ resolver ونفس `policy.Can`. فالجلسة الملغية أو الدور اللي نزل لـ Viewer أو العضوية اللي اتشالت بتقفل الـ stream في 15 ثانية بالكتير. وخطأ في قاعدة البيانات وقت الفحص بيقفل الـ stream كمان (fail closed)، والمتصفح بيرجع.
+- **فحص الجلسة كل 15 ثانية** مع الـ comment، بـ `Guard.Reauthorize` الجديد في `Core/Auth`: نفس `policy.Can`، لكن بـ `Resolver.Peek`، اللي بيعمل نفس الفحوصات من غير `TouchSession`. فالـ stream المفتوح مابيمدّش عمر الجلسة الخامل، والجلسة بتخلص في ميعادها لو المستخدم ساب الصفحة مفتوحة. فالجلسة الملغية أو الدور اللي نزل لـ Viewer أو العضوية اللي اتشالت بتقفل الـ stream في 15 ثانية بالكتير. وخطأ في قاعدة البيانات وقت الفحص بيقفل الـ stream كمان (fail closed)، والمتصفح بيرجع.
 - **إيقاف السيرفر:** `Drain` بيقفل كل الـ streams على طول، عشان `Shutdown` مايستناش 20 ثانية والمتصفح يرجع على instance تانية.
 
 ### التوزيع والحدود
@@ -87,7 +99,9 @@ ADR-0046 حدّد شكل التخزين والقراية: `"LogChunks"` مقسّ
 - **مفيش buffer مشترك:** كل stream ليه channel صحيان بسعة 1 (الصحيان بيتجمّع والـ hub عمره ما بيستنى)، وبيقرا صفوفه هو بعد آخر seq بعته، بـ batches لحد 64 صف أو 256 KiB. فالذاكرة لكل stream محدودة، والـ stream البطيء مابيأثرش على حد.
 - **المشترك البطيء:** كتابة ماخلصتش في 10 ثواني (الـ socket buffer اتملى) بتقفل الـ stream، ومعاها سطر `info` فيه `slow_client`. والمتصفح بيرجع بـ `Last-Event-ID`. ده تفسير «الـ buffer المحدود» في ADR-0046: الـ buffer هو الـ socket، والحد هو الـ write deadline.
 - **القراية الاحتياطية:** مع كل comment (15 ثانية) الـ stream بيقرا تاني حتى لو مفيش إشعار.
-- **الحدود في كل instance:** 10 streams **لكل مستخدم** (فرق عن «لكل جلسة» في ADR-0046: الجلسة الجديدة بتتعمل بتسجيل دخول تاني، فحد الجلسة كان سهل يتلف حواليه)، و`DHOW_SSE_MAX_STREAMS` (افتراضيًا 2000، من 1 لـ 100000) للـ instance. الزيادة `429 TOO_MANY_STREAMS` بـ `Retry-After: 5`، والحجز بيتعمل قبل ما الـ stream يبدأ وبيتفك مع نهايته.
+- **الحدود في كل instance:** حصة لكل مؤسسة عُشر `DHOW_SSE_MAX_STREAMS` (وعلى الأقل 20، عشان مستخدمين في نفس المؤسسة دايمًا يلاقوا مكان)، فمؤسسة واحدة ماتقدرش تاخد الـ instance كلها. و10 streams **لكل مستخدم** (فرق عن «لكل جلسة» في ADR-0046: الجلسة الجديدة بتتعمل بتسجيل دخول تاني، فحد الجلسة كان سهل يتلف حواليه)، و`DHOW_SSE_MAX_STREAMS` (افتراضيًا 2000، من 1 لـ 100000) للـ instance. الزيادة `429 TOO_MANY_STREAMS` بـ `Retry-After: 5`، والحجز بيتعمل قبل ما الـ stream يبدأ وبيتفك مع نهايته.
+
+- **معدّل الطلبات لكل مستخدم** (token bucket في الذاكرة): التاريخ 30 burst وواحد كل 200 ms، وفتح الـ streams 20 burst وواحد في الثانية، والزيادة `429 RATE_LIMITED` بـ `Retry-After`. الـ buckets بتتنضّف لما تعدّي 10000 مستخدم، زي buckets الـ runners في ADR-0051.
 
 ### الأسرار والـ masking
 - **الـ masking في الـ runner بس** (ADR-0045): قبل الـ spill وقبل الإرسال. السيرفر بيخزّن الـ chunks زي ما وصلت ومابيعملش masking تاني، لأنه كان هيحتاج القيم الصريحة طول مدة الـ job.
@@ -95,7 +109,7 @@ ADR-0046 حدّد شكل التخزين والقراية: `"LogChunks"` مقسّ
 
 ### الـ reverse proxy
 - **nginx:** الـ `proxy_buffering off` والـ timeout ساعة على مسار الـ stream بس (location بـ regex)، بدل `/api/v1/` كله، فباقي الردود فاضلة بالـ buffering العادي. و`/runner-api/` ليه 90 ثانية للـ long-poll (25 ثانية) ورفع الـ logs.
-- **Caddy:** matcher `@logstream` بـ `flush_interval -1` و`read_timeout 1h`، والباقي `read_timeout 90s`.
+- **Caddy:** matcher `@logstream` بـ `flush_interval -1` و`read_timeout 1h`، والباقي `read_timeout 90s`. والـ 90 ثانية دي على **كل** حاجة ما عدا الـ stream (الـ API والواجهة والـ runner plane)، مش على `/runner-api/` بس، وده مقصود: مفيش رد من Dhow المفروض ياخد أكتر منها.
 - **Traefik:** من غير تغيير، لأنه مابيعملش buffer ومفيش timeout على رد Dhow.
 - **`run.sh`** بيتأكد إن `/runner-api/` بيوصل للـ runner plane، وإن مسار الـ stream بيوصل لـ Dhow بالـ cookie. واختبار Go جديد بيتأكد إن الـ fixtures فيها قاعدة الـ stream والـ timeout، غير اختبار التطابق مع الوثيقة.
 
@@ -104,6 +118,7 @@ ADR-0046 حدّد شكل التخزين والقراية: `"LogChunks"` مقسّ
 - **قاعدة اسم الجدول** بتقبل `%I` و`%I.%I` في `CREATE TABLE`، لأنهم identifiers بيتحطّوا بين علامات تنصيص وقت التشغيل بـ `format()`. و`%s` واسم من غير تنصيص فاضلين مرفوضين، ومعاهم اختبار.
 
 ## قيود معروفة
+- **كل stream بيقرا صفوفه هو:** attempt عليه 50 مشاهد في instance واحدة بيعمل 50 قراية مع كل `Append`. القراية مرة واحدة لكل attempt في كل instance وتوزيعها من الـ hub محتاجة cursor مشترك وbuffer لكل مشترك وتسليم بين التاريخ والبث الحي، وده تغيير كبير. لحد ما نحتاجه، الـ pool المنفصل والـ `statement_timeout` والحدود (المستخدم والمؤسسة والـ instance) هم اللي بيحدّوا الحمل.
 - **الحدود والـ fan-out لكل instance:** مستخدم على 3 instances يقدر يفتح 30 stream. الحد على مستوى الـ cluster محتاج Redis أو جدول، وده مع HA (Business).
 - **مفيش rate limit على `Append`:** كل نداء transaction قصيرة، والسقف بيحدّ التخزين. runner مسروق التوكن بتاعه يقدر يملا الـ log لحد السقف بس، وده نفس قيد إثبات الامتلاك في ADR-0051.
 - **seq مكرر ببيانات مختلفة** في batch تاني: الأول اللي اتخزّن هو اللي بيكسب، ومفيش مقارنة. المقارنة كانت هتحتاج قراية كل chunk قديم.

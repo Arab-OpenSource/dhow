@@ -274,7 +274,7 @@ docker run -d --name dhow-pg -e POSTGRES_USER=dhow -e POSTGRES_PASSWORD=dhow -e 
   - **التوزيع:** hub بـ `LISTEN dhow_log_appended`، وحدود الـ streams، وفحص الجلسة كل 15 ثانية.
   - **الوثائق:** `docs/install/reverse-proxy.md` وملفات `deploy/proxy-check` (timeout الـ `/runner-api/`، و`proxy_buffering off` على مسار الـ stream). واختبار التطابق الموجود بيمسك الفرق.
   - **الفرق في التنفيذ** ([ADR-0052](ADR/0052-job-logs-implementation.md)):
-    - الـ migration رقمها `00032`.
+    - الـ migration رقمها `00033`، لأن M2.4 بياخد `00032`.
     - الـ batch اللي فيه فراغ في النص بيتقبل منه الجزء المتصل، و`"LastSeq"` بقى أعلى seq اتأكد، وسطور السيرفر بتاخد الـ seq الجاي.
     - الحد 10 streams لكل مستخدم بدل لكل جلسة.
     - الصيانة بـ `pg_try_advisory_xact_lock` (الـ instance التانية بتتخطّى)، وفشلها وقت الإقلاع بيوقّفه.
