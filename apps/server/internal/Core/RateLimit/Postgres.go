@@ -14,10 +14,15 @@ type Postgres struct {
 }
 
 func NewPostgres(db sqlc.DBTX, now func() time.Time) *Postgres {
-	if now == nil {
-		now = time.Now
-	}
 	return &Postgres{q: sqlc.New(db), now: now}
+}
+
+func (p *Postgres) clock() *time.Time {
+	if p.now == nil {
+		return nil
+	}
+	t := p.now().UTC()
+	return &t
 }
 
 func (p *Postgres) Take(ctx context.Context, l Limit, subject string) (Decision, error) {
@@ -25,10 +30,8 @@ func (p *Postgres) Take(ctx context.Context, l Limit, subject string) (Decision,
 	if err != nil {
 		return Decision{}, err
 	}
-	now := p.now().UTC()
-	start := now.Truncate(l.Window)
 	row, err := p.q.TakeRateLimit(ctx, sqlc.TakeRateLimitParams{
-		Key: key, WindowStart: start, ExpiresAt: start.Add(l.Window), Now: now,
+		Key: key, WindowSeconds: l.Window.Seconds(), Now: p.clock(),
 		Ceiling: int32(l.Max + 1), //nolint:gosec // Limit.Valid caps Max at MaxHits.
 	})
 	if err != nil {
@@ -37,5 +40,5 @@ func (p *Postgres) Take(ctx context.Context, l Limit, subject string) (Decision,
 	if int(row.Hits) <= l.Max {
 		return Decision{Allowed: true}, nil
 	}
-	return Decision{RetryAfter: clampRetry(row.ExpiresAt.Sub(now), l.Window)}, nil
+	return Decision{RetryAfter: clampRetry(row.ExpiresAt.Sub(row.Now), l.Window)}, nil
 }

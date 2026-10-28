@@ -117,3 +117,27 @@ func TestPostgresRefusesAnInvalidLimit(t *testing.T) {
 	_, err = p.Take(context.Background(), ratelimit.Limit{Name: "x", Max: 1, Window: time.Minute}, "")
 	require.ErrorIs(t, err, ratelimit.ErrInvalidKey)
 }
+
+func TestWithoutAClockTheDatabaseDecidesTheWindow(t *testing.T) {
+	pool := dbtest.NewPool(t)
+	tx, err := pool.Begin(context.Background())
+	require.NoError(t, err)
+	defer func() { require.NoError(t, tx.Rollback(context.Background())) }()
+	p := ratelimit.NewPostgres(tx, nil)
+	l := ratelimit.Limit{Name: "ip-oidc", Max: 1, Window: time.Second}
+	require.True(t, take(t, p, l, "x").Allowed)
+	time.Sleep(1200 * time.Millisecond)
+	d := take(t, p, l, "x")
+	assert.False(t, d.Allowed, "now() stands still inside a transaction, so only the database clock keeps this in one window")
+	assert.Equal(t, time.Second, d.RetryAfter)
+}
+
+func TestInstancesWithoutAClockShareTheDatabaseWindow(t *testing.T) {
+	pool := dbtest.NewPool(t)
+	l := ratelimit.Limit{Name: "ip-oidc", Max: 1, Window: time.Second}
+	first, second := ratelimit.NewPostgres(pool, nil), ratelimit.NewPostgres(pool, nil)
+	require.True(t, take(t, first, l, "x").Allowed)
+	require.False(t, take(t, second, l, "x").Allowed)
+	time.Sleep(1100 * time.Millisecond)
+	assert.True(t, take(t, second, l, "x").Allowed, "both instances read one clock, so the next window starts for everybody")
+}

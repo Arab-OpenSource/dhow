@@ -12,40 +12,47 @@ import (
 
 const takeRateLimit = `-- name: TakeRateLimit :one
 INSERT INTO "RateLimits" ("Key", "WindowStart", "Hits", "ExpiresAt", "CreatedAt", "UpdatedAt")
-VALUES ($1, $2, 1, $3, $4, $4)
+VALUES (
+    $1,
+    date_bin($2::float8 * interval '1 second', COALESCE($3::timestamptz, now()), timestamptz '2000-01-01 00:00:00+00'),
+    1,
+    date_bin($2::float8 * interval '1 second', COALESCE($3::timestamptz, now()), timestamptz '2000-01-01 00:00:00+00')
+        + $2::float8 * interval '1 second',
+    COALESCE($3::timestamptz, now()),
+    COALESCE($3::timestamptz, now())
+)
 ON CONFLICT ("Key") DO UPDATE
 SET "Hits" = CASE
         WHEN EXCLUDED."WindowStart" > "RateLimits"."WindowStart" THEN 1
-        ELSE LEAST("RateLimits"."Hits" + 1, $5::integer)
+        ELSE LEAST("RateLimits"."Hits" + 1, $4::integer)
     END,
     "WindowStart" = GREATEST("RateLimits"."WindowStart", EXCLUDED."WindowStart"),
     "ExpiresAt" = GREATEST("RateLimits"."ExpiresAt", EXCLUDED."ExpiresAt"),
-    "UpdatedAt" = $4
-RETURNING "Hits", "ExpiresAt"
+    "UpdatedAt" = EXCLUDED."UpdatedAt"
+RETURNING "Hits", "ExpiresAt", "UpdatedAt" AS "Now"
 `
 
 type TakeRateLimitParams struct {
-	Key         string
-	WindowStart time.Time
-	ExpiresAt   time.Time
-	Now         time.Time
-	Ceiling     int32
+	Key           string
+	WindowSeconds float64
+	Now           *time.Time
+	Ceiling       int32
 }
 
 type TakeRateLimitRow struct {
 	Hits      int32
 	ExpiresAt time.Time
+	Now       time.Time
 }
 
 func (q *Queries) TakeRateLimit(ctx context.Context, arg TakeRateLimitParams) (TakeRateLimitRow, error) {
 	row := q.db.QueryRow(ctx, takeRateLimit,
 		arg.Key,
-		arg.WindowStart,
-		arg.ExpiresAt,
+		arg.WindowSeconds,
 		arg.Now,
 		arg.Ceiling,
 	)
 	var i TakeRateLimitRow
-	err := row.Scan(&i.Hits, &i.ExpiresAt)
+	err := row.Scan(&i.Hits, &i.ExpiresAt, &i.Now)
 	return i, err
 }

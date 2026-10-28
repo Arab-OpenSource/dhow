@@ -69,15 +69,12 @@ type Runner struct {
 
 type Report struct {
 	Ran     bool
+	Now     time.Time
 	Deleted map[string]int64
 	Batches map[string]int
 }
 
 func New(o Options) *Runner {
-	now := o.Now
-	if now == nil {
-		now = time.Now
-	}
 	batch, maxBatches := o.Batch, o.MaxBatches
 	if batch <= 0 || batch > config.RetentionBatch {
 		batch = config.RetentionBatch
@@ -86,7 +83,7 @@ func New(o Options) *Runner {
 		maxBatches = config.RetentionMaxBatches
 	}
 	return &Runner{
-		pool: o.Pool, log: o.Log, now: now, maxBatches: maxBatches,
+		pool: o.Pool, log: o.Log, now: o.Now, maxBatches: maxBatches,
 		batch: int32(batch),
 	}
 }
@@ -109,14 +106,28 @@ func (r *Runner) Run(ctx context.Context) (report Report, err error) {
 			err = errors.Join(err, fmt.Errorf("retention: release the lock (released=%t): %w", released, errors.Join(unlockErr, closeErr)))
 		}
 	}()
-	report = Report{Ran: true, Deleted: map[string]int64{}, Batches: map[string]int{}}
-	now := r.now().UTC()
+	now, err := r.clock(ctx, q)
+	if err != nil {
+		return Report{}, err
+	}
+	report = Report{Ran: true, Now: now, Deleted: map[string]int64{}, Batches: map[string]int{}}
 	for _, p := range purges {
 		if err := r.purgeTable(ctx, q, p, now.Add(-p.after), &report); err != nil {
 			return report, err
 		}
 	}
 	return report, nil
+}
+
+func (r *Runner) clock(ctx context.Context, q *sqlc.Queries) (time.Time, error) {
+	if r.now != nil {
+		return r.now().UTC(), nil
+	}
+	now, err := q.RetentionClock(ctx)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("retention: read the database clock: %w", err)
+	}
+	return now.UTC(), nil
 }
 
 func (r *Runner) purgeTable(ctx context.Context, q *sqlc.Queries, p purge, before time.Time, report *Report) error {

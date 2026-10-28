@@ -242,3 +242,16 @@ func TestARowInUseIsSkipped(t *testing.T) {
 func TestRetentionCoversTheFixedTableList(t *testing.T) {
 	assert.Equal(t, []string{"LoginThrottles", "RunnerThrottles", "AuthChallenges", "OidcFlows", "Invitations", "SetupTokens", "RateLimits"}, retention.Tables())
 }
+
+func TestWithoutAClockRetentionUsesTheDatabaseTime(t *testing.T) {
+	pool := dbtest.NewPool(t)
+	var dbNow time.Time
+	require.NoError(t, pool.QueryRow(context.Background(), `SELECT now()`).Scan(&dbNow))
+	exec(t, pool, `INSERT INTO "RateLimits" ("Key", "WindowStart", "Hits", "ExpiresAt") VALUES ('old', now() - interval '3 hours', 1, now() - interval '2 hours')`)
+	exec(t, pool, `INSERT INTO "RateLimits" ("Key", "WindowStart", "Hits", "ExpiresAt") VALUES ('new', now() - interval '1 minute', 1, now() + interval '9 minutes')`)
+
+	report, err := retention.New(retention.Options{Pool: pool, Log: quiet()}).Run(context.Background())
+	require.NoError(t, err)
+	assert.WithinDuration(t, dbNow, report.Now, 5*time.Second)
+	assert.Equal(t, int64(1), report.Deleted["RateLimits"])
+}

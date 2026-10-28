@@ -4,6 +4,9 @@ SELECT pg_try_advisory_lock(@lock_key::bigint) AS "Locked";
 -- name: ReleaseRetentionLock :one
 SELECT pg_advisory_unlock(@lock_key::bigint) AS "Released";
 
+-- name: RetentionClock :one
+SELECT now()::timestamptz AS "Now";
+
 -- name: PurgeLoginThrottles :execrows
 DELETE FROM "LoginThrottles"
 WHERE "Id" IN (

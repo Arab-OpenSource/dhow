@@ -182,6 +182,17 @@ func (q *Queries) ReleaseRetentionLock(ctx context.Context, lockKey int64) (bool
 	return Released, err
 }
 
+const retentionClock = `-- name: RetentionClock :one
+SELECT now()::timestamptz AS "Now"
+`
+
+func (q *Queries) RetentionClock(ctx context.Context) (time.Time, error) {
+	row := q.db.QueryRow(ctx, retentionClock)
+	var Now time.Time
+	err := row.Scan(&Now)
+	return Now, err
+}
+
 const tryRetentionLock = `-- name: TryRetentionLock :one
 SELECT pg_try_advisory_lock($1::bigint) AS "Locked"
 `
