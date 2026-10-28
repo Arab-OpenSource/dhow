@@ -15,9 +15,11 @@ import (
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
+	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
@@ -37,9 +39,10 @@ type Infra struct {
 }
 
 type Wired struct {
-	Options  Options
-	Handler  http.Handler
-	Identity *identity.Service
+	Options       Options
+	Handler       http.Handler
+	RunnerHandler http.Handler
+	Identity      *identity.Service
 }
 
 func Build(ctx context.Context, in Infra) (*Wired, error) {
@@ -72,6 +75,10 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	if err != nil {
 		return nil, err
 	}
+	runnerKeys, err := runnerauth.DeriveKeys(in.Config.SecretKey)
+	if err != nil {
+		return nil, err
+	}
 	bus := eventbus.New(in.Log)
 	instance := policy.InstanceSettings{AnyUserCreatesOrganizations: in.Config.AnyUserCreatesOrganizations}
 
@@ -90,6 +97,12 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		PublicURL: in.Config.PublicURL.String(), Log: in.Log, Now: in.Now,
 	})
 
+	runnersService := runners.NewService(runners.Options{
+		DB: in.Pool, Keys: runnerKeys, Bus: bus, Origin: auth.OriginOf(in.Config.PublicURL), PublicURL: in.Config.PublicURL.String(),
+		Log: in.Log, Now: in.Now,
+	})
+	gate := runnerauth.NewGate(runnerauth.GateOptions{Verifier: runnersService, Log: in.Log, Now: in.Now})
+
 	opts := Options{
 		Config: in.Config,
 		Log:    in.Log,
@@ -99,11 +112,17 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Identity: identityService,
 		Session:  sessionService,
 		Audit:    auditService,
+		Runners:  runnersService,
+		Gate:     gate,
 		CSRF:     csrf,
 		Now:      in.Now,
 		Web:      in.Web,
 	}
-	return &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService}, nil
+	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService}
+	if in.Config.RunnerPlaneSeparate() {
+		wired.RunnerHandler = RunnerPlaneServer(opts)
+	}
+	return wired, nil
 }
 
 func mailerFor(cfg config.Config, now func() time.Time) mailer.Sender {

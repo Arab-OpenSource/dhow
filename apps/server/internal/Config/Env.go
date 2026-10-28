@@ -37,6 +37,10 @@ type Config struct {
 
 	BreachedPasswordCheck bool
 
+	RunnerListenAddr  string
+	RunnerTLSCertFile string
+	RunnerTLSKeyFile  string
+
 	SMTP                        SMTP
 	AnyUserCreatesOrganizations bool
 }
@@ -67,6 +71,13 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.ListenAddr, err = parseListenAddr(getenv(EnvListenAddr)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvListenAddr, err))
+	}
+	if cfg.ListenAddr != "" {
+		runner, runnerErr := parseRunnerListener(getenv, dev, cfg.ListenAddr)
+		if runnerErr != nil {
+			errs = append(errs, runnerErr)
+		}
+		cfg.RunnerListenAddr, cfg.RunnerTLSCertFile, cfg.RunnerTLSKeyFile = runner.addr, runner.cert, runner.key
 	}
 	if cfg.TrustedProxies, err = parseTrustedProxies(getenv(EnvTrustedProxies)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvTrustedProxies, err))

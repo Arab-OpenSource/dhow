@@ -141,6 +141,11 @@ func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) 
 	return NewWithOptions(t, Options{Pool: pool, Params: &params})
 }
 
+func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func(*config.Config)) *Env {
+	t.Helper()
+	return NewWithOptions(t, Options{Pool: pool, Params: &params, Profile: configure})
+}
+
 func NewWithOptions(t *testing.T, o Options) *Env {
 	t.Helper()
 	pool := o.Pool

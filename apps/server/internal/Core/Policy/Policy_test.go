@@ -15,14 +15,14 @@ func TestMatrix(t *testing.T) {
 	want := map[policy.Role]map[policy.Action]bool{
 		policy.RoleOwner: {
 			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.OrgTransfer: true,
-			policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true,
+			policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true,
 		},
 		policy.RoleAdmin: {
 			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.MemberRead: true, policy.MemberManage: true,
-			policy.AuditRead: true,
+			policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true,
 		},
-		policy.RoleMaintainer: {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true},
-		policy.RoleDeveloper:  {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true},
+		policy.RoleMaintainer: {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true},
+		policy.RoleDeveloper:  {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true},
 		policy.RoleViewer:     {policy.OrgRead: true, policy.OrgLeave: true},
 	}
 	for _, role := range policy.Roles() {
@@ -102,6 +102,11 @@ func TestTable(t *testing.T) {
 		policy.Organization(http.MethodPost, "/organizations/{id}/create", policy.OrgCreate, "id"),
 		policy.Authenticated(http.MethodGet, "/wrong-action", policy.OrgRead),
 		policy.Rule{Method: http.MethodGet, Path: "/no-scope"},
+		policy.Runner("/dhow.runner.v1.AuthService/Challenge", policy.RunnerChallenge),
+		policy.Rule{Method: http.MethodGet, Path: "/dhow.runner.v1.AuthService/Authenticate", Scope: policy.ScopeRunner, Runner: policy.RunnerSigned},
+		policy.Rule{Method: http.MethodPost, Path: "/dhow.runner.v1.AuthService/RotateKeys", Scope: policy.ScopeRunner},
+		policy.Rule{Method: http.MethodPost, Path: "/dhow.runner.v1.LeaseService/Lease", Scope: policy.ScopeRunner, Runner: policy.RunnerSession, Action: policy.OrgRead},
+		policy.Rule{Method: http.MethodPost, Path: "/runner-on-public", Scope: policy.ScopePublic, Runner: policy.RunnerSession},
 	)
 	tests := []struct {
 		name   string
@@ -121,6 +126,12 @@ func TestTable(t *testing.T) {
 		{"organization rule with an instance action is invalid", http.MethodPost, "/organizations/{id}/create", false, 0},
 		{"authenticated rule with an organization action is invalid", http.MethodGet, "/wrong-action", false, 0},
 		{"rule without a scope is invalid", http.MethodGet, "/no-scope", false, 0},
+		{"runner procedure", http.MethodPost, "/dhow.runner.v1.AuthService/Challenge", true, policy.ScopeRunner},
+		{"runner procedure is POST only", http.MethodGet, "/dhow.runner.v1.AuthService/Challenge", false, 0},
+		{"runner rule with another method is invalid", http.MethodGet, "/dhow.runner.v1.AuthService/Authenticate", false, 0},
+		{"runner rule without an access kind is invalid", http.MethodPost, "/dhow.runner.v1.AuthService/RotateKeys", false, 0},
+		{"runner rule with an action is invalid", http.MethodPost, "/dhow.runner.v1.LeaseService/Lease", false, 0},
+		{"runner access on another scope is invalid", http.MethodPost, "/runner-on-public", false, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -163,4 +174,24 @@ func TestCanInstance(t *testing.T) {
 			assert.Equal(t, tt.want, policy.CanInstance(tt.subject, tt.action, tt.inst))
 		})
 	}
+}
+
+func TestRunnerRule(t *testing.T) {
+	for _, access := range []policy.RunnerAccess{policy.RunnerRegistration, policy.RunnerChallenge, policy.RunnerSigned, policy.RunnerSession} {
+		r := policy.Runner("/dhow.runner.v1.RegistrationService/Register", access)
+		assert.True(t, r.Valid())
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.True(t, r.Unsafe())
+	}
+	assert.False(t, policy.Runner("/x", policy.RunnerSession+1).Valid())
+	assert.False(t, policy.Runner("no-slash", policy.RunnerSession).Valid())
+}
+
+func TestRunnerActionsNeedAMembership(t *testing.T) {
+	org := uuid.New()
+	developer := policy.Subject{UserID: uuid.New(), Memberships: []policy.Membership{{OrganizationID: org, Role: policy.RoleDeveloper}}}
+	assert.True(t, policy.Can(developer, policy.RunnerRead, policy.Resource{OrganizationID: org}))
+	assert.False(t, policy.Can(developer, policy.RunnerManage, policy.Resource{OrganizationID: org}))
+	assert.False(t, policy.Can(developer, policy.RunnerRead, policy.Resource{OrganizationID: uuid.New()}))
+	assert.False(t, policy.Can(policy.Subject{}, policy.RunnerRead, policy.Resource{OrganizationID: org}))
 }

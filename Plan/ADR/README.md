@@ -48,5 +48,6 @@
 | [0047](0047-job-state-machine-and-reconciliation.md) | حالات الـ job والـ attempt، والإلغاء بالتدريج، والـ reconciliation بقيود في قاعدة البيانات |
 | [0048](0048-runner-packaging-and-kubernetes.md) | تغليف الـ runner: binary وsystemd ووضع `runner` في الـ installer، وHelm chart واحد، وpod لكل job على Kubernetes |
 | [0049](0049-web-code-splitting-and-message-catalogs.md) | تقسيم الواجهة لـ chunks بتتحمّل وقت الحاجة، وكتالوج الرسائل لجزئين |
+| [0050](0050-runner-identity-implementation.md) | تنفيذ هوية الـ runner في M3.2: صيغة الرسائل الموقّعة، والـ gate، والـ throttle، وكشف النسخ |
 
 الأرقام من 0038 لـ 0040 محجوزة لقرارات M2 اللي جاية.

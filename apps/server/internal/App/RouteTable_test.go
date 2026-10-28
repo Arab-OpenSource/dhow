@@ -104,6 +104,8 @@ type fixture struct {
 	byRole     map[policy.Role]string
 	outsiderID string
 	loneID     string
+	runnerID   string
+	tokenID    string
 }
 
 func buildFixture(t *testing.T, env *apptest.Env) fixture {
@@ -121,6 +123,8 @@ func buildFixture(t *testing.T, env *apptest.Env) fixture {
 	}
 	fx.outsiderID = env.SeedUser(orgB, "outsider@example.com", "a long password for outsider", "owner").String()
 	fx.loneID = env.SeedUserWithoutMembership("lone@example.com", "a long password for lone").String()
+	fx.runnerID = env.SeedRunner(orgA, mustUUID(ownerID)).String()
+	fx.tokenID = env.SeedRegistrationToken(orgA, mustUUID(ownerID)).String()
 	return fx
 }
 
@@ -199,8 +203,8 @@ func policyFailure(res apptest.Response) bool {
 }
 
 func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request {
-	path := strings.ReplaceAll(rule.Path, "{id}", fx.orgA)
-	if strings.HasPrefix(rule.Path, "/organizations/{id}/") {
+	path := strings.NewReplacer("{id}", fx.orgA, "{runnerId}", fx.runnerID, "{tokenId}", fx.tokenID).Replace(rule.Path)
+	if strings.HasPrefix(rule.Path, "/organizations/{id}/") && !strings.Contains(rule.Path, "{runnerId}") && !strings.Contains(rule.Path, "{tokenId}") {
 		path = organizationPath(c.Env, fx, rule)
 	}
 	if rule.Path == "/sessions/{id}" {
@@ -223,6 +227,8 @@ func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request
 		req.Body = map[string]string{"SetupToken": "x", "OwnerName": "x", "Email": "x@example.com", "Password": "x", "OrganizationName": "x", "OrganizationSlug": "x"}
 	case rule.Method == http.MethodPut && rule.Path == "/me/password":
 		req.Body = map[string]string{"CurrentPassword": "not the current one", "NewPassword": "a brand new passphrase"}
+	case rule.Method == http.MethodPost && rule.Path == "/organizations/{id}/runner-registration-tokens":
+		req.Body = map[string]any{}
 	case rule.Method == http.MethodPatch:
 		req.Body = map[string]string{"Name": "Route table was here"}
 	}

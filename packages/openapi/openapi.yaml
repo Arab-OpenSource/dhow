@@ -30,6 +30,10 @@ tags:
       second step is part of signing in.
   - name: audit
     description: The tamper-evident audit log. Served by the Audit module.
+  - name: runners
+    description: >-
+      Runners and their registration tokens. Served by the Runners module. Runners themselves talk to the server over
+      Connect on /runner-api/, not over this API.
 paths:
   /health/live:
     get:
@@ -1318,6 +1322,169 @@ paths:
                 $ref: "#/components/schemas/AuditVerifyResponse"
         default:
           $ref: "#/components/responses/Error"
+  /organizations/{id}/runners:
+    get:
+      operationId: listRunners
+      tags: [runners]
+      summary: List the runners of an organization
+      description: >-
+        Needs `runner.read`. Newest first. `Status` is computed: `online` when the runner was seen in the last two
+        minutes. Never contains a key or a token. A caller who is not a member gets 404.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of runners.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunnerListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/runners/{runnerId}:
+    get:
+      operationId: getRunner
+      tags: [runners]
+      summary: Read a runner
+      description: Needs `runner.read`. Never contains a key or a token. A runner of another organization gets 404.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/RunnerId"
+      responses:
+        "200":
+          description: The runner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunnerResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateRunner
+      tags: [runners]
+      summary: Rename a runner, change its labels, or disable and enable it
+      description: >-
+        Needs `runner.manage`. A disabled runner gets no new jobs and finishes the running ones. Labels that start with
+        `dhow.` are reserved for capabilities the runner reports. A revoked runner answers 409 `RUNNER_REVOKED`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/RunnerId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRunnerRequest"
+      responses:
+        "200":
+          description: The updated runner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunnerResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/runners/{runnerId}/revoke:
+    post:
+      operationId: revokeRunner
+      tags: [runners]
+      summary: Revoke a runner for good
+      description: >-
+        Needs `runner.manage`. Ends every session of the runner, so its next call is refused. Revoking is final and
+        idempotent: the runner has to register again with a new identity.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/RunnerId"
+      responses:
+        "200":
+          description: The revoked runner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunnerResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/runner-registration-tokens:
+    get:
+      operationId: listRunnerRegistrationTokens
+      tags: [runners]
+      summary: List the runner registration tokens of an organization
+      description: Needs `runner.manage`. Metadata only, the token itself is never shown again.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of registration tokens.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunnerRegistrationTokenListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createRunnerRegistrationToken
+      tags: [runners]
+      summary: Create a runner registration token
+      description: >-
+        Needs `runner.manage`. The token is returned once, in this response only, together with the command that
+        registers a runner. It is valid for one use and one hour by default, for at most 50 uses and 24 hours.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRunnerRegistrationTokenRequest"
+      responses:
+        "201":
+          description: The new token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedRunnerRegistrationTokenResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/runner-registration-tokens/{tokenId}/revoke:
+    post:
+      operationId: revokeRunnerRegistrationToken
+      tags: [runners]
+      summary: Revoke a runner registration token
+      description: Needs `runner.manage`. Idempotent. Runners already registered with it keep working.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TokenId"
+      responses:
+        "200":
+          description: The revoked token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunnerRegistrationTokenResponse"
+        default:
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     SessionCookie:
@@ -1331,6 +1498,20 @@ components:
   parameters:
     Id:
       name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RunnerId:
+      name: runnerId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TokenId:
+      name: tokenId
       in: path
       required: true
       schema:
@@ -2126,6 +2307,209 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+    RunnerState:
+      type: string
+      enum: [active, disabled, revoked]
+    RunnerStatus:
+      type: string
+      enum: [online, offline, disabled, revoked]
+      description: Computed from the state and from when the runner was last seen (online within two minutes).
+    RunnerDisabledReason:
+      type: string
+      enum: [manual, clone_suspected]
+    RunnerIsolation:
+      type: string
+      enum: [container, gvisor]
+    Runner:
+      type: object
+      additionalProperties: false
+      required: [Id, OrganizationId, Name, Labels, CapabilityLabels, Os, Arch, Version, IsolationLevels, Capacity, State,
+                 Status, KeyVersion, KeysRotatedAt, CreatedAt]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        OrganizationId:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        Labels:
+          type: array
+          items:
+            type: string
+          description: Labels chosen by an administrator. They decide which jobs the runner may take.
+        CapabilityLabels:
+          type: array
+          items:
+            type: string
+          description: Reported by the runner, with the reserved `dhow.` prefix, for example `dhow.os=linux`.
+        Os:
+          type: string
+        Arch:
+          type: string
+        Version:
+          type: string
+        IsolationLevels:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunnerIsolation"
+        Capacity:
+          type: integer
+          minimum: 1
+          maximum: 16
+        State:
+          $ref: "#/components/schemas/RunnerState"
+        Status:
+          $ref: "#/components/schemas/RunnerStatus"
+        DisabledReason:
+          $ref: "#/components/schemas/RunnerDisabledReason"
+        KeyVersion:
+          type: integer
+          minimum: 1
+        KeysRotatedAt:
+          type: string
+          format: date-time
+        LastSeenAt:
+          type: string
+          format: date-time
+        CreatedAt:
+          type: string
+          format: date-time
+        RevokedAt:
+          type: string
+          format: date-time
+    RunnerResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Runner"
+    RunnerListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Runner"
+    UpdateRunnerRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        Name:
+          type: string
+          maxLength: 100
+        Labels:
+          type: array
+          maxItems: 32
+          items:
+            type: string
+            maxLength: 128
+        Disabled:
+          type: boolean
+    RunnerRegistrationTokenStatus:
+      type: string
+      enum: [active, expired, used_up, revoked]
+    RunnerRegistrationToken:
+      type: object
+      additionalProperties: false
+      required: [Id, Description, Labels, MaxUses, Uses, ExpiresAt, Status, CreatedAt, CreatedByUserId]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Description:
+          type: string
+        Labels:
+          type: array
+          items:
+            type: string
+        MaxUses:
+          type: integer
+          minimum: 1
+          maximum: 50
+        Uses:
+          type: integer
+          minimum: 0
+        ExpiresAt:
+          type: string
+          format: date-time
+        Status:
+          $ref: "#/components/schemas/RunnerRegistrationTokenStatus"
+        CreatedAt:
+          type: string
+          format: date-time
+        CreatedByUserId:
+          type: string
+          format: uuid
+        LastUsedAt:
+          type: string
+          format: date-time
+        RevokedAt:
+          type: string
+          format: date-time
+    RunnerRegistrationTokenResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/RunnerRegistrationToken"
+    RunnerRegistrationTokenListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/RunnerRegistrationToken"
+    CreateRunnerRegistrationTokenRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        Description:
+          type: string
+          maxLength: 200
+        Labels:
+          type: array
+          maxItems: 32
+          items:
+            type: string
+            maxLength: 128
+        MaxUses:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 1
+        ExpiresInSeconds:
+          type: integer
+          minimum: 60
+          maximum: 86400
+          default: 3600
+    CreatedRunnerRegistrationToken:
+      type: object
+      additionalProperties: false
+      required: [RegistrationToken, Token, RegisterCommand]
+      properties:
+        RegistrationToken:
+          $ref: "#/components/schemas/RunnerRegistrationToken"
+        Token:
+          type: string
+          description: Shown once. Starts with `dhow_rrt_`. Pass it to the runner on standard input or in a file.
+        RegisterCommand:
+          type: string
+          description: The command that registers a runner. It reads the token from standard input, never from argv.
+    CreatedRunnerRegistrationTokenResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/CreatedRunnerRegistrationToken"
     BindableRole:
       type: string
       enum: [admin, maintainer, developer, viewer]

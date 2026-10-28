@@ -25,6 +25,7 @@ const (
 	CodeInvalidCurrentFactor   = "INVALID_CURRENT_FACTOR"
 	CodeEnrollmentExpired      = "ENROLLMENT_EXPIRED"
 	CodePasskeyRejected        = "PASSKEY_REJECTED"
+	CodeRunnerRevoked          = "RUNNER_REVOKED"
 )
 
 const (
@@ -62,6 +63,7 @@ const (
 	KeyInvalidCurrentFactor   = "errors.invalidCurrentFactor"
 	KeyEnrollmentExpired      = "errors.enrollmentExpired"
 	KeyPasskeyRejected        = "errors.passkeyRejected"
+	KeyRunnerRevoked          = "errors.runnerRevoked"
 )
 
 const (

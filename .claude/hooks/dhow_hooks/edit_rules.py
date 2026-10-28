@@ -24,7 +24,12 @@ ROUTES_FILE = re.compile(r"(^|/)Modules/[^/]+/[^/]+\.Routes\.go$")
 GO_RAW_ROUTE = re.compile(
     r"\b\w+\.(Get|Post|Put|Patch|Delete|Head|Options|Connect|Trace|Handle|HandleFunc|Method|MethodFunc|Mount)\(\s*[\"`]")
 GO_GENERATED_ROUTES = re.compile(r"\bgen\.(HandlerWithOptions|HandlerFromMux\w*|Handler)\(")
-GO_POLICY_RULE = re.compile(r"\bpolicy\.(Public|Authenticated|Organization|Instance)\(")
+GO_POLICY_RULE = re.compile(r"\bpolicy\.(Public|Authenticated|Organization|Instance|Runner)\(")
+GO_RUNNER_RULE = re.compile(r"\bpolicy\.Runner\(")
+GO_CONNECT_HANDLER = re.compile(r"\b\w+connect\.New\w+Handler\(")
+GO_RUNNER_GATE = re.compile(r"\.RequestGate\(")
+CONNECT_ROUTE_FILES = ("Modules/Runners/Runners.Routes.go", "Modules/Jobs/Jobs.Routes.go")
+RUNNER_AUTH_IMPORTERS = (("App", None), ("Modules", "Runners"), ("Modules", "Jobs"), ("Core", "RunnerAuth"))
 GO_POLICY_TABLE = re.compile(r"\bpolicy\.NewTable\(")
 GO_ROUTE_MIDDLEWARES = re.compile(r"\bMiddlewares\s*:")
 
@@ -207,7 +212,20 @@ def check_server_layout(rel, **_):
     return None
 
 
+def runner_auth_violation(src, dst):
+    if {src, dst} == {("Core", "RunnerAuth"), ("Core", "Auth")}:
+        return ("Core/Auth and Core/RunnerAuth must not import each other. Browser sessions and runner sessions are "
+                "separate planes, so a credential of one never works on the other.")
+    if dst == ("Core", "RunnerAuth") and src not in RUNNER_AUTH_IMPORTERS:
+        return ("only App, Modules/Runners and Modules/Jobs import Core/RunnerAuth. The runner plane and its "
+                "principal stay out of every other layer.")
+    return None
+
+
 def import_violation(src, dst):
+    reason = runner_auth_violation(src, dst)
+    if reason:
+        return reason
     s_top, s_name = src
     d_top, d_name = dst
     if d_top == "Modules":
@@ -260,6 +278,24 @@ def check_route_policies(rel, added, old, final_content, **_):
         return (f"{rel}: every route needs a declared policy. Declare each route in Policies() with policy.Public, "
                 "policy.Authenticated, policy.Organization or policy.Instance, build policy.NewTable(Policies()...) and pass "
                 "guard.Middleware(table) in the generated ChiServerOptions.Middlewares.")
+    return None
+
+
+def check_connect_mounts(rel, added, old, final_content, **_):
+    if not is_go(rel) or not rel.startswith(SERVER_INTERNAL) or is_test(rel) or GENERATED_PATH.search(rel):
+        return None
+    if "/Test/" in rel:
+        return None
+    text = final_content if final_content is not None else added
+    if not GO_CONNECT_HANDLER.search(text):
+        return None
+    inner = rel[len(SERVER_INTERNAL):]
+    if inner not in CONNECT_ROUTE_FILES:
+        return (f"{rel}: Connect handlers of the runner plane are mounted only in "
+                "Modules/Runners/Runners.Routes.go and Modules/Jobs/Jobs.Routes.go, next to their policy rows.")
+    if not (GO_RUNNER_RULE.search(text) and GO_POLICY_TABLE.search(text) and GO_RUNNER_GATE.search(text)):
+        return (f"{rel}: every runner procedure needs a declared policy. Declare each procedure with policy.Runner, "
+                "build policy.NewTable(...) from them and pass gate.RequestGate(table) to every Connect handler.")
     return None
 
 
@@ -419,6 +455,7 @@ CHECKS = (
     check_server_layout,
     check_server_imports,
     check_route_policies,
+    check_connect_mounts,
     check_ts,
     web_rules.check_web_imports,
     web_rules.check_web_text,

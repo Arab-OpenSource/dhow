@@ -558,6 +558,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/runners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the runners of an organization
+         * @description Needs `runner.read`. Newest first. `Status` is computed: `online` when the runner was seen in the last two minutes. Never contains a key or a token. A caller who is not a member gets 404.
+         */
+        get: operations["listRunners"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/runners/{runnerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a runner
+         * @description Needs `runner.read`. Never contains a key or a token. A runner of another organization gets 404.
+         */
+        get: operations["getRunner"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a runner, change its labels, or disable and enable it
+         * @description Needs `runner.manage`. A disabled runner gets no new jobs and finishes the running ones. Labels that start with `dhow.` are reserved for capabilities the runner reports. A revoked runner answers 409 `RUNNER_REVOKED`.
+         */
+        patch: operations["updateRunner"];
+        trace?: never;
+    };
+    "/organizations/{id}/runners/{runnerId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a runner for good
+         * @description Needs `runner.manage`. Ends every session of the runner, so its next call is refused. Revoking is final and idempotent: the runner has to register again with a new identity.
+         */
+        post: operations["revokeRunner"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/runner-registration-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the runner registration tokens of an organization
+         * @description Needs `runner.manage`. Metadata only, the token itself is never shown again.
+         */
+        get: operations["listRunnerRegistrationTokens"];
+        put?: never;
+        /**
+         * Create a runner registration token
+         * @description Needs `runner.manage`. The token is returned once, in this response only, together with the command that registers a runner. It is valid for one use and one hour by default, for at most 50 uses and 24 hours.
+         */
+        post: operations["createRunnerRegistrationToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/runner-registration-tokens/{tokenId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke a runner registration token
+         * @description Needs `runner.manage`. Idempotent. Runners already registered with it keep working.
+         */
+        post: operations["revokeRunnerRegistrationToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -903,6 +1011,101 @@ export interface components {
         RenamePasskeyRequest: {
             Name: string;
         };
+        /** @enum {string} */
+        RunnerState: "active" | "disabled" | "revoked";
+        /**
+         * @description Computed from the state and from when the runner was last seen (online within two minutes).
+         * @enum {string}
+         */
+        RunnerStatus: "online" | "offline" | "disabled" | "revoked";
+        /** @enum {string} */
+        RunnerDisabledReason: "manual" | "clone_suspected";
+        /** @enum {string} */
+        RunnerIsolation: "container" | "gvisor";
+        Runner: {
+            /** Format: uuid */
+            Id: string;
+            /** Format: uuid */
+            OrganizationId: string;
+            Name: string;
+            /** @description Labels chosen by an administrator. They decide which jobs the runner may take. */
+            Labels: string[];
+            /** @description Reported by the runner, with the reserved `dhow.` prefix, for example `dhow.os=linux`. */
+            CapabilityLabels: string[];
+            Os: string;
+            Arch: string;
+            Version: string;
+            IsolationLevels: components["schemas"]["RunnerIsolation"][];
+            Capacity: number;
+            State: components["schemas"]["RunnerState"];
+            Status: components["schemas"]["RunnerStatus"];
+            DisabledReason?: components["schemas"]["RunnerDisabledReason"];
+            KeyVersion: number;
+            /** Format: date-time */
+            KeysRotatedAt: string;
+            /** Format: date-time */
+            LastSeenAt?: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            RevokedAt?: string;
+        };
+        RunnerResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Runner"];
+        };
+        RunnerListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Runner"][];
+        };
+        UpdateRunnerRequest: {
+            Name?: string;
+            Labels?: string[];
+            Disabled?: boolean;
+        };
+        /** @enum {string} */
+        RunnerRegistrationTokenStatus: "active" | "expired" | "used_up" | "revoked";
+        RunnerRegistrationToken: {
+            /** Format: uuid */
+            Id: string;
+            Description: string;
+            Labels: string[];
+            MaxUses: number;
+            Uses: number;
+            /** Format: date-time */
+            ExpiresAt: string;
+            Status: components["schemas"]["RunnerRegistrationTokenStatus"];
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: uuid */
+            CreatedByUserId: string;
+            /** Format: date-time */
+            LastUsedAt?: string;
+            /** Format: date-time */
+            RevokedAt?: string;
+        };
+        RunnerRegistrationTokenResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["RunnerRegistrationToken"];
+        };
+        RunnerRegistrationTokenListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["RunnerRegistrationToken"][];
+        };
+        CreateRunnerRegistrationTokenRequest: {
+            Description?: string;
+            Labels?: string[];
+            /** @default 1 */
+            MaxUses: number;
+            /** @default 3600 */
+            ExpiresInSeconds: number;
+        };
+        CreatedRunnerRegistrationToken: {
+            RegistrationToken: components["schemas"]["RunnerRegistrationToken"];
+            /** @description Shown once. Starts with `dhow_rrt_`. Pass it to the runner on standard input or in a file. */
+            Token: string;
+            /** @description The command that registers a runner. It reads the token from standard input, never from argv. */
+            RegisterCommand: string;
+        };
+        CreatedRunnerRegistrationTokenResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["CreatedRunnerRegistrationToken"];
+        };
     };
     responses: {
         /** @description An error. Never contains internal details. */
@@ -917,6 +1120,8 @@ export interface components {
     };
     parameters: {
         Id: string;
+        RunnerId: string;
+        TokenId: string;
         Page: number;
         Limit: number;
     };
@@ -1670,6 +1875,185 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditVerifyResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listRunners: {
+        parameters: {
+            query?: {
+                Page?: components["parameters"]["Page"];
+                Limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of runners. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getRunner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                runnerId: components["parameters"]["RunnerId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The runner. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateRunner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                runnerId: components["parameters"]["RunnerId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRunnerRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated runner. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeRunner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                runnerId: components["parameters"]["RunnerId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The revoked runner. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listRunnerRegistrationTokens: {
+        parameters: {
+            query?: {
+                Page?: components["parameters"]["Page"];
+                Limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of registration tokens. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerRegistrationTokenListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createRunnerRegistrationToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRunnerRegistrationTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description The new token. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedRunnerRegistrationTokenResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeRunnerRegistrationToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                tokenId: components["parameters"]["TokenId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The revoked token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnerRegistrationTokenResponse"];
                 };
             };
             default: components["responses"]["Error"];

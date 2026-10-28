@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
 	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
+	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
 )
 
 func createOrg(c *apptest.Client, name, slug string) apptest.Response {
@@ -85,7 +85,7 @@ func TestCrossOrganizationIdsAreNotFoundOnEveryRoute(t *testing.T) {
 	org := env.OrganizationID(d.OrgSlug)
 	f := seedForeign(t, env)
 	checked := 0
-	for _, rule := range app.Policies() {
+	for _, rule := range identity.Policies() {
 		if !strings.HasPrefix(rule.Path, "/organizations/{id}/") || !strings.Contains(rule.Path[len("/organizations/{id}"):], "{") {
 			continue
 		}

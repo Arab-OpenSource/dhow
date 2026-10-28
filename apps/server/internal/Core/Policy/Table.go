@@ -1,6 +1,9 @@
 package policy
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 type Scope uint8
 
@@ -9,6 +12,16 @@ const (
 	ScopeAuthenticated
 	ScopeOrganization
 	ScopeInstance
+	ScopeRunner
+)
+
+type RunnerAccess uint8
+
+const (
+	RunnerRegistration RunnerAccess = iota + 1
+	RunnerChallenge
+	RunnerSigned
+	RunnerSession
 )
 
 type Rule struct {
@@ -17,6 +30,7 @@ type Rule struct {
 	Scope    Scope
 	Action   Action
 	OrgParam string
+	Runner   RunnerAccess
 }
 
 func Public(method, path string) Rule {
@@ -35,18 +49,25 @@ func Instance(method, path string, action Action) Rule {
 	return Rule{Method: method, Path: path, Scope: ScopeInstance, Action: action}
 }
 
+func Runner(procedure string, access RunnerAccess) Rule {
+	return Rule{Method: http.MethodPost, Path: procedure, Scope: ScopeRunner, Runner: access}
+}
+
 func (r Rule) Key() string { return r.Method + " " + r.Path }
 
 func (r Rule) Valid() bool {
 	switch r.Scope {
 	case ScopePublic:
-		return r.Action == ""
+		return r.Action == "" && r.Runner == 0
 	case ScopeAuthenticated:
-		return r.Action == SessionManageSelf
+		return r.Action == SessionManageSelf && r.Runner == 0
 	case ScopeOrganization:
-		return r.Action != "" && r.Action != SessionManageSelf && !IsInstanceAction(r.Action) && r.OrgParam != ""
+		return r.Action != "" && r.Action != SessionManageSelf && !IsInstanceAction(r.Action) && r.OrgParam != "" && r.Runner == 0
 	case ScopeInstance:
-		return IsInstanceAction(r.Action) && r.OrgParam == ""
+		return IsInstanceAction(r.Action) && r.OrgParam == "" && r.Runner == 0
+	case ScopeRunner:
+		return r.Method == http.MethodPost && r.Action == "" && r.OrgParam == "" &&
+			r.Runner >= RunnerRegistration && r.Runner <= RunnerSession && strings.HasPrefix(r.Path, "/")
 	default:
 		return false
 	}

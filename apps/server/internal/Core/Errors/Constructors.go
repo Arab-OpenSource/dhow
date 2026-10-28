@@ -132,3 +132,7 @@ func InvitationEmailMismatch() *AppError {
 func InvitationAccountExists() *AppError {
 	return New(http.StatusConflict, CodeInvitationAccountExists, KeyInvitationAccountExists)
 }
+
+func RunnerRevoked() *AppError {
+	return New(http.StatusConflict, CodeRunnerRevoked, KeyRunnerRevoked)
+}

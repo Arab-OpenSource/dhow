@@ -17,18 +17,25 @@ type Querier interface {
 	CompleteInstanceSetup(ctx context.Context, completedAt time.Time) error
 	ConfirmTotpFactor(ctx context.Context, arg ConfirmTotpFactorParams) error
 	ConsumeRecoveryCode(ctx context.Context, arg ConsumeRecoveryCodeParams) (int64, error)
+	ConsumeRegistrationToken(ctx context.Context, arg ConsumeRegistrationTokenParams) (ConsumeRegistrationTokenRow, error)
 	CountAuditEvents(ctx context.Context, organizationID *uuid.UUID) (int64, error)
 	CountMembers(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountRegistrationTokens(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountRunnerSessionSwitches(ctx context.Context, arg CountRunnerSessionSwitchesParams) (int64, error)
+	CountRunners(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	DeleteTeam(ctx context.Context, arg DeleteTeamParams) (int64, error)
 	DeleteTeamBinding(ctx context.Context, arg DeleteTeamBindingParams) (int64, error)
+	DisableRunnerAsClone(ctx context.Context, arg DisableRunnerAsCloneParams) (int64, error)
 	DiscardPendingTotp(ctx context.Context, arg DiscardPendingTotpParams) error
+	EnsureRunnerThrottle(ctx context.Context, arg EnsureRunnerThrottleParams) error
 	EnsureThrottle(ctx context.Context, arg EnsureThrottleParams) error
 	EnsureWebauthnHandle(ctx context.Context, arg EnsureWebauthnHandleParams) ([]byte, error)
 	ExpireUserAuthChallenges(ctx context.Context, arg ExpireUserAuthChallengesParams) error
 	FailMfaChallenge(ctx context.Context, arg FailMfaChallengeParams) error
 	FindMfaChallenge(ctx context.Context, arg FindMfaChallengeParams) (FindMfaChallengeRow, error)
 	FindUsableInvitation(ctx context.Context, arg FindUsableInvitationParams) (FindUsableInvitationRow, error)
+	GetActiveRunnerSession(ctx context.Context, runnerID uuid.UUID) (GetActiveRunnerSessionRow, error)
 	GetConfirmedTotp(ctx context.Context, userID uuid.UUID) (GetConfirmedTotpRow, error)
 	GetInstance(ctx context.Context) (Instance, error)
 	GetLastAuditHash(ctx context.Context, organizationID *uuid.UUID) ([]byte, error)
@@ -37,6 +44,9 @@ type Querier interface {
 	GetOpenInvitation(ctx context.Context, arg GetOpenInvitationParams) (GetOpenInvitationRow, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (GetOrganizationByIDRow, error)
 	GetOrganizationForMember(ctx context.Context, arg GetOrganizationForMemberParams) (GetOrganizationForMemberRow, error)
+	GetRegistrationToken(ctx context.Context, arg GetRegistrationTokenParams) (RunnerRegistrationToken, error)
+	GetRunner(ctx context.Context, arg GetRunnerParams) (Runner, error)
+	GetRunnerIdentity(ctx context.Context, id uuid.UUID) (GetRunnerIdentityRow, error)
 	GetTeam(ctx context.Context, arg GetTeamParams) (GetTeamRow, error)
 	GetUsableSetupToken(ctx context.Context, arg GetUsableSetupTokenParams) (GetUsableSetupTokenRow, error)
 	GetUserAccountFlags(ctx context.Context, id uuid.UUID) (GetUserAccountFlagsRow, error)
@@ -53,6 +63,9 @@ type Querier interface {
 	InsertOrganization(ctx context.Context, arg InsertOrganizationParams) (InsertOrganizationRow, error)
 	InsertPasskey(ctx context.Context, arg InsertPasskeyParams) (InsertPasskeyRow, error)
 	InsertRecoveryCode(ctx context.Context, arg InsertRecoveryCodeParams) error
+	InsertRegistrationToken(ctx context.Context, arg InsertRegistrationTokenParams) (RunnerRegistrationToken, error)
+	InsertRunner(ctx context.Context, arg InsertRunnerParams) (Runner, error)
+	InsertRunnerSession(ctx context.Context, arg InsertRunnerSessionParams) (uuid.UUID, error)
 	InsertSession(ctx context.Context, arg InsertSessionParams) (InsertSessionRow, error)
 	InsertSetupToken(ctx context.Context, arg InsertSetupTokenParams) error
 	InsertTeam(ctx context.Context, arg InsertTeamParams) (InsertTeamRow, error)
@@ -68,6 +81,8 @@ type Querier interface {
 	ListMembers(ctx context.Context, arg ListMembersParams) ([]ListMembersRow, error)
 	ListOpenInvitations(ctx context.Context, arg ListOpenInvitationsParams) ([]ListOpenInvitationsRow, error)
 	ListOrganizationBindings(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationBindingsRow, error)
+	ListRegistrationTokens(ctx context.Context, arg ListRegistrationTokensParams) ([]RunnerRegistrationToken, error)
+	ListRunners(ctx context.Context, arg ListRunnersParams) ([]Runner, error)
 	ListTeamBindings(ctx context.Context, arg ListTeamBindingsParams) ([]ListTeamBindingsRow, error)
 	ListTeamMembers(ctx context.Context, arg ListTeamMembersParams) ([]ListTeamMembersRow, error)
 	ListTeams(ctx context.Context, organizationID uuid.UUID) ([]ListTeamsRow, error)
@@ -80,6 +95,8 @@ type Querier interface {
 	LockOpenInvitation(ctx context.Context, arg LockOpenInvitationParams) (LockOpenInvitationRow, error)
 	LockOrganization(ctx context.Context, id uuid.UUID) (LockOrganizationRow, error)
 	LockPendingTotp(ctx context.Context, arg LockPendingTotpParams) (LockPendingTotpRow, error)
+	LockRunnerIdentity(ctx context.Context, id uuid.UUID) (LockRunnerIdentityRow, error)
+	LockRunnerThrottle(ctx context.Context, key string) (LockRunnerThrottleRow, error)
 	LockTeam(ctx context.Context, arg LockTeamParams) (LockTeamRow, error)
 	LockTeamBinding(ctx context.Context, arg LockTeamBindingParams) (LockTeamBindingRow, error)
 	LockThrottle(ctx context.Context, key string) (LockThrottleRow, error)
@@ -92,6 +109,7 @@ type Querier interface {
 	NextAuditId(ctx context.Context) (uuid.UUID, error)
 	PeekPendingTotp(ctx context.Context, arg PeekPendingTotpParams) (PeekPendingTotpRow, error)
 	RecordPasskeyUse(ctx context.Context, arg RecordPasskeyUseParams) (int64, error)
+	RefundRunnerThrottle(ctx context.Context, arg RefundRunnerThrottleParams) error
 	RefundThrottle(ctx context.Context, arg RefundThrottleParams) error
 	RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error
 	ReissueInvitation(ctx context.Context, arg ReissueInvitationParams) (int64, error)
@@ -103,6 +121,7 @@ type Querier interface {
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) (int64, error)
 	RenamePasskey(ctx context.Context, arg RenamePasskeyParams) (RenamePasskeyRow, error)
 	ResetThrottle(ctx context.Context, arg ResetThrottleParams) error
+	ResolveRunnerSession(ctx context.Context, tokenHash []byte) (ResolveRunnerSessionRow, error)
 	ResolveSession(ctx context.Context, arg ResolveSessionParams) (ResolveSessionRow, error)
 	RetireConfirmedTotp(ctx context.Context, arg RetireConfirmedTotpParams) (int64, error)
 	RetireExpiredInvitations(ctx context.Context, arg RetireExpiredInvitationsParams) error
@@ -113,17 +132,25 @@ type Querier interface {
 	RevokeAllUserSessions(ctx context.Context, arg RevokeAllUserSessionsParams) (int64, error)
 	RevokeInvitation(ctx context.Context, arg RevokeInvitationParams) (int64, error)
 	RevokeOtherUserSessions(ctx context.Context, arg RevokeOtherUserSessionsParams) (int64, error)
+	RevokeRegistrationToken(ctx context.Context, arg RevokeRegistrationTokenParams) (RunnerRegistrationToken, error)
+	RevokeRunner(ctx context.Context, arg RevokeRunnerParams) (Runner, error)
+	RevokeRunnerSession(ctx context.Context, arg RevokeRunnerSessionParams) error
+	RevokeRunnerSessions(ctx context.Context, arg RevokeRunnerSessionsParams) (int64, error)
 	RevokeSessionByTokenHash(ctx context.Context, arg RevokeSessionByTokenHashParams) (int64, error)
 	RevokeUserSession(ctx context.Context, arg RevokeUserSessionParams) (int64, error)
 	RevokeUserSessionsExcept(ctx context.Context, arg RevokeUserSessionsExceptParams) (int64, error)
+	RotateRunnerKeys(ctx context.Context, arg RotateRunnerKeysParams) (int32, error)
 	SetInvitationEmailStatus(ctx context.Context, arg SetInvitationEmailStatusParams) error
 	SetMemberRole(ctx context.Context, arg SetMemberRoleParams) (int64, error)
 	SetMfaChallengeWebauthn(ctx context.Context, arg SetMfaChallengeWebauthnParams) (int64, error)
 	SetTeamBindingRole(ctx context.Context, arg SetTeamBindingRoleParams) (int64, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	TakeWebauthnChallenge(ctx context.Context, arg TakeWebauthnChallengeParams) ([]byte, error)
+	TouchRunner(ctx context.Context, arg TouchRunnerParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
+	UpdateRunner(ctx context.Context, arg UpdateRunnerParams) (Runner, error)
+	UpdateRunnerThrottle(ctx context.Context, arg UpdateRunnerThrottleParams) error
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (UpdateTeamRow, error)
 	UpdateThrottle(ctx context.Context, arg UpdateThrottleParams) error
 	UseMfaChallenge(ctx context.Context, arg UseMfaChallengeParams) (int64, error)
