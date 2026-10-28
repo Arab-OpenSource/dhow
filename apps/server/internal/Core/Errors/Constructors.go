@@ -104,3 +104,7 @@ func EnrollmentExpired() *AppError {
 func PasskeyRejected() *AppError {
 	return New(http.StatusUnprocessableEntity, CodePasskeyRejected, KeyPasskeyRejected)
 }
+
+func RunnerRevoked() *AppError {
+	return New(http.StatusConflict, CodeRunnerRevoked, KeyRunnerRevoked)
+}

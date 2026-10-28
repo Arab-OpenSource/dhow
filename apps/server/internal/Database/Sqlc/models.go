@@ -113,6 +113,76 @@ type RecoveryCode struct {
 	UsedAt    *time.Time
 }
 
+type Runner struct {
+	Id                  uuid.UUID
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+	IsDeleted           bool
+	OrganizationId      uuid.UUID
+	RegistrationTokenId uuid.UUID
+	Name                string
+	Labels              []string
+	CapabilityLabels    []string
+	Os                  string
+	Arch                string
+	Version             string
+	IsolationLevels     []string
+	Capacity            int32
+	SigningPublicKey    []byte
+	EncryptionPublicKey []byte
+	KeyVersion          int32
+	KeysRotatedAt       time.Time
+	State               string
+	DisabledReason      string
+	LastSeenAt          *time.Time
+	LastIpAddress       string
+	RevokedAt           *time.Time
+}
+
+type RunnerRegistrationToken struct {
+	Id              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	IsDeleted       bool
+	OrganizationId  uuid.UUID
+	CreatedByUserId uuid.UUID
+	Description     string
+	TokenHash       []byte
+	Labels          []string
+	MaxUses         int32
+	Uses            int32
+	ExpiresAt       time.Time
+	LastUsedAt      *time.Time
+	RevokedAt       *time.Time
+	RevokedByUserId *uuid.UUID
+}
+
+type RunnerSession struct {
+	Id                uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	IsDeleted         bool
+	RunnerId          uuid.UUID
+	TokenHash         []byte
+	ChallengeNonce    []byte
+	KeyVersion        int32
+	ExpiresAt         time.Time
+	RevokedAt         *time.Time
+	ReplacedSessionId *uuid.UUID
+	IpAddress         string
+}
+
+type RunnerThrottle struct {
+	Id            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsDeleted     bool
+	Key           string
+	Failures      int32
+	LastFailureAt time.Time
+	LockedUntil   *time.Time
+}
+
 type Session struct {
 	Id            uuid.UUID
 	CreatedAt     time.Time
