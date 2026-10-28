@@ -16,12 +16,17 @@ import (
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
 	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Models"
 )
 
-const constraintPendingInvite = "UX_Invitations_Organization_Email_Pending"
+const (
+	constraintPendingInvite = "UX_Invitations_Organization_Email_Pending"
+	limitInvitesUser        = "invite-user"
+	limitInvitesOrg         = "invite-org"
+)
 
 type inviteToken struct {
 	text string
@@ -60,6 +65,26 @@ func invitationOf(r sqlc.GetOpenInvitationRow, now time.Time) models.Invitation 
 	}
 }
 
+func (s *Service) takeInviteLimits(ctx context.Context, org, user uuid.UUID) error {
+	checks := []struct {
+		limit   ratelimit.Limit
+		subject uuid.UUID
+	}{
+		{ratelimit.Limit{Name: limitInvitesUser, Max: s.limits.InvitesUser, Window: config.RateLimitInviteWindow}, user},
+		{ratelimit.Limit{Name: limitInvitesOrg, Max: s.limits.InvitesOrg, Window: config.RateLimitInviteWindow}, org},
+	}
+	for _, c := range checks {
+		d, err := s.limiter.Take(ctx, c.limit, c.subject.String())
+		if err != nil {
+			return err
+		}
+		if err := d.Err(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *Service) ListInvitations(ctx context.Context, org uuid.UUID) ([]models.Invitation, error) {
 	rows, err := s.queries().ListOpenInvitations(ctx, sqlc.ListOpenInvitationsParams{OrganizationID: org, MaxRows: config.InvitationListLimit})
 	if err != nil {
@@ -92,6 +117,9 @@ func (s *Service) CreateInvitation(ctx context.Context, org uuid.UUID, email, ro
 	}
 	if !policy.CanGrant(actor, r) {
 		return models.InvitationIssued{}, apperrors.RoleNotAllowed()
+	}
+	if err := s.takeInviteLimits(ctx, org, p.UserID); err != nil {
+		return models.InvitationIssued{}, err
 	}
 	token, err := newInviteToken()
 	if err != nil {
@@ -147,18 +175,18 @@ func (s *Service) deliver(ctx context.Context, org, id uuid.UUID, token inviteTo
 	})
 }
 
-func (s *Service) lockInvitation(ctx context.Context, q *sqlc.Queries, org, id uuid.UUID, actor policy.Role) error {
+func (s *Service) lockInvitation(ctx context.Context, q *sqlc.Queries, org, id uuid.UUID, actor policy.Role) (sqlc.LockOpenInvitationRow, error) {
 	row, err := q.LockOpenInvitation(ctx, sqlc.LockOpenInvitationParams{ID: id, OrganizationID: org})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return apperrors.NotFound()
+		return row, apperrors.NotFound()
 	}
 	if err != nil {
-		return err
+		return row, err
 	}
 	if !policy.CanGrant(actor, policy.Role(row.Role)) {
-		return apperrors.RoleNotAllowed()
+		return row, apperrors.RoleNotAllowed()
 	}
-	return nil
+	return row, nil
 }
 
 func (s *Service) RevokeInvitation(ctx context.Context, org, id uuid.UUID) (models.Invitation, error) {
@@ -169,7 +197,7 @@ func (s *Service) RevokeInvitation(ctx context.Context, org, id uuid.UUID) (mode
 	now := s.now()
 	var row sqlc.GetOpenInvitationRow
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-		if err := s.lockInvitation(ctx, q, org, id, actor); err != nil {
+		if _, err := s.lockInvitation(ctx, q, org, id, actor); err != nil {
 			return err
 		}
 		if row, err = q.GetOpenInvitation(ctx, sqlc.GetOpenInvitationParams{ID: id, OrganizationID: org}); err != nil {
@@ -191,16 +219,23 @@ func (s *Service) ResendInvitation(ctx context.Context, org, id uuid.UUID) (mode
 	if err != nil {
 		return models.InvitationIssued{}, err
 	}
+	if err := s.takeInviteLimits(ctx, org, p.UserID); err != nil {
+		return models.InvitationIssued{}, err
+	}
 	token, err := newInviteToken()
 	if err != nil {
 		return models.InvitationIssued{}, err
 	}
 	now := s.now()
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-		if err := s.lockInvitation(ctx, q, org, id, actor); err != nil {
+		row, err := s.lockInvitation(ctx, q, org, id, actor)
+		if err != nil {
 			return err
 		}
-		_, err := q.ReissueInvitation(ctx, sqlc.ReissueInvitationParams{
+		if row.SendCount >= config.InvitationMaxSends {
+			return apperrors.InvitationSendLimit()
+		}
+		_, err = q.ReissueInvitation(ctx, sqlc.ReissueInvitationParams{
 			ID: id, OrganizationID: org, TokenHash: token.hash, ExpiresAt: now.Add(config.InvitationTTL), Now: now,
 			EmailStatus: s.initialEmailStatus(), InvitedByUserID: p.UserID,
 		})

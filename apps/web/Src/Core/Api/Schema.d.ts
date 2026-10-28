@@ -210,7 +210,7 @@ export interface paths {
         put?: never;
         /**
          * Passkey request options for signing in without a password
-         * @description Starts a discoverable-credential ceremony with user verification required. The challenge is stored on the server, lives 5 minutes and works once.
+         * @description Starts a discoverable-credential ceremony with user verification required. The challenge is stored on the server, lives 5 minutes and works once. Limited per client network (an IPv4 address or an IPv6 /64) with `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["beginPasskeyLogin"];
         delete?: never;
@@ -529,7 +529,7 @@ export interface paths {
         put?: never;
         /**
          * Start signing in with an external provider
-         * @description Returns the provider's authorization URL with PKCE (S256), a state and, for OpenID Connect, a nonce. Sets the `__Host-dhow_oidc` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`, 10 minutes) that binds the flow to this browser. The browser then opens the URL, and the provider sends it back to `/oidc/callback/<provider>`.
+         * @description Returns the provider's authorization URL with PKCE (S256), a state and, for OpenID Connect, a nonce. Sets the `__Host-dhow_oidc` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`, 10 minutes) that binds the flow to this browser. The browser then opens the URL, and the provider sends it back to `/oidc/callback/<provider>`. Limited per client network (an IPv4 address or an IPv6 /64) with `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes, shared with `POST /oidc/callback`; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["beginOidcLogin"];
         delete?: never;
@@ -549,7 +549,7 @@ export interface paths {
         put?: never;
         /**
          * Finish signing in with an external provider
-         * @description Needs the `__Host-dhow_oidc` cookie of the flow and the `Code` and `State` the provider returned. The flow works once, whatever the outcome. The identity is matched by issuer and subject only, never by email; an identity that is not linked to an account answers `OIDC_NOT_LINKED`. An account with a second factor answers 202 with the same `mfa_pending` challenge as the password step. Success sets the session cookie and replaces any session the request carried.
+         * @description Needs the `__Host-dhow_oidc` cookie of the flow and the `Code` and `State` the provider returned. The flow works once, whatever the outcome. The identity is matched by issuer and subject only, never by email; an identity that is not linked to an account answers `OIDC_NOT_LINKED`. An account with a second factor answers 202 with the same `mfa_pending` challenge as the password step. Success sets the session cookie and replaces any session the request carried. Limited per client network (an IPv4 address or an IPv6 /64) with `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes, shared with `POST /oidc/authorize`; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["completeOidcLogin"];
         delete?: never;
@@ -934,7 +934,7 @@ export interface paths {
         put?: never;
         /**
          * Invite someone by email
-         * @description Needs `member.manage`. The role is capped by the caller's own role and is never `owner`. The answer carries the invitation link once (`${PUBLIC_URL}/invite#<token>`); the server keeps only the token's SHA-256. The link works once and expires after 7 days. When SMTP is set up the link is emailed too, and `EmailStatus` says whether that worked: the invitation exists either way. An open invitation for the same address is `INVITATION_PENDING`, and an existing member is `ALREADY_MEMBER`.
+         * @description Needs `member.manage`. The role is capped by the caller's own role and is never `owner`. The answer carries the invitation link once (`${PUBLIC_URL}/invite#<token>`); the server keeps only the token's SHA-256. The link works once and expires after 7 days. When SMTP is set up the link is emailed too, and `EmailStatus` says whether that worked: the invitation exists either way. An open invitation for the same address is `INVITATION_PENDING`, and an existing member is `ALREADY_MEMBER`. A member may create or resend `DHOW_RATE_LIMIT_INVITES_USER` invitations an hour and an organization may receive `DHOW_RATE_LIMIT_INVITES_ORG`; above either the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["createInvitation"];
         delete?: never;
@@ -974,7 +974,7 @@ export interface paths {
         put?: never;
         /**
          * Make a new link for an invitation
-         * @description Needs `member.manage` and a role at least the invited one. Replaces the token, so the old link stops working, and starts a new 7-day period. Emails the new link when SMTP is set up.
+         * @description Needs `member.manage` and a role at least the invited one. Replaces the token, so the old link stops working, and starts a new 7-day period. Emails the new link when SMTP is set up. An invitation is sent at most 5 times in all; after that the answer is 409 `INVITATION_SEND_LIMIT`, so revoke it and invite again. A member may create or resend `DHOW_RATE_LIMIT_INVITES_USER` invitations an hour and an organization may receive `DHOW_RATE_LIMIT_INVITES_ORG`; above either the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["resendInvitation"];
         delete?: never;
@@ -1075,7 +1075,7 @@ export interface paths {
         put?: never;
         /**
          * Read what an invitation link offers
-         * @description Public. The token travels in the body, never in the URL, so it stays out of access logs. An unknown, used, revoked or expired token, or one whose inviter no longer has the authority to invite, is `INVITATION_INVALID` with nothing else.
+         * @description Public. The token travels in the body, never in the URL, so it stays out of access logs. An unknown, used, revoked or expired token, or one whose inviter no longer has the authority to invite, is `INVITATION_INVALID` with nothing else. Limited per client network (an IPv4 address or an IPv6 /64) with `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes, shared with `POST /invitations/accept`; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["previewInvitation"];
         delete?: never;
@@ -1095,7 +1095,7 @@ export interface paths {
         put?: never;
         /**
          * Accept an invitation with a new account
-         * @description Public. Creates the account for the invited email with the given name and password (12 to 128 characters, checked against known breaches) and adds it to the organization at the invited role. The token works once: two parallel calls never both succeed. An address that already has an account is `INVITATION_ACCOUNT_EXISTS`: sign in and use `POST /me/invitations/accept`. No session is created; sign in afterwards.
+         * @description Public. Creates the account for the invited email with the given name and password (12 to 128 characters, checked against known breaches) and adds it to the organization at the invited role. The token works once: two parallel calls never both succeed. An address that already has an account is `INVITATION_ACCOUNT_EXISTS`: sign in and use `POST /me/invitations/accept`. No session is created; sign in afterwards. Limited per client network (an IPv4 address or an IPv6 /64) with `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes, shared with `POST /invitations/preview`; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["acceptInvitation"];
         delete?: never;

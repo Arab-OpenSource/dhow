@@ -19,6 +19,7 @@ import (
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
 	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Models"
@@ -43,6 +44,8 @@ type Options struct {
 	Factors   auth.FactorConfirmer
 	Mailer    mailer.Sender
 	PublicURL string
+	Limiter   ratelimit.Limiter
+	Limits    config.RateLimits
 	Log       *slog.Logger
 	Now       func() time.Time
 }
@@ -55,6 +58,8 @@ type Service struct {
 	factors   auth.FactorConfirmer
 	mailer    mailer.Sender
 	publicURL string
+	limiter   ratelimit.Limiter
+	limits    config.RateLimits
 	log       *slog.Logger
 	now       func() time.Time
 }
@@ -68,9 +73,13 @@ func NewService(o Options) *Service {
 	if mail == nil {
 		mail = mailer.Disabled{}
 	}
+	limiter := o.Limiter
+	if limiter == nil {
+		limiter = ratelimit.NewMemory(config.RateLimitTrackedKeys, now)
+	}
 	return &Service{
 		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, bus: o.Bus, factors: o.Factors, mailer: mail,
-		publicURL: o.PublicURL, log: o.Log, now: now,
+		publicURL: o.PublicURL, limiter: limiter, limits: o.Limits.WithDefaults(), log: o.Log, now: now,
 	}
 }
 

@@ -226,6 +226,7 @@ type Querier interface {
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	StartAttempt(ctx context.Context, id uuid.UUID) (JobAttempt, error)
 	TakeOidcFlow(ctx context.Context, arg TakeOidcFlowParams) (TakeOidcFlowRow, error)
+	TakeRateLimit(ctx context.Context, arg TakeRateLimitParams) (TakeRateLimitRow, error)
 	TakeWebauthnChallenge(ctx context.Context, arg TakeWebauthnChallengeParams) ([]byte, error)
 	TouchApiToken(ctx context.Context, arg TouchApiTokenParams) error
 	TouchIdentity(ctx context.Context, arg TouchIdentityParams) error

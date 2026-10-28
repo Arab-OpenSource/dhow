@@ -11,6 +11,7 @@ sql:
       - internal/Modules/Tokens/Queries
       - internal/Modules/Preferences/Queries
       - internal/Modules/Jobs/Queries
+      - internal/Core/RateLimit/Queries
     gen:
       go:
         package: sqlc

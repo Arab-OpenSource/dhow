@@ -218,7 +218,7 @@ func (q *Queries) ListOpenInvitations(ctx context.Context, arg ListOpenInvitatio
 }
 
 const lockOpenInvitation = `-- name: LockOpenInvitation :one
-SELECT "Id", "Role"
+SELECT "Id", "Role", "SendCount"
 FROM "Invitations"
 WHERE "Id" = $1 AND "OrganizationId" = $2 AND "AcceptedAt" IS NULL AND "RevokedAt" IS NULL
   AND NOT "IsDeleted"
@@ -231,14 +231,15 @@ type LockOpenInvitationParams struct {
 }
 
 type LockOpenInvitationRow struct {
-	Id   uuid.UUID
-	Role string
+	Id        uuid.UUID
+	Role      string
+	SendCount int32
 }
 
 func (q *Queries) LockOpenInvitation(ctx context.Context, arg LockOpenInvitationParams) (LockOpenInvitationRow, error) {
 	row := q.db.QueryRow(ctx, lockOpenInvitation, arg.ID, arg.OrganizationID)
 	var i LockOpenInvitationRow
-	err := row.Scan(&i.Id, &i.Role)
+	err := row.Scan(&i.Id, &i.Role, &i.SendCount)
 	return i, err
 }
 

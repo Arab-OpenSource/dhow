@@ -19,6 +19,7 @@ import (
 	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
 	oidcauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
@@ -105,6 +106,8 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		return nil, err
 	}
 	bus := eventbus.New(in.Log)
+	limits := in.Config.RateLimits.WithDefaults()
+	limiter := ratelimit.NewPostgres(in.Pool, in.Now)
 	instance := policy.InstanceSettings{AnyUserCreatesOrganizations: in.Config.AnyUserCreatesOrganizations}
 
 	auditService := audit.NewService(in.Pool, in.Log, in.Now)
@@ -120,7 +123,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	}
 	identityService := identity.NewService(identity.Options{
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, Bus: bus, Factors: sessionService, Mailer: mail,
-		PublicURL: in.Config.PublicURL.String(), Log: in.Log, Now: in.Now,
+		PublicURL: in.Config.PublicURL.String(), Limiter: limiter, Limits: limits, Log: in.Log, Now: in.Now,
 	})
 
 	runnersService := runners.NewService(runners.Options{
@@ -153,6 +156,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Gate:      gate,
 		CSRF:      csrf,
 		APITokens: external.apiTokens,
+		Limits:    ratelimit.NewPerClient(limiter, limits.Public, config.RateLimitPublicWindow, in.Log),
 		Now:       in.Now,
 		Web:       in.Web,
 	}

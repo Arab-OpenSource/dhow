@@ -10,13 +10,24 @@ import (
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
 	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
 	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Gen"
 )
 
 type Deps struct {
 	Service *Service
 	Guard   *auth.Guard
+	Limits  *ratelimit.PerClient
 	Log     *slog.Logger
+}
+
+const limitInvitation = "invitation"
+
+func RateLimited() []ratelimit.Route {
+	return []ratelimit.Route{
+		{Method: http.MethodPost, Path: "/invitations/preview", Group: limitInvitation},
+		{Method: http.MethodPost, Path: "/invitations/accept", Group: limitInvitation},
+	}
 }
 
 const (
@@ -74,7 +85,7 @@ func Routes(r chi.Router, d Deps) {
 	guard := d.Guard.Middleware(policy.NewTable(Policies()...))
 	gen.HandlerWithOptions(strict, gen.ChiServerOptions{
 		BaseRouter:       r,
-		Middlewares:      []gen.MiddlewareFunc{middleware.BodyLimit(config.AuthBodyMaxBytes), guard},
+		Middlewares:      []gen.MiddlewareFunc{middleware.BodyLimit(config.AuthBodyMaxBytes), guard, d.Limits.Middleware(RateLimited()...)},
 		ErrorHandlerFunc: middleware.StrictRequestError,
 	})
 }

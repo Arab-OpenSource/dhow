@@ -146,6 +146,7 @@ var arMessages = map[string]string{ //nolint:gosec // This is a message catalog,
 	"jobs.job.cancelRequested":          "اتطلب إلغاء الـ job.",
 	"jobs.logs.loaded":                  "اتحمّل الـ log.",
 	"errors.attemptNotFound":            "الـ job ده لسه مالوش المحاولة دي. استنى لحد ما جهاز تشغيل ياخده، وبعدين افتح الـ log.",
-	"errors.rateLimited":                "طلبات كتير ورا بعض. استنى ثانية وجرّب تاني.",
+	"errors.rateLimited":                "طلبات كتير ورا بعض. استنى شوية وجرّب تاني.",
 	"errors.tooManyStreams":             "فاتح logs حية كتير في نفس الوقت. اقفل شوية منهم وجرّب تاني.",
+	"errors.invitationSendLimit":        "الدعوة دي اتعملها رابط جديد كتير. الغيها وابعت دعوة جديدة.",
 }

@@ -48,6 +48,8 @@ type Config struct {
 	AnyUserCreatesOrganizations bool
 
 	OIDCProviders []OIDCProvider
+
+	RateLimits RateLimits
 }
 
 func LoadFromEnv() (Config, error) { return Load(os.Getenv) }
@@ -104,6 +106,9 @@ func Load(getenv func(string) string) (Config, error) {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvOrgCreation, err))
 	}
 	if cfg.OIDCProviders, err = loadOIDCProviders(getenv, dev); err != nil {
+		errs = append(errs, err)
+	}
+	if cfg.RateLimits, err = loadRateLimits(getenv); err != nil {
 		errs = append(errs, err)
 	}
 

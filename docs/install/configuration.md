@@ -41,8 +41,21 @@ There is no configuration file and no fallback value for a secret. A missing or 
 | `DHOW_SMTP_PASSWORD_FILE` | No | none | `/run/secrets/dhow-smtp-password` | A file that holds `DHOW_SMTP_PASSWORD`, see [Secrets in files](#secrets-in-files). |
 | `DHOW_SMTP_FROM` | With `DHOW_SMTP_HOST` | none | `Dhow <dhow@example.com>` | The sender of invitation emails, as one RFC 5322 address with an optional display name. |
 | `DHOW_OIDC_PROVIDERS` | No | empty | `google,github` | Turns on sign-in with external identity providers. A comma-separated list of provider ids (lowercase letters and digits, starting with a letter, at most 32, at most 10 providers). Each id needs its own `DHOW_OIDC_<ID>_*` variables, see [Sign-in providers](#sign-in-providers). Empty turns external sign-in off. |
+| `DHOW_RATE_LIMIT_PUBLIC` | No | `300` | `1000` | How many requests one client network may send in 10 minutes to each group of public sign-in routes: invitation preview and accept, OIDC authorize and callback, and passkey sign-in options. A client network is one IPv4 address or one IPv6 `/64`, found as described below. Above it the answer is `429 RATE_LIMITED` with `Retry-After`. The counters live in the database, so every instance shares them. Raise it when many people sign in from behind one NAT. A whole number from 1 to 100000, see [Rate limits](#rate-limits). |
+| `DHOW_RATE_LIMIT_INVITES_USER` | No | `50` | `200` | How many invitations one member may create or resend in an hour, across all organizations. A whole number from 1 to 100000. |
+| `DHOW_RATE_LIMIT_INVITES_ORG` | No | `200` | `1000` | How many invitations one organization may create or resend in an hour, whoever sends them. A whole number from 1 to 100000. |
 
 `DHOW_DEV=true` never turns off the `Secure` flag of the session cookie, the `Origin` check or the secret key checks.
+
+## Rate limits
+
+Public routes that write rows or start sign-in flows are limited per client network, and invitations are limited per member and per organization so the server is not used to send spam. Password sign-in, the second step and setup keep their own lockout per account and per address (see the [security model](../security-model.md#5-sessions-and-tokens-adr-0033)).
+
+- **Fixed windows in the database.** Each limit counts requests in a fixed window (10 minutes for the public routes, an hour for invitations) in the `RateLimits` table, with one upsert per request. Several instances behind a load balancer therefore share one counter, and a restart does not reset it.
+- **Client network.** The address comes from the TCP connection, or from `X-Forwarded-For` only when the connection comes from `DHOW_TRUSTED_PROXIES`. An IPv6 client is counted per `/64`, because one host usually controls a whole `/64`. Without a correct `DHOW_TRUSTED_PROXIES` behind a proxy, every user shares the proxy's address and its limit.
+- **People behind one NAT** share one limit. An office of 100 people who all sign in with OIDC within 10 minutes sends about 200 requests, under the default of 300. Raise `DHOW_RATE_LIMIT_PUBLIC` for larger sites.
+- **The answer** is `429` with the code `RATE_LIMITED`, a translated message and `Retry-After` in seconds until the window ends.
+- **Each invitation** can get a new link at most 4 times (5 sends in all). After that, resending answers `409 INVITATION_SEND_LIMIT`: revoke it and invite again, which counts against the hourly limits.
 
 ## Secrets in files
 

@@ -14,6 +14,7 @@ import (
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
 	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
@@ -40,6 +41,7 @@ type Options struct {
 	Gate      *runnerauth.Gate
 	CSRF      *auth.CSRF
 	APITokens *auth.APITokens
+	Limits    *ratelimit.PerClient
 	Now       func() time.Time
 	Web       http.Handler
 }
@@ -55,6 +57,10 @@ func Policies() []policy.Rule {
 	rules = append(rules, tokens.Policies()...)
 	rules = append(rules, preferences.Policies()...)
 	return rules
+}
+
+func RateLimited() []ratelimit.Route {
+	return append(identity.RateLimited(), session.RateLimited()...)
 }
 
 func RunnerPolicies() []policy.Rule {
@@ -123,10 +129,10 @@ func publicRouter(o Options) chi.Router {
 			o.System.Guard = guard
 			system.Routes(timed, o.System)
 			if o.Identity != nil {
-				identity.Routes(timed, identity.Deps{Service: o.Identity, Guard: guard, Log: o.Log})
+				identity.Routes(timed, identity.Deps{Service: o.Identity, Guard: guard, Limits: o.Limits, Log: o.Log})
 			}
 			if o.Session != nil {
-				session.Routes(timed, session.Deps{Service: o.Session, Guard: guard, Log: o.Log})
+				session.Routes(timed, session.Deps{Service: o.Session, Guard: guard, Limits: o.Limits, Log: o.Log})
 			}
 			if o.Audit != nil {
 				audit.Routes(timed, audit.Deps{Service: o.Audit, Guard: guard, Log: o.Log})
