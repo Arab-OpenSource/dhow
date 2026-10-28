@@ -8,6 +8,7 @@
 - **الوثائق العامة** (بالإنجليزي) في `docs/`.
 - **القرارات** (ADRs بالعربي) في `Plan/ADR/`. اقرا الـ ADR الخاص بأي جزء قبل ما تغيّر فيه، وأي قرار جديد يبقى ADR جديد مش تعديل في القديم.
 - **السجل اليومي** في `Plan/Progress/YYYY-MM-DD.md`.
+- **الحالة** (اللي اتعمل واللي شغّال واللي لسه) في `Plan/Status.md`. ابدأ منها في أي جلسة جديدة، وحدّثها بعد أي merge.
 
 ## الهيكل (ADR-0004)
 
@@ -125,6 +126,9 @@
 - رسائل الـ commits والـ PRs **بالإنجليزي** وبـ Conventional Commits، ومع DCO sign-off (`git commit -s`).
 - **ممنوع أي إشارة لـ AI** في أي commit أو PR: لا `Co-Authored-By: Claude` ولا «Generated with Claude Code» ولا روابط sessions.
 - ممنوع `--no-verify`، وممنوع force-push على `main`.
+- **أي branch بيتفتح له draft PR من أول commit**، وفي وصفه «اتعمل» و«لسه»، عشان الشغل يبقى محفوظ وظاهر.
+- **الـ CI مابيشتغلش على الـ draft.** كل job فيه شرط `!github.event.pull_request.draft`، والـ `pull_request` بيسمع لـ `ready_for_review`. والـ PR بيتحوّل لـ «Ready for review» بعد ما الميزة تخلص و`make check` والمراجعة الأمنية يعدّوا، فالـ CI يشتغل ساعتها. وأي workflow جديد لازم ياخد نفس الشرط.
+- **الـ branch بيتمسح تلقائي بعد الدمج** (`delete-merged-branch.yml`). والـ branches القديمة بتتمسح بـ `cleanup-merged-branches.yml` يدوي، وهو بيمسح بس الـ branch اللي آخر commit فيه هو نفس آخر commit في PR اندمج.
 
 ## التواصل
 
