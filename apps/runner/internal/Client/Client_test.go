@@ -45,7 +45,6 @@ type fakeAuth struct {
 	rejectNext atomic.Bool
 	failAuth   atomic.Bool
 	blockAuth  chan struct{}
-	validUntil atomic.Int64
 }
 
 func (f *fakeAuth) Challenge(_ context.Context, req *connect.Request[runnerv1.ChallengeRequest]) (*connect.Response[runnerv1.ChallengeResponse], error) {

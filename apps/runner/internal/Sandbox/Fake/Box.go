@@ -69,8 +69,10 @@ func (b *box) Exec(ctx context.Context, spec sandbox.StepSpec) (sandbox.StepResu
 	for k, v := range spec.Env {
 		env[k] = v
 	}
-	b.d.record(Event{Kind: EventExec, AttemptID: b.attempt, Step: spec.Index, EnvNames: envNames, FileNames: fileNames,
-		FileData: fileData, Env: env})
+	b.d.record(Event{
+		Kind: EventExec, AttemptID: b.attempt, Step: spec.Index, EnvNames: envNames, FileNames: fileNames,
+		FileData: fileData, Env: env,
+	})
 	if spec.Started != nil {
 		spec.Started()
 	}
