@@ -25,24 +25,21 @@ export const useOrganization = (organizationId: string): UseQueryResult<TOrganiz
   useQuery<TOrganization, ApiError>({
     queryKey: organizationKey(organizationId),
     queryFn: () => getOrganization(organizationId),
-    staleTime: 0,
   });
 
 export const useTeams = (organizationId: string): UseQueryResult<TTeam[], ApiError> =>
-  useQuery<TTeam[], ApiError>({ queryKey: teamsKey(organizationId), queryFn: () => listTeams(organizationId), staleTime: 0 });
+  useQuery<TTeam[], ApiError>({ queryKey: teamsKey(organizationId), queryFn: () => listTeams(organizationId) });
 
 export const useTeam = (organizationId: string, teamId: string): UseQueryResult<TTeamDetail, ApiError> =>
   useQuery<TTeamDetail, ApiError>({
     queryKey: teamKey(organizationId, teamId),
     queryFn: () => getTeam(organizationId, teamId),
-    staleTime: 0,
   });
 
 export const useInvitations = (organizationId: string, enabled: boolean): UseQueryResult<TInvitation[], ApiError> =>
   useQuery<TInvitation[], ApiError>({
     queryKey: invitationsKey(organizationId),
     queryFn: () => listInvitations(organizationId),
-    staleTime: 0,
     enabled,
   });
 

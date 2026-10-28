@@ -9,7 +9,7 @@ export const PASSKEYS_QUERY_KEY = ['passkeys'] as const;
 const SESSIONS_QUERY_KEY = ['sessions'] as const;
 
 export const usePasskeys = (): UseQueryResult<TPasskey[], ApiError> =>
-  useQuery<TPasskey[], ApiError>({ queryKey: PASSKEYS_QUERY_KEY, queryFn: listPasskeys, staleTime: 0 });
+  useQuery<TPasskey[], ApiError>({ queryKey: PASSKEYS_QUERY_KEY, queryFn: listPasskeys });
 
 export const useRefreshMfa = (): (() => Promise<void>) => {
   const client = useQueryClient();
