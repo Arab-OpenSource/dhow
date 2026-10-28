@@ -45,6 +45,7 @@ There is no configuration file and no fallback value for a secret. A missing or 
 
 - `DHOW_SECRET_KEY_FILE`, `DHOW_DATABASE_URL_FILE` and `DHOW_SMTP_PASSWORD_FILE` name the file.
 - Under systemd, `LoadCredential=dhow-secret-key:...`, `LoadCredential=dhow-database-url:...` and `LoadCredential=dhow-smtp-password:...` work without any variable: Dhow reads `$CREDENTIALS_DIRECTORY/dhow-secret-key`, `$CREDENTIALS_DIRECTORY/dhow-database-url` and `$CREDENTIALS_DIRECTORY/dhow-smtp-password`. The [unit file](binary-systemd.md) does this for the first two.
+- Each sign-in provider's client secret works the same way: `DHOW_OIDC_<ID>_CLIENT_SECRET_FILE`, or the systemd credential `dhow-oidc-<id>-client-secret` (see [Sign-in providers](#sign-in-providers)).
 
 The rules are the same for all of them:
 
