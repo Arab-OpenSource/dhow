@@ -49,10 +49,13 @@ UPDATE "Sessions"
 SET "RevokedAt" = @now::timestamptz, "UpdatedAt" = @now
 WHERE "UserId" = @user_id AND "Id" <> @except_id AND "RevokedAt" IS NULL AND NOT "IsDeleted";
 
--- name: ListUserDirectRoles :many
-SELECT m."OrganizationId", m."Role"
+-- name: ListUserRoles :many
+SELECT m."OrganizationId", m."Role", u."IsInstanceOwner",
+       ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
+             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles"
 FROM "Memberships" m
 JOIN "Organizations" o ON o."Id" = m."OrganizationId" AND NOT o."IsDeleted"
+JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted"
 WHERE m."UserId" = @user_id AND NOT m."IsDeleted";
 
 -- name: GetUserMfaState :one

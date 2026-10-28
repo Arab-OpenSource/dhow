@@ -148,18 +148,18 @@ func (s *Service) RemoveMember(ctx context.Context, org, target uuid.UUID) (mode
 }
 
 func (s *Service) coversEveryMembership(ctx context.Context, q *sqlc.Queries, p auth.Principal, target uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.ListUserDirectRoles(ctx, target)
+	rows, err := q.ListUserRoles(ctx, target)
 	if err != nil {
 		return nil, err
 	}
 	orgs := make([]uuid.UUID, 0, len(rows))
 	for _, r := range rows {
-		role, ok := policy.ParseRole(r.Role)
+		role, ok := policy.EffectiveOf(r.Role, r.TeamRoles)
 		if !ok {
 			continue
 		}
 		mine, member := p.RoleIn(r.OrganizationId)
-		if !member || !policy.CanManage(mine, role) {
+		if !member || !policy.CanResetMfa(mine, role, r.IsInstanceOwner) {
 			return nil, forbiddenBecause(messageMfaResetScope)
 		}
 		orgs = append(orgs, r.OrganizationId)

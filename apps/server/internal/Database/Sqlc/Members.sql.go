@@ -189,28 +189,38 @@ func (q *Queries) ListMemberRoles(ctx context.Context, arg ListMemberRolesParams
 	return items, nil
 }
 
-const listUserDirectRoles = `-- name: ListUserDirectRoles :many
-SELECT m."OrganizationId", m."Role"
+const listUserRoles = `-- name: ListUserRoles :many
+SELECT m."OrganizationId", m."Role", u."IsInstanceOwner",
+       ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
+             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles"
 FROM "Memberships" m
 JOIN "Organizations" o ON o."Id" = m."OrganizationId" AND NOT o."IsDeleted"
+JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted"
 WHERE m."UserId" = $1 AND NOT m."IsDeleted"
 `
 
-type ListUserDirectRolesRow struct {
-	OrganizationId uuid.UUID
-	Role           string
+type ListUserRolesRow struct {
+	OrganizationId  uuid.UUID
+	Role            string
+	IsInstanceOwner bool
+	TeamRoles       []string
 }
 
-func (q *Queries) ListUserDirectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserDirectRolesRow, error) {
-	rows, err := q.db.Query(ctx, listUserDirectRoles, userID)
+func (q *Queries) ListUserRoles(ctx context.Context, userID uuid.UUID) ([]ListUserRolesRow, error) {
+	rows, err := q.db.Query(ctx, listUserRoles, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListUserDirectRolesRow{}
+	items := []ListUserRolesRow{}
 	for rows.Next() {
-		var i ListUserDirectRolesRow
-		if err := rows.Scan(&i.OrganizationId, &i.Role); err != nil {
+		var i ListUserRolesRow
+		if err := rows.Scan(
+			&i.OrganizationId,
+			&i.Role,
+			&i.IsInstanceOwner,
+			&i.TeamRoles,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

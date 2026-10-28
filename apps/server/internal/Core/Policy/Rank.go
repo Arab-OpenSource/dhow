@@ -53,6 +53,13 @@ func Bindable(r Role) bool { return r != RoleOwner && Rank(r) > 0 }
 
 func CanGrant(actor, role Role) bool { return Rank(role) > 0 && Rank(actor) >= Rank(role) }
 
+func CanResetMfa(actor, target Role, targetInstanceOwner bool) bool {
+	if targetInstanceOwner {
+		target = RoleOwner
+	}
+	return Allows(actor, MemberManage) && Rank(actor) > Rank(target)
+}
+
 func CanManage(actor, target Role) bool {
 	if target == RoleOwner {
 		return actor == RoleOwner

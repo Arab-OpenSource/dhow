@@ -56,3 +56,24 @@ func TestGrantAndManageRules(t *testing.T) {
 	assert.False(t, policy.Bindable(policy.RoleOwner))
 	assert.True(t, policy.Bindable(policy.RoleViewer))
 }
+
+func TestMfaResetNeedsAStrictlyHigherRole(t *testing.T) {
+	cases := []struct {
+		actor, target policy.Role
+		instanceOwner bool
+		want          bool
+	}{
+		{policy.RoleOwner, policy.RoleAdmin, false, true},
+		{policy.RoleOwner, policy.RoleOwner, false, false},
+		{policy.RoleAdmin, policy.RoleMaintainer, false, true},
+		{policy.RoleAdmin, policy.RoleViewer, false, true},
+		{policy.RoleAdmin, policy.RoleAdmin, false, false},
+		{policy.RoleAdmin, policy.RoleOwner, false, false},
+		{policy.RoleMaintainer, policy.RoleViewer, false, false},
+		{policy.RoleOwner, policy.RoleViewer, true, false},
+		{policy.RoleOwner, policy.RoleAdmin, true, false},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, policy.CanResetMfa(c.actor, c.target, c.instanceOwner), "%s resets %s (instance owner %v)", c.actor, c.target, c.instanceOwner)
+	}
+}
