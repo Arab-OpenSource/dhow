@@ -35,38 +35,65 @@ type CompleteInput struct {
 	Digest   []byte
 }
 
+type resultRule struct {
+	state    string
+	fallback runnerv1.FailureReason
+	reasons  []runnerv1.FailureReason
+}
+
+func resultRules() map[runnerv1.AttemptResult]resultRule {
+	unspecified := runnerv1.FailureReason_FAILURE_REASON_UNSPECIFIED
+	return map[runnerv1.AttemptResult]resultRule{
+		runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED: {models.AttemptSucceeded, unspecified, nil},
+		runnerv1.AttemptResult_ATTEMPT_RESULT_FAILED: {models.AttemptFailed, runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED, []runnerv1.FailureReason{
+			runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED, runnerv1.FailureReason_FAILURE_REASON_OOM_KILLED,
+			runnerv1.FailureReason_FAILURE_REASON_PIDS_LIMIT_REACHED, runnerv1.FailureReason_FAILURE_REASON_IMAGE_PULL_FAILED,
+			runnerv1.FailureReason_FAILURE_REASON_SHELL_NOT_FOUND, runnerv1.FailureReason_FAILURE_REASON_SPEC_REJECTED,
+			runnerv1.FailureReason_FAILURE_REASON_RESOURCE_REQUEST_EXCEEDS_RUNNER, runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED,
+			runnerv1.FailureReason_FAILURE_REASON_RUNNER_DISK_FULL,
+		}},
+		runnerv1.AttemptResult_ATTEMPT_RESULT_CANCELED: {
+			models.AttemptCanceled, runnerv1.FailureReason_FAILURE_REASON_CANCELED,
+			[]runnerv1.FailureReason{runnerv1.FailureReason_FAILURE_REASON_CANCELED},
+		},
+		runnerv1.AttemptResult_ATTEMPT_RESULT_TIMED_OUT: {
+			models.AttemptTimedOut, runnerv1.FailureReason_FAILURE_REASON_TIMED_OUT,
+			[]runnerv1.FailureReason{runnerv1.FailureReason_FAILURE_REASON_TIMED_OUT},
+		},
+		runnerv1.AttemptResult_ATTEMPT_RESULT_LOST: {models.AttemptLost, runnerv1.FailureReason_FAILURE_REASON_LEASE_LOST, []runnerv1.FailureReason{
+			runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED, runnerv1.FailureReason_FAILURE_REASON_LEASE_LOST,
+		}},
+	}
+}
+
+func stepReasons() []runnerv1.FailureReason {
+	return []runnerv1.FailureReason{
+		runnerv1.FailureReason_FAILURE_REASON_UNSPECIFIED, runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED,
+		runnerv1.FailureReason_FAILURE_REASON_OOM_KILLED, runnerv1.FailureReason_FAILURE_REASON_PIDS_LIMIT_REACHED,
+		runnerv1.FailureReason_FAILURE_REASON_TIMED_OUT, runnerv1.FailureReason_FAILURE_REASON_CANCELED,
+		runnerv1.FailureReason_FAILURE_REASON_SHELL_NOT_FOUND,
+	}
+}
+
 func outcomeOf(in CompleteInput) (models.Outcome, error) {
-	reason := failureName(in.Reason)
-	out := models.Outcome{FailureReason: reason, LeaseState: models.LeaseReleased, Digest: in.Digest}
+	rule, ok := resultRules()[in.Result]
+	if !ok {
+		return models.Outcome{}, runnerauth.ValidationFailed("Result")
+	}
+	if in.Result == runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED && in.ExitCode != 0 {
+		return models.Outcome{}, runnerauth.ValidationFailed("Result")
+	}
+	reason := in.Reason
+	switch {
+	case reason == runnerv1.FailureReason_FAILURE_REASON_UNSPECIFIED:
+		reason = rule.fallback
+	case !slices.Contains(rule.reasons, reason):
+		return models.Outcome{}, runnerauth.ValidationFailed("FailureReason")
+	}
 	exit := in.ExitCode
-	out.ExitCode = &exit
-	defaultReason := func(r runnerv1.FailureReason) {
-		if out.FailureReason == "" {
-			out.FailureReason = failureName(r)
-		}
-	}
-	switch in.Result {
-	case runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED:
-		if in.ExitCode != 0 || reason != "" {
-			return out, runnerauth.ValidationFailed("Result")
-		}
-		out.State = models.AttemptSucceeded
-	case runnerv1.AttemptResult_ATTEMPT_RESULT_FAILED:
-		out.State = models.AttemptFailed
-		defaultReason(runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED)
-	case runnerv1.AttemptResult_ATTEMPT_RESULT_CANCELED:
-		out.State = models.AttemptCanceled
-		defaultReason(runnerv1.FailureReason_FAILURE_REASON_CANCELED)
-	case runnerv1.AttemptResult_ATTEMPT_RESULT_TIMED_OUT:
-		out.State = models.AttemptTimedOut
-		defaultReason(runnerv1.FailureReason_FAILURE_REASON_TIMED_OUT)
-	case runnerv1.AttemptResult_ATTEMPT_RESULT_LOST:
-		out.State = models.AttemptLost
-		defaultReason(runnerv1.FailureReason_FAILURE_REASON_LEASE_LOST)
-	default:
-		return out, runnerauth.ValidationFailed("Result")
-	}
-	return out, nil
+	return models.Outcome{
+		State: rule.state, FailureReason: failureName(reason), ExitCode: &exit, Digest: in.Digest, LeaseState: models.LeaseReleased,
+	}, nil
 }
 
 func (s *Service) Complete(ctx context.Context, in CompleteInput) error {

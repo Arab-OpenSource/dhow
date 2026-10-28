@@ -255,6 +255,9 @@ func (s *Service) EndStep(ctx context.Context, ref *runnerv1.LeaseRef, index, ex
 		if _, err := stepOf(spec, index); err != nil {
 			return err
 		}
+		if !slices.Contains(stepReasons(), reason) {
+			return runnerauth.ValidationFailed("FailureReason")
+		}
 		state := models.StepSucceeded
 		if exitCode != 0 || reason != runnerv1.FailureReason_FAILURE_REASON_UNSPECIFIED {
 			state = models.StepFailed
