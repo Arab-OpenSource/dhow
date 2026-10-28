@@ -31,6 +31,14 @@ On Windows, the script:
 
 For a PostgreSQL container, turn on Docker Desktop's WSL integration for Ubuntu 24.04: Settings, then Resources, then WSL integration.
 
+`make` and the tools live inside Ubuntu, not in PowerShell. Run them from a shell there (`wsl -d Ubuntu-24.04 --cd ~`, then `cd src/dhow`), or straight from PowerShell:
+
+```powershell
+wsl -d Ubuntu-24.04 --cd ~ -- bash -lc 'cd src/dhow && make dev'
+```
+
+`bash -l` reads `~/.profile`, where the script put Go and Node.js on `PATH`.
+
 What the script does, asking before anything that needs `sudo` or changes your system:
 
 | Step | What happens |
