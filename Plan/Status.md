@@ -8,7 +8,7 @@
 
 - الريبو `Khaymah/dhow`، واسمه القديم `Arab-OpenSource/dhow` بيعمل redirect.
 - أدوات GitHub في الجلسات بتشتغل بالاسم القديم، ومابيوصلش منها أحداث للـ PRs، فالـ CI بيتراجع يدوي (`get_check_runs`).
-- الـ proxy بيرفض مسح الـ branches ورفع الـ tags، فده بيتعمل من GitHub نفسه.
+- الـ proxy بيرفض مسح الـ branches ورفع الـ tags. الـ branches بتتمسح بعد الدمج بـ `delete-merged-branch.yml`، والـ tags بتتعمل من GitHub نفسه.
 
 ## اللي اتنفّذ واتعمله merge
 
@@ -31,7 +31,7 @@
 
 ## شغّال ومش متعمله merge
 
-### M2.6: سياسة الخطوة التانية والجلسات والتنبيهات (`m2/session-policy`)
+### M2.6: سياسة الخطوة التانية والجلسات والتنبيهات (`m2/session-policy`، draft PR #26)
 
 الخطة في `Plan/M2.6-Plan.md` على الـ branch. القرارات:
 - **T1:** إعداد `RequireSecondFactor` للمؤسسة، ومهلة 7 أيام، وبعدها `403 SECOND_FACTOR_REQUIRED` على الإجراءات الحساسة.
@@ -44,14 +44,14 @@
 - اتعمل: الـ migration، وإعداد المؤسسة والمهلة واختبارات الـ route-table، وسياسة الجلسة، وكارت الواجهة.
 - لسه: اختبارات الساعة الوهمية للحدود والترقية، والإيميلات (T3) كلها، وADR-0054، وسجل التقدّم، والـ `openapi.yaml` لو ناقص.
 
-### M3.6: driver الـ Podman والـ agent والـ seccomp (`m3/podman`)
+### M3.6: driver الـ Podman والـ agent والـ seccomp (`m3/podman`، draft PR #25)
 
 - اتعمل (commitين على الـ branch): طبقة `Agent` في قواعد الاستيراد، وdriver الـ Podman rootless، والـ agent كـ PID 1، وقناة `Wire`، والـ seccomp واختباره.
 - لسه: الـ escape suite والـ limits suite، وjob الـ `isolation` في الـ CI، وADR-0055، والوثائق، وسجل التقدّم.
 - التحقق في job اسمه `isolation` على GitHub Actions بـ `ubuntu-24.04` (قرار Sabry).
 - الأرقام: ADR-0055 والقسم 7 في سجل اليوم.
 
-**الخطوات قبل الـ merge لكل واحد:** `make check`، ومراجعة أمنية مستقلة، وإصلاح الـ findings، وPR، والـ CI أخضر، وsquash merge.
+**الخطوات قبل الـ merge لكل واحد:** تكملة اللي لسه، وبعدين `make check`، ومراجعة أمنية مستقلة، وإصلاح الـ findings، وPR، والـ CI أخضر، وsquash merge.
 
 ## اللي لسه في M3 (بالترتيب)
 
