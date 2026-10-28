@@ -34,12 +34,15 @@ type Step struct {
 	Reason     string   `json:"Reason"`
 	HangMillis int      `json:"HangMillis"`
 	IgnoreTerm bool     `json:"IgnoreTerm"`
+	IgnoreKill bool     `json:"IgnoreKill"`
 }
 
 type Recording struct {
 	Steps              []Step `json:"Steps"`
 	PrepareError       string `json:"PrepareError"`
 	PrepareDelayMillis int    `json:"PrepareDelayMillis"`
+	KillSurvivors      bool   `json:"KillSurvivors"`
+	DestroySurvivors   bool   `json:"DestroySurvivors"`
 }
 
 type EventKind string
