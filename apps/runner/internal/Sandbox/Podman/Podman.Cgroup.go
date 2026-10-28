@@ -143,11 +143,20 @@ func drained(ctx context.Context, dir string, wait time.Duration) bool {
 	}
 }
 
+func writeCgroupKill(dir string) error {
+	f, err := os.OpenFile(filepath.Join(dir, "cgroup.kill"), os.O_WRONLY, 0) //nolint:gosec // The sandbox cgroup that Podman reports, under /sys/fs/cgroup.
+	if err != nil {
+		return err
+	}
+	_, werr := f.Write([]byte("1"))
+	return errors.Join(werr, f.Close())
+}
+
 func killCgroup(ctx context.Context, dir string, wait time.Duration) error {
 	if dir == "" || drained(ctx, dir, wait) {
 		return nil
 	}
-	if err := os.WriteFile(filepath.Join(dir, "cgroup.kill"), []byte("1"), 0); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := writeCgroupKill(dir); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("%w: write cgroup.kill: %w", sandbox.ErrSurvivors, err)
 	}
 	if drained(ctx, dir, wait) {

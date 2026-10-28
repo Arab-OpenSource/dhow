@@ -111,6 +111,7 @@ func TestKillCgroupWritesCgroupKillOnlyWhenPodmanKillLeftProcesses(t *testing.T)
 	stuck := t.TempDir()
 	events := filepath.Join(stuck, "cgroup.events")
 	require.NoError(t, os.WriteFile(events, []byte("populated 1\nfrozen 0\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(stuck, "cgroup.kill"), nil, 0o600))
 	err = killCgroup(ctx, stuck, 50*time.Millisecond)
 	assert.ErrorIs(t, err, sandbox.ErrSurvivors)
 	written, readErr := os.ReadFile(filepath.Join(stuck, "cgroup.kill"))
@@ -125,9 +126,10 @@ func TestKillCgroupWritesCgroupKillOnlyWhenPodmanKillLeftProcesses(t *testing.T)
 
 	freed := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(freed, "cgroup.events"), []byte("populated 1\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(freed, "cgroup.kill"), nil, 0o600))
 	go func() {
 		for {
-			if _, err := os.Stat(filepath.Join(freed, "cgroup.kill")); err == nil {
+			if got, err := os.ReadFile(filepath.Join(freed, "cgroup.kill")); err == nil && string(got) == "1" {
 				_ = os.WriteFile(filepath.Join(freed, "cgroup.events"), []byte("populated 0\n"), 0o600)
 				return
 			}
