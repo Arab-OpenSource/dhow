@@ -87,6 +87,19 @@ fetch() {
   curl --proto '=https' --tlsv1.2 -fsSL "$@"
 }
 
+on_wsl() {
+  [[ -n ${WSL_DISTRO_NAME:-} || -e /proc/sys/fs/binfmt_misc/WSLInterop ]]
+}
+
+drop_windows_paths() {
+  local entry kept=() IFS=:
+  for entry in $PATH; do
+    [[ $entry == /mnt/[a-zA-Z]/* ]] || kept+=("$entry")
+  done
+  PATH="${kept[*]}"
+  export PATH
+}
+
 detect_platform() {
   case $(uname -s) in
     Linux) os=linux ;;
@@ -102,6 +115,7 @@ detect_platform() {
     distro=macos
     return
   fi
+  on_wsl && drop_windows_paths
   local id='' like=''
   if [[ -r /etc/os-release ]]; then
     id=$(. /etc/os-release && printf '%s' "${ID:-}")

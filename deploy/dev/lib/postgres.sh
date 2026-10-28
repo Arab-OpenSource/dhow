@@ -20,7 +20,12 @@ choose_db() {
     ask db_mode "Which one" "$default"
   fi
   case $db_mode in
-    container) [[ -n $engine ]] || fail "neither docker nor podman is installed; choose native or url" ;;
+    container)
+      if [[ -z $engine ]] && on_wsl; then
+        fail "docker is not reachable in ${WSL_DISTRO_NAME:-this WSL distribution}; in Docker Desktop open Settings, Resources, WSL integration, turn it on for ${WSL_DISTRO_NAME:-this distribution}, then run this script again"
+      fi
+      [[ -n $engine ]] || fail "neither docker nor podman is installed; choose native or url"
+      ;;
     native | url) ;;
     *) fail "unknown database choice: $db_mode (container, native or url)" ;;
   esac
