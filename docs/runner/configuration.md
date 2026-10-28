@@ -15,7 +15,7 @@ The runner reads its settings from the environment, usually `/etc/dhow-runner/ru
 | `DHOW_RUNNER_MAX_DISK` | `4GiB` | `10GiB` | The most `/workspace` space one job may ask for, from 64 MiB to 100 GiB. |
 | `DHOW_RUNNER_MAX_PIDS` | `1024` | `4096` | The most processes one job may ask for, from 32 to 32768. |
 | `DHOW_RUNNER_MAX_TIMEOUT` | `6h` | `2h` | The longest `TimeoutSeconds` a job may ask for, from `1m` to `24h`. |
-| `DHOW_RUNNER_DISK_MODE` | `tmpfs` | `directory` | `tmpfs` puts `/workspace` in memory with a hard limit, so memory plus disk must fit the host's memory. `directory` uses a directory on the state disk with a soft limit, for hosts with little memory, and the disk limit must fit the free space. |
+| `DHOW_RUNNER_DISK_MODE` | `tmpfs` | `tmpfs` | `tmpfs` puts `/workspace` in memory with a hard limit, so memory plus disk must fit the host's memory. `directory` is refused for now: it has no enforced disk limit yet, so one job could fill the runner's disk ([ADR-0056](../../Plan/ADR/0056-sandbox-hardening-after-the-m3-6-review.md)). |
 | `DHOW_RUNNER_CANCEL_GRACE` | `10s` | `30s` | How long a step has between `SIGTERM` and `SIGKILL` when it is canceled or times out, from `1s` to `60s`. |
 | `DHOW_RUNNER_EGRESS_ALLOW_PRIVATE_CIDRS` | none | `10.20.0.0/16,fd00::/8` | Private ranges the egress proxy (M3.7) may reach. Comma separated CIDR prefixes. |
 | `DHOW_RUNNER_ALLOW_UNPINNED_IMAGES` | `false` | `true` | Reserved for the Podman driver (M3.6). Jobs must pin images by digest either way. |
@@ -24,9 +24,9 @@ The runner reads its settings from the environment, usually `/etc/dhow-runner/ru
 
 ## Limits and the machine
 
-Every `MAX_*` value is a ceiling for one job, and the runner refuses to start if a ceiling is more than the host has: CPUs from the kernel, processes from `/proc/sys/kernel/pid_max`, memory from `sysinfo`, and free disk under the state directory in `directory` mode. With the default `tmpfs` disk mode, memory plus disk counts against memory, because tmpfs pages are charged to the job's memory. The defaults (2 GiB of memory and a 4 GiB tmpfs disk) therefore need a host with at least 6 GiB of memory. On a smaller host, lower `DHOW_RUNNER_MAX_MEMORY` and `DHOW_RUNNER_MAX_DISK`, or set `DHOW_RUNNER_DISK_MODE=directory`.
+Every `MAX_*` value is a ceiling for one job, and the runner refuses to start if a ceiling is more than the host has: CPUs from the kernel, processes from `/proc/sys/kernel/pid_max`, memory from `sysinfo`, and free disk under the state directory. With the default `tmpfs` disk mode, memory plus disk counts against memory, because tmpfs pages are charged to the job's memory. The defaults (2 GiB of memory and a 4 GiB tmpfs disk) therefore need a host with at least 6 GiB of memory. On a smaller host, lower `DHOW_RUNNER_MAX_MEMORY` and `DHOW_RUNNER_MAX_DISK`.
 
-The state directory must also have room for one 256 MiB log spill file per job slot (`DHOW_RUNNER_CAPACITY`), plus every job disk in `directory` mode.
+The state directory must also have room for one 256 MiB log spill file per job slot (`DHOW_RUNNER_CAPACITY`).
 
 A job that asks for more than a ceiling fails on this runner with `RESOURCE_REQUEST_EXCEEDS_RUNNER` before it starts, and the server gives it to another runner. The default job request (1 CPU, 2 GiB, 1024 processes, 4 GiB of disk, one hour) fits the default ceilings.
 

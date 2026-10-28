@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
@@ -19,16 +21,16 @@ type inspection struct {
 		OOMKilled  bool   `json:"OOMKilled"`
 		Status     string `json:"Status"`
 		CgroupPath string `json:"CgroupPath"`
+		Pid        int    `json:"Pid"`
 	} `json:"State"`
-	EffectiveCaps []string `json:"EffectiveCaps"`
-	BoundingCaps  []string `json:"BoundingCaps"`
-	Mounts        []struct {
-		Type        string `json:"Type"`
-		Source      string `json:"Source"`
-		Destination string `json:"Destination"`
-		RW          bool   `json:"RW"`
-	} `json:"Mounts"`
-	HostConfig struct {
+	Config struct {
+		Env         []string          `json:"Env"`
+		Annotations map[string]string `json:"Annotations"`
+	} `json:"Config"`
+	EffectiveCaps []string    `json:"EffectiveCaps"`
+	BoundingCaps  []string    `json:"BoundingCaps"`
+	Mounts        []mountInfo `json:"Mounts"`
+	HostConfig    struct {
 		CapDrop        []string          `json:"CapDrop"`
 		SecurityOpt    []string          `json:"SecurityOpt"`
 		ReadonlyRootfs bool              `json:"ReadonlyRootfs"`
@@ -47,6 +49,13 @@ type inspection struct {
 	} `json:"HostConfig"`
 }
 
+type mountInfo struct {
+	Type        string `json:"Type"`
+	Source      string `json:"Source"`
+	Destination string `json:"Destination"`
+	RW          bool   `json:"RW"`
+}
+
 func inspect(ctx context.Context, r runner, name string) (*inspection, error) {
 	out, err := r.run(ctx, "inspect", "--type=container", "--format", "json", name)
 	if err != nil {
@@ -62,7 +71,7 @@ func inspect(ctx context.Context, r runner, name string) (*inspection, error) {
 	return &all[0], nil
 }
 
-func verify(in *inspection, spec sandbox.PrepareSpec) error {
+func verify(in *inspection, spec sandbox.PrepareSpec, l layout) error {
 	var bad []string
 	add := func(cond bool, msg string) {
 		if !cond {
@@ -71,7 +80,7 @@ func verify(in *inspection, spec sandbox.PrepareSpec) error {
 	}
 	add(len(in.EffectiveCaps) == 0 && len(in.BoundingCaps) == 0, "the sandbox keeps capabilities")
 	add(!in.HostConfig.Privileged, "the sandbox is privileged")
-	add(hasOpt(in.HostConfig.SecurityOpt, "no-new-privileges"), "no-new-privileges is not set")
+	add(noNewPrivileges(in.HostConfig.SecurityOpt), "no-new-privileges is not set")
 	add(in.HostConfig.ReadonlyRootfs, "the root filesystem is writable")
 	add(in.HostConfig.NetworkMode == "none", "the network is not none")
 	add(private(in.HostConfig.IpcMode), "the IPC namespace is shared")
@@ -80,7 +89,8 @@ func verify(in *inspection, spec sandbox.PrepareSpec) error {
 	add(private(in.HostConfig.CgroupMode), "the cgroup namespace is shared")
 	add(strings.HasPrefix(in.HostConfig.Annotations["io.podman.annotations.userns"], "auto"), "the user namespace is not isolated per job")
 	verifyLimits(in, spec, add)
-	verifyMounts(in, spec, add)
+	verifyMounts(in, spec, l, add)
+	verifyImageInputs(in, add)
 	if len(bad) > 0 {
 		return fmt.Errorf("%w: %s", ErrPolicyMismatch, strings.Join(bad, "; "))
 	}
@@ -100,37 +110,85 @@ func verifyLimits(in *inspection, spec sandbox.PrepareSpec, add func(bool, strin
 
 const nanosPerMilliCPU = 1_000_000
 
-func verifyMounts(in *inspection, spec sandbox.PrepareSpec, add func(bool, string)) {
-	allowed := map[string]bool{agentMount: true, controlMount: true}
+func verifyMounts(in *inspection, spec sandbox.PrepareSpec, l layout, add func(bool, string)) {
+	sources := map[string]string{agentMount: l.agentPath, controlMount: l.controlDir}
 	if spec.DiskMode == config.DiskModeDirectory {
-		allowed[workspacePath] = true
+		sources[workspacePath] = l.workDir
 	}
 	for _, m := range in.Mounts {
 		if m.Type == "tmpfs" {
 			continue
 		}
-		add(allowed[m.Destination], "an unexpected mount is present at "+m.Destination)
+		want, ok := sources[m.Destination]
+		add(ok, "an unexpected mount is present at "+m.Destination)
+		if ok {
+			add(sameFile(m.Source, want), "the mount at "+m.Destination+" comes from an unexpected source")
+		}
 		if m.Destination == agentMount || m.Destination == controlMount {
 			add(!m.RW, "a control mount is writable at "+m.Destination)
 		}
 	}
-	add(hasTmpfs(in, workspacePath) || spec.DiskMode == config.DiskModeDirectory, "the workspace is missing")
-	add(hasTmpfs(in, tmpPath), "the /tmp tmpfs is missing")
-	add(hasTmpfs(in, secretsMount), "the secrets tmpfs is missing")
+	add(spec.DiskMode == config.DiskModeDirectory || tmpfsHas(in, workspacePath, "nosuid", "nodev"), "the workspace tmpfs is missing or allows setuid or devices")
+	add(tmpfsHas(in, tmpPath, "nosuid", "nodev"), "the /tmp tmpfs is missing or allows setuid or devices")
+	add(tmpfsHas(in, secretsMount, "noexec", "nosuid", "nodev"), "the secrets tmpfs is missing or allows exec, setuid or devices")
 }
 
-func hasTmpfs(in *inspection, dst string) bool {
-	_, ok := in.HostConfig.Tmpfs[dst]
-	return ok
+func verifyImageInputs(in *inspection, add func(bool, string)) {
+	for _, annotations := range []map[string]string{in.Config.Annotations, in.HostConfig.Annotations} {
+		for key := range annotations {
+			add(!runtimeAnnotation(key), "the image sets the runtime annotation "+key)
+		}
+	}
+	for _, kv := range in.Config.Env {
+		name, _, _ := strings.Cut(kv, "=")
+		add(!runtimeEnv(name), "the agent would start with "+name+" from the image")
+	}
 }
 
-func hasOpt(opts []string, want string) bool {
-	for _, o := range opts {
-		if o == want || strings.HasPrefix(o, want+"=") || strings.HasPrefix(o, want+":") {
+func runtimeAnnotation(key string) bool {
+	for _, prefix := range []string{"run.oci.", "module.wasm.image/", "io.containers.trace-", "org.criu."} {
+		if strings.HasPrefix(key, prefix) {
 			return true
 		}
 	}
 	return false
 }
 
-func private(mode string) bool { return mode == "private" || mode == "" }
+func runtimeEnv(name string) bool {
+	return strings.HasPrefix(name, "GO") || strings.HasPrefix(name, "LD_")
+}
+
+func tmpfsHas(in *inspection, dst string, want ...string) bool {
+	opts, ok := in.HostConfig.Tmpfs[dst]
+	if !ok {
+		return false
+	}
+	have := strings.Split(opts, ",")
+	for _, w := range want {
+		if !slices.Contains(have, w) {
+			return false
+		}
+	}
+	return true
+}
+
+func sameFile(a, b string) bool {
+	if a == b {
+		return true
+	}
+	ra, errA := filepath.EvalSymlinks(a)
+	rb, errB := filepath.EvalSymlinks(b)
+	return errA == nil && errB == nil && ra == rb
+}
+
+func noNewPrivileges(opts []string) bool {
+	for _, o := range opts {
+		switch o {
+		case "no-new-privileges", "no-new-privileges=true", "no-new-privileges:true":
+			return true
+		}
+	}
+	return false
+}
+
+func private(mode string) bool { return mode == "private" }

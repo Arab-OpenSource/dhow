@@ -124,7 +124,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          if [ "$EVENT" != pull_request ] || ! git diff --quiet HEAD^1 HEAD -- apps/runner packages/proto internal/jobspec Makefile .github/workflows/ci.yml; then
+          if [ "$EVENT" != pull_request ] || ! git diff --quiet HEAD^1 HEAD -- apps/runner packages/proto internal go.mod go.sum Makefile .github/workflows/ci.yml; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"

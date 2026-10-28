@@ -217,3 +217,26 @@ func TestIsolationNames(t *testing.T) {
 	_, ok = jobspec.ParseIsolation("vm")
 	assert.False(t, ok)
 }
+
+func TestShortImageNamesAreQualifiedLikeDocker(t *testing.T) {
+	digest := "@sha256:" + strings.Repeat("c", 64)
+	tests := []struct{ in, want string }{
+		{"node:22-bookworm" + digest, "docker.io/library/node:22-bookworm" + digest},
+		{"alpine" + digest, "docker.io/library/alpine" + digest},
+		{"bitnami/redis:7" + digest, "docker.io/bitnami/redis:7" + digest},
+		{"ghcr.io/org/app" + digest, "ghcr.io/org/app" + digest},
+		{"localhost/app" + digest, "localhost/app" + digest},
+		{"registry:5000/app" + digest, "registry:5000/app" + digest},
+		{"docker.io/library/node" + digest, "docker.io/library/node" + digest},
+		{"containers-storage:alpine" + digest, "docker.io/library/containers-storage:alpine" + digest},
+		{"not an image", "not an image"},
+	}
+	for _, tt := range tests {
+		assert.Equal(t, tt.want, jobspec.QualifyImage(tt.in), tt.in)
+	}
+	s := valid()
+	s.Image = " node:22-bookworm" + digest + " "
+	out, err := jobspec.Prepare(s)
+	require.NoError(t, err)
+	assert.Equal(t, "docker.io/library/node:22-bookworm"+digest, out.GetImage(), "the server signs the qualified name")
+}

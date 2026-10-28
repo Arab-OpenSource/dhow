@@ -9,6 +9,7 @@ The runner is a single static Linux binary, `dhow-runner`, for `amd64` and `arm6
 - **A dedicated user**, `dhow-runner`, that owns nothing else. The runner never needs root.
 - **For the Podman driver (M3.6):** Podman 5.4 or newer, `crun`, `uidmap`, cgroup v2 with delegation, and user namespaces. Debian 13, Ubuntu 26.04, Fedora and RHEL 9.6+ (Rocky, Alma) ship these. Debian 12 and Ubuntu 24.04 do not, from their own repositories. Ubuntu 24.04 also blocks user namespaces for programs without an AppArmor profile; set `kernel.apparmor_restrict_unprivileged_userns=0` in `/etc/sysctl.d/` or give Podman a profile, or the runner's start-up checks fail.
 - **Sub-ids for the runner user:** at least 65536 per job the runner runs at once in `/etc/subuid` and `/etc/subgid` (each job gets its own user namespace).
+- **A host of its own, or a private `/proc`.** Other local users cannot list the runner's state directory, but a container's ID shows in the `conmon` command line, and with it a local user could read the files of the job's image (never `/workspace` or secrets, which live in the container's own tmpfs). Run the runner on a host no one else logs into, or mount `/proc` with `hidepid=2`.
 
 ## Get the binary
 

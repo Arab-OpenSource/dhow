@@ -144,3 +144,27 @@ func blockedWithEPERM(t *testing.T) []string {
 	}
 	return out
 }
+
+func TestSocketIsAllowedOnlyForUnixInetAndNetlink(t *testing.T) {
+	doc := loadProfile(t)
+	allowed := []uint64{1, 2, 10, 16}
+	found := 0
+	for _, r := range doc.Syscalls {
+		if r.Action != actAllow || !slices.Contains(r.Names, "socket") {
+			continue
+		}
+		found++
+		var family *seccompArg
+		for i := range r.Args {
+			if r.Args[i].Index == 0 && r.Args[i].Op == "SCMP_CMP_EQ" {
+				family = &r.Args[i]
+			}
+		}
+		if family == nil || !slices.Contains(allowed, family.Value) {
+			t.Errorf("an allow rule for socket does not pin the address family to unix, inet, inet6 or netlink: %+v", r.Args)
+		}
+	}
+	if found == 0 {
+		t.Fatal("no allow rule for socket")
+	}
+}

@@ -57,3 +57,4 @@
 | [0053](0053-runner-implementation.md) | تنفيذ الـ runner في M3.5: الطبقات، والهوية على القرص، والقفل الذاتي، والـ journal، والـ masking والـ logs، والـ driver الوهمي |
 | [0054](0054-second-factor-policy-sessions-and-credential-alerts.md) | سياسة الخطوة التانية للمؤسسة، وحدود الجلسة حسب الدور، وإيميلات تنبيه تغيير بيانات الدخول (M2.6) |
 | [0055](0055-podman-driver-and-agent-implementation.md) | تنفيذ الـ sandbox في M3.6: driver الـ Podman، والـ agent كـ PID 1، وقناة التحكم، والـ seccomp، والـ escape والـ limits suites |
+| [0056](0056-sandbox-hardening-after-the-m3-6-review.md) | تقوية الـ sandbox بعد المراجعة الأمنية لـ M3.6: الخطوة بتخلص بكل الـ processes بتاعتها، وملفات الأسرار، وقفل وضع `directory`، والـ image بالـ ID، والـ vsock |

@@ -92,6 +92,7 @@
 - قواعد الـ migrations (الأعمدة الأساسية، `timestamptz`، `TEXT`، ممنوع أعمدة `Ar`/`En`) وممنوع `DELETE FROM` في الـ queries.
 - مسارات `openapi.yaml` بـ kebab-case.
 - رسائل الـ commits (Conventional، إنجليزي، ومن غير أي إشارة لـ AI).
+- اسم المشروع: `github.com/Khaymah/dhow` والـ image `ghcr.io/khaymah/dhow`، وأي ذكر لاسم المنظمة القديم مرفوض.
 - `--no-verify` والـ force-push على main.
 
 اختباراتها في `.claude/hooks/tests/` وبتتشغّل بـ `make hooks-test`. أي قاعدة جديدة لازم يبقى ليها hook واختبار.

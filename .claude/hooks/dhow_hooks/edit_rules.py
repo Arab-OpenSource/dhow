@@ -133,6 +133,16 @@ def check_secrets(rel, added, **_):
     return None
 
 
+OLD_ORG_NAME = re.compile(r"(?i)arab[-_ ]?open[-_ ]?source")
+
+
+def check_org_name(rel, added, **_):
+    if OLD_ORG_NAME.search(added):
+        return (f"{rel}: the project lives at github.com/Khaymah/dhow (module github.com/Khaymah/dhow, "
+                "image ghcr.io/khaymah/dhow). The old organization name is never written again.")
+    return None
+
+
 def check_env_file(rel, **_):
     base = os.path.basename(rel)
     if base.startswith(".env") and base != ".env.example":
@@ -563,6 +573,7 @@ CHECKS = (
     check_generated,
     web_rules.check_web_layout,
     check_secrets,
+    check_org_name,
     check_env_file,
     check_markdown_location,
     check_migration_immutable,

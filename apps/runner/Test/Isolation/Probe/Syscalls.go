@@ -24,6 +24,7 @@ func syscallProbes() []result {
 		ptraceAgent(),
 		rawSocket("raw IPv4 socket", unix.AF_INET, unix.SOCK_RAW, unix.IPPROTO_ICMP),
 		rawSocket("packet socket", unix.AF_PACKET, unix.SOCK_RAW, 0),
+		rawSocket("vsock socket to the hypervisor or host", unix.AF_VSOCK, unix.SOCK_STREAM, 0),
 		blockedUnless("load a kernel module", unix.InitModule([]byte{0}, ""), "init_module"),
 	}
 }

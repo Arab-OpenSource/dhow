@@ -9,11 +9,13 @@ import (
 )
 
 const (
-	configDirName   = "containers"
-	storageDirName  = "storage"
-	runrootDirName  = "run"
-	seccompFileName = "seccomp.json"
-	traverseDirMode = 0o711
+	configDirName           = "containers"
+	storageDirName          = "storage"
+	runrootDirName          = "run"
+	seccompFileName         = "seccomp.json"
+	mountsFileName          = "mounts.conf"
+	intermediateMountpoints = "intermediate-mountpoint-*"
+	traverseDirMode         = 0o711
 )
 
 const containersConfTemplate = `[containers]
@@ -29,6 +31,7 @@ utsns = "private"
 cgroupns = "private"
 pidns = "private"
 seccomp_profile = "%s"
+default_mounts_file = "%s"
 
 [engine]
 cgroup_manager = "cgroupfs"
@@ -57,6 +60,7 @@ type paths struct {
 	storageFile   string
 	registryFile  string
 	seccompFile   string
+	mountsFile    string
 	storageDir    string
 	runrootDir    string
 	containersDir string
@@ -84,6 +88,7 @@ func writeConfig(stateDir string) (paths, error) {
 		storageFile:   filepath.Join(dir, "storage.conf"),
 		registryFile:  filepath.Join(dir, "registries.conf"),
 		seccompFile:   filepath.Join(dir, seccompFileName),
+		mountsFile:    filepath.Join(dir, mountsFileName),
 		storageDir:    filepath.Join(stateDir, storageDirName),
 		runrootDir:    filepath.Join(stateDir, runrootDirName),
 	}
@@ -102,7 +107,8 @@ func writeConfig(stateDir string) (paths, error) {
 	}
 	files := map[string][]byte{
 		p.seccompFile:  seccompProfile,
-		p.configFile:   []byte(fmt.Sprintf(containersConfTemplate, p.seccompFile)),
+		p.mountsFile:   nil,
+		p.configFile:   []byte(fmt.Sprintf(containersConfTemplate, p.seccompFile, p.mountsFile)),
 		p.storageFile:  []byte(fmt.Sprintf(storageConfTemplate, p.storageDir, p.runrootDir)),
 		p.registryFile: []byte(registriesConf),
 	}
@@ -121,6 +127,19 @@ func writeFile(path string, body []byte) error {
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		return fmt.Errorf("install %s: %w", path, err)
+	}
+	return nil
+}
+
+func (d *Driver) closeRunroot() error {
+	dirs, err := filepath.Glob(filepath.Join(d.paths.runrootDir, intermediateMountpoints))
+	if err != nil {
+		return fmt.Errorf("find the intermediate mountpoints: %w", err)
+	}
+	for _, dir := range dirs {
+		if err := os.Chmod(dir, traverseDirMode); err != nil {
+			return fmt.Errorf("stop other users from listing %s: %w", dir, err)
+		}
 	}
 	return nil
 }

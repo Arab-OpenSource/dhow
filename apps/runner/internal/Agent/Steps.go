@@ -36,45 +36,70 @@ func (p *process) signal(sig unix.Signal) {
 }
 
 func (a *Agent) runStep(ctx context.Context, step *agentv1.RunStep) error {
-	if err := writeSecretFiles(step.GetSecretFiles()); err != nil {
-		wipeSecretFiles(step.GetSecretFiles())
+	secrets, err := writeSecretFiles(a.secretsDir, step.GetSecretFiles())
+	if err != nil {
 		return a.conn.Write(stepExit(step.GetIndex(), 1, 0, agentv1.StepFailure_STEP_FAILURE_SECRET_FILES))
 	}
-	defer wipeSecretFiles(step.GetSecretFiles())
+	code, sig, failure, err := a.runShell(ctx, step)
+	wipeSecretFiles(a.secretsDir, secrets)
+	if err != nil {
+		return err
+	}
+	return a.conn.Write(stepExit(step.GetIndex(), code, sig, failure))
+}
+
+func (a *Agent) runShell(ctx context.Context, step *agentv1.RunStep) (int32, int32, agentv1.StepFailure, error) {
 	cmd := exec.CommandContext(ctx, Shell, "-e", "-s")
 	cmd.Env = stepEnv(step.GetEnv())
 	cmd.Stdin = stdinReader(step.GetScript())
 	cmd.SysProcAttr = &unix.SysProcAttr{Setpgid: true}
-	stdout, err := cmd.StdoutPipe()
+	outR, outW, err := os.Pipe()
 	if err != nil {
-		return a.conn.Write(stepExit(step.GetIndex(), 1, 0, agentv1.StepFailure_STEP_FAILURE_START_FAILED))
+		return 1, 0, agentv1.StepFailure_STEP_FAILURE_START_FAILED, nil
 	}
-	stderr, err := cmd.StderrPipe()
+	errR, errW, err := os.Pipe()
 	if err != nil {
-		return a.conn.Write(stepExit(step.GetIndex(), 1, 0, agentv1.StepFailure_STEP_FAILURE_START_FAILED))
+		closeAll(outR, outW)
+		return 1, 0, agentv1.StepFailure_STEP_FAILURE_START_FAILED, nil
 	}
-	if err := cmd.Start(); err != nil {
-		return a.startFailed(step.GetIndex(), err)
+	cmd.Stdout, cmd.Stderr = outW, errW
+	startErr := cmd.Start()
+	closeAll(outW, errW)
+	if startErr != nil {
+		closeAll(outR, errR)
+		return 1, 0, startFailure(startErr), nil
 	}
-	p := &process{cmd: cmd}
-	a.setCurrent(p)
+	a.setCurrent(&process{cmd: cmd})
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go a.pump(&wg, step.GetIndex(), agentv1.OutputStream_OUTPUT_STREAM_STDOUT, stdout)
-	go a.pump(&wg, step.GetIndex(), agentv1.OutputStream_OUTPUT_STREAM_STDERR, stderr)
-	wg.Wait()
-	err = cmd.Wait()
+	go a.pump(&wg, step.GetIndex(), agentv1.OutputStream_OUTPUT_STREAM_STDOUT, outR)
+	go a.pump(&wg, step.GetIndex(), agentv1.OutputStream_OUTPUT_STREAM_STDERR, errR)
+	waitErr := cmd.Wait()
 	a.clearCurrent()
-	code, sig := exitStatus(err)
-	return a.conn.Write(stepExit(step.GetIndex(), code, sig, agentv1.StepFailure_STEP_FAILURE_UNSPECIFIED))
+	sweepErr := a.sweep()
+	if sweepErr != nil {
+		closeAll(outR, errR)
+	}
+	wg.Wait()
+	closeAll(outR, errR)
+	if sweepErr != nil {
+		return 0, 0, 0, sweepErr
+	}
+	code, sig := exitStatus(waitErr)
+	return code, sig, agentv1.StepFailure_STEP_FAILURE_UNSPECIFIED, nil
 }
 
-func (a *Agent) startFailed(index int32, err error) error {
-	failure := agentv1.StepFailure_STEP_FAILURE_START_FAILED
-	if errors.Is(err, exec.ErrNotFound) || errors.Is(err, os.ErrNotExist) {
-		failure = agentv1.StepFailure_STEP_FAILURE_SHELL_NOT_FOUND
+func closeAll(files ...*os.File) {
+	for _, f := range files {
+		_ = f.Close()
 	}
-	return a.conn.Write(stepExit(index, 1, 0, failure))
+}
+
+func startFailure(err error) agentv1.StepFailure {
+	if errors.Is(err, exec.ErrNotFound) || errors.Is(err, os.ErrNotExist) {
+		return agentv1.StepFailure_STEP_FAILURE_SHELL_NOT_FOUND
+	}
+	return agentv1.StepFailure_STEP_FAILURE_START_FAILED
 }
 
 func (a *Agent) pump(wg *sync.WaitGroup, index int32, stream agentv1.OutputStream, r io.Reader) {

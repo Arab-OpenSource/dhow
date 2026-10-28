@@ -29,6 +29,10 @@ func escapeProbes() []result {
 		writable("write /proc/sysrq-trigger", "/proc/sysrq-trigger"),
 		writable("write /sys", "/sys/kernel/uevent_helper"),
 		writable("write the cgroup", "/sys/fs/cgroup/cgroup.procs"),
+		writable("write /etc/hostname", "/etc/hostname"),
+		writable("write /run/.containerenv", "/run/.containerenv"),
+		writable("write /etc/resolv.conf", "/etc/resolv.conf"),
+		absent("see the host's subscription secrets", "/run/secrets"),
 		controlChannel(),
 		capabilities(),
 	}
@@ -42,6 +46,13 @@ func readable(name, path string) result {
 	data, err := os.ReadFile(path) //nolint:gosec // The probe reads fixed paths that must stay out of reach.
 	if err == nil {
 		return escaped(name, "read %d bytes of %s", len(data), path)
+	}
+	return blocked(name)
+}
+
+func absent(name, path string) result {
+	if _, err := os.Lstat(path); err == nil {
+		return escaped(name, "%s exists", path)
 	}
 	return blocked(name)
 }

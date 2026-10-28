@@ -140,6 +140,12 @@ class FileRules(unittest.TestCase):
         self.assertIn("private key", edit("deploy/x.yaml", "-----BEGIN " + "OPENSSH PRIVATE KEY-----\n"))
         self.assertIn("GitHub token", edit("deploy/x.yaml", "token: ghp_" + "a" * 36 + "\n"))
 
+    def test_old_org_name_blocked(self):
+        old = "Arab" + "-Open" + "Source"
+        self.assertIn("Khaymah", edit("apps/runner/internal/Agent/X.go", 'import "github.com/' + old + '/dhow/x"\n'))
+        self.assertIn("Khaymah", edit("docs/install/compose.md", "ghcr.io/" + old.lower() + "/dhow\n"))
+        self.assertIsNone(edit("docs/install/compose.md", "ghcr.io/khaymah/dhow\n"))
+
     def test_env_file_blocked(self):
         self.assertIsNotNone(edit(".env", "A=1\n"))
         self.assertIsNone(edit(".env.example", "A=\n"))
