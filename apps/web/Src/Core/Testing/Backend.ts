@@ -94,7 +94,7 @@ export const membersFixture = (): IMemberFixture[] => [
   },
 ];
 
-export type TRouteHandler = (request: Request, url: URL) => Response | undefined;
+export type TRouteHandler = (request: Request, url: URL) => Response | Promise<Response> | undefined;
 
 export interface IPreferencesFixture {
   Locale: string;

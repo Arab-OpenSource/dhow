@@ -25,6 +25,7 @@ export const useCommandItems = (): ICommands => {
     { id: 'appearance', icon: 'settings', label: t('palette.command.appearance'), kind: t('palette.kind.panel') },
     { id: 'theme-new', icon: 'plus', label: t('palette.command.createTheme'), kind: t('palette.kind.panel') },
     { id: 'account', icon: 'user', label: t('palette.command.account'), kind: t('palette.kind.panel') },
+    { id: 'jobs', icon: 'play', label: t('palette.command.jobs'), kind: t('palette.kind.panel') },
     { id: 'organization', icon: 'users', label: t('palette.command.organization'), kind: t('palette.kind.panel') },
     { id: 'organizations', icon: 'building', label: t('palette.command.organizations'), kind: t('palette.kind.panel') },
     ...(canManageMembers(role)
@@ -52,6 +53,7 @@ export const useCommandItems = (): ICommands => {
     else if (item.id === 'appearance') openStack(['appearance']);
     else if (item.id === 'theme-new') openStack(['appearance', 'theme-edit']);
     else if (item.id === 'account') openStack(['account']);
+    else if (item.id === 'jobs') openStack(['jobs']);
     else if (item.id === 'organization') openStack(['organization']);
     else if (item.id === 'organizations') openStack(['organizations']);
     else if (item.id === 'invite') openStack(['organization', 'organization-invite']);

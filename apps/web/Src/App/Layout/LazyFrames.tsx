@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { checkOf, isThemeEditFrame, memberOf, runnerOf, teamOf, type TFrameId } from '@/App/Panels';
+import { checkOf, isThemeEditFrame, jobOf, memberOf, runnerOf, teamOf, type TFrameId } from '@/App/Panels';
 import { lazyComponent, type IPreloadable, type TLazyComponent } from '@/Core/Ui/LazyComponent';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
@@ -23,6 +23,8 @@ type TFramePart =
   | 'team-new'
   | 'team'
   | 'member'
+  | 'jobs'
+  | 'job'
   | 'runners'
   | 'runner-new'
   | 'runner';
@@ -82,6 +84,9 @@ const AuditFooter = lazyComponent(() =>
   import('@/Modules/Audit/Components/AuditFooter').then((module) => module.AuditFooter),
 );
 
+const JobsBody = lazyComponent(() => import('@/Modules/Jobs/Components/JobsBody').then((module) => module.JobsBody));
+const JobBody = lazyComponent(() => import('@/Modules/Jobs/Components/JobBody').then((module) => module.JobBody));
+
 const organizationSlide = () => import('@/Modules/Organization/Components/OrganizationSlide');
 const OrganizationSlide = lazyComponent(() => organizationSlide().then((module) => module.OrganizationSlide));
 const OrganizationSubtitle = lazyComponent(() => organizationSlide().then((module) => module.OrganizationSubtitle));
@@ -127,6 +132,8 @@ const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   'team-new': [TeamNewBody],
   team: [TeamBody],
   member: [MemberBody],
+  jobs: [JobsBody],
+  job: [JobBody],
   runners: [RunnersBody, RunnersFooter],
   'runner-new': [RunnerNewBody],
   runner: [RunnerBody],
@@ -139,6 +146,7 @@ const partOf = (id: TFrameId): TFramePart | null => {
   if (isThemeEditFrame(id)) return 'theme-edit';
   if (memberOf(id)) return 'member';
   if (teamOf(id)) return 'team';
+  if (jobOf(id)) return 'job';
   if (runnerOf(id)) return 'runner';
   return isPart(id) ? id : null;
 };
@@ -214,6 +222,8 @@ export const LazyTeamNewBody = withSkeleton(TeamNewBody);
 export const LazyTeamBody = withSkeleton(TeamBody);
 export const LazyMemberBody = withSkeleton(MemberBody);
 
+export const LazyJobsBody = withSkeleton(JobsBody);
+export const LazyJobBody = withSkeleton(JobBody);
 export const LazyRunnersBody = withSkeleton(RunnersBody);
 export const LazyRunnersFooter = withNothing(RunnersFooter);
 export const LazyRunnerNewBody = withSkeleton(RunnerNewBody);

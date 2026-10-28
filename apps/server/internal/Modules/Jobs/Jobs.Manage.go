@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -152,10 +153,37 @@ func (s *Service) List(ctx context.Context, org uuid.UUID, state *string, page, 
 		return nil, 0, err
 	}
 	out := make([]models.Job, 0, len(rows))
+	matching := map[string]bool{}
 	for _, r := range rows {
-		out = append(out, listedJob(r))
+		job := listedJob(r)
+		if err := markUnmatched(ctx, q, &job, matching); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, job)
 	}
 	return out, total, nil
+}
+
+func markUnmatched(ctx context.Context, q *sqlc.Queries, job *models.Job, seen map[string]bool) error {
+	if job.State != models.JobQueued {
+		return nil
+	}
+	key := job.Isolation + "\x00" + strings.Join(job.Labels, "\x00")
+	found, ok := seen[key]
+	if !ok {
+		n, err := q.CountMatchingRunners(ctx, sqlc.CountMatchingRunnersParams{
+			OrganizationID: job.OrganizationID, Labels: nonNil(job.Labels), Isolation: job.Isolation,
+		})
+		if err != nil {
+			return err
+		}
+		found = n > 0
+		seen[key] = found
+	}
+	if !found {
+		job.QueuedReason = models.ReasonNoMatchingRunner
+	}
+	return nil
 }
 
 func (s *Service) Get(ctx context.Context, org, id uuid.UUID) (models.Detail, error) {
@@ -180,16 +208,8 @@ func (s *Service) Get(ctx context.Context, org, id uuid.UUID) (models.Detail, er
 		return models.Detail{}, err
 	}
 	job := jobOf(row)
-	if row.State == models.JobQueued {
-		matching, err := q.CountMatchingRunners(ctx, sqlc.CountMatchingRunnersParams{
-			OrganizationID: org, Labels: row.Labels, Isolation: row.Isolation,
-		})
-		if err != nil {
-			return models.Detail{}, err
-		}
-		if matching == 0 {
-			job.QueuedReason = models.ReasonNoMatchingRunner
-		}
+	if err := markUnmatched(ctx, q, &job, map[string]bool{}); err != nil {
+		return models.Detail{}, err
 	}
 	out := models.Detail{Job: job, Spec: spec, Attempts: make([]models.Attempt, 0, len(attempts))}
 	for _, a := range attempts {
