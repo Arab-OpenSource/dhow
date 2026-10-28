@@ -53,6 +53,11 @@
 
 **الخطوات قبل الـ merge لكل واحد:** تكملة اللي لسه، وبعدين `make check`، ومراجعة أمنية مستقلة، وإصلاح الـ findings، وPR، والـ CI أخضر، وsquash merge.
 
+### دليل التطوير المحلي (`feat/zealous-galileo-wnw3fx`)
+
+- اتعمل: `docs/development.md` وأهداف `make dev-*` (القسم 8 في سجل اليوم). مستقل عن M2.6 وM3.6.
+- بعد دمج M3.6: قسم الـ runner في الدليل يتحدّث (الـ sandbox شغّال بدل «بيرفض يبدأ»، و`make runner-isolation`).
+
 ## اللي لسه في M3 (بالترتيب)
 
 ```

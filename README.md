@@ -55,6 +55,7 @@ See [docs/install/](docs/install/README.md) to choose a method, then the [Compos
 | [UI principles](docs/ui-principles.md) | Arabic-first design, navigation model, performance budgets |
 | [Editions & licensing](docs/editions-and-licensing.md) | Open-core model, feature matrix, license enforcement |
 | [Install](docs/install/README.md) | Choosing a method, Docker Compose, reverse proxies, local runs, configuration, troubleshooting |
+| [Development](docs/development.md) | Running Dhow from source on Linux, macOS or Windows, with or without Docker, and the tests |
 | [Sign in with OIDC](docs/guides/oidc.md) | Google, Keycloak, GitHub and any OIDC provider, account linking, allowed domains |
 | [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
 | [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
