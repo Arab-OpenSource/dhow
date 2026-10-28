@@ -53,7 +53,7 @@ const (
 	DnfKeyFinger   = "D4BF08AE67A0B4C7A1DBCCD240BCA2B408B40D20"
 	maxKeyBytes    = 64 << 10
 	ComposeProject = "dhow"
-	ComposeImage   = "ghcr.io/Khaymah/dhow"
+	ComposeImage   = "ghcr.io/khaymah/dhow"
 	ComposeEdgeNet = "dhow_edge"
 )
 

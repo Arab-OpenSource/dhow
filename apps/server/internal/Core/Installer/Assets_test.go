@@ -86,8 +86,8 @@ func TestEnvFiles(t *testing.T) {
 	a := Answers{Domain: "new.example.com", ListenAddr: DefaultListen, Proxy: ProxyAnswers{Kind: ProxyCaddy}}
 	got := string(nativeEnv(a, existing))
 	assert.Equal(t, "DHOW_PUBLIC_URL=https://new.example.com\nDHOW_LISTEN_ADDR=127.0.0.1:8080\nDHOW_TRUSTED_PROXIES=127.0.0.1/32,::1/128\nDHOW_BREACHED_PASSWORD_CHECK=true\nDHOW_LOG_LEVEL=debug\nEXTRA=1\n", got)
-	compose := string(composeEnv(a, ParseEnv([]byte("DHOW_IMAGE=ghcr.io/Khaymah/dhow@sha256:abc\n")), "k", "p", ComposeImageFor("v1.2.3"), ""))
-	assert.Contains(t, compose, "DHOW_IMAGE=ghcr.io/Khaymah/dhow@sha256:abc\n", "a pinned image is kept")
-	assert.Equal(t, "ghcr.io/Khaymah/dhow:1.2.3", ComposeImageFor("v1.2.3"))
-	assert.Equal(t, "ghcr.io/Khaymah/dhow:latest", ComposeImageFor("dev"))
+	compose := string(composeEnv(a, ParseEnv([]byte("DHOW_IMAGE=ghcr.io/khaymah/dhow@sha256:abc\n")), "k", "p", ComposeImageFor("v1.2.3"), ""))
+	assert.Contains(t, compose, "DHOW_IMAGE=ghcr.io/khaymah/dhow@sha256:abc\n", "a pinned image is kept")
+	assert.Equal(t, "ghcr.io/khaymah/dhow:1.2.3", ComposeImageFor("v1.2.3"))
+	assert.Equal(t, "ghcr.io/khaymah/dhow:latest", ComposeImageFor("dev"))
 }
