@@ -160,7 +160,7 @@ test-runner: ## Run the runner tests with the fake sandbox driver (dhowtest buil
 	$(GO) test -race -count=1 -tags dhowtest ./apps/runner/...
 
 RUNNER_FUZZ := Masking:FuzzMasker Masking:FuzzMaskerKeepsCleanText Logs:FuzzChunker Logs:FuzzSpillRecords \
-	Journal:FuzzJournalOpen Executor:FuzzVerifyGrant
+	Journal:FuzzJournalOpen Executor:FuzzVerifyGrant Sandbox/Wire:FuzzDecode
 
 .PHONY: fuzz-runner
 fuzz-runner: ## Fuzz every runner target for FUZZTIME each (default 10s; the M3.5 bar is 60s)

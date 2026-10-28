@@ -70,7 +70,7 @@ func runRun(ctx context.Context, args []string, env Env) error {
 	if err != nil {
 		return err
 	}
-	driver, err := newDriver(cfg)
+	driver, err := newDriver(ctx, cfg, log)
 	if err != nil {
 		return err
 	}

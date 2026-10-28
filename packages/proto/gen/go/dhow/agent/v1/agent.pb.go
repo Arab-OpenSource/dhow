@@ -70,6 +70,58 @@ func (OutputStream) EnumDescriptor() ([]byte, []int) {
 	return file_dhow_agent_v1_agent_proto_rawDescGZIP(), []int{0}
 }
 
+type StepFailure int32
+
+const (
+	StepFailure_STEP_FAILURE_UNSPECIFIED     StepFailure = 0
+	StepFailure_STEP_FAILURE_SHELL_NOT_FOUND StepFailure = 1
+	StepFailure_STEP_FAILURE_START_FAILED    StepFailure = 2
+	StepFailure_STEP_FAILURE_SECRET_FILES    StepFailure = 3
+)
+
+// Enum value maps for StepFailure.
+var (
+	StepFailure_name = map[int32]string{
+		0: "STEP_FAILURE_UNSPECIFIED",
+		1: "STEP_FAILURE_SHELL_NOT_FOUND",
+		2: "STEP_FAILURE_START_FAILED",
+		3: "STEP_FAILURE_SECRET_FILES",
+	}
+	StepFailure_value = map[string]int32{
+		"STEP_FAILURE_UNSPECIFIED":     0,
+		"STEP_FAILURE_SHELL_NOT_FOUND": 1,
+		"STEP_FAILURE_START_FAILED":    2,
+		"STEP_FAILURE_SECRET_FILES":    3,
+	}
+)
+
+func (x StepFailure) Enum() *StepFailure {
+	p := new(StepFailure)
+	*p = x
+	return p
+}
+
+func (x StepFailure) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StepFailure) Descriptor() protoreflect.EnumDescriptor {
+	return file_dhow_agent_v1_agent_proto_enumTypes[1].Descriptor()
+}
+
+func (StepFailure) Type() protoreflect.EnumType {
+	return &file_dhow_agent_v1_agent_proto_enumTypes[1]
+}
+
+func (x StepFailure) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StepFailure.Descriptor instead.
+func (StepFailure) EnumDescriptor() ([]byte, []int) {
+	return file_dhow_agent_v1_agent_proto_rawDescGZIP(), []int{1}
+}
+
 type ProcessSignal int32
 
 const (
@@ -103,11 +155,11 @@ func (x ProcessSignal) String() string {
 }
 
 func (ProcessSignal) Descriptor() protoreflect.EnumDescriptor {
-	return file_dhow_agent_v1_agent_proto_enumTypes[1].Descriptor()
+	return file_dhow_agent_v1_agent_proto_enumTypes[2].Descriptor()
 }
 
 func (ProcessSignal) Type() protoreflect.EnumType {
-	return &file_dhow_agent_v1_agent_proto_enumTypes[1]
+	return &file_dhow_agent_v1_agent_proto_enumTypes[2]
 }
 
 func (x ProcessSignal) Number() protoreflect.EnumNumber {
@@ -116,7 +168,7 @@ func (x ProcessSignal) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProcessSignal.Descriptor instead.
 func (ProcessSignal) EnumDescriptor() ([]byte, []int) {
-	return file_dhow_agent_v1_agent_proto_rawDescGZIP(), []int{1}
+	return file_dhow_agent_v1_agent_proto_rawDescGZIP(), []int{2}
 }
 
 type Frame struct {
@@ -518,6 +570,7 @@ type StepExit struct {
 	Index         int32                  `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
 	ExitCode      int32                  `protobuf:"varint,2,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
 	Signal        int32                  `protobuf:"varint,3,opt,name=signal,proto3" json:"signal,omitempty"`
+	Failure       StepFailure            `protobuf:"varint,4,opt,name=failure,proto3,enum=dhow.agent.v1.StepFailure" json:"failure,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -571,6 +624,13 @@ func (x *StepExit) GetSignal() int32 {
 		return x.Signal
 	}
 	return 0
+}
+
+func (x *StepExit) GetFailure() StepFailure {
+	if x != nil {
+		return x.Failure
+	}
+	return StepFailure_STEP_FAILURE_UNSPECIFIED
 }
 
 type Signal struct {
@@ -738,11 +798,12 @@ const file_dhow_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"step_index\x18\x01 \x01(\x05R\tstepIndex\x123\n" +
 	"\x06stream\x18\x02 \x01(\x0e2\x1b.dhow.agent.v1.OutputStreamR\x06stream\x12\x12\n" +
-	"\x04data\x18\x03 \x01(\fR\x04data\"U\n" +
+	"\x04data\x18\x03 \x01(\fR\x04data\"\x8b\x01\n" +
 	"\bStepExit\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x1b\n" +
 	"\texit_code\x18\x02 \x01(\x05R\bexitCode\x12\x16\n" +
-	"\x06signal\x18\x03 \x01(\x05R\x06signal\"]\n" +
+	"\x06signal\x18\x03 \x01(\x05R\x06signal\x124\n" +
+	"\afailure\x18\x04 \x01(\x0e2\x1a.dhow.agent.v1.StepFailureR\afailure\"]\n" +
 	"\x06Signal\x12\x1d\n" +
 	"\n" +
 	"step_index\x18\x01 \x01(\x05R\tstepIndex\x124\n" +
@@ -754,7 +815,12 @@ const file_dhow_agent_v1_agent_proto_rawDesc = "" +
 	"\fOutputStream\x12\x1d\n" +
 	"\x19OUTPUT_STREAM_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14OUTPUT_STREAM_STDOUT\x10\x01\x12\x18\n" +
-	"\x14OUTPUT_STREAM_STDERR\x10\x02*a\n" +
+	"\x14OUTPUT_STREAM_STDERR\x10\x02*\x8b\x01\n" +
+	"\vStepFailure\x12\x1c\n" +
+	"\x18STEP_FAILURE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cSTEP_FAILURE_SHELL_NOT_FOUND\x10\x01\x12\x1d\n" +
+	"\x19STEP_FAILURE_START_FAILED\x10\x02\x12\x1d\n" +
+	"\x19STEP_FAILURE_SECRET_FILES\x10\x03*a\n" +
 	"\rProcessSignal\x12\x1e\n" +
 	"\x1aPROCESS_SIGNAL_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PROCESS_SIGNAL_TERM\x10\x01\x12\x17\n" +
@@ -774,39 +840,41 @@ func file_dhow_agent_v1_agent_proto_rawDescGZIP() []byte {
 	return file_dhow_agent_v1_agent_proto_rawDescData
 }
 
-var file_dhow_agent_v1_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_dhow_agent_v1_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_dhow_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_dhow_agent_v1_agent_proto_goTypes = []any{
 	(OutputStream)(0),  // 0: dhow.agent.v1.OutputStream
-	(ProcessSignal)(0), // 1: dhow.agent.v1.ProcessSignal
-	(*Frame)(nil),      // 2: dhow.agent.v1.Frame
-	(*Hello)(nil),      // 3: dhow.agent.v1.Hello
-	(*SecretFile)(nil), // 4: dhow.agent.v1.SecretFile
-	(*RunStep)(nil),    // 5: dhow.agent.v1.RunStep
-	(*Output)(nil),     // 6: dhow.agent.v1.Output
-	(*StepExit)(nil),   // 7: dhow.agent.v1.StepExit
-	(*Signal)(nil),     // 8: dhow.agent.v1.Signal
-	(*AddMask)(nil),    // 9: dhow.agent.v1.AddMask
-	(*Shutdown)(nil),   // 10: dhow.agent.v1.Shutdown
-	nil,                // 11: dhow.agent.v1.RunStep.EnvEntry
+	(StepFailure)(0),   // 1: dhow.agent.v1.StepFailure
+	(ProcessSignal)(0), // 2: dhow.agent.v1.ProcessSignal
+	(*Frame)(nil),      // 3: dhow.agent.v1.Frame
+	(*Hello)(nil),      // 4: dhow.agent.v1.Hello
+	(*SecretFile)(nil), // 5: dhow.agent.v1.SecretFile
+	(*RunStep)(nil),    // 6: dhow.agent.v1.RunStep
+	(*Output)(nil),     // 7: dhow.agent.v1.Output
+	(*StepExit)(nil),   // 8: dhow.agent.v1.StepExit
+	(*Signal)(nil),     // 9: dhow.agent.v1.Signal
+	(*AddMask)(nil),    // 10: dhow.agent.v1.AddMask
+	(*Shutdown)(nil),   // 11: dhow.agent.v1.Shutdown
+	nil,                // 12: dhow.agent.v1.RunStep.EnvEntry
 }
 var file_dhow_agent_v1_agent_proto_depIdxs = []int32{
-	3,  // 0: dhow.agent.v1.Frame.hello:type_name -> dhow.agent.v1.Hello
-	5,  // 1: dhow.agent.v1.Frame.run_step:type_name -> dhow.agent.v1.RunStep
-	6,  // 2: dhow.agent.v1.Frame.output:type_name -> dhow.agent.v1.Output
-	7,  // 3: dhow.agent.v1.Frame.step_exit:type_name -> dhow.agent.v1.StepExit
-	8,  // 4: dhow.agent.v1.Frame.signal:type_name -> dhow.agent.v1.Signal
-	9,  // 5: dhow.agent.v1.Frame.add_mask:type_name -> dhow.agent.v1.AddMask
-	10, // 6: dhow.agent.v1.Frame.shutdown:type_name -> dhow.agent.v1.Shutdown
-	11, // 7: dhow.agent.v1.RunStep.env:type_name -> dhow.agent.v1.RunStep.EnvEntry
-	4,  // 8: dhow.agent.v1.RunStep.secret_files:type_name -> dhow.agent.v1.SecretFile
+	4,  // 0: dhow.agent.v1.Frame.hello:type_name -> dhow.agent.v1.Hello
+	6,  // 1: dhow.agent.v1.Frame.run_step:type_name -> dhow.agent.v1.RunStep
+	7,  // 2: dhow.agent.v1.Frame.output:type_name -> dhow.agent.v1.Output
+	8,  // 3: dhow.agent.v1.Frame.step_exit:type_name -> dhow.agent.v1.StepExit
+	9,  // 4: dhow.agent.v1.Frame.signal:type_name -> dhow.agent.v1.Signal
+	10, // 5: dhow.agent.v1.Frame.add_mask:type_name -> dhow.agent.v1.AddMask
+	11, // 6: dhow.agent.v1.Frame.shutdown:type_name -> dhow.agent.v1.Shutdown
+	12, // 7: dhow.agent.v1.RunStep.env:type_name -> dhow.agent.v1.RunStep.EnvEntry
+	5,  // 8: dhow.agent.v1.RunStep.secret_files:type_name -> dhow.agent.v1.SecretFile
 	0,  // 9: dhow.agent.v1.Output.stream:type_name -> dhow.agent.v1.OutputStream
-	1,  // 10: dhow.agent.v1.Signal.signal:type_name -> dhow.agent.v1.ProcessSignal
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	1,  // 10: dhow.agent.v1.StepExit.failure:type_name -> dhow.agent.v1.StepFailure
+	2,  // 11: dhow.agent.v1.Signal.signal:type_name -> dhow.agent.v1.ProcessSignal
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dhow_agent_v1_agent_proto_init() }
@@ -828,7 +896,7 @@ func file_dhow_agent_v1_agent_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dhow_agent_v1_agent_proto_rawDesc), len(file_dhow_agent_v1_agent_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,

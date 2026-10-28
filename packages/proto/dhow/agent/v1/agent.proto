@@ -43,10 +43,18 @@ message Output {
   bytes data = 3;
 }
 
+enum StepFailure {
+  STEP_FAILURE_UNSPECIFIED = 0;
+  STEP_FAILURE_SHELL_NOT_FOUND = 1;
+  STEP_FAILURE_START_FAILED = 2;
+  STEP_FAILURE_SECRET_FILES = 3;
+}
+
 message StepExit {
   int32 index = 1;
   int32 exit_code = 2;
   int32 signal = 3;
+  StepFailure failure = 4;
 }
 
 enum ProcessSignal {

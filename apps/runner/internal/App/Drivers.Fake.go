@@ -3,8 +3,10 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
 	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
@@ -13,7 +15,7 @@ import (
 
 var ErrDriverMissing = errors.New("is not built into this test build; only the fake driver is")
 
-func newDriver(cfg config.Config) (sandbox.Driver, error) {
+func newDriver(_ context.Context, cfg config.Config, _ *slog.Logger) (sandbox.Driver, error) {
 	if cfg.Driver != config.DriverFake {
 		return nil, fmt.Errorf("%s=%s %w", config.EnvDriver, cfg.Driver, ErrDriverMissing)
 	}
