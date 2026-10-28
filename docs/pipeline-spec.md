@@ -120,7 +120,7 @@ jobs:
 | `concurrency` | map | `group` (CEL), `cancel_in_progress` |
 | `jobs.<id>.needs` | list | DAG edges; cycles are rejected at validation time |
 | `jobs.<id>.strategy.matrix` | map | Cartesian product; `include` and `exclude` are supported; `max_parallel` |
-| `jobs.<id>.image` | string | Must be digest-pinned for production environments (enforced by policy) |
+| `jobs.<id>.image` | string | Must be digest-pinned for production environments (enforced by policy). A name without a registry host is completed the way Docker does it: `node:22-bookworm@sha256:…` runs as `docker.io/library/node:22-bookworm@sha256:…`. The runner never searches other registries. |
 | `jobs.<id>.environment` | string | Binds protection rules, secrets and targets |
 | `jobs.<id>.network.egress` | list | Host allowlist (`host`, `host:port` or `*.domain`; no IP literals; at most 64); empty means deny-all. Traffic goes through the runner's proxy (`HTTPS_PROXY` / `HTTP_PROXY`), so clients must be proxy-aware; SSH can use `ProxyCommand=/run/dhow/bin/connect %h %p`. Private, loopback, link-local and metadata addresses are always denied (ADR-0044) |
 | `jobs.<id>.if` / `steps[].if` | CEL bool | — |

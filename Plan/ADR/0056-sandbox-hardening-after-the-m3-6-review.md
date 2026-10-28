@@ -28,6 +28,7 @@ M3.6 اندمج قبل المراجعة الأمنية المستقلة، وده
 
 ### الـ image
 - الـ driver بيرفض أي image مش بادية باسم الـ registry (short name). وبيسحب بـ `docker://<ref>`، وبينشئ الحاوية من الـ image ID اللي الـ pull رجّعه. كده Podman مايقدرش يفهم الـ ref على إنه transport تاني، زي `containers-storage:` اللي بيعدّي الـ registry والتوقيع، أو `docker-daemon:` اللي بيوصل لـ socket بتاع Docker على الـ host.
+- **السيرفر بيكمّل الاسم القصير** في `jobspec.Normalize`، قبل الـ validation والـ digest والتوقيع (قرار Sabry): `node:22@sha256:…` بيبقى `docker.io/library/node:22@sha256:…`، وده نفس قاعدة Docker بالظبط. فالـ runner دايمًا بيستلم اسم كامل في grant موقّع، ومفيش أي بحث في registries تانية. وده مايخالفش قفل الـ short names في ADR-0043: القفل كان عشان مايحصلش بحث ممكن يوصّل لـ registry غير متوقّعة، والتكميل هنا قاعدة ثابتة، والـ digest بيثبّت المحتوى. الـ ref اللي فيه اسم transport (زي `containers-storage:alpine`) بيتكمّل لاسم على Docker Hub، يعني مابيوصلش لأي transport.
 - `--unsetenv-all`: الـ environment بتاع الـ image مابيوصلش للـ agent، يعني `GODEBUG` و`GOMAXPROCS` و`GOMEMLIMIT` و`LD_*`. الخطوات أصلًا مابتورثوش. وبعد الإنشاء `verify` بيرفض أي متغير بيبدأ بـ `GO` أو `LD_`.
 - `verify` بيرفض أي annotation بيقراها crun: `run.oci.*` و`module.wasm.image/*` و`io.containers.trace-*` و`org.criu.*`، سواء جت في `.Config` أو في `.HostConfig`.
 - الـ driver بيرفض binary للـ agent فيه `PT_INTERP`، لأن الـ loader في الحالة دي كان هييجي من الـ image.
@@ -63,7 +64,7 @@ M3.6 اندمج قبل المراجعة الأمنية المستقلة، وده
 ## العواقب
 - خطوة مابتقدرش تسيب process يسرق أسرار الخطوة اللي بعدها، والـ zombies بتتنضّف بين الخطوات.
 - مفيش وضع قرص من غير حد. والأجهزة اللي ذاكرتها قليلة بقى عندها اختيار واحد: تقلّل الحدود.
-- أي image اسمها short name بتفشل بـ `IMAGE_PULL` ورسالة واضحة، بدل الفشل الغامض اللي كان بيحصل قبل كده.
+- الأسماء القصيرة اللي في `docs/pipeline-spec.md` بقت شغّالة، وكانت قبل كده بتفشل وقت الـ pull. والـ runner لسه بيرفض أي اسم مش كامل يوصله، كخط دفاع تاني.
 - **مش متغطّي:**
   - **مفيش حد للـ I/O:** `io` محتاج في الـ preflight، لكن مفيش حد بيتحط عليه. ده هيتحدد في M3.9 مع الفوضى.
   - **إطار أكبر من 1 MiB:** ممكن يحصل لو الـ env والأسرار كبار جدًا، ولسه بيطلع `SANDBOX_FAILED`.

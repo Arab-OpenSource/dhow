@@ -7,7 +7,9 @@ const (
 	GrantOverheadBytes = 4 << 10
 	MaxSpecBytes       = MaxGrantBytes - GrantOverheadBytes
 
-	MaxImageLength = 512
+	MaxImageLength   = 512
+	DefaultRegistry  = "docker.io"
+	DefaultNamespace = "library"
 
 	MaxSteps          = 100
 	MaxStepNameLength = 100

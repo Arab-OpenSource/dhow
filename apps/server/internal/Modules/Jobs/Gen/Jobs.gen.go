@@ -410,7 +410,7 @@ type JobSpec struct {
 	// Env Plain environment for every step. Names that start with `DHOW_` are reserved. Every member who can read the job sees these values, viewers included, so never put a credential here: reference it from Secrets.
 	Env *map[string]string `json:"Env,omitempty"`
 
-	// Image An image reference pinned by digest (`name@sha256:...`).
+	// Image An image reference pinned by digest (`name@sha256:...`). A name without a registry host is completed the way Docker does it, so `node:22@sha256:...` becomes `docker.io/library/node:22@sha256:...`.
 	Image     string        `json:"Image"`
 	Isolation *JobIsolation `json:"Isolation,omitempty"`
 

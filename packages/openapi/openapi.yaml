@@ -3978,7 +3978,7 @@ components:
       properties:
         Image:
           type: string
-          description: An image reference pinned by digest (`name@sha256:...`).
+          description: An image reference pinned by digest (`name@sha256:...`). A name without a registry host is completed the way Docker does it, so `node:22@sha256:...` becomes `docker.io/library/node:22@sha256:...`.
         Steps:
           type: array
           minItems: 1

@@ -48,7 +48,7 @@ func Normalize(spec *runnerv1.JobSpec) *runnerv1.JobSpec {
 	if !ok || out == nil {
 		out = &runnerv1.JobSpec{}
 	}
-	out.Image = strings.TrimSpace(out.GetImage())
+	out.Image = QualifyImage(strings.TrimSpace(out.GetImage()))
 	if out.GetIsolation() == runnerv1.Isolation_ISOLATION_UNSPECIFIED {
 		out.Isolation = runnerv1.Isolation_ISOLATION_CONTAINER
 	}
@@ -147,4 +147,18 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func QualifyImage(image string) string {
+	if !imagePattern.MatchString(image) && !imageAnyRef.MatchString(image) {
+		return image
+	}
+	host, rest, found := strings.Cut(image, "/")
+	if found && (strings.ContainsAny(host, ".:") || host == "localhost") {
+		return image
+	}
+	if !found {
+		return DefaultRegistry + "/" + DefaultNamespace + "/" + image
+	}
+	return DefaultRegistry + "/" + host + "/" + rest
 }
