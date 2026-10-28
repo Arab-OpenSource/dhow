@@ -1,0 +1,6 @@
+go test fuzz v1
+string("aA")
+bool(true)
+string("0")
+bool(false)
+string("0")

@@ -1,0 +1,4 @@
+go test fuzz v1
+string("\xd900")
+int64(1793178000)
+int64(0)

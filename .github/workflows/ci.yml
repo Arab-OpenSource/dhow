@@ -58,6 +58,8 @@ jobs:
           install-mode: goinstall
       - name: Test
         run: make test
+      - name: Fuzz the auth inputs (10 seconds per target)
+        run: make fuzz FUZZTIME=10s
       - name: Vulnerabilities
         run: make vuln
       - name: Lint workflows

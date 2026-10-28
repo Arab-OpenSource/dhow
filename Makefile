@@ -126,6 +126,23 @@ hooks-test: ## Test the Claude Code project hooks
 test: ## Run Go tests with the race detector
 	$(GO) test -race -count=1 -coverprofile=coverage.out $(PKG)
 
+FUZZTIME     ?= 10s
+FUZZ_TARGETS := \
+	Core/Auth:FuzzHashSessionToken Core/Auth:FuzzAPITokenHash Core/Auth:FuzzAuthorizationHeader Core/Auth:FuzzTotp \
+	Core/Auth:FuzzRecoveryCode Core/Auth:FuzzEmailAndName Core/Auth:FuzzPasswordLength Core/Auth:FuzzWebAuthnResponses \
+	Core/I18n:FuzzParseAcceptLanguage Core/Middleware:FuzzClientIP Core/RateLimit:FuzzNetwork \
+	Core/Oidc:FuzzEmailVerifiedClaim Core/Oidc:FuzzAcceptedEmail
+
+.PHONY: fuzz
+fuzz: ## Fuzz the auth inputs, FUZZTIME per target (default 10s; the M2.5 bar is 60s)
+	@found=$$(grep -rhoE '^func Fuzz[A-Za-z0-9]+' apps/server/internal --include='*_test.go' | sed 's/^func //' | sort); \
+	listed=$$(printf '%s\n' $(FUZZ_TARGETS) | sed 's/.*://' | sort); \
+	test "$$found" = "$$listed" || { echo "fuzz: FUZZ_TARGETS does not match the Fuzz functions in the code" >&2; exit 1; }
+	set -e; for t in $(FUZZ_TARGETS); do \
+		echo "fuzz $${t#*:} for $(FUZZTIME)"; \
+		$(GO) test -run '^$$' -fuzz "^$${t#*:}$$" -fuzztime $(FUZZTIME) ./apps/server/internal/$${t%%:*}; \
+	done
+
 .PHONY: vuln
 vuln: ## Scan Go dependencies for known vulnerabilities
 	$(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) $(PKG)

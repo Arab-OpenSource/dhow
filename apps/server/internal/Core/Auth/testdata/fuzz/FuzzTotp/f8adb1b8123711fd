@@ -1,0 +1,4 @@
+go test fuzz v1
+string("\xda     ")
+int64(-72)
+int64(-81)

@@ -111,11 +111,7 @@ func (s *Service) EnsureSetupToken(ctx context.Context) (string, bool, error) {
 }
 
 func decodeSetupToken(v string) ([]byte, bool) {
-	raw, err := base64.RawURLEncoding.Strict().DecodeString(v)
-	if err != nil || len(raw) != config.SetupTokenBytes {
-		return nil, false
-	}
-	return auth.HashBytes(raw), true
+	return auth.HashSessionToken(v, config.SetupTokenBytes)
 }
 
 func (s *Service) Setup(ctx context.Context, in models.SetupInput) (models.SetupResult, error) {

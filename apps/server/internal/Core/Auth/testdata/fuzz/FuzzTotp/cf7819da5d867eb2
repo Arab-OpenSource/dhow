@@ -1,0 +1,4 @@
+go test fuzz v1
+string("\xc9")
+int64(1793178009)
+int64(8)

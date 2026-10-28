@@ -1,0 +1,3 @@
+go test fuzz v1
+string("BeArer \u1680")
+string("0")

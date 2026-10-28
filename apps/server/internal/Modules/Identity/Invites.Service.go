@@ -42,11 +42,7 @@ func newInviteToken() (inviteToken, error) {
 }
 
 func decodeInviteToken(v string) ([]byte, bool) {
-	raw, err := base64.RawURLEncoding.Strict().DecodeString(v)
-	if err != nil || len(raw) != config.InvitationTokenBytes {
-		return nil, false
-	}
-	return auth.HashBytes(raw), true
+	return auth.HashSessionToken(v, config.InvitationTokenBytes)
 }
 
 func (s *Service) inviteLink(t inviteToken) string { return s.publicURL + "/invite#" + t.text }
