@@ -66,6 +66,7 @@ type Provider interface {
 type Options struct {
 	Transport http.RoundTripper
 	Now       func() time.Time
+	AllowHTTP bool
 }
 
 type Registry struct {
@@ -84,7 +85,7 @@ func NewRegistry(cfgs []config.OIDCProvider, o Options) (*Registry, error) {
 		var p Provider
 		switch c.Kind {
 		case config.OIDCKindOIDC:
-			p = newOIDC(c, client, now)
+			p = newOIDC(c, client, now, o.AllowHTTP)
 		case config.OIDCKindGitHub:
 			p = newGitHub(c, client)
 		default:

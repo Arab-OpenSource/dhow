@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -58,6 +59,8 @@ type IdP struct {
 	Server           *httptest.Server
 	GitHub           bool
 	DiscoveredIssuer string
+	HoldDiscovery    chan struct{}
+	PlainEndpoint    string
 
 	t     testing.TB
 	now   func() time.Time
@@ -111,17 +114,28 @@ func (i *IdP) Count(name string) int {
 	return i.Requests[name]
 }
 
-func (i *IdP) discovery(w http.ResponseWriter, _ *http.Request) {
+func (i *IdP) discovery(w http.ResponseWriter, r *http.Request) {
 	i.count("discovery")
+	if i.HoldDiscovery != nil {
+		select {
+		case <-i.HoldDiscovery:
+		case <-r.Context().Done():
+			return
+		}
+	}
 	issuer := i.Issuer()
 	if i.DiscoveredIssuer != "" {
 		issuer = i.DiscoveredIssuer
 	}
-	i.writeJSON(w, http.StatusOK, map[string]any{
+	doc := map[string]any{
 		"issuer": issuer, "authorization_endpoint": i.Issuer() + "/authorize", "token_endpoint": i.Issuer() + "/token",
 		"jwks_uri": i.Issuer() + "/jwks", "id_token_signing_alg_values_supported": []string{"RS256"},
 		"response_types_supported": []string{"code"}, "subject_types_supported": []string{"public"},
-	})
+	}
+	if endpoint, ok := doc[i.PlainEndpoint].(string); ok {
+		doc[i.PlainEndpoint] = "http://" + strings.TrimPrefix(endpoint, "https://")
+	}
+	i.writeJSON(w, http.StatusOK, doc)
 }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

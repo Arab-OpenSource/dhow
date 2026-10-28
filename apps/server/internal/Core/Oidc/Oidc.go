@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -25,17 +24,20 @@ var (
 )
 
 type oidcProvider struct {
-	cfg    config.OIDCProvider
-	client *http.Client
-	now    func() time.Time
+	cfg       config.OIDCProvider
+	client    *http.Client
+	now       func() time.Time
+	allowHTTP bool
 
 	mu         sync.Mutex
 	discovered *gooidc.Provider
 	failedAt   time.Time
+	failure    error
+	inflight   chan struct{}
 }
 
-func newOIDC(c config.OIDCProvider, client *http.Client, now func() time.Time) *oidcProvider {
-	return &oidcProvider{cfg: c, client: client, now: now}
+func newOIDC(c config.OIDCProvider, client *http.Client, now func() time.Time, allowHTTP bool) *oidcProvider {
+	return &oidcProvider{cfg: c, client: client, now: now, allowHTTP: allowHTTP}
 }
 
 func (p *oidcProvider) Info() Info {
@@ -45,26 +47,6 @@ func (p *oidcProvider) Info() Info {
 func (p *oidcProvider) Issuer() string { return p.cfg.Issuer }
 
 func (p *oidcProvider) AllowedDomains() []string { return p.cfg.AllowedDomains }
-
-func (p *oidcProvider) provider(ctx context.Context) (*gooidc.Provider, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.discovered != nil {
-		return p.discovered, nil
-	}
-	if !p.failedAt.IsZero() && p.now().Sub(p.failedAt) < DiscoveryRetryAfter {
-		return nil, ErrUnavailable
-	}
-	dctx, cancel := context.WithTimeout(gooidc.ClientContext(context.WithoutCancel(ctx), p.client), RequestTimeout)
-	defer cancel()
-	discovered, err := gooidc.NewProvider(dctx, p.cfg.Issuer)
-	if err != nil {
-		p.failedAt = p.now()
-		return nil, fmt.Errorf("%w: discovery for %s: %w", ErrUnavailable, p.cfg.ID, err)
-	}
-	p.discovered = discovered
-	return discovered, nil
-}
 
 func (p *oidcProvider) oauth(endpoint oauth2.Endpoint, redirect string) *oauth2.Config {
 	return &oauth2.Config{

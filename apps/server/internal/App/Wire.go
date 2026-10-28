@@ -158,7 +158,7 @@ type externalDeps struct {
 }
 
 func externalAuth(in Infra) (externalDeps, error) {
-	providers, err := oidcauth.NewRegistry(in.Config.OIDCProviders, oidcauth.Options{Transport: in.OidcTransport, Now: in.Now})
+	providers, err := oidcauth.NewRegistry(in.Config.OIDCProviders, oidcauth.Options{Transport: in.OidcTransport, Now: in.Now, AllowHTTP: in.Config.Dev})
 	if err != nil {
 		return externalDeps{}, err
 	}
