@@ -24,9 +24,15 @@ func CompleteRequest(attemptID string, ref *runnerv1.LeaseRef, res runnerv1.Atte
 
 func (a *attempt) finish(ctx context.Context, r result) Outcome {
 	a.destroy(ctx)
+	a.mu.Lock()
+	survivors := a.survivors
+	a.mu.Unlock()
+	if survivors && !r.silent && r.state != runnerv1.AttemptResult_ATTEMPT_RESULT_LOST {
+		r = failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0)
+	}
 	out := Outcome{
 		LeaseID: a.ref.GetLeaseId(), Result: r.state, Reason: r.reason, ExitCode: r.exitCode,
-		SelfFenced: errors.Is(a.fence.LostErr(), ErrSelfFenced),
+		SelfFenced: errors.Is(a.fence.LostErr(), ErrSelfFenced), Survivors: survivors,
 	}
 	a.mu.Lock()
 	out.KilledAt = a.killedAt
