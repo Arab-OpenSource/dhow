@@ -82,7 +82,7 @@ export const OidcCallbackPage = ({ provider, onSignedIn, onLinked, onBack }: IOi
   return (
     <AuthPage
       title={Phase.Kind === 'failed' ? t('oidc.callback.failed') : t('oidc.callback.title')}
-      lead={Purpose === 'link' ? t('oidc.callback.linkLead') : t('oidc.callback.lead')}
+      lead={Phase.Kind === 'failed' ? undefined : Purpose === 'link' ? t('oidc.callback.linkLead') : t('oidc.callback.lead')}
     >
       {Phase.Kind === 'failed' ? (
         <>
