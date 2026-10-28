@@ -3,11 +3,11 @@ package identity
 import (
 	"context"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
-	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Gen"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Models"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
+	response "github.com/Khaymah/dhow/apps/server/internal/Core/Response"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity/Gen"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity/Models"
 )
 
 const (

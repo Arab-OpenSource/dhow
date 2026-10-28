@@ -10,8 +10,8 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	wire "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox/Wire"
-	agentv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/agent/v1"
+	wire "github.com/Khaymah/dhow/apps/runner/internal/Sandbox/Wire"
+	agentv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/agent/v1"
 )
 
 func runStepFrame(index int32, script string, files ...*agentv1.SecretFile) *agentv1.Frame {

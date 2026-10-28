@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	support "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Test/Support"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	support "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Test/Support"
 )
 
 func TestNewHTTPServerSetsEveryTimeout(t *testing.T) {

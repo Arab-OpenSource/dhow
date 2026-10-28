@@ -1,4 +1,4 @@
-module github.com/Arab-OpenSource/dhow
+module github.com/Khaymah/dhow
 
 go 1.27.0
 

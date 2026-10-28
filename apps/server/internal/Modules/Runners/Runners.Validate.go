@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners/Models"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners/Models"
 )
 
 const (

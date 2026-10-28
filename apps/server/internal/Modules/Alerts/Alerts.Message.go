@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
-	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
+	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
 )
 
 const (

@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
 )
 
 func Lang(next http.Handler) http.Handler {

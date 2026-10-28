@@ -8,12 +8,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners/Models"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	dbtx "github.com/Khaymah/dhow/apps/server/internal/Database/Tx"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners/Models"
 )
 
 type DB interface {

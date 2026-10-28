@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 )
 
 var secondFactorRequired = outcome{http.StatusForbidden, "SECOND_FACTOR_REQUIRED"}

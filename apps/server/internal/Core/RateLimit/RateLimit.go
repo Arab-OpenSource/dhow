@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 )
 
 const (

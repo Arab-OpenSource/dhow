@@ -15,11 +15,11 @@ import (
 
 	"github.com/google/uuid"
 
-	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	client "github.com/Khaymah/dhow/apps/runner/internal/Client"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
+	"github.com/Khaymah/dhow/internal/buildinfo"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 const (

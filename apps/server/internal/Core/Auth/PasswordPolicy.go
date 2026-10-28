@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"unicode/utf8"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 )
 
 const (

@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	audit "github.com/Khaymah/dhow/apps/server/internal/Modules/Audit"
 )
 
 const modulesDir = "../../.."

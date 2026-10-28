@@ -10,7 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
+	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
 )
 
 const (

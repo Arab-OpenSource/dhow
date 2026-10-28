@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	runnertest "github.com/Arab-OpenSource/dhow/apps/runner/internal/App/Testing"
-	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
-	fake "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox/Fake"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
-	"github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
+	runnertest "github.com/Khaymah/dhow/apps/runner/internal/App/Testing"
+	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
+	fake "github.com/Khaymah/dhow/apps/runner/internal/Sandbox/Fake"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
+	"github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
 )
 
 func signals(events []fake.Event) []syscall.Signal {

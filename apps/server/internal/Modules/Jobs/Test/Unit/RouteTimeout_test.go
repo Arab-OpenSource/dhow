@@ -10,8 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	jobs "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs"
 )
 
 func TestEveryJobRouteButTheLogStreamHasTheAPITimeout(t *testing.T) {

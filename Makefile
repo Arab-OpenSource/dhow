@@ -4,8 +4,8 @@ PKG      := ./...
 VERSION  ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT   ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null)
 LDFLAGS  := -s -w \
-	-X github.com/Arab-OpenSource/dhow/internal/buildinfo.version=$(VERSION) \
-	-X github.com/Arab-OpenSource/dhow/internal/buildinfo.commit=$(COMMIT)
+	-X github.com/Khaymah/dhow/internal/buildinfo.version=$(VERSION) \
+	-X github.com/Khaymah/dhow/internal/buildinfo.commit=$(COMMIT)
 GOLANGCI_LINT_VERSION := v2.15.0
 GOVULNCHECK_VERSION   := v1.8.0
 ACTIONLINT_VERSION    := v1.7.12

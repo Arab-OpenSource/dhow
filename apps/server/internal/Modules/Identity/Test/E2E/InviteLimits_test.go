@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 )
 
 func limitedInvites(t *testing.T, perUser, perOrg int) (*apptest.Env, *apptest.Client, uuid.UUID) {

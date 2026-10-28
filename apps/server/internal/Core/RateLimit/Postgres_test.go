@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
-	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
+	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
+	dbtest "github.com/Khaymah/dhow/apps/server/internal/Database/Testing"
 )
 
 func take(t *testing.T, l ratelimit.Limiter, limit ratelimit.Limit, subject string) ratelimit.Decision {

@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/Arab-OpenSource/dhow/internal/logging"
+	"github.com/Khaymah/dhow/internal/logging"
 )
 
 func NewLogger(cfg Config) *slog.Logger {

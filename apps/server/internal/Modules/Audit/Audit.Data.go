@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
 )
 
 const (

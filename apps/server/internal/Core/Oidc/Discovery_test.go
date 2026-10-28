@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	oidcauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc"
-	oidcmock "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc/Mock"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	oidcauth "github.com/Khaymah/dhow/apps/server/internal/Core/Oidc"
+	oidcmock "github.com/Khaymah/dhow/apps/server/internal/Core/Oidc/Mock"
 )
 
 func devRegistry(t *testing.T, idp *oidcmock.IdP, c *clock) oidcauth.Provider {

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
 )
 
 const exitBlocked = 3

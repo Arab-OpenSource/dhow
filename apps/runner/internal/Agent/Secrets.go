@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	agentv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/agent/v1"
+	agentv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/agent/v1"
 )
 
 var (

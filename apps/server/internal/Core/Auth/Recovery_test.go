@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 )
 
 var recoveryFormat = regexp.MustCompile(`^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$`)

@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	response "github.com/Khaymah/dhow/apps/server/internal/Core/Response"
 )
 
 func StrictRequestError(w http.ResponseWriter, r *http.Request, err error) {

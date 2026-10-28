@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	retention "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Retention"
-	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	retention "github.com/Khaymah/dhow/apps/server/internal/Database/Retention"
+	dbtest "github.com/Khaymah/dhow/apps/server/internal/Database/Testing"
 )
 
 var now = time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)

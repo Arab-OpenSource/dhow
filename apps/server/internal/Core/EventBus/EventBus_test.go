@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
 )
 
 func newBus() (*eventbus.Bus, *bytes.Buffer) {

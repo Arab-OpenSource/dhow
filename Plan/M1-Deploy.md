@@ -46,7 +46,7 @@
   - فحص ثغرات للصورة (Trivy أو Grype)، ويفشل على critical أو high عندها إصلاح.
   - SBOM بصيغة SPDX كـ artifact.
 - **workflow `release` على tag `v*`:**
-  - صورة multi-arch (amd64 وarm64) على `ghcr.io/arab-opensource/dhow`.
+  - صورة multi-arch (amd64 وarm64) على `ghcr.io/khaymah/dhow`.
   - توقيع keyless بـ cosign (OIDC من GitHub).
   - SBOM وSLSA provenance كـ attestations.
   - `permissions` بأقل حاجة ممكنة.
@@ -63,4 +63,4 @@
 - الـ image scan من غير critical أو high.
 
 ## مفتوح
-- اسم الـ registry (`ghcr.io/arab-opensource/dhow`) محتاج تأكيد من Sabry وقت أول release.
+- اسم الـ registry (`ghcr.io/khaymah/dhow`) محتاج تأكيد من Sabry وقت أول release.

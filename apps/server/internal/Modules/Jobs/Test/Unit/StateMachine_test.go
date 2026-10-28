@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
 )
 
 type move struct{ from, to string }

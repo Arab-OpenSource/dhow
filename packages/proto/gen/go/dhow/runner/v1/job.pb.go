@@ -859,8 +859,8 @@ const file_dhow_runner_v1_job_proto_rawDesc = "" +
 	"keyVersion*A\n" +
 	"\aHpkeKem\x12\x18\n" +
 	"\x14HPKE_KEM_UNSPECIFIED\x10\x00\x12\x1c\n" +
-	"\x18HPKE_KEM_MLKEM768_X25519\x10\x01B\xc7\x01\n" +
-	"\x12com.dhow.runner.v1B\bJobProtoP\x01ZMgithub.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
+	"\x18HPKE_KEM_MLKEM768_X25519\x10\x01B\xbf\x01\n" +
+	"\x12com.dhow.runner.v1B\bJobProtoP\x01ZEgithub.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
 
 var (
 	file_dhow_runner_v1_job_proto_rawDescOnce sync.Once

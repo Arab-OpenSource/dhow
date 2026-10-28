@@ -7,11 +7,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Models"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity/Models"
 )
 
 func (s *Service) AddTeamMember(ctx context.Context, org, team, user uuid.UUID) (models.TeamChange, error) {

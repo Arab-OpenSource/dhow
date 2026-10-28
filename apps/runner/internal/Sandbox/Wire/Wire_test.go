@@ -6,7 +6,7 @@ import (
 	"io"
 	"testing"
 
-	agentv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/agent/v1"
+	agentv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/agent/v1"
 )
 
 type pipe struct {

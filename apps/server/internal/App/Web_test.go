@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
-	support "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Test/Support"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
+	support "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Test/Support"
 )
 
 const (

@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
 )
 
 var ErrPolicyMismatch = errors.New("the created sandbox does not match the required isolation policy")

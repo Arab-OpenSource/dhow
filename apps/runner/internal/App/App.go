@@ -9,9 +9,9 @@ import (
 	"log/slog"
 	"strings"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
-	"github.com/Arab-OpenSource/dhow/internal/logging"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	"github.com/Khaymah/dhow/internal/buildinfo"
+	"github.com/Khaymah/dhow/internal/logging"
 )
 
 const (

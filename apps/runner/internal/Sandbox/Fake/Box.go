@@ -12,8 +12,8 @@ import (
 	"sync"
 	"syscall"
 
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 type box struct {

@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	"github.com/Khaymah/dhow/internal/runnersig"
 )
 
 const fileVersion = 1

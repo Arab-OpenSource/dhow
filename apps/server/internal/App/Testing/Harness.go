@@ -20,13 +20,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
-	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
-	"github.com/Arab-OpenSource/dhow/internal/logging"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
+	dbtest "github.com/Khaymah/dhow/apps/server/internal/Database/Testing"
+	"github.com/Khaymah/dhow/internal/buildinfo"
+	"github.com/Khaymah/dhow/internal/logging"
 )
 
 const (

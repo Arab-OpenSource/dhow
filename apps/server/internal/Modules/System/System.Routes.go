@@ -6,11 +6,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Gen"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Gen"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 type Deps struct {

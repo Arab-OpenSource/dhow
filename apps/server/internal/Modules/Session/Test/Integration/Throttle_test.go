@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
 )
 
 func attempt(env *apptest.Env, email, password, remote string) apptest.Response {

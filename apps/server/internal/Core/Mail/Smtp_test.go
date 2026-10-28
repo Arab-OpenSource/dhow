@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
+	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
 )
 
 type fakeServer struct {

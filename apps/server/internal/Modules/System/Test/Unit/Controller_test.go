@@ -8,12 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
-	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Gen"
-	support "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Test/Support"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
+	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Gen"
+	support "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Test/Support"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 func newController(db support.FakeDB, migrations support.FakeMigrations, queries support.FakeQueries) *system.Controller {

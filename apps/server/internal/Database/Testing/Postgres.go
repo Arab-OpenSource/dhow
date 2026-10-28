@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	migrations "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Migrations"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	migrations "github.com/Khaymah/dhow/apps/server/internal/Database/Migrations"
 )
 
 const connectTimeout = 15 * time.Second

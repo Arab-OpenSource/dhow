@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE_NAME: ghcr.io/arab-opensource/dhow
+  IMAGE_NAME: ghcr.io/khaymah/dhow
 
 jobs:
   image:

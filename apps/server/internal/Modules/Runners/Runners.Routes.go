@@ -7,13 +7,13 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-chi/chi/v5"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners/Gen"
-	"github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners/Gen"
+	"github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
 )
 
 type Deps struct {

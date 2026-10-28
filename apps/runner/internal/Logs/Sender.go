@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 func (p *Pipeline) send() {

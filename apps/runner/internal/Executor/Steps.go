@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	client "github.com/Khaymah/dhow/apps/runner/internal/Client"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 const (

@@ -16,7 +16,7 @@ commit=$2
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 out=${DIST_DIR:-$root/dist}
 arches=${DIST_ARCHES:-amd64 arm64}
-module=github.com/Arab-OpenSource/dhow
+module=github.com/Khaymah/dhow
 
 [[ "$version" =~ ^[0-9A-Za-z][0-9A-Za-z.+-]*$ ]] || fail "VERSION must look like 1.2.3 or 1.2.3-rc.1, got: $version"
 [[ -f "$root/apps/server/internal/App/WebDist/index.html" ]] || fail "the web app is missing: run make web first"

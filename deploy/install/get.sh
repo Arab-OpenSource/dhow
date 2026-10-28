@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-repo=${DHOW_REPO:-Arab-OpenSource/dhow}
+repo=${DHOW_REPO:-Khaymah/dhow}
 issuer=https://token.actions.githubusercontent.com
 identity="^https://github\.com/${repo}/\.github/workflows/release\.yml@refs/tags/v"
 version=

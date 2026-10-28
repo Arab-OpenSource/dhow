@@ -3,9 +3,9 @@ package session
 import (
 	"time"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 )
 
 type resolvedMembership struct {

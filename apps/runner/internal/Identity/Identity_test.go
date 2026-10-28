@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
+	"github.com/Khaymah/dhow/internal/runnersig"
 )
 
 func sample(t *testing.T) *identity.Identity {

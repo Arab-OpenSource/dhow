@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Gen"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Gen"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
 )
 
 const messageLogsLoaded = "jobs.logs.loaded"

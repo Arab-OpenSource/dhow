@@ -58,7 +58,7 @@ services:
       start_period: 15s
 
   dhow:
-    image: ${DHOW_IMAGE:-ghcr.io/arab-opensource/dhow:latest}
+    image: ${DHOW_IMAGE:-ghcr.io/khaymah/dhow:latest}
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	preferences "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Preferences"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	preferences "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences"
 )
 
 const themesFile = "../../../../../../web/Src/Styles/Themes.json"

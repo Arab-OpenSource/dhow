@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	agent "github.com/Arab-OpenSource/dhow/apps/runner/internal/Agent"
+	agent "github.com/Khaymah/dhow/apps/runner/internal/Agent"
 )
 
 const CommandAgent = "__agent"

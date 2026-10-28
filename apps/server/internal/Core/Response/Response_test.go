@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
-	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
+	response "github.com/Khaymah/dhow/apps/server/internal/Core/Response"
 )
 
 type payload struct {

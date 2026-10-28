@@ -9,10 +9,10 @@ import (
 	"net/url"
 	"testing/fstest"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
 )
 
 type FakeDB struct{ Err error }

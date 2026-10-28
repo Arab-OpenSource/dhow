@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	installer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Installer"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	installer "github.com/Khaymah/dhow/apps/server/internal/Core/Installer"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 const commandHealthcheck = "healthcheck"

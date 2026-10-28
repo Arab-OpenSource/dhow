@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-webauthn/webauthn/protocol"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 )
 
 const fuzzTokenBytes = 32

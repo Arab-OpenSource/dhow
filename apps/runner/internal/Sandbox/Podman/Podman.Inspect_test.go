@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
 )
 
 func goodInspection(spec sandbox.PrepareSpec, l layout) *inspection {

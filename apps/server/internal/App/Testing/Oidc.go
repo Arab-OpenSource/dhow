@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	oidcmock "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc/Mock"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	oidcmock "github.com/Khaymah/dhow/apps/server/internal/Core/Oidc/Mock"
 )
 
 const OidcProvider = "corp"

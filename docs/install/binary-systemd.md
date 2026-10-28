@@ -18,20 +18,20 @@ Each release has one archive per architecture, a `SHA256SUMS` file, its keyless 
 ```sh
 version=1.0.0
 arch=amd64
-base=https://github.com/Arab-OpenSource/dhow/releases/download/v$version
+base=https://github.com/Khaymah/dhow/releases/download/v$version
 mkdir -p /root/dhow-$version && cd /root/dhow-$version
 curl -fsSLO "$base/dhow-server_${version}_linux_${arch}.tar.gz"
 curl -fsSLO "$base/SHA256SUMS"
 curl -fsSLO "$base/SHA256SUMS.sigstore.json"
 cosign verify-blob --bundle SHA256SUMS.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp '^https://github\.com/Arab-OpenSource/dhow/\.github/workflows/release\.yml@refs/tags/v' \
+  --certificate-identity-regexp '^https://github\.com/Khaymah/dhow/\.github/workflows/release\.yml@refs/tags/v' \
   SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
 tar -xzf "dhow-server_${version}_linux_${arch}.tar.gz"
 ```
 
-`cosign verify-blob` fails unless the release workflow of this repository signed `SHA256SUMS` on a `v*` tag, and `sha256sum` then ties the archive to that file. The build provenance is attested too: `gh attestation verify dhow-server_${version}_linux_${arch}.tar.gz --repo Arab-OpenSource/dhow`. The archive holds `dhow-server` (with the web app built in), `dhow.service`, `LICENSE` and `README.md`. The binaries are static (`CGO_ENABLED=0`) and reproducible: building the same tag twice gives the same bytes.
+`cosign verify-blob` fails unless the release workflow of this repository signed `SHA256SUMS` on a `v*` tag, and `sha256sum` then ties the archive to that file. The build provenance is attested too: `gh attestation verify dhow-server_${version}_linux_${arch}.tar.gz --repo Khaymah/dhow`. The archive holds `dhow-server` (with the web app built in), `dhow.service`, `LICENSE` and `README.md`. The binaries are static (`CGO_ENABLED=0`) and reproducible: building the same tag twice gives the same bytes.
 
 ## 2. Install the binary and create the service user
 

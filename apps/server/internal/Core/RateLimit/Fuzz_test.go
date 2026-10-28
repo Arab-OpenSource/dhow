@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
+	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
 )
 
 func FuzzNetwork(f *testing.F) {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	oidcauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc"
+	oidcauth "github.com/Khaymah/dhow/apps/server/internal/Core/Oidc"
 )
 
 func FuzzEmailVerifiedClaim(f *testing.F) {

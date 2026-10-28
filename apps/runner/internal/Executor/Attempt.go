@@ -12,13 +12,13 @@ import (
 
 	"connectrpc.com/connect"
 
-	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	journal "github.com/Arab-OpenSource/dhow/apps/runner/internal/Journal"
-	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
-	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	client "github.com/Khaymah/dhow/apps/runner/internal/Client"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	journal "github.com/Khaymah/dhow/apps/runner/internal/Journal"
+	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
+	masking "github.com/Khaymah/dhow/apps/runner/internal/Masking"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 const teardownTimeout = 30 * time.Second

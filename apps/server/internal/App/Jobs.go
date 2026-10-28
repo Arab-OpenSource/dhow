@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"sync"
 
-	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
+	jobs "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs"
 )
 
 func StartJobs(ctx context.Context, j *jobs.Service, log *slog.Logger) (func(), error) {

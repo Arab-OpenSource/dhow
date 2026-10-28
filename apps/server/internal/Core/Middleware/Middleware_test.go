@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
-	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
+	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
 )
 
 type errorBody struct {

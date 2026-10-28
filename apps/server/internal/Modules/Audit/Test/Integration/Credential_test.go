@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	audit "github.com/Khaymah/dhow/apps/server/internal/Modules/Audit"
 )
 
 func storedData(t *testing.T, f fixture, action string) map[string]string {

@@ -10,9 +10,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	migrations "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Migrations"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	migrations "github.com/Khaymah/dhow/apps/server/internal/Database/Migrations"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 func Run(ctx context.Context) error {

@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	app "github.com/Arab-OpenSource/dhow/apps/runner/internal/App"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
+	app "github.com/Khaymah/dhow/apps/runner/internal/App"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 )
 
 func main() {

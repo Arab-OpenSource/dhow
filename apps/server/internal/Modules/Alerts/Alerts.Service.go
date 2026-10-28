@@ -8,12 +8,12 @@ import (
 
 	"github.com/google/uuid"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
-	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
+	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 )
 
 type Options struct {

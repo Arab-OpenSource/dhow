@@ -16,7 +16,7 @@ def edit(rel, added, old=""):
 
 
 def imp(path):
-    return 'package x\n\nimport "github.com/Arab-OpenSource/dhow/apps/runner/internal/' + path + '"\n'
+    return 'package x\n\nimport "github.com/Khaymah/dhow/apps/runner/internal/' + path + '"\n'
 
 
 class RunnerLayoutRules(unittest.TestCase):
@@ -99,15 +99,15 @@ class RunnerImportRules(unittest.TestCase):
         self.assertIn("not a runner layer", edit(RUNNER + "App/App.go", imp("Utils")))
 
     def test_server_code_is_never_imported(self):
-        src = 'package x\n\nimport "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"\n'
+        src = 'package x\n\nimport "github.com/Khaymah/dhow/apps/server/internal/Config"\n'
         self.assertIn("never imports server code", edit(RUNNER + "Client/Client.go", src))
 
     def test_grouped_and_aliased_imports_are_scanned(self):
-        src = ('package x\n\nimport (\n\t"fmt"\n\texec "github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"\n)\n')
+        src = ('package x\n\nimport (\n\t"fmt"\n\texec "github.com/Khaymah/dhow/apps/runner/internal/Executor"\n)\n')
         self.assertIn("forbidden import", edit(RUNNER + "Logs/Logs.go", src))
 
     def test_existing_imports_are_not_rescanned(self):
-        line = '\t"github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"\n'
+        line = '\t"github.com/Khaymah/dhow/apps/runner/internal/Executor"\n'
         self.assertIsNone(edit(RUNNER + "Logs/Logs.go", "x := 1\n" + line, old=line))
 
     def test_tests_are_exempt(self):

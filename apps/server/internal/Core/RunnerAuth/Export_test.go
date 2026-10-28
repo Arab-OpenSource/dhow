@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 )
 
 func CheckForTest(ctx context.Context, g *Gate, table *policy.Table, procedure string, header http.Header) (context.Context, error) {

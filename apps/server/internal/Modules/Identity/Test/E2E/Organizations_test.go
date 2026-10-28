@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	identity "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity"
 )
 
 func createOrg(c *apptest.Client, name, slug string) apptest.Response {

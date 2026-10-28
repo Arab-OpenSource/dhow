@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
-	podman "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox/Podman"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+	podman "github.com/Khaymah/dhow/apps/runner/internal/Sandbox/Podman"
 )
 
 var ErrDriverMissing = errors.New("is not built into this dhow-runner yet; the Kubernetes driver arrives with M3.11")

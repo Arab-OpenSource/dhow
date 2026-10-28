@@ -1,6 +1,6 @@
 [Unit]
 Description=Dhow continuous deployment control plane
-Documentation=https://github.com/Arab-OpenSource/dhow/blob/main/docs/install/binary-systemd.md
+Documentation=https://github.com/Khaymah/dhow/blob/main/docs/install/binary-systemd.md
 Wants=network-online.target
 After=network-online.target postgresql.service postgresql-18.service
 

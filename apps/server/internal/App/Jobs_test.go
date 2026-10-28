@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	support "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Test/Support"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	support "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Test/Support"
 )
 
 func TestStartJobsReconcilesBeforeServingAndStopsCleanly(t *testing.T) {

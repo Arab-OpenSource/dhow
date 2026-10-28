@@ -13,7 +13,7 @@ ROOT_MARKDOWN = {"README.md", "README.ar.md", "CLAUDE.md", "CONTRIBUTING.md", "S
 MARKDOWN_DIRS = ("docs/", "Plan/", ".github/", ".claude/")
 
 SERVER_INTERNAL = "apps/server/internal/"
-SERVER_IMPORT_PREFIX = "github.com/Arab-OpenSource/dhow/apps/server/internal/"
+SERVER_IMPORT_PREFIX = "github.com/Khaymah/dhow/apps/server/internal/"
 SERVER_TOP_LEVEL = ("App", "Config", "Core", "Database", "Modules")
 SERVER_NESTED = ("Core", "Database", "Modules")
 PASCAL_DIR = re.compile(r"^[A-Z][A-Za-z0-9]*$")
@@ -130,6 +130,16 @@ def check_secrets(rel, added, **_):
     for pattern, what in SECRET_PATTERNS:
         if pattern.search(added):
             return f"This edit writes {what} into {rel}. Secrets never go into the repository."
+    return None
+
+
+OLD_ORG_NAME = re.compile(r"(?i)arab[-_ ]?open[-_ ]?source")
+
+
+def check_org_name(rel, added, **_):
+    if OLD_ORG_NAME.search(added):
+        return (f"{rel}: the project lives at github.com/Khaymah/dhow (module github.com/Khaymah/dhow, "
+                "image ghcr.io/khaymah/dhow). The old organization name is never written again.")
     return None
 
 
@@ -563,6 +573,7 @@ CHECKS = (
     check_generated,
     web_rules.check_web_layout,
     check_secrets,
+    check_org_name,
     check_env_file,
     check_markdown_location,
     check_migration_immutable,

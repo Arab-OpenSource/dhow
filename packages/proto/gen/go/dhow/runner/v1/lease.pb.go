@@ -684,9 +684,9 @@ const file_dhow_runner_v1_lease_proto_rawDesc = "" +
 	"\tHeartbeat\x12 .dhow.runner.v1.HeartbeatRequest\x1a!.dhow.runner.v1.HeartbeatResponse\x12P\n" +
 	"\tBeginStep\x12 .dhow.runner.v1.BeginStepRequest\x1a!.dhow.runner.v1.BeginStepResponse\x12J\n" +
 	"\aEndStep\x12\x1e.dhow.runner.v1.EndStepRequest\x1a\x1f.dhow.runner.v1.EndStepResponse\x12M\n" +
-	"\bComplete\x12\x1f.dhow.runner.v1.CompleteRequest\x1a .dhow.runner.v1.CompleteResponseB\xc9\x01\n" +
+	"\bComplete\x12\x1f.dhow.runner.v1.CompleteRequest\x1a .dhow.runner.v1.CompleteResponseB\xc1\x01\n" +
 	"\x12com.dhow.runner.v1B\n" +
-	"LeaseProtoP\x01ZMgithub.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
+	"LeaseProtoP\x01ZEgithub.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
 
 var (
 	file_dhow_runner_v1_lease_proto_rawDescOnce sync.Once

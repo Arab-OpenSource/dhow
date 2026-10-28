@@ -8,11 +8,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
-	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
-	"github.com/Arab-OpenSource/dhow/internal/logging"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
+	response "github.com/Khaymah/dhow/apps/server/internal/Core/Response"
+	"github.com/Khaymah/dhow/internal/logging"
 )
 
 const clientPrefix = "ip-"

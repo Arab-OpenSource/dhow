@@ -4,7 +4,7 @@ managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: github.com/Arab-OpenSource/dhow/packages/proto/gen/go
+      value: github.com/Khaymah/dhow/packages/proto/gen/go
 plugins:
   - local: bin/tools/protoc-gen-go
     out: packages/proto/gen/go

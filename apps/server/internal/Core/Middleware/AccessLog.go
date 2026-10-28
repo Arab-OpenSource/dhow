@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Arab-OpenSource/dhow/internal/logging"
+	"github.com/Khaymah/dhow/internal/logging"
 )
 
 type statusRecorder struct {
