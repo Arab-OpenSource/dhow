@@ -114,7 +114,10 @@ func TestAPITokensNeverMixWithBrowserCredentials(t *testing.T) {
 		{"token next to a flow cookie", map[string]string{
 			"Authorization": "Bearer " + token.Value, "Cookie": config.OidcCookieName + "=x",
 		}, unauthenticated},
-		{"basic authorization", map[string]string{"Authorization": "Basic b3duZXI6cGFzc3dvcmQ="}, unauthenticated},
+		{"basic authorization is not a token", map[string]string{"Authorization": "Basic b3duZXI6cGFzc3dvcmQ="}, unauthenticated},
+		{"basic authorization next to a session is ignored", map[string]string{
+			"Authorization": "Basic b3duZXI6cGFzc3dvcmQ=", "Cookie": config.SessionCookieName + "=" + session.Cookie,
+		}, allowed},
 		{"runner token prefix", map[string]string{"Authorization": "Bearer dhow_rat_" + token.Value[len(config.APITokenPrefix):]}, unauthenticated},
 		{"truncated token", map[string]string{"Authorization": "Bearer " + token.Value[:len(token.Value)-1]}, unauthenticated},
 		{"well-formed unknown token", map[string]string{"Authorization": "Bearer " + config.APITokenPrefix + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}, unauthenticated},

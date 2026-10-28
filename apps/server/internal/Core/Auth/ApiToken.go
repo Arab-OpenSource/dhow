@@ -55,15 +55,18 @@ func (t *APITokens) Hash(token string) ([]byte, bool) {
 
 func Authorization(r *http.Request) (string, bool) {
 	values := r.Header.Values("Authorization")
-	if len(values) == 0 {
+	bearer := make([]string, 0, len(values))
+	for _, v := range values {
+		if len(v) >= len(bearerScheme) && strings.EqualFold(v[:len(bearerScheme)], bearerScheme) {
+			bearer = append(bearer, strings.TrimSpace(v[len(bearerScheme):]))
+		}
+	}
+	switch len(bearer) {
+	case 0:
 		return "", false
-	}
-	if len(values) != 1 {
+	case 1:
+		return bearer[0], true
+	default:
 		return "", true
 	}
-	v := values[0]
-	if len(v) <= len(bearerScheme) || !strings.EqualFold(v[:len(bearerScheme)], bearerScheme) {
-		return "", true
-	}
-	return strings.TrimSpace(v[len(bearerScheme):]), true
 }
