@@ -60,7 +60,7 @@ http() {
 printf 'Preparing the install directory\n'
 cp -- "$root/deploy/compose/compose.yaml" "$root/deploy/compose/init.sh" "$root/deploy/compose/.env.example" "$work/"
 "$work/init.sh" "$public_url" >/dev/null
-sed -i -e 's/^DHOW_RATE_LIMIT_PUBLIC=$/DHOW_RATE_LIMIT_PUBLIC=10/' -e 's/^DHOW_RATE_LIMIT_INVITES_USER=$/DHOW_RATE_LIMIT_INVITES_USER=3/' "$work/.env"
+printf 'DHOW_RATE_LIMIT_PUBLIC=10\nDHOW_RATE_LIMIT_INVITES_USER=3\n' >>"$work/.env"
 expect "the smoke stack runs with low rate limits" grep -q '^DHOW_RATE_LIMIT_PUBLIC=10$' "$work/.env"
 expect ".env is mode 600" test "$(stat -c %a "$work/.env")" = 600
 expect "init.sh refuses to overwrite .env" bash -c '! "$1" >/dev/null 2>&1' _ "$work/init.sh"
@@ -430,7 +430,7 @@ status=$(api "$work/rl-pk" POST /api/v1/sessions/passkey-options '' "${origin[@]
 expect "passkey options keep their own counter" test "$status" = 200
 for n in 1 2; do
   status=$(api "$work/rl-invite-$n" POST "$org_api/invitations" "{\"Email\":\"limit$n@smoke.test\",\"Role\":\"viewer\"}" "${origin[@]}" "${session[@]}")
-  expect "invitation $n of 3 this hour answers 201" test "$status" = 201
+  expect "invitation $((n + 1)) of 3 this hour answers 201" test "$status" = 201
 done
 status=$(api "$work/rl-invite-3" POST "$org_api/invitations" '{"Email":"limit3@smoke.test","Role":"viewer"}' "${origin[@]}" "${session[@]}")
 expect "the fourth invitation of the hour answers 429 RATE_LIMITED" test "$status:$(json_field "$work/rl-invite-3.body" Code)" = 429:RATE_LIMITED

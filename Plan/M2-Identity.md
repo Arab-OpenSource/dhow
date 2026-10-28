@@ -1,11 +1,12 @@
 # خطة M2: الهوية والصلاحيات
 
-**الحالة:** القرارات اتاخدت ([ADR-0033](ADR/0033-browser-sessions-invites-breached-passwords.md))، ومستنية مراجعة شكل الشاشات · **التاريخ:** 2026-10-27
+**الحالة:** اتنفّذت (M2.1 لحد M2.5)، والقرارات في [ADR-0033](ADR/0033-browser-sessions-invites-breached-passwords.md) و[ADR-0035](ADR/0035-identity-core-implementation.md) و[ADR-0037](ADR/0037-mfa-implementation.md) و[ADR-0038](ADR/0038-orgs-teams-invites-implementation.md) و[ADR-0039](ADR/0039-oidc-api-tokens-preferences.md) و[ADR-0040](ADR/0040-identity-hardening.md) · **التاريخ:** 2026-10-27، وآخر تحديث 2026-10-28
 
 ## الهدف
 شرط خلاص M2 في `docs/roadmap.md`:
 - كل اختبارات الصلاحيات خضرا.
-- مراجعة خارجية لمسارات المصادقة.
+- مراجعة داخلية لمسارات المصادقة من غير finding مفتوح Critical أو High ([قايمة الفحص](../docs/security/auth-review-checklist.md)).
+- **قرار Sabry (ADR-0040):** المراجعة الخارجية اتنقلت لـ M9 مع الـ penetration test.
 
 المراجع:
 - [ADR-0013](ADR/0013-authentication-methods.md) و[ADR-0015](ADR/0015-rbac-model.md) و[ADR-0016](ADR/0016-multi-org.md).
@@ -85,7 +86,7 @@
 | M2.2 | TOTP وrecovery codes وPasskeys، وخطوة `mfa_pending` |
 | M2.3 | المؤسسات والفرق والأدوار والدعوات، وشرائح المؤسسة |
 | M2.4 | OIDC، وAPI tokens، وتفضيلات المستخدم (الثيم) |
-| M2.5 | تقوية: fuzz لمدخلات المصادقة، واختبارات توقيت، وقايمة فحص للمراجعة الخارجية |
+| M2.5 | تقوية: rate limiter عام، وإصلاح الـ audit sanitizer، ومسح الصفوف المنتهية، وfuzz لمدخلات المصادقة، واختبارات توقيت، والمراجعة الداخلية وقايمة فحص للمراجعة الخارجية ([الخطة](M2-Hardening.md)) |
 
 كل PR بيعدّي من `make check` و`make smoke` واختبارات الواجهة، وفيه اختبارات سلبية لكل مسار أمني.
 
@@ -96,5 +97,4 @@
 - TOTP هيتكتب بإيدينا (RFC 6238، حوالي 60 سطر) ومعاه اختبارات من الـ RFC، بدل مكتبة.
 
 ## مفتوح
-- مراجعة Sabry لنموذج الشاشات قبل التنفيذ.
-- المراجعة الخارجية لمسارات المصادقة: مين هيعملها، وإمتى؟
+- المراجعة الخارجية لمسارات المصادقة في M9 (ADR-0040)، والـ findings اللي فاضلة في قايمة الفحص.

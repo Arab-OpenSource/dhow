@@ -1078,9 +1078,10 @@ paths:
       tags: [members]
       summary: Remove a member from the organization
       description: >-
-        Needs `member.manage` and the same rank rules as a role change. The last owner is never removed
-        (`LAST_OWNER`). Removing yourself works like leaving. The member's team memberships in the organization end
-        and every session of the member is revoked.
+        Needs `member.manage` and the same rank rules as a role change. An owner is never removed directly: change
+        their role first, which needs the current factor (`VALIDATION_FAILED` on `UserId` otherwise). Removing
+        yourself works like leaving. The member's team memberships in the organization end and every session of the
+        member is revoked.
       security:
         - SessionCookie: []
           CsrfToken: []

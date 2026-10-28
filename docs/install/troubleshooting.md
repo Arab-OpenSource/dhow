@@ -82,6 +82,14 @@ Every sign-in answers `INVALID_CREDENTIALS` with a `Retry-After` header, for eve
 
 When `DHOW_TRUSTED_PROXIES` is missing the proxy, all users share the proxy's address, so a few people mistyping their passwords lock out everybody. Check the server log: if every `POST /api/v1/sessions` line has the same `client_ip`, fix `DHOW_TRUSTED_PROXIES` as in [the previous section](#the-audit-log-shows-the-proxys-address-for-everyone) and restart Dhow. The lock on the proxy's address then no longer applies to anyone. Locks on single accounts, after 5 failures for the same account, stay until they expire. Every lock expires within 15 minutes, and attempts made while a lock is active never extend it.
 
+## `429 RATE_LIMITED` on sign-in pages or invitations
+
+The answer carries `Retry-After`, the seconds until the counter starts again. Dhow limits the public sign-in routes per client network and invitations per member and per organization, see [Rate limits](configuration.md#rate-limits).
+
+- **Everyone gets it at once.** All users probably share one address: fix `DHOW_TRUSTED_PROXIES` as in [The audit log shows the proxy's address for everyone](#the-audit-log-shows-the-proxys-address-for-everyone).
+- **A large office behind one NAT.** Raise `DHOW_RATE_LIMIT_PUBLIC` and restart Dhow.
+- **Inviting a whole team.** Raise `DHOW_RATE_LIMIT_INVITES_USER` and `DHOW_RATE_LIMIT_INVITES_ORG`, or wait for the next hour. An invitation that answers `INVITATION_SEND_LIMIT` was sent 5 times: revoke it and invite again.
+
 ## Finding the setup link
 
 A new instance has no users. At every start without an owner, Dhow logs a one-time link that is valid for one hour:
