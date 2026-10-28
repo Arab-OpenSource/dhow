@@ -4,9 +4,10 @@ from .common import GENERATED_PATH, is_test, new_lines
 
 RUNNER_INTERNAL = "apps/runner/internal/"
 RUNNER_IMPORT_PREFIX = "github.com/Arab-OpenSource/dhow/apps/runner/internal/"
-RUNNER_LAYERS = ("App", "Config", "Identity", "Client", "Executor", "Journal", "Masking", "Logs", "Sandbox")
+RUNNER_LAYERS = ("App", "Agent", "Config", "Identity", "Client", "Executor", "Journal", "Masking", "Logs", "Sandbox")
 RUNNER_ALLOWED_IMPORTS = {
     "App": set(RUNNER_LAYERS),
+    "Agent": {"Sandbox"},
     "Executor": {"Client", "Identity", "Journal", "Logs", "Masking", "Sandbox", "Config"},
     "Client": {"Identity", "Config"},
     "Logs": {"Masking", "Config"},
@@ -32,7 +33,7 @@ def check_runner_layout(rel, **_):
     parts = rel[len(RUNNER_INTERNAL):].split("/")
     layers = ", ".join(RUNNER_LAYERS)
     if len(parts) < 2 or parts[0] not in RUNNER_LAYERS:
-        return (f"{rel}: Go code under apps/runner/internal lives in one of {layers} (ADR-0053), "
+        return (f"{rel}: Go code under apps/runner/internal lives in one of {layers} (ADR-0053, ADR-0055), "
                 "each in its own folder (Executor/Executor.go).")
     for folder in parts[:-1]:
         if not PASCAL_DIR.match(folder):
