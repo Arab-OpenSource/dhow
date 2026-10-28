@@ -222,6 +222,8 @@ func (p *Pipeline) Close(ctx context.Context) error {
 
 func (p *Pipeline) Abort() error { return p.shutdown() }
 
+func (p *Pipeline) Unblock() { p.q.unblock() }
+
 func (p *Pipeline) shutdown() error {
 	var err error
 	p.closeOnce.Do(func() {

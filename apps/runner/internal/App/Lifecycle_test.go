@@ -3,6 +3,7 @@
 package app_test
 
 import (
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	runnertest "github.com/Arab-OpenSource/dhow/apps/runner/internal/App/Testing"
+	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
 	fake "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox/Fake"
 	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
 	"github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
@@ -141,4 +143,24 @@ func countLines(text, needle string) int {
 		}
 	}
 	return n
+}
+
+func TestAFullLogQueueNeverHangsTheAttempt(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	srv.Configure(func(k *runnertest.Knobs) { k.AppendUnavailable = 1 << 30 })
+	spec := runnertest.Spec()
+	spec.TimeoutSeconds = 2
+	srv.Enqueue(spec, nil)
+	var output []fake.Output
+	for range 64 {
+		output = append(output, fake.Output{Data: strings.Repeat("x", 4095) + "\n"})
+	}
+	running := r.Start(fake.Recording{Steps: []fake.Step{{Output: output, HangMillis: 120_000}}}, runnertest.StartOptions{
+		Logs: func(o *logs.Options) { o.MemoryBytes, o.SpillBytes, o.BatchChunks = 8<<10, 32<<10, 1 },
+	})
+	out := running.Next(t, finishWithin)
+	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_TIMED_OUT, out.Result, "the output passed the queue and the spill limits")
+	assert.True(t, out.Reported)
+	require.Len(t, srv.Leases()[0].Completes, 1)
 }

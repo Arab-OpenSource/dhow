@@ -27,6 +27,8 @@ type queue struct {
 	spill     *spill
 	closed    bool
 	dropping  bool
+	unblocked bool
+	dropped   int64
 	err       error
 }
 
@@ -54,8 +56,12 @@ func (q *queue) push(stream runnerv1.LogStream, step *int32, at time.Time, data 
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	size := int64(len(data))
-	for !q.closed && !q.dropping && q.err == nil && !q.fits(size) && (q.memBytes > 0 || q.spilled() > 0) {
+	for !q.closed && !q.dropping && !q.unblocked && q.err == nil && !q.fits(size) && (q.memBytes > 0 || q.spilled() > 0) {
 		q.cond.Wait()
+	}
+	if q.unblocked && !q.fits(size) && (q.memBytes > 0 || q.spilled() > 0) {
+		q.dropped += size
+		return nil
 	}
 	switch {
 	case q.err != nil:
@@ -146,6 +152,14 @@ func (q *queue) stopSending() {
 		_ = q.spill.store.Truncate(0)
 	}
 	q.cond.Broadcast()
+}
+
+func (q *queue) unblock() int64 {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.unblocked = true
+	q.cond.Broadcast()
+	return q.dropped
 }
 
 func (q *queue) close() {

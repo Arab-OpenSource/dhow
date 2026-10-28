@@ -110,6 +110,9 @@ func (a *attempt) runStep(ctx, jobCtx context.Context, idx int32, step *runnerv1
 		done <- stepEnd{res: res, err: err, ok: true}
 	}()
 	end, why, stopped := a.waitStep(ctx, jobCtx, stepCtx, done, stopExec)
+	if stopped {
+		a.pipe.Unblock()
+	}
 	_ = stdout.Close()
 	_ = stderr.Close()
 	if end.ok {
