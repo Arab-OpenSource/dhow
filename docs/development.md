@@ -23,18 +23,30 @@ make dev-setup
 powershell -ExecutionPolicy Bypass -File deploy\dev\setup.ps1
 ```
 
-On Windows the script installs WSL2 with Ubuntu 24.04 if it is missing (create your Linux user when it opens, then run the script again), clones the repository into `~/src/dhow` inside it, and runs the Linux script there.
+On Windows, the script:
+
+1. Installs WSL2 with Ubuntu 24.04 if it is missing. Create your Linux user when it opens, then run the script again.
+2. Clones the repository into `~/src/dhow` inside it. If the clone is already there, the script updates it with `git pull --ff-only` instead. When that fails because of local changes or another branch, it warns and carries on with the clone as it is.
+3. Runs the Linux script there. That script ignores the Windows entries WSL adds to `PATH`, so a Node.js installed on Windows does not get in the way.
+
+For a PostgreSQL container, turn on Docker Desktop's WSL integration for Ubuntu 24.04: Settings, then Resources, then WSL integration.
 
 What the script does, asking before anything that needs `sudo` or changes your system:
 
 | Step | What happens |
 |---|---|
-| Tools | Checks Git, Make, curl and Python 3, and installs them with `apt` or `dnf` (on macOS, the Xcode Command Line Tools). Installs Go and Node.js LTS when missing or too old: with Homebrew on macOS, otherwise from go.dev and nodejs.org into `~/.local/share/dhow-dev`, each archive checked against the checksum its site publishes. Then pnpm at the version `apps/web/package.json` names. |
+| Tools | Checks Git, Make, curl, Python 3 and `libatomic` (which Node.js needs), and installs them with `apt` or `dnf` (on macOS, the Xcode Command Line Tools). Installs Go and Node.js LTS when missing or too old: with Homebrew on macOS, otherwise from go.dev and nodejs.org into `~/.local/share/dhow-dev`, each archive checked against the checksum its site publishes. Then pnpm at the version `apps/web/package.json` names. |
 | PostgreSQL 18 | `container` runs it in Docker or Podman, `native` installs it from the PostgreSQL project's repository (Debian, Ubuntu, Fedora, RHEL family) or Homebrew (macOS), and `url` uses a database you already have. It refuses anything older than 18. |
 | Questions | The server port (8080), the PostgreSQL port (5432), and whether to send email through an SMTP server (host, port, TLS mode, user, password typed hidden, sender). |
 | Generated | `DHOW_SECRET_KEY` (32 random bytes) and a random password for the `dhow` database user. |
 | Written | `.env.dev`, mode 600, ignored by Git. Run the script again to change a setting: it keeps the secret key and the database password unless you ask for new ones. |
 | Last | Builds the web app, offers to add the new tools to `PATH` in your shell profile, and prints the next commands. |
+
+`deploy/dev/test/fresh.sh` runs the whole script on a bare container image as a new user, with Windows shims for `node`, `npm` and `corepack` on `PATH` like WSL has. CI runs it on Ubuntu 24.04, Ubuntu 22.04, Debian 12 and Fedora:
+
+```bash
+docker run --rm -v "$PWD":/repo:ro ubuntu:24.04 /repo/deploy/dev/test/fresh.sh --yes --db=url --db-url=postgres://u:p@127.0.0.1/dhow --test-db-url=postgres://u:p@127.0.0.1/dhow_test
+```
 
 Options: `--yes` takes every default without asking, `--db=container|native|url` picks the database, `--db-url=` and `--test-db-url=` give one, `--port=` and `--db-port=` set the ports, `--skip-web` skips the web build, and `--check` only reports which tools are there. With `make`, pass them as `make dev-setup SETUP_ARGS="--db=native"`. The [quick start](#quick-start) below does the same steps by hand.
 

@@ -40,6 +40,12 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) {
         Stop-Setup 'git clone failed'
     }
+} else {
+    Write-Host "Updating ~/$Path inside $Distro"
+    & wsl.exe --distribution $Distro --cd '~' --exec git -C $Path pull --ff-only
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Could not update ~/$Path (local changes or another branch); the setup runs from it as it is." -ForegroundColor Yellow
+    }
 }
 
 & wsl.exe --distribution $Distro --cd '~' --exec bash "$Path/deploy/dev/setup.sh" @SetupArgs
