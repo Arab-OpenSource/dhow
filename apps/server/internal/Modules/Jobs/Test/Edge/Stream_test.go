@@ -101,6 +101,7 @@ func TestARevokedSessionClosesItsStreamWithinSixteenSeconds(t *testing.T) {
 	revoked := w.env.SeedSession(developer)
 	kept := w.env.SeedSession(developer)
 
+	idleBefore := idleExpiry(t, w, kept)
 	opened := time.Now()
 	gone := revoked.OpenStream(t, srv, path, nil)
 	stays := kept.OpenStream(t, srv, path, nil)
@@ -108,6 +109,7 @@ func TestARevokedSessionClosesItsStreamWithinSixteenSeconds(t *testing.T) {
 	require.Equal(t, http.StatusOK, stays.Status, stays.Body)
 	skipEvent(t, gone, "status")
 	skipEvent(t, stays, "status")
+	w.env.Clock.Advance(2 * config.SessionTouchInterval)
 
 	revokedAt := time.Now()
 	require.Equal(t, http.StatusOK, w.env.Logout(revoked).Status)
@@ -115,9 +117,19 @@ func TestARevokedSessionClosesItsStreamWithinSixteenSeconds(t *testing.T) {
 	assert.Less(t, time.Since(revokedAt), revokeDeadline)
 
 	assert.Greater(t, time.Since(opened), config.APITimeout, "the stream outlived the API timeout")
+	skipEvent(t, stays, "comment")
+	assert.Equal(t, idleBefore, idleExpiry(t, w, kept), "re-checking the session every 15 seconds never extends it")
 	r.MustAppend(g.Ref, apptest.Chunk(1, "after the revocation\n"))
 	assert.EqualValues(t, 1, chunkSeq(t, skipEvent(t, stays, "chunk")), "the other session keeps streaming")
 	assert.Equal(t, 1, w.env.Wired.Jobs.OpenLogStreams())
+}
+
+func idleExpiry(t *testing.T, w world, c *apptest.Client) time.Time {
+	t.Helper()
+	var at time.Time
+	require.NoError(t, w.env.Pool.QueryRow(t.Context(),
+		`SELECT "IdleExpiresAt" FROM "Sessions" WHERE "UserId" = $1 AND "CsrfHash" = $2`, c.UserID, w.env.Wired.Options.CSRF.Hash(c.CSRFToken)).Scan(&at))
+	return at
 }
 
 func TestTheStreamOutlivesTheServerReadAndWriteTimeouts(t *testing.T) {
@@ -167,4 +179,34 @@ func TestStreamsAreLimitedPerUserAndPerInstance(t *testing.T) {
 	eventually(t, edgeEventWait, func() bool { return w.env.Wired.Jobs.OpenLogStreams() == config.LogStreamsPerUser+1 },
 		"a closed stream frees its slot")
 	assert.Equal(t, http.StatusOK, open(w.owner).Status)
+}
+
+func TestOneOrganizationCannotTakeTheWholeInstance(t *testing.T) {
+	w := setup(t, apptest.NewWithOptions(t, apptest.Options{Profile: func(c *config.Config) {
+		c.Logs = config.Logs{MaxStreams: 40}
+	}}))
+	require.Equal(t, 20, config.Logs{MaxStreams: 40}.OrgStreams())
+	id, _, _ := runningJob(t, w)
+	srv := w.env.Serve()
+	path := apptest.LogStreamPath(w.org, id)
+	admin := w.env.SeedSession(w.env.SeedUser(w.org, "admin-org@example.com", "a long password for admin", "admin"))
+	for _, c := range []*apptest.Client{w.owner, admin} {
+		for range config.LogStreamsPerUser {
+			s := c.OpenStream(t, srv, path, nil)
+			require.Equal(t, http.StatusOK, s.Status, s.Body)
+			skipEvent(t, s, "status")
+		}
+	}
+	developer := w.env.SeedSession(w.env.SeedUser(w.org, "developer-org@example.com", "a long password for developer", "developer"))
+	refused := developer.OpenStream(t, srv, path, nil)
+	assert.Equal(t, http.StatusTooManyRequests, refused.Status, "the organization used its share")
+	assert.Contains(t, refused.Body, `"Code":"TOO_MANY_STREAMS"`)
+
+	other := w.env.SeedOrganization("Other Streams", "other-streams")
+	ownerB := w.env.SeedUser(other, "owner-b-streams@example.com", "a long password for owner b", "owner")
+	w.env.SeedJob(other, ownerB)
+	runnerB := w.env.SeedConnectedRunner(other, ownerB, apptest.SeedRunnerSpec{})
+	gB := runnerB.MustStart(0)
+	s := w.env.SeedSession(ownerB).OpenStream(t, srv, apptest.LogStreamPath(other, uuid.MustParse(gB.Grant.GetJobId())), nil)
+	assert.Equal(t, http.StatusOK, s.Status, "another organization still gets streams: %s", s.Body)
 }

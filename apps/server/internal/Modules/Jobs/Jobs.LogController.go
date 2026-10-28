@@ -2,7 +2,10 @@ package jobs
 
 import (
 	"context"
+	"math"
 	"net/http"
+	"strconv"
+	"strings"
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
@@ -14,13 +17,40 @@ import (
 const messageLogsLoaded = "jobs.logs.loaded"
 
 func attemptParam(v *int) (*int, error) {
-	if v != nil && *v < 1 {
+	if v != nil && (*v < 1 || *v > math.MaxInt32) {
 		return nil, apperrors.ValidationFailed(invalid("Attempt"))
 	}
 	return v, nil
 }
 
+func parseLastEvent(v *string) (*EventRef, error) {
+	if v == nil {
+		return nil, nil
+	}
+	bad := apperrors.ValidationFailed(invalid("Last-Event-ID"))
+	attempt, seq, ok := strings.Cut(*v, ":")
+	if !ok {
+		return nil, bad
+	}
+	number, err := strconv.ParseInt(attempt, 10, 32)
+	if err != nil || number < 1 {
+		return nil, bad
+	}
+	last, err := strconv.ParseInt(seq, 10, 64)
+	if err != nil || last < 0 || last == math.MaxInt64 {
+		return nil, bad
+	}
+	return &EventRef{Attempt: int(number), Seq: last}, nil
+}
+
 func (c *Controller) GetJobLogs(ctx context.Context, req gen.GetJobLogsRequestObject) (gen.GetJobLogsResponseObject, error) {
+	p, err := principalOf(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.service.AllowLogRead(p.UserID); err != nil {
+		return nil, err
+	}
 	attempt, err := attemptParam(req.Params.Attempt)
 	if err != nil {
 		return nil, err
@@ -55,22 +85,20 @@ func (c *Controller) StreamJobLogs(ctx context.Context, req gen.StreamJobLogsReq
 	if err != nil {
 		return nil, err
 	}
-	after := int64(0)
-	switch {
-	case req.Params.LastEventID != nil:
-		if *req.Params.LastEventID < 0 {
-			return nil, apperrors.ValidationFailed(invalid("Last-Event-ID"))
-		}
-		after = *req.Params.LastEventID
-	case req.Params.FromSeq != nil:
+	last, err := parseLastEvent(req.Params.LastEventID)
+	if err != nil {
+		return nil, err
+	}
+	from := int64(1)
+	if req.Params.FromSeq != nil {
 		if *req.Params.FromSeq < 1 {
 			return nil, apperrors.ValidationFailed(invalid("FromSeq"))
 		}
-		after = *req.Params.FromSeq - 1
+		from = *req.Params.FromSeq
 	}
 	org := req.Id
 	stream, err := c.service.OpenLogStream(ctx, StreamRequest{
-		Organization: org, Job: req.JobId, Attempt: attempt, After: after, User: p.UserID,
+		Organization: org, Job: req.JobId, Attempt: attempt, FromSeq: from, LastEvent: last, User: p.UserID,
 		Reauthorize: func(ctx context.Context) error { return c.guard.Reauthorize(ctx, policy.LogRead, org) },
 	})
 	if err != nil {

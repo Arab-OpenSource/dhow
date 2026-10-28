@@ -463,7 +463,7 @@ type JobId = openapi_types.UUID
 type JobStateFilter = JobState
 
 // LastEventId defines model for LastEventId.
-type LastEventId = int64
+type LastEventId = string
 
 // Limit defines model for Limit.
 type Limit = int
@@ -508,7 +508,7 @@ type StreamJobLogsParams struct {
 	// FromSeq The first chunk to return.
 	FromSeq *LogFromSeq `form:"FromSeq,omitempty" json:"FromSeq,omitempty"`
 
-	// LastEventID The `Seq` of the last chunk the client received. The stream resumes after it and ignores `FromSeq`.
+	// LastEventID The `id` of the last chunk event the client received, `<attempt>:<seq>`. When it names the attempt the stream follows, the stream resumes after that seq and ignores `FromSeq`. An id of another attempt (the job was retried while the client was away) is ignored, so the new attempt starts from `FromSeq` or the beginning.
 	LastEventID *LastEventId `json:"Last-Event-ID,omitempty"`
 }
 
@@ -891,7 +891,7 @@ func (siw *ServerInterfaceWrapper) StreamJobLogs(w http.ResponseWriter, r *http.
 			return
 		}
 
-		err = runtime.BindStyledParameterWithOptions("simple", "Last-Event-ID", valueList[0], &LastEventID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: "int64"})
+		err = runtime.BindStyledParameterWithOptions("simple", "Last-Event-ID", valueList[0], &LastEventID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "string", Format: ""})
 		if err != nil {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Last-Event-ID", Err: err})
 			return

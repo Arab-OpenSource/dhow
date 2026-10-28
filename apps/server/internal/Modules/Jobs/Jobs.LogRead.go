@@ -43,11 +43,20 @@ func chunkOf(r sqlc.ListLogChunksRow) models.LogChunk {
 	return c
 }
 
+func readFailure(err error) error {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return apperrors.ServiceUnavailable()
+	}
+	return apperrors.Internal(err)
+}
+
 func (s *Service) logAttempt(ctx context.Context, org, job uuid.UUID, number *int) (sqlc.GetLogAttemptRow, error) {
-	q := s.queries()
+	ctx, cancel := context.WithTimeout(ctx, s.readWait)
+	defer cancel()
+	q := s.readQueries()
 	exists, err := q.JobExists(ctx, sqlc.JobExistsParams{ID: job, OrganizationID: org})
 	if err != nil {
-		return sqlc.GetLogAttemptRow{}, apperrors.Internal(err)
+		return sqlc.GetLogAttemptRow{}, readFailure(err)
 	}
 	if !exists {
 		return sqlc.GetLogAttemptRow{}, apperrors.NotFound()
@@ -61,13 +70,21 @@ func (s *Service) logAttempt(ctx context.Context, org, job uuid.UUID, number *in
 		return sqlc.GetLogAttemptRow{}, apperrors.AttemptNotFound()
 	}
 	if err != nil {
-		return sqlc.GetLogAttemptRow{}, apperrors.Internal(err)
+		return sqlc.GetLogAttemptRow{}, readFailure(err)
 	}
 	return a, nil
 }
 
+func (s *Service) attemptState(ctx context.Context, org, attempt uuid.UUID) (sqlc.GetLogAttemptStateRow, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.readWait)
+	defer cancel()
+	return s.readQueries().GetLogAttemptState(ctx, sqlc.GetLogAttemptStateParams{ID: attempt, OrganizationID: org})
+}
+
 func (s *Service) readChunks(ctx context.Context, org uuid.UUID, a sqlc.GetLogAttemptRow, from int64, rows int, maxBytes int64) ([]models.LogChunk, error) {
-	list, err := s.queries().ListLogChunks(ctx, sqlc.ListLogChunksParams{
+	ctx, cancel := context.WithTimeout(ctx, s.readWait)
+	defer cancel()
+	list, err := s.readQueries().ListLogChunks(ctx, sqlc.ListLogChunksParams{
 		AttemptID: a.Id, OrganizationID: org, FromSeq: from, Since: a.LeasedAt, RowLimit: int32(rows), MaxBytes: maxBytes, //nolint:gosec // Row limits are small constants.
 	})
 	if err != nil {
@@ -87,7 +104,7 @@ func (s *Service) Logs(ctx context.Context, org, job uuid.UUID, in models.LogQue
 	}
 	chunks, err := s.readChunks(ctx, org, a, in.FromSeq, in.Limit, config.LogPageMaxBytes)
 	if err != nil {
-		return models.LogPage{}, apperrors.Internal(err)
+		return models.LogPage{}, readFailure(err)
 	}
 	page := models.LogPage{
 		Attempt: int(a.Number), AttemptID: a.Id, State: a.State, LastSeq: a.LastSeq, Truncated: a.Truncated, Chunks: chunks,

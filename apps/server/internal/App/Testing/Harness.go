@@ -138,6 +138,7 @@ type Options struct {
 	Secrets *FakeSecrets
 
 	LogStreamWriteWait time.Duration
+	LogReadWait        time.Duration
 }
 
 func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) *Env {
@@ -183,12 +184,14 @@ func NewWithOptions(t *testing.T, o Options) *Env {
 	infra := app.Infra{
 		Config: cfg, Log: log, Pool: pool, Migrations: fakeMigrations{}, Build: buildinfo.Info{Version: "test", Commit: "test"},
 		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer, LogStreamWriteWait: o.LogStreamWriteWait,
+		LogReadWait: o.LogReadWait,
 	}
 	if o.Secrets != nil {
 		infra.Secrets = o.Secrets
 	}
 	wired, err := app.Build(t.Context(), infra)
 	require.NoError(t, err)
+	t.Cleanup(wired.Close)
 	startListener(t, wired)
 	hasher, err := auth.NewHasher(t.Context(), params, 4)
 	require.NoError(t, err)

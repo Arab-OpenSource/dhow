@@ -46,10 +46,15 @@ func nextEvent(t *testing.T, s *apptest.Stream, name string) apptest.Event {
 
 func nextChunk(t *testing.T, s *apptest.Stream) chunkEvent {
 	t.Helper()
+	return nextChunkOf(t, s, 1)
+}
+
+func nextChunkOf(t *testing.T, s *apptest.Stream, attempt int) chunkEvent {
+	t.Helper()
 	ev := nextEvent(t, s, "chunk")
 	var c chunkEvent
 	require.NoError(t, json.Unmarshal([]byte(ev.Data), &c))
-	require.Equal(t, strconv.FormatInt(c.Seq, 10), ev.ID, "the event id is the seq")
+	require.Equal(t, strconv.Itoa(attempt)+":"+strconv.FormatInt(c.Seq, 10), ev.ID, "the event id is <attempt>:<seq>")
 	return c
 }
 
@@ -100,7 +105,7 @@ func TestTheStreamResumesWithTheSameBytesAfterADisconnect(t *testing.T) {
 	require.True(t, first.WaitClosed(eventWait))
 
 	want += appendRange(t, r, g, 51, 80)
-	second := w.owner.OpenStream(t, srv, path, map[string]string{"Last-Event-ID": strconv.FormatInt(last, 10)})
+	second := w.owner.OpenStream(t, srv, path, map[string]string{"Last-Event-ID": "1:" + strconv.FormatInt(last, 10)})
 	require.Equal(t, http.StatusOK, second.Status, second.Body)
 	nextStatus(t, second, "status")
 	for last < 80 {
@@ -157,8 +162,14 @@ func TestTheStreamRefusesWhatHistoryRefuses(t *testing.T) {
 		{"a viewer", viewer, apptest.LogStreamPath(w.org, id), nil, http.StatusForbidden, "FORBIDDEN"},
 		{"a job that never started", w.owner, apptest.LogStreamPath(w.org, queued), nil, http.StatusNotFound, "ATTEMPT_NOT_FOUND"},
 		{"another organization's id in the path", w.owner, apptest.LogStreamPath(uuid.New(), id), nil, http.StatusNotFound, "NOT_FOUND"},
-		{"a negative Last-Event-ID", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "-1"}, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
-		{"a Last-Event-ID that is not a number", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "x"}, http.StatusBadRequest, "BAD_REQUEST"},
+		{"a bare seq as Last-Event-ID", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "20"}, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
+		{"a negative seq", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "1:-1"}, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
+		{"attempt zero", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "0:1"}, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
+		{"an attempt past int32", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "2147483648:1"}, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
+		{"the int64 maximum as seq", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "1:9223372036854775807"}, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
+		{"a seq past int64", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "1:9223372036854775808"}, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
+		{"garbage", w.owner, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "x:y"}, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
+		{"an Attempt past int32", w.owner, apptest.LogStreamPath(w.org, id) + "?Attempt=2147483648", nil, http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -203,4 +214,40 @@ func TestServerShutdownEndsOpenStreams(t *testing.T) {
 	w.env.Wired.Jobs.Drain()
 	assert.True(t, s.WaitClosed(eventWait), "a draining instance lets the browser reconnect elsewhere")
 	assert.Zero(t, w.env.Wired.Jobs.OpenLogStreams())
+}
+
+func TestALastEventIDOfAnotherAttemptIsIgnored(t *testing.T) {
+	w := newWorld(t)
+	id := w.job(t, apptest.SimpleSpec(), nil)
+	r := w.runner(apptest.SeedRunnerSpec{})
+	first := r.MustStart(0)
+	appendRange(t, r, first, 1, 5)
+	w.env.ExpireLease(first.Ref.GetLeaseId())
+	w.env.Reconcile()
+	second := r.MustStart(0)
+	require.NotEqual(t, first.Grant.GetAttemptId(), second.Grant.GetAttemptId())
+	want := appendRange(t, r, second, 1, 3)
+	srv := w.env.Serve()
+
+	s := w.owner.OpenStream(t, srv, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "1:5"})
+	require.Equal(t, http.StatusOK, s.Status, s.Body)
+	assert.Equal(t, statusEvent{Attempt: 2, State: "running"}, nextStatus(t, s, "status"), "the reconnect lands on the new attempt")
+	var got strings.Builder
+	for want := int64(1); want <= 3; want++ {
+		c := nextChunkOf(t, s, 2)
+		assert.Equal(t, want, c.Seq, "the seq of attempt 1 does not skip the start of attempt 2")
+		got.WriteString(c.Text)
+	}
+	assert.Equal(t, want, got.String())
+	s.Close()
+
+	resumed := w.owner.OpenStream(t, srv, apptest.LogStreamPath(w.org, id), map[string]string{"Last-Event-ID": "2:2"})
+	require.Equal(t, http.StatusOK, resumed.Status, resumed.Body)
+	nextStatus(t, resumed, "status")
+	assert.EqualValues(t, 3, nextChunkOf(t, resumed, 2).Seq, "an id of the same attempt resumes after it")
+
+	old := w.owner.OpenStream(t, srv, apptest.LogStreamPath(w.org, id)+"?Attempt=1", map[string]string{"Last-Event-ID": "1:3"})
+	require.Equal(t, http.StatusOK, old.Status, old.Body)
+	assert.Equal(t, "lost", nextStatus(t, old, "status").State)
+	assert.EqualValues(t, 4, nextChunkOf(t, old, 1).Seq)
 }

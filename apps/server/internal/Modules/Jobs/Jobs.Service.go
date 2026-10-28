@@ -40,6 +40,8 @@ type Options struct {
 	Bus             Publisher
 	Listen          Listener
 	MaxPolls        int
+	Reads           sqlc.DBTX
+	ReadWait        time.Duration
 	Logs            config.Logs
 	StreamWriteWait time.Duration
 	Log             *slog.Logger
@@ -56,6 +58,10 @@ type Service struct {
 	logs     config.Logs
 	streams  *streamLimiter
 	wait     time.Duration
+	reads    sqlc.DBTX
+	readWait time.Duration
+	readRate *rateLimiter
+	openRate *rateLimiter
 
 	pollMu  sync.Mutex
 	polls   int
@@ -75,21 +81,47 @@ func NewService(o Options) *Service {
 	if maxPolls <= 0 {
 		maxPolls = config.RunnerDefaultMaxPolls
 	}
-	logs := o.Logs
-	if logs == (config.Logs{}) {
-		logs = config.DefaultLogs()
-	}
+	logs := logsOrDefault(o.Logs)
 	wait := o.StreamWriteWait
 	if wait <= 0 {
 		wait = config.LogStreamWriteWait
 	}
+	readWait := o.ReadWait
+	if readWait <= 0 {
+		readWait = config.LogReadWait
+	}
+	var reads sqlc.DBTX = o.DB
+	if o.Reads != nil {
+		reads = o.Reads
+	}
 	return &Service{
 		db: o.DB, keys: o.Keys, secrets: secrets, bus: o.Bus, log: o.Log, maxPolls: maxPolls, logs: logs, wait: wait,
-		streams: newStreamLimiter(logs.MaxStreams, config.LogStreamsPerUser),
-		hub:     newHub(o.Listen, o.Log), pollers: map[uuid.UUID]struct{}{}, buckets: map[uuid.UUID]claimBucket{},
+		reads: reads, readWait: readWait, streams: newStreamLimiter(logs),
+		readRate: newRateLimiter(config.LogReadBurst, config.LogReadRefill),
+		openRate: newRateLimiter(config.LogStreamOpenBurst, config.LogStreamOpenRefill),
+		hub:      newHub(o.Listen, o.Log), pollers: map[uuid.UUID]struct{}{}, buckets: map[uuid.UUID]claimBucket{},
 		stop: make(chan struct{}),
 	}
 }
+
+func logsOrDefault(l config.Logs) config.Logs {
+	d := config.DefaultLogs()
+	if l.MaxBytes <= 0 {
+		l.MaxBytes = d.MaxBytes
+	}
+	if l.RetentionDays <= 0 {
+		l.RetentionDays = d.RetentionDays
+	}
+	if l.MaxStreams <= 0 {
+		l.MaxStreams = d.MaxStreams
+	}
+	if l.ReadConns <= 0 {
+		l.ReadConns = d.ReadConns
+	}
+	return l
+}
+
+func (s *Service) readQueries() *sqlc.Queries { return sqlc.New(s.reads) }
 
 func (s *Service) inTx(ctx context.Context, fn func(q *sqlc.Queries) error) error {
 	return dbtx.Run(ctx, s.db, fn)

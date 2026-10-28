@@ -158,3 +158,9 @@ func TooManyStreams(retryAfter time.Duration) *AppError {
 	e.RetryAfter = retryAfter
 	return e
 }
+
+func RateLimited(retryAfter time.Duration) *AppError {
+	e := New(http.StatusTooManyRequests, CodeRateLimited, KeyRateLimited)
+	e.RetryAfter = retryAfter
+	return e
+}

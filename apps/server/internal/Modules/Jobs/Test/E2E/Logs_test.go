@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -339,6 +340,7 @@ func TestHistoryRefusesBadQueriesAndOtherOrganizations(t *testing.T) {
 		{"FromSeq zero", id, "?FromSeq=0", http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
 		{"Limit over 500", id, "?Limit=501", http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
 		{"Limit that is not a number", id, "?Limit=many", http.StatusBadRequest, "BAD_REQUEST"},
+		{"an attempt past int32", id, "?Attempt=2147483648", http.StatusUnprocessableEntity, "VALIDATION_FAILED"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -378,4 +380,63 @@ func TestTheServerNeverLogsTheContentOfLogs(t *testing.T) {
 	logs := w.env.Logs.String()
 	assert.Contains(t, logs, "the log partition of today is missing")
 	assert.False(t, bytes.Contains([]byte(logs), []byte(marker)), "the server log carries no log content")
+}
+
+func TestHistoryIsRateLimitedPerUser(t *testing.T) {
+	w := newWorld(t)
+	id, _, _ := w.running(t)
+	for i := range config.LogReadBurst {
+		_, res := w.logs(t, w.owner, id, "")
+		require.Equal(t, http.StatusOK, res.Status, "request %d", i+1)
+	}
+	_, res := w.logs(t, w.owner, id, "")
+	assert.Equal(t, http.StatusTooManyRequests, res.Status)
+	require.NotNil(t, res.Error)
+	assert.Equal(t, "RATE_LIMITED", res.Error.Code)
+	assert.Equal(t, "1", res.Header.Get("Retry-After"))
+	other := w.env.SeedSession(w.env.SeedUser(w.org, "admin-rate@example.com", "a long password for admin", "admin"))
+	_, res = w.logs(t, other, id, "")
+	assert.Equal(t, http.StatusOK, res.Status, "the limit is per user")
+}
+
+func TestOpeningStreamsIsRateLimitedPerUser(t *testing.T) {
+	w := newWorld(t)
+	queued := w.job(t, apptest.SimpleSpec(), nil)
+	srv := w.env.Serve()
+	for i := range config.LogStreamOpenBurst {
+		s := w.owner.OpenStream(t, srv, apptest.LogStreamPath(w.org, queued), nil)
+		require.Equal(t, http.StatusNotFound, s.Status, "open %d", i+1)
+	}
+	s := w.owner.OpenStream(t, srv, apptest.LogStreamPath(w.org, queued), nil)
+	assert.Equal(t, http.StatusTooManyRequests, s.Status)
+	assert.Contains(t, s.Body, `"Code":"RATE_LIMITED"`)
+}
+
+func TestLogReadsUseTheirOwnBoundedPool(t *testing.T) {
+	w := setup(t, apptest.NewWithOptions(t, apptest.Options{
+		LogReadWait: 300 * time.Millisecond,
+		Profile:     func(c *config.Config) { c.Logs = config.Logs{ReadConns: 1} },
+	}))
+	id, r, g := w.running(t)
+	r.MustAppend(g.Ref, apptest.Chunk(1, "x"))
+	logPool := w.env.Wired.LogPool
+	require.NotNil(t, logPool)
+	assert.EqualValues(t, 1, logPool.Config().MaxConns)
+	var timeout, main string
+	require.NoError(t, logPool.QueryRow(t.Context(), `SHOW statement_timeout`).Scan(&timeout))
+	require.NoError(t, w.env.Pool.QueryRow(t.Context(), `SHOW statement_timeout`).Scan(&main))
+	assert.Equal(t, "5s", timeout)
+	assert.Equal(t, "0", main, "the main pool keeps no statement timeout")
+
+	held, err := logPool.Acquire(t.Context())
+	require.NoError(t, err)
+	start := time.Now()
+	_, res := w.logs(t, w.owner, id, "")
+	assert.Equal(t, http.StatusServiceUnavailable, res.Status, "a busy log pool answers 503 in bounded time")
+	assert.Less(t, time.Since(start), 3*time.Second)
+	assert.Equal(t, http.StatusOK, w.owner.Get(w.path("/jobs/"+id.String())).Status, "the API keeps its own pool")
+	held.Release()
+	p, res := w.logs(t, w.owner, id, "")
+	require.Equal(t, http.StatusOK, res.Status, string(res.Raw))
+	assert.Len(t, p.Chunks, 1)
 }

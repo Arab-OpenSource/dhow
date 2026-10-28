@@ -31,6 +31,7 @@ const (
 	CodeJobQueueFull           = "JOB_QUEUE_FULL"
 	CodeAttemptNotFound        = "ATTEMPT_NOT_FOUND"
 	CodeTooManyStreams         = "TOO_MANY_STREAMS"
+	CodeRateLimited            = "RATE_LIMITED"
 )
 
 const (
@@ -74,6 +75,7 @@ const (
 	KeyJobQueueFull           = "errors.jobQueueFull"
 	KeyAttemptNotFound        = "errors.attemptNotFound"
 	KeyTooManyStreams         = "errors.tooManyStreams"
+	KeyRateLimited            = "errors.rateLimited"
 )
 
 const (

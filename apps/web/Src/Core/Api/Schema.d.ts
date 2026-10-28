@@ -1103,7 +1103,7 @@ export interface paths {
         };
         /**
          * Read a page of the log of a job attempt
-         * @description Needs `log.read`, which a viewer does not have. Reads the chunks of one attempt (the latest without `Attempt`) from `FromSeq` on, in order. A page holds at most `Limit` chunks and about 1 MiB of text, and `NextSeq` is set while more chunks follow. `Text` is the stored bytes as UTF-8, with every invalid byte replaced by U+FFFD. A job without that attempt answers 404 `ATTEMPT_NOT_FOUND`, and a job of another organization 404 `NOT_FOUND`.
+         * @description Needs `log.read`, which a viewer does not have. Reads the chunks of one attempt (the latest without `Attempt`) from `FromSeq` on, in order. A page holds at most `Limit` chunks and about 1 MiB of text, and `NextSeq` is set while more chunks follow. `Text` is the stored bytes as UTF-8, with every invalid byte replaced by U+FFFD. A job without that attempt answers 404 `ATTEMPT_NOT_FOUND`, and a job of another organization 404 `NOT_FOUND`. More than about 5 pages a second from one user answers 429 `RATE_LIMITED` with `Retry-After`.
          */
         get: operations["getJobLogs"];
         put?: never;
@@ -1123,7 +1123,7 @@ export interface paths {
         };
         /**
          * Follow the log of a job attempt as server-sent events
-         * @description Needs `log.read`. Streams the chunks of one attempt (the latest without `Attempt`) after `Last-Event-ID`, or from `FromSeq`, or from the start. Events: `chunk` (its `id` is the `Seq` and its data a `JobLogChunk`), `status` (data `JobLogStatus`, sent first and on every change of the attempt) and `end` (data `JobLogStatus`, after the last chunk of a finished attempt; the stream then closes). A comment arrives every 15 seconds, and the session is checked again each time, so a signed-out or revoked session ends the stream within 15 seconds. One user may hold 10 streams and one server instance `DHOW_SSE_MAX_STREAMS`; more answer 429 `TOO_MANY_STREAMS` with `Retry-After`. A client that cannot keep up is disconnected and resumes with `Last-Event-ID`.
+         * @description Needs `log.read`. Streams the chunks of one attempt (the latest without `Attempt`) after `Last-Event-ID`, or from `FromSeq`, or from the start. Events: `chunk` (its `id` is `<attempt>:<seq>` and its data a `JobLogChunk`), `status` (data `JobLogStatus`, sent first and on every change of the attempt) and `end` (data `JobLogStatus`, after the last chunk of a finished attempt; the stream then closes). A comment arrives every 15 seconds, and the session is checked again each time, so a signed-out or revoked session ends the stream within 15 seconds; the check never extends the session. One user may hold 10 streams, one organization a tenth of `DHOW_SSE_MAX_STREAMS` (at least 20) and one server instance `DHOW_SSE_MAX_STREAMS`; more answer 429 `TOO_MANY_STREAMS` with `Retry-After`. Opening streams quickly one after another answers 429 `RATE_LIMITED`. A client that cannot keep up is disconnected and resumes with `Last-Event-ID`.
          */
         get: operations["streamJobLogs"];
         put?: never;
@@ -1985,8 +1985,8 @@ export interface components {
         /** @description The first chunk to return. */
         LogFromSeq: number;
         LogLimit: number;
-        /** @description The `Seq` of the last chunk the client received. The stream resumes after it and ignores `FromSeq`. */
-        LastEventId: number;
+        /** @description The `id` of the last chunk event the client received, `<attempt>:<seq>`. When it names the attempt the stream follows, the stream resumes after that seq and ignores `FromSeq`. An id of another attempt (the job was retried while the client was away) is ignored, so the new attempt starts from `FromSeq` or the beginning. */
+        LastEventId: string;
         JobStateFilter: components["schemas"]["JobState"];
         UserId: string;
         TeamId: string;
@@ -3659,7 +3659,7 @@ export interface operations {
                 FromSeq?: components["parameters"]["LogFromSeq"];
             };
             header?: {
-                /** @description The `Seq` of the last chunk the client received. The stream resumes after it and ignores `FromSeq`. */
+                /** @description The `id` of the last chunk event the client received, `<attempt>:<seq>`. When it names the attempt the stream follows, the stream resumes after that seq and ignores `FromSeq`. An id of another attempt (the job was retried while the client was away) is ignored, so the new attempt starts from `FromSeq` or the beginning. */
                 "Last-Event-ID"?: components["parameters"]["LastEventId"];
             };
             path: {

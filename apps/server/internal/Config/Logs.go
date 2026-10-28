@@ -11,6 +11,7 @@ const (
 	EnvJobLogMaxBytes    = "DHOW_JOB_LOG_MAX_BYTES"
 	EnvLogRetentionDays  = "DHOW_LOG_RETENTION_DAYS"
 	EnvSSEMaxStreams     = "DHOW_SSE_MAX_STREAMS"
+	EnvLogReadConns      = "DHOW_LOG_READ_CONNS"
 	LogAppendedChannel   = "dhow_log_appended"
 	LogChunkMaxBytes     = 64 << 10
 	LogAppendMaxBytes    = RunnerBodyMaxBytes
@@ -28,7 +29,7 @@ const (
 	LogStreamRetryAfter  = 5 * time.Second
 	LogPartitionsAhead   = 3
 	LogMaintainInterval  = time.Hour
-	LogMaintainLockWait  = 5 * time.Second
+	LogMaintainLockWait  = 2 * time.Second
 	LogMaxBytesDefault   = 64 << 20
 	LogMaxBytesMin       = 1 << 20
 	LogMaxBytesMax       = 1 << 30
@@ -36,17 +37,31 @@ const (
 	LogRetentionMax      = 3650
 	SSEMaxStreamsDefault = 2000
 	SSEMaxStreamsMax     = 100_000
+	LogReadConnsDefault  = 4
+	LogReadStatementWait = 5 * time.Second
+	LogReadWait          = 10 * time.Second
+	LogOrgStreamsShare   = 10
+	LogReadBurst         = 30
+	LogReadRefill        = 200 * time.Millisecond
+	LogStreamOpenBurst   = 20
+	LogStreamOpenRefill  = time.Second
+	LogTrackedUsers      = 10_000
 )
 
 type Logs struct {
 	MaxBytes      int64
 	RetentionDays int
 	MaxStreams    int
+	ReadConns     int
 }
 
 func DefaultLogs() Logs {
-	return Logs{MaxBytes: LogMaxBytesDefault, RetentionDays: LogRetentionDefault, MaxStreams: SSEMaxStreamsDefault}
+	return Logs{
+		MaxBytes: LogMaxBytesDefault, RetentionDays: LogRetentionDefault, MaxStreams: SSEMaxStreamsDefault, ReadConns: LogReadConnsDefault,
+	}
 }
+
+func (l Logs) OrgStreams() int { return max(2*LogStreamsPerUser, l.MaxStreams/LogOrgStreamsShare) }
 
 func boundedInt(v string, def, lowest, highest int64) (int64, error) {
 	v = strings.TrimSpace(v)
@@ -75,8 +90,12 @@ func loadLogs(getenv func(string) string) (Logs, []error) {
 	if err != nil {
 		errs = append(errs, errors.New(EnvSSEMaxStreams+": "+err.Error()))
 	}
+	conns, err := boundedInt(getenv(EnvLogReadConns), LogReadConnsDefault, 1, DatabaseMaxConns)
+	if err != nil {
+		errs = append(errs, errors.New(EnvLogReadConns+": "+err.Error()))
+	}
 	if len(errs) > 0 {
 		return out, errs
 	}
-	return Logs{MaxBytes: maxBytes, RetentionDays: int(retention), MaxStreams: int(streams)}, nil
+	return Logs{MaxBytes: maxBytes, RetentionDays: int(retention), MaxStreams: int(streams), ReadConns: int(conns)}, nil
 }

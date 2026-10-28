@@ -2,9 +2,11 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -42,6 +44,7 @@ type Infra struct {
 	Mailer     mailer.Sender
 
 	LogStreamWriteWait time.Duration
+	LogReadWait        time.Duration
 }
 
 type Wired struct {
@@ -50,6 +53,13 @@ type Wired struct {
 	RunnerHandler http.Handler
 	Identity      *identity.Service
 	Jobs          *jobs.Service
+	LogPool       *pgxpool.Pool
+}
+
+func (w *Wired) Close() {
+	if w.LogPool != nil {
+		w.LogPool.Close()
+	}
 }
 
 func Build(ctx context.Context, in Infra) (*Wired, error) {
@@ -109,10 +119,19 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Log: in.Log, Now: in.Now,
 	})
 	gate := runnerauth.NewGate(runnerauth.GateOptions{Verifier: runnersService, Log: in.Log, Now: in.Now})
-	jobsService := jobs.NewService(jobs.Options{
+	logPool, err := logReadPool(ctx, in.Pool, in.Config.Logs)
+	if err != nil {
+		return nil, err
+	}
+	jobsOptions := jobs.Options{
 		DB: in.Pool, Keys: runnerKeys, Secrets: in.Secrets, Bus: bus, Listen: listener(in.Pool),
-		MaxPolls: in.Config.RunnerMaxPolls, Logs: in.Config.Logs, StreamWriteWait: in.LogStreamWriteWait, Log: in.Log,
-	})
+		MaxPolls: in.Config.RunnerMaxPolls, Logs: in.Config.Logs, StreamWriteWait: in.LogStreamWriteWait,
+		ReadWait: in.LogReadWait, Log: in.Log,
+	}
+	if logPool != nil {
+		jobsOptions.Reads = logPool
+	}
+	jobsService := jobs.NewService(jobsOptions)
 	jobs.Subscribe(bus, jobsService)
 
 	opts := Options{
@@ -132,11 +151,31 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Now:      in.Now,
 		Web:      in.Web,
 	}
-	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService}
+	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool}
 	if in.Config.RunnerPlaneSeparate() {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
 	}
 	return wired, nil
+}
+
+func logReadPool(ctx context.Context, pool *pgxpool.Pool, logs config.Logs) (*pgxpool.Pool, error) {
+	if pool == nil {
+		return nil, nil
+	}
+	conns := logs.ReadConns
+	if conns <= 0 {
+		conns = config.LogReadConnsDefault
+	}
+	cfg := pool.Config().Copy()
+	cfg.MaxConns = int32(conns)
+	cfg.MinConns = 0
+	cfg.ConnConfig.RuntimeParams["statement_timeout"] = strconv.FormatInt(config.LogReadStatementWait.Milliseconds(), 10)
+	cfg.ConnConfig.RuntimeParams["application_name"] = config.DatabaseAppName + "-logs"
+	logPool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("open the job log read pool: %w", err)
+	}
+	return logPool, nil
 }
 
 func listener(pool *pgxpool.Pool) jobs.Listener {

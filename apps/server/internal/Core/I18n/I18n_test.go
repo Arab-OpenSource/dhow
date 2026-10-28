@@ -63,6 +63,7 @@ func TestCatalogsCoverTheSameKeys(t *testing.T) {
 		"jobs.logs.loaded",
 		"errors.attemptNotFound",
 		"errors.tooManyStreams",
+		"errors.rateLimited",
 		"errors.totpNotEnabled",
 		"errors.noPasskeys",
 		"errors.passkeyName",

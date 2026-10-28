@@ -8,13 +8,11 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
 )
@@ -25,52 +23,21 @@ const (
 	eventEnd    = "end"
 )
 
-type streamLimiter struct {
-	mu      sync.Mutex
-	max     int
-	perUser int
-	total   int
-	users   map[uuid.UUID]int
-}
-
-func newStreamLimiter(maxStreams, perUser int) *streamLimiter {
-	return &streamLimiter{max: maxStreams, perUser: perUser, users: map[uuid.UUID]int{}}
-}
-
-func (l *streamLimiter) acquire(user uuid.UUID) (func(), error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.total >= l.max || l.users[user] >= l.perUser {
-		return nil, apperrors.TooManyStreams(config.LogStreamRetryAfter)
-	}
-	l.total++
-	l.users[user]++
-	var once sync.Once
-	return func() {
-		once.Do(func() {
-			l.mu.Lock()
-			defer l.mu.Unlock()
-			l.total--
-			if l.users[user]--; l.users[user] <= 0 {
-				delete(l.users, user)
-			}
-		})
-	}, nil
-}
-
-func (l *streamLimiter) open() int {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.total
-}
-
 func (s *Service) OpenLogStreams() int { return s.streams.open() }
+
+type EventRef struct {
+	Attempt int
+	Seq     int64
+}
+
+func (r EventRef) ID() string { return strconv.Itoa(r.Attempt) + ":" + strconv.FormatInt(r.Seq, 10) }
 
 type StreamRequest struct {
 	Organization uuid.UUID
 	Job          uuid.UUID
 	Attempt      *int
-	After        int64
+	FromSeq      int64
+	LastEvent    *EventRef
 	User         uuid.UUID
 	Reauthorize  func(ctx context.Context) error
 }
@@ -80,19 +47,27 @@ type LogStream struct {
 	ctx     context.Context
 	req     StreamRequest
 	attempt sqlc.GetLogAttemptRow
+	after   int64
 	release func()
 }
 
 func (s *Service) OpenLogStream(ctx context.Context, req StreamRequest) (*LogStream, error) {
+	if err := s.openRate.allow(req.User, time.Now()); err != nil {
+		return nil, err
+	}
 	a, err := s.logAttempt(ctx, req.Organization, req.Job, req.Attempt)
 	if err != nil {
 		return nil, err
 	}
-	release, err := s.streams.acquire(req.User)
+	release, err := s.streams.acquire(req.User, req.Organization)
 	if err != nil {
 		return nil, err
 	}
-	return &LogStream{service: s, ctx: ctx, req: req, attempt: a, release: release}, nil
+	after := max(req.FromSeq-1, 0)
+	if req.LastEvent != nil && req.LastEvent.Attempt == int(a.Number) {
+		after = req.LastEvent.Seq
+	}
+	return &LogStream{service: s, ctx: ctx, req: req, attempt: a, after: after, release: release}, nil
 }
 
 type eventWriter struct {
@@ -176,7 +151,7 @@ func (ls *LogStream) Serve(w http.ResponseWriter) error {
 	}
 	tick := time.NewTicker(config.LogStreamTick)
 	defer tick.Stop()
-	last := ls.req.After
+	last := ls.after
 	var sent *models.LogStatus
 	for {
 		done, err := ls.pump(out, &last, &sent)
@@ -214,7 +189,7 @@ func (ls *LogStream) closed(err error) {
 }
 
 func (ls *LogStream) pump(out *eventWriter, last *int64, sent **models.LogStatus) (bool, error) {
-	st, err := ls.service.queries().GetLogAttemptState(ls.ctx, sqlc.GetLogAttemptStateParams{ID: ls.attempt.Id, OrganizationID: ls.req.Organization})
+	st, err := ls.service.attemptState(ls.ctx, ls.req.Organization, ls.attempt.Id)
 	if err != nil {
 		return false, err
 	}
@@ -232,7 +207,7 @@ func (ls *LogStream) pump(out *eventWriter, last *int64, sent **models.LogStatus
 		}
 		for _, c := range chunks {
 			ev := ChunkEvent{Seq: c.Seq, Stream: c.Stream, StepIndex: c.StepIndex, EmittedAt: c.EmittedAt, CreatedAt: c.CreatedAt, Text: c.Text}
-			if err := out.event(eventChunk, strconv.FormatInt(c.Seq, 10), ev); err != nil {
+			if err := out.event(eventChunk, EventRef{Attempt: int(ls.attempt.Number), Seq: c.Seq}.ID(), ev); err != nil {
 				return false, err
 			}
 			*last = c.Seq
