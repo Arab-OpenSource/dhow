@@ -9,7 +9,7 @@ const build = (onSelect = vi.fn()): ISideMenuProps => ({
   brand: <span>Brand</span>,
   items: [
     { id: 'home', icon: 'home', label: 'Home', href: '/', current: true, onSelect },
-    { id: 'projects', icon: 'layers', label: 'Projects', hint: 'Coming soon' },
+    { id: 'projects', icon: 'layers', label: 'Projects', hint: 'Coming soon', badge: 'Soon' },
     { id: 'team', icon: 'users', label: 'Team', href: '/?stack=organization', onSelect },
   ],
   bottom: [{ id: 'settings', icon: 'settings', label: 'Settings', href: '/?stack=appearance', onSelect }],
@@ -79,9 +79,10 @@ describe('SideMenu', () => {
     expect(pending).toHaveAccessibleDescription('Coming soon');
     expect(pending).toHaveClass('cursor-not-allowed', 'text-tertiary');
     expect(pending).not.toHaveClass('hover:bg-hover');
-    const badge = within(pending).getByText('Coming soon');
+    const badge = within(pending).getByText('Soon');
     expect(badge).toHaveAttribute('data-tone', 'mute');
-    expect(badge.parentElement).toHaveClass('max-md:sr-only');
+    expect(badge.parentElement).toHaveAttribute('aria-hidden', 'true');
+    expect(badge.parentElement).toHaveClass('max-md:hidden');
     await user.tab();
     await user.tab();
     expect(pending).toHaveFocus();
@@ -112,6 +113,6 @@ describe('SideMenu', () => {
     renderUi(<SideMenu {...build()} />);
     const nav = screen.getByRole('navigation');
     const names = [...nav.querySelectorAll('a, button')].map((node) => node.textContent);
-    expect(names).toEqual(['Home', 'ProjectsComing soon', 'Team', 'Settings', 'SSabry Dawood']);
+    expect(names).toEqual(['Home', 'ProjectsComing soonSoon', 'Team', 'Settings', 'SSabry Dawood']);
   });
 });

@@ -10,6 +10,7 @@ export const BootAr = {
   'shell.nav.settings': 'الإعدادات',
   'shell.nav.account': 'حسابي',
   'shell.soon': 'قريبًا',
+  'shell.soon.badge': 'قريبًا',
   'shell.skipToContent': 'روح للمحتوى',
   'shell.brand': 'داو',
   'shell.search': 'دوّر على صفحة أو أمر',

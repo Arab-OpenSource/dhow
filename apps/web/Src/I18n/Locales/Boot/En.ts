@@ -12,6 +12,7 @@ export const BootEn: TBootMessages = {
   'shell.nav.settings': 'Settings',
   'shell.nav.account': 'My account',
   'shell.soon': 'Coming soon',
+  'shell.soon.badge': 'Soon',
   'shell.skipToContent': 'Skip to content',
   'shell.brand': 'Dhow',
   'shell.search': 'Search for a page or an action',

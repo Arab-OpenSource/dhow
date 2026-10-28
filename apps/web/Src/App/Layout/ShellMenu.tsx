@@ -23,8 +23,8 @@ export const ShellMenu = () => {
 
   const items: TMenuEntry[] = [
     { id: 'home', icon: 'home', label: t('shell.nav.home'), href: '/', current: stack.length === 0, onSelect: goWorkspace },
-    { id: 'projects', icon: 'layers', label: t('shell.nav.projects'), hint: t('shell.soon') },
-    { id: 'runners', icon: 'server', label: t('shell.nav.runners'), hint: t('shell.soon') },
+    { id: 'projects', icon: 'layers', label: t('shell.nav.projects'), hint: t('shell.soon'), badge: t('shell.soon.badge') },
+    { id: 'runners', icon: 'server', label: t('shell.nav.runners'), hint: t('shell.soon'), badge: t('shell.soon.badge') },
     {
       id: 'team',
       icon: 'users',

@@ -23,6 +23,7 @@ export interface IPendingMenuItem {
   icon: TIconName;
   label: string;
   hint: string;
+  badge: string;
 }
 
 export type TMenuEntry = IMenuItem | IPendingMenuItem;
@@ -98,8 +99,11 @@ const PendingLink = ({ item }: { item: IPendingMenuItem }) => {
         <span id={`${id}-label`} className="opacity-80 max-md:sr-only">
           {item.label}
         </span>
-        <span id={`${id}-hint`} className="ms-auto max-md:sr-only">
-          <Badge tone="mute">{item.hint}</Badge>
+        <span id={`${id}-hint`} className="sr-only">
+          {item.hint}
+        </span>
+        <span aria-hidden="true" className="ms-auto max-md:hidden">
+          <Badge tone="mute">{item.badge}</Badge>
         </span>
       </button>
     </Tooltip>
