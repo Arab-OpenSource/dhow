@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"time"
 
 	"github.com/google/uuid"
@@ -52,6 +53,42 @@ func (s *Service) enterPoll(runner uuid.UUID) (func(), error) {
 	}, nil
 }
 
+type claimBucket struct {
+	tokens float64
+	at     time.Time
+}
+
+func (s *Service) allowClaim(runner uuid.UUID) error {
+	now := time.Now()
+	s.pollMu.Lock()
+	defer s.pollMu.Unlock()
+	b, ok := s.buckets[runner]
+	if !ok {
+		b = claimBucket{tokens: config.JobClaimBurst, at: now}
+	}
+	b.tokens = min(config.JobClaimBurst, b.tokens+now.Sub(b.at).Seconds()/config.JobClaimRefill.Seconds())
+	b.at = now
+	if b.tokens < 1 {
+		s.buckets[runner] = b
+		return exhausted(CodeClaimRateLimited, config.JobClaimRefill)
+	}
+	b.tokens--
+	s.buckets[runner] = b
+	if len(s.buckets) > config.JobClaimTrackedRunners {
+		full := time.Duration(config.JobClaimBurst) * config.JobClaimRefill
+		for id, other := range s.buckets {
+			if now.Sub(other.at) >= full {
+				delete(s.buckets, id)
+			}
+		}
+	}
+	return nil
+}
+
+func fallbackDelay() time.Duration {
+	return config.JobPollFallback/2 + rand.N(config.JobPollFallback) //nolint:gosec // Poll jitter needs no cryptographic randomness.
+}
+
 func (s *Service) Lease(ctx context.Context, freeSlots, waitSeconds int32) (*runnerv1.SignedLeaseGrant, error) {
 	p, err := runnerPrincipal(ctx)
 	if err != nil {
@@ -63,8 +100,16 @@ func (s *Service) Lease(ctx context.Context, freeSlots, waitSeconds int32) (*run
 	if waitSeconds < 0 {
 		return nil, runnerauth.ValidationFailed("WaitSeconds")
 	}
+	if freeSlots == 0 {
+		return nil, nil
+	}
 	wait := min(time.Duration(waitSeconds)*time.Second, config.JobMaxPollWait)
-	canClaim := freeSlots > 0 && !p.Disabled
+	canClaim := !p.Disabled
+	if canClaim {
+		if err := s.allowClaim(p.RunnerID); err != nil {
+			return nil, err
+		}
+	}
 	if wait == 0 {
 		if !canClaim {
 			return nil, nil
@@ -80,7 +125,7 @@ func (s *Service) Lease(ctx context.Context, freeSlots, waitSeconds int32) (*run
 	defer unsubscribe()
 	deadline := time.NewTimer(wait)
 	defer deadline.Stop()
-	fallback := time.NewTicker(config.JobPollFallback)
+	fallback := time.NewTimer(fallbackDelay())
 	defer fallback.Stop()
 	for {
 		if canClaim {
@@ -97,7 +142,9 @@ func (s *Service) Lease(ctx context.Context, freeSlots, waitSeconds int32) (*run
 		case <-s.stop:
 			return nil, nil
 		case <-woken:
+			fallback.Reset(fallbackDelay())
 		case <-fallback.C:
+			fallback.Reset(fallbackDelay())
 		}
 	}
 }

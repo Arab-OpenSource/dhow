@@ -54,6 +54,7 @@ type Service struct {
 	pollMu  sync.Mutex
 	polls   int
 	pollers map[uuid.UUID]struct{}
+	buckets map[uuid.UUID]claimBucket
 
 	stop     chan struct{}
 	stopOnce sync.Once
@@ -70,7 +71,8 @@ func NewService(o Options) *Service {
 	}
 	return &Service{
 		db: o.DB, keys: o.Keys, secrets: secrets, bus: o.Bus, log: o.Log, maxPolls: maxPolls,
-		hub: newHub(o.Listen, o.Log), pollers: map[uuid.UUID]struct{}{}, stop: make(chan struct{}),
+		hub: newHub(o.Listen, o.Log), pollers: map[uuid.UUID]struct{}{}, buckets: map[uuid.UUID]claimBucket{},
+		stop: make(chan struct{}),
 	}
 }
 

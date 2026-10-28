@@ -21,6 +21,7 @@ const (
 	CodeTooManyPolls       = "TOO_MANY_POLLS"
 	CodePollInProgress     = "POLL_IN_PROGRESS"
 	CodeStepNotStarted     = "STEP_NOT_STARTED"
+	CodeClaimRateLimited   = "LEASE_RATE_LIMITED"
 )
 
 var errInvalidTransition = errors.New("state transition is not in the state machine")

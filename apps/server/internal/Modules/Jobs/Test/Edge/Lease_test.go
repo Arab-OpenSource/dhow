@@ -99,3 +99,44 @@ func TestLeaseRequestValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestLeaseWithoutFreeSlotsReturnsAtOnceAndIsNotLimited(t *testing.T) {
+	w := newWorld(t)
+	w.job(t, apptest.SimpleSpec())
+	r := w.runner()
+	for range 10 {
+		begin := time.Now()
+		g, err := r.Lease(context.Background(), 0, 20)
+		require.NoError(t, err)
+		assert.Nil(t, g)
+		assert.Less(t, time.Since(begin), 500*time.Millisecond, "no free slots means no wait")
+	}
+}
+
+func TestLeaseImmediateCallsAreRateLimitedPerRunner(t *testing.T) {
+	w := newWorld(t)
+	r, other := w.runner(), w.runner()
+	for i := range config.JobClaimBurst {
+		g, err := r.Lease(context.Background(), 1, 0)
+		require.NoError(t, err, "call %d is inside the burst", i+1)
+		assert.Nil(t, g)
+	}
+	limited := refusedNow(t, r)
+	assert.Equal(t, connect.CodeResourceExhausted, limited.Code())
+	assert.Equal(t, "LEASE_RATE_LIMITED", limited.Message())
+	assert.Equal(t, "1", limited.Meta().Get("Retry-After"))
+	_, err := other.Lease(context.Background(), 1, 0)
+	require.NoError(t, err, "every runner has its own budget")
+
+	time.Sleep(config.JobClaimRefill + 100*time.Millisecond)
+	_, err = r.Lease(context.Background(), 1, 0)
+	require.NoError(t, err, "the budget refills")
+}
+
+func refusedNow(t *testing.T, r *apptest.TestRunner) *connect.Error {
+	t.Helper()
+	_, err := r.Lease(context.Background(), 1, 0)
+	var ce *connect.Error
+	require.True(t, errors.As(err, &ce), "want a refusal, got %v", err)
+	return ce
+}

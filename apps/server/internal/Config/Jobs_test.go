@@ -16,12 +16,12 @@ func TestRunnerMaxPolls(t *testing.T) {
 		want    int
 		wantErr bool
 	}{
-		{"unset defaults to 2000", "", config.RunnerDefaultMaxPolls, false},
+		{"unset defaults to 25 per database connection", "", 500, false},
 		{"a small instance", "50", 50, false},
-		{"the upper bound", "100000", config.RunnerMaxPollsUpperBound, false},
+		{"the upper bound", "10000", config.RunnerMaxPollsUpperBound, false},
 		{"zero fails closed", "0", 0, true},
 		{"negative fails closed", "-1", 0, true},
-		{"above the bound fails closed", "100001", 0, true},
+		{"above the bound fails closed", "10001", 0, true},
 		{"garbage fails closed", "many", 0, true},
 	}
 	for _, tt := range tests {

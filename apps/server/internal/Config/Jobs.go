@@ -17,7 +17,7 @@ const (
 	JobReconcileInterval     = 5 * time.Second
 	JobReconcileBatch        = 100
 	JobMaxPollWait           = 25 * time.Second
-	JobPollFallback          = 2 * time.Second
+	JobPollFallback          = 5 * time.Second
 	JobPollRetryAfter        = 5 * time.Second
 	JobQueuedChannel         = "dhow_jobs_queued"
 	JobListenRetryMin        = time.Second
@@ -29,9 +29,12 @@ const (
 	JobMaxInfraRetries       = 5
 	JobStartDeadline         = 10 * time.Minute
 	JobLeasedCancelGrace     = time.Minute
+	JobClaimBurst            = 5
+	JobClaimRefill           = time.Second
+	JobClaimTrackedRunners   = 10_000
 	JobMaxQueuedPerOrg       = 1000
-	RunnerDefaultMaxPolls    = 2000
-	RunnerMaxPollsUpperBound = 100_000
+	RunnerDefaultMaxPolls    = DatabaseMaxConns * 25
+	RunnerMaxPollsUpperBound = 10_000
 )
 
 func parseMaxPolls(v string) (int, error) {
