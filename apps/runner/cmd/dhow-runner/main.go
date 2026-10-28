@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	app "github.com/Khaymah/dhow/apps/runner/internal/App"
@@ -13,7 +14,11 @@ import (
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	err := app.Main(ctx, os.Args[1:], app.Env{
+	args := os.Args[1:]
+	if filepath.Base(os.Args[0]) == app.ConnectName {
+		args = append([]string{app.CommandConnect}, args...)
+	}
+	err := app.Main(ctx, args, app.Env{
 		Getenv: config.FromEnv(),
 		Stdio:  app.Stdio{In: os.Stdin, Out: os.Stdout, Err: os.Stderr},
 	})

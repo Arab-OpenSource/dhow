@@ -17,7 +17,7 @@ The runner reads its settings from the environment, usually `/etc/dhow-runner/ru
 | `DHOW_RUNNER_MAX_TIMEOUT` | `6h` | `2h` | The longest `TimeoutSeconds` a job may ask for, from `1m` to `24h`. |
 | `DHOW_RUNNER_DISK_MODE` | `tmpfs` | `tmpfs` | `tmpfs` puts `/workspace` in memory with a hard limit, so memory plus disk must fit the host's memory. `directory` is refused for now: it has no enforced disk limit yet, so one job could fill the runner's disk ([ADR-0056](../../Plan/ADR/0056-sandbox-hardening-after-the-m3-6-review.md)). |
 | `DHOW_RUNNER_CANCEL_GRACE` | `10s` | `30s` | How long a step has between `SIGTERM` and `SIGKILL` when it is canceled or times out, from `1s` to `60s`. |
-| `DHOW_RUNNER_EGRESS_ALLOW_PRIVATE_CIDRS` | none | `10.20.0.0/16,fd00::/8` | Private ranges the egress proxy (M3.7) may reach. Comma separated CIDR prefixes. |
+| `DHOW_RUNNER_EGRESS_ALLOW_PRIVATE_CIDRS` | none | `10.20.0.0/16,fd00::/8` | Private ranges the egress proxy may reach, comma separated, for an internal registry or mirror. A range written here also opens the runner host's own addresses inside it. Cloud metadata addresses (`169.254.169.254`, `169.254.170.2`, `fd00:ec2::254`) stay denied even when a range covers them. A job still reaches these hosts only by a name in its `network.egress` list, never by IP. |
 | `DHOW_RUNNER_ALLOW_UNPINNED_IMAGES` | `false` | `true` | Reserved for the Podman driver (M3.6). Jobs must pin images by digest either way. |
 | `DHOW_RUNNER_RUNSC_PATH` | none | `/usr/local/bin/runsc` | An absolute path to an executable `runsc`. When set with the Podman driver, the runner offers the `gvisor` isolation level (M3.8). |
 | `DHOW_RUNNER_LOG_LEVEL` | `info` | `debug` | `debug`, `info`, `warn` or `error`. |

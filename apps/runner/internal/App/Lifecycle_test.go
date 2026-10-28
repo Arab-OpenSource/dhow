@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	runnertest "github.com/Khaymah/dhow/apps/runner/internal/App/Testing"
+	executor "github.com/Khaymah/dhow/apps/runner/internal/Executor"
 	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
 	fake "github.com/Khaymah/dhow/apps/runner/internal/Sandbox/Fake"
 	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
@@ -252,4 +253,19 @@ func TestTheRunnerEnvironmentNeverReachesAJob(t *testing.T) {
 	for name := range exec.Env {
 		assert.False(t, strings.HasPrefix(name, "DHOW_RUNNER_"), name)
 	}
+}
+
+func TestAJobWithEgressGetsTheProxyVariablesItCannotOverride(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	spec := runnertest.Spec(&runnerv1.Step{Name: "a", Run: "env", Env: map[string]string{"HTTPS_PROXY": "http://attacker.example.com:8080"}})
+	spec.Network = &runnerv1.Network{Egress: []string{"registry.npmjs.org"}}
+	srv.Enqueue(spec, nil)
+	running := r.Start(fake.Recording{}, runnertest.StartOptions{})
+	require.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, running.Next(t, finishWithin).Result)
+	exec := runnertest.WaitEvent(t, running.Driver, fake.EventExec, finishWithin)
+	for _, name := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"} {
+		assert.Equal(t, executor.ProxyURL, exec.Env[name], name)
+	}
+	assert.Equal(t, executor.NoProxy, exec.Env["NO_PROXY"])
 }

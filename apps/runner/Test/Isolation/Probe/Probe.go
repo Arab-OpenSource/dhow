@@ -78,6 +78,10 @@ func run(args []string) int {
 		return marker(argOr(rest, 0, ""), seconds(argOr(rest, 1, "20")))
 	case "hunt":
 		return report(hunt(argOr(rest, 0, "")))
+	case "netnone":
+		return report(networkNone())
+	case "tunnel":
+		return proxyTunnel(argOr(rest, 0, ""))
 	case "alone":
 		return report([]result{alone()})
 	case "forkbomb":

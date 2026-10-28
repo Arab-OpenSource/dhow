@@ -26,13 +26,15 @@ const (
 var ErrChannelClosed = errors.New("the control channel closed, so the agent exits and the container with it")
 
 type Options struct {
-	SocketPath string
-	Stdio      Stdio
-	Dialer     func(ctx context.Context, path string) (io.ReadWriteCloser, error)
-	Harden     func() error
-	Sweep      func() error
-	SecretsDir string
-	Clock      func() time.Time
+	SocketPath   string
+	Stdio        Stdio
+	Dialer       func(ctx context.Context, path string) (io.ReadWriteCloser, error)
+	Harden       func() error
+	Sweep        func() error
+	SecretsDir   string
+	EgressSocket string
+	EgressAddrs  []string
+	Clock        func() time.Time
 }
 
 type Stdio struct {
@@ -64,6 +66,12 @@ func Run(ctx context.Context, o Options) error {
 	if o.SecretsDir == "" {
 		o.SecretsDir = SecretsDir
 	}
+	if o.EgressSocket == "" {
+		o.EgressSocket = EgressSocketPath
+	}
+	if o.EgressAddrs == nil {
+		o.EgressAddrs = egressAddrs()
+	}
 	if o.Sweep == nil {
 		sweep, err := defaultSweep()
 		if err != nil {
@@ -82,6 +90,11 @@ func Run(ctx context.Context, o Options) error {
 	}
 	a := &Agent{conn: wire.NewConn(rwc), harden: o.Harden, sweep: o.Sweep, secretsDir: o.SecretsDir}
 	defer func() { _ = a.conn.Close() }()
+	stopForwarder, err := startForwarder(ctx, o.EgressSocket, o.EgressAddrs)
+	if err != nil {
+		return err
+	}
+	defer stopForwarder()
 	if err := a.conn.Write(hello()); err != nil {
 		return fmt.Errorf("greet the runner: %w", err)
 	}

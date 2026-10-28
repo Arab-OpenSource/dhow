@@ -372,7 +372,7 @@ docker run -d --name dhow-pg -e POSTGRES_USER=dhow -e POSTGRES_PASSWORD=dhow -e 
   - **fuzz:** 60 ثانية من غير crash.
 - **التحقق:**
   - `go test -race -count=1 ./apps/runner/internal/Egress/... ./internal/jobspec/...`
-  - `go test -run '^$' -fuzz FuzzAllowlist -fuzztime 60s ./apps/runner/internal/Egress`
+  - `go test -run '^$' -fuzz FuzzAllowlist -fuzztime 60s ./internal/jobspec` و`go test -run '^$' -fuzz FuzzProxyRequest -fuzztime 60s ./apps/runner/internal/Egress` (الـ parser اتنقل لـ `internal/jobspec`، ADR-0057).
   - `make runner-isolation`.
 
 ### M3.8: gVisor (spike بشروط، وبعده التنفيذ)

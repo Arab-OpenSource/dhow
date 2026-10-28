@@ -29,6 +29,7 @@ type box struct {
 	cgroup   string
 	owned    []string
 	listener net.Listener
+	egress   net.Listener
 
 	mu        sync.Mutex
 	conn      *wire.Conn
@@ -47,8 +48,32 @@ func newBox(ctx context.Context, d *Driver, l layout, spec sandbox.PrepareSpec) 
 		_ = ln.Close()
 		return nil, fmt.Errorf("lock down the control channel: %w", err)
 	}
-	return &box{d: d, name: l.name, spec: spec, socket: socket, owned: []string{l.controlDir, l.workDir}, listener: ln}, nil
+	b := &box{d: d, name: l.name, spec: spec, socket: socket, owned: []string{l.controlDir, l.workDir}, listener: ln}
+	if len(spec.Egress) > 0 {
+		eln, err := listenPrivate(ctx, filepath.Join(l.controlDir, egressSocketName))
+		if err != nil {
+			_ = ln.Close()
+			return nil, fmt.Errorf("open the egress channel: %w", err)
+		}
+		b.egress = eln
+	}
+	return b, nil
 }
+
+func listenPrivate(ctx context.Context, path string) (net.Listener, error) {
+	var lc net.ListenConfig
+	ln, err := lc.Listen(ctx, "unix", path)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.Chmod(path, config.PrivateFileMode); err != nil {
+		_ = ln.Close()
+		return nil, err
+	}
+	return ln, nil
+}
+
+func (b *box) EgressListener() net.Listener { return b.egress }
 
 func (b *box) Start(ctx context.Context) error {
 	b.mu.Lock()
@@ -234,8 +259,10 @@ func (b *box) Destroy(ctx context.Context) error {
 	if conn != nil {
 		_ = conn.Close()
 	}
-	if ln != nil {
-		_ = ln.Close()
+	for _, l := range []net.Listener{ln, b.egress} {
+		if l != nil {
+			_ = l.Close()
+		}
 	}
 	_, err := b.d.runner().run(ctx, "rm", "--force", "--volumes", "--", b.name)
 	if err != nil && !isGone(err) {

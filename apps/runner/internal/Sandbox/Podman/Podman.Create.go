@@ -11,6 +11,7 @@ import (
 const (
 	agentMount    = "/run/dhow/agent"
 	controlMount  = "/run/dhow/control"
+	connectMount  = "/run/dhow/bin/connect"
 	secretsMount  = "/run/dhow/secrets"
 	workspacePath = "/workspace"
 	tmpPath       = "/tmp"
@@ -67,6 +68,7 @@ func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile, imageID string)
 		"--memory-swap=" + strconv.FormatInt(mem, 10),
 		"--pids-limit=" + strconv.FormatInt(r.Pids, 10),
 		"--mount", fmt.Sprintf("type=bind,src=%s,dst=%s,ro=true", l.agentPath, agentMount),
+		"--mount", fmt.Sprintf("type=bind,src=%s,dst=%s,ro=true", l.agentPath, connectMount),
 		"--mount", fmt.Sprintf("type=bind,src=%s,dst=%s,ro=true,U=true", l.controlDir, controlMount),
 		"--mount", diskMount,
 		"--mount", tmpfsMount(tmpPath, r.DiskBytes, "tmpfs-mode=1777,nosuid,nodev"),
