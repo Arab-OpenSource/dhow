@@ -5,7 +5,9 @@ import (
 	"crypto/rand"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -86,4 +88,26 @@ func TestTheRegisterProofVerifies(t *testing.T) {
 	msg := runnersig.RegisterMessage("https://dhow.example.com", keys.SigningPublicKey(), keys.EncryptionPublicKey())
 	assert.True(t, runnersig.Verify(keys.SigningPublicKey(), msg, proof))
 	assert.Len(t, keys.EncryptionPublicKey(), runnersig.EncryptionKeySize)
+}
+
+func TestLoadRefusesASymlinkedStateDirectoryAndSpecialFiles(t *testing.T) {
+	base := t.TempDir()
+	real := filepath.Join(base, "real")
+	require.NoError(t, os.Mkdir(real, 0o700))
+	require.NoError(t, identity.Save(filepath.Join(real, config.IdentityFileName), sample(t)))
+	link := filepath.Join(base, "link")
+	require.NoError(t, os.Symlink(real, link))
+	_, err := identity.Load(filepath.Join(link, config.IdentityFileName))
+	assert.ErrorIs(t, err, config.ErrNotFile, "the state directory itself must not be a symlink")
+
+	fifo := filepath.Join(real, "fifo")
+	require.NoError(t, syscall.Mkfifo(fifo, 0o600))
+	done := make(chan error, 1)
+	go func() { _, err := config.ReadPrivateFile(fifo); done <- err }()
+	select {
+	case err := <-done:
+		assert.ErrorIs(t, err, config.ErrNotFile)
+	case <-time.After(5 * time.Second):
+		t.Fatal("reading a FIFO blocked")
+	}
 }

@@ -3,10 +3,13 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -20,6 +23,7 @@ var (
 	ErrOpenMode     = errors.New("is readable or writable by other users")
 	ErrSharedDir    = errors.New("is writable by other users")
 	ErrWrongOwner   = errors.New("belongs to another user")
+	ErrTooLarge     = errors.New("is too large for a runner state file")
 )
 
 func checkStateDir(dir string) error {
@@ -89,15 +93,57 @@ func EnsurePrivateDir(dir string) error {
 	return checkOwner(dir, info)
 }
 
+const maxStateFile = 1 << 20
+
 func ReadPrivateFile(path string) ([]byte, error) {
-	if err := CheckPrivateFile(path); err != nil {
-		return nil, err
+	dir, name := filepath.Dir(path), filepath.Base(path)
+	dirfd, err := unix.Open(dir, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", dir, openErr(err))
 	}
-	data, err := os.ReadFile(path) //nolint:gosec // The path is the runner's own state file, checked just above.
+	defer func() { _ = unix.Close(dirfd) }()
+	var st unix.Stat_t
+	if err := unix.Fstat(dirfd, &st); err != nil {
+		return nil, fmt.Errorf("read %s: %w", dir, err)
+	}
+	if st.Mode&groupOtherW != 0 {
+		return nil, fmt.Errorf("%s %w (mode %04o)", dir, ErrSharedDir, st.Mode&0o777)
+	}
+	if int(st.Uid) != os.Geteuid() {
+		return nil, fmt.Errorf("%s %w (uid %d)", dir, ErrWrongOwner, st.Uid)
+	}
+	fd, err := unix.Openat(dirfd, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", path, openErr(err))
+	}
+	f := os.NewFile(uintptr(fd), path)
+	defer func() { _ = f.Close() }()
+	if err := unix.Fstat(fd, &st); err != nil {
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	switch {
+	case st.Mode&unix.S_IFMT != unix.S_IFREG:
+		return nil, fmt.Errorf("%s %w", path, ErrNotFile)
+	case st.Mode&groupOtherBits != 0:
+		return nil, fmt.Errorf("%s %w (mode %04o); run chmod 600 %s", path, ErrOpenMode, st.Mode&0o777, path)
+	case int(st.Uid) != os.Geteuid():
+		return nil, fmt.Errorf("%s %w (uid %d)", path, ErrWrongOwner, st.Uid)
+	}
+	data, err := io.ReadAll(io.LimitReader(f, maxStateFile+1))
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
+	if len(data) > maxStateFile {
+		return nil, fmt.Errorf("%s %w", path, ErrTooLarge)
+	}
 	return data, nil
+}
+
+func openErr(err error) error {
+	if errors.Is(err, unix.ELOOP) || errors.Is(err, unix.ENOTDIR) {
+		return errors.Join(ErrNotFile, err)
+	}
+	return err
 }
 
 func WriteFileAtomic(path string, data []byte) error {
