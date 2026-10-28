@@ -257,6 +257,80 @@ class RoutePolicyRules(unittest.TestCase):
         self.assertIsNone(edit(SERVER + "Modules/System/System.Routes.go", src))
 
 
+GOOD_CONNECT_ROUTES = (
+    "package runners\n\n"
+    "func Procedures() []policy.Rule {\n"
+    "\treturn []policy.Rule{policy.Runner(runnerv1connect.AuthServiceChallengeProcedure, policy.RunnerChallenge)}\n"
+    "}\n\n"
+    "func ConnectRoutes(mux *http.ServeMux, d Deps) {\n"
+    "\tgate := d.Gate.RequestGate(policy.NewTable(Procedures()...))\n"
+    "\tmux.Handle(runnerv1connect.NewAuthServiceHandler(handler, gate))\n"
+    "}\n"
+)
+RUNNER_ROUTES = SERVER + "Modules/Runners/Runners.Routes.go"
+
+
+class RunnerPlaneRules(unittest.TestCase):
+    def test_connect_mount_with_policies_and_gate_allowed(self):
+        self.assertIsNone(edit(RUNNER_ROUTES, GOOD_CONNECT_ROUTES))
+        self.assertIsNone(edit(SERVER + "Modules/Jobs/Jobs.Routes.go", GOOD_CONNECT_ROUTES.replace("package runners", "package jobs")))
+
+    def test_policy_runner_counts_as_a_declared_policy(self):
+        src = GOOD_ROUTES.replace(
+            'policy.Organization(http.MethodGet, "/organizations/{id}/audit-events", policy.AuditRead, "id")',
+            "policy.Runner(\"/dhow.runner.v1.AuthService/Challenge\", policy.RunnerChallenge)")
+        self.assertIsNone(edit(ROUTES, src))
+
+    def test_connect_mount_outside_the_runner_modules_blocked(self):
+        for rel in (SERVER + "Modules/Audit/Audit.Routes.go", SERVER + "Modules/Runners/Runners.Service.go",
+                    SERVER + "App/App.go", SERVER + "Core/RunnerAuth/Gate.go"):
+            self.assertIn("mounted only in", edit(rel, GOOD_CONNECT_ROUTES), rel)
+
+    def test_connect_mount_without_procedure_rules_blocked(self):
+        src = GOOD_CONNECT_ROUTES.replace("policy.Runner(", "other.Runner(")
+        self.assertIn("needs a declared policy", edit(RUNNER_ROUTES, src))
+
+    def test_connect_mount_without_a_table_blocked(self):
+        src = GOOD_CONNECT_ROUTES.replace("policy.NewTable(Procedures()...)", "nil")
+        self.assertIn("needs a declared policy", edit(RUNNER_ROUTES, src))
+
+    def test_connect_mount_without_the_gate_blocked(self):
+        src = GOOD_CONNECT_ROUTES.replace("d.Gate.RequestGate(policy.NewTable(Procedures()...))",
+                                          "connect.WithReadMaxBytes(1)\n\t_ = policy.NewTable(Procedures()...)")
+        self.assertIn("needs a declared policy", edit(RUNNER_ROUTES, src))
+
+    def test_connect_mount_checks_the_whole_file_on_partial_edits(self):
+        after = GOOD_CONNECT_ROUTES.replace("d.Gate.RequestGate(policy.NewTable(Procedures()...))", "nil")
+        self.assertIn("needs a declared policy", edit(RUNNER_ROUTES, "nil", old="x", exists=True, final=after))
+
+    def test_hand_registered_connect_paths_blocked(self):
+        src = GOOD_CONNECT_ROUTES + '\nfunc More(mux *http.ServeMux) {\n\tmux.Handle("/dhow.runner.v1.AuthService/", h)\n}\n'
+        self.assertIn("do not register routes by hand", edit(RUNNER_ROUTES, src))
+
+    def test_tests_and_test_folders_may_build_handlers(self):
+        self.assertIsNone(edit(SERVER + "Modules/Runners/Test/E2E/Gate_test.go", GOOD_CONNECT_ROUTES))
+        self.assertIsNone(edit(SERVER + "Core/RunnerAuth/Gate_test.go", GOOD_CONNECT_ROUTES))
+
+    def test_only_app_runners_and_jobs_import_runner_auth(self):
+        for path in ("App/App.go", "App/Wire.go", "Modules/Runners/Runners.Service.go", "Modules/Jobs/Jobs.Lease.go",
+                     "Core/RunnerAuth/Keys.go"):
+            self.assertIsNone(edit(SERVER + path, imp("Core/RunnerAuth")), path)
+        for path in ("Modules/Session/Session.Service.go", "Modules/Audit/Audit.Service.go", "Core/Response/Response.Helper.go",
+                     "Core/Middleware/AccessLog.go"):
+            self.assertIn("only App, Modules/Runners and Modules/Jobs import Core/RunnerAuth", edit(SERVER + path, imp("Core/RunnerAuth")), path)
+
+    def test_browser_and_runner_auth_never_import_each_other(self):
+        self.assertIn("separate planes", edit(SERVER + "Core/RunnerAuth/Gate.go", imp("Core/Auth")))
+        self.assertIn("separate planes", edit(SERVER + "Core/Auth/Guard.go", imp("Core/RunnerAuth")))
+        self.assertIsNone(edit(SERVER + "Core/RunnerAuth/Gate.go", imp("Core/Middleware")))
+
+    def test_the_real_runner_routes_file_passes(self):
+        path = os.path.join(os.path.dirname(HOOKS), "..", RUNNER_ROUTES)
+        with open(path, encoding="utf-8") as fh:
+            content = fh.read()
+        self.assertIsNone(edit(RUNNER_ROUTES, content))
+
+
 class ServerImportRules(unittest.TestCase):
     def test_module_cannot_import_another_module(self):
         r = edit(SERVER + "Modules/Billing/Billing.Service.go", imp("Modules/System/Models"))
