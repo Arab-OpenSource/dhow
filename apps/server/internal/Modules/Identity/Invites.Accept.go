@@ -69,6 +69,19 @@ func (s *Service) claim(ctx context.Context, q *sqlc.Queries, token string) (sql
 	if !ok {
 		return sqlc.LockUsableInvitationRow{}, apperrors.InvitationInvalid()
 	}
+	found, err := q.FindUsableInvitation(ctx, sqlc.FindUsableInvitationParams{TokenHash: hash, Now: s.now()})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return sqlc.LockUsableInvitationRow{}, apperrors.InvitationInvalid()
+	}
+	if err != nil {
+		return sqlc.LockUsableInvitationRow{}, err
+	}
+	if err := lockOrganization(ctx, q, found.OrganizationId); err != nil {
+		if isNotFound(err) {
+			return sqlc.LockUsableInvitationRow{}, apperrors.InvitationInvalid()
+		}
+		return sqlc.LockUsableInvitationRow{}, err
+	}
 	row, err := q.LockUsableInvitation(ctx, sqlc.LockUsableInvitationParams{TokenHash: hash, Now: s.now()})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return row, apperrors.InvitationInvalid()
