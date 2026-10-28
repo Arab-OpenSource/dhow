@@ -235,3 +235,29 @@ func TestTimingTheMethodNoticesOneExtraMillisecond(t *testing.T) {
 	require.False(t, within(got["one millisecond slower"].p50, got["plain"].p50, medianTolerance),
 		"the tolerance %v is too loose to notice a 1ms leak: %v against %v", medianTolerance, got["one millisecond slower"].p50, got["plain"].p50)
 }
+
+func TestTimingTheMethodNoticesASignInThatIsSlowerThanTheTolerance(t *testing.T) {
+	params := auth.DefaultParams()
+	env := apptest.NewWithOptions(t, apptest.Options{Params: &params, Profile: unlimited})
+	require.Equal(t, http.StatusOK, env.Setup(apptest.DefaultSetup()).Status)
+	login := func(round, client int) apptest.Response {
+		return env.Do(apptest.Request{
+			Method: http.MethodPost, Path: "/sessions", RemoteAddr: clientAddress(round, client),
+			Headers: map[string]string{"Origin": apptest.PublicOrigin},
+			Body:    map[string]string{"Email": "nobody@example.com", "Password": "a wrong password here"},
+		})
+	}
+	const extra = 6 * time.Millisecond
+	got := measure(t, func(int) { env.Clock.Advance(config.ThrottleResetAfter + config.ThrottleMaxLock) },
+		probe{name: "plain", status: http.StatusUnauthorized, code: "INVALID_CREDENTIALS", send: func(round int) apptest.Response { return login(round, 0) }},
+		probe{name: "slower", status: http.StatusUnauthorized, code: "INVALID_CREDENTIALS", send: func(round int) apptest.Response {
+			res := login(round, 1)
+			time.Sleep(extra)
+			return res
+		}},
+	)
+	plain, slower := got["plain"].p50, got["slower"].p50
+	t.Logf("sign-in median %v, with %v more %v, tolerance %v", plain, extra, slower, max(time.Duration(medianTolerance.relative*float64(plain)), medianTolerance.absolute))
+	require.Less(t, time.Duration(medianTolerance.relative*float64(plain)), extra, "the sign-in path is slower than this control assumes")
+	require.False(t, within(slower, plain, medianTolerance), "a sign-in %v slower must be noticed: %v against %v", extra, slower, plain)
+}
