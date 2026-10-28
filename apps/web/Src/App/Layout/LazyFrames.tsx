@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { checkOf, isThemeEditFrame, memberOf, teamOf, type TFrameId } from '@/App/Panels';
+import { auditEventOf, checkOf, isThemeEditFrame, memberOf, teamOf, type TFrameId } from '@/App/Panels';
 import { lazyComponent, type IPreloadable, type TLazyComponent } from '@/Core/Ui/LazyComponent';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
@@ -15,7 +15,10 @@ type TFramePart =
   | 'account-totp'
   | 'account-token-new'
   | 'audit'
+  | 'audit-event'
   | 'organization'
+  | 'organization-tokens'
+  | 'organization-token-new'
   | 'organizations'
   | 'organization-new'
   | 'organization-invite'
@@ -79,6 +82,15 @@ const AuditFooter = lazyComponent(() =>
   import('@/Modules/Audit/Components/AuditFooter').then((module) => module.AuditFooter),
 );
 
+const AuditEventBody = lazyComponent(() =>
+  import('@/Modules/Audit/Components/AuditEventBody').then((module) => module.AuditEventBody),
+);
+
+const organizationTokens = () => import('@/Modules/Tokens/Components/OrganizationTokensBody');
+const OrganizationTokensBody = lazyComponent(() => organizationTokens().then((module) => module.OrganizationTokensBody));
+const OrganizationTokensFooter = lazyComponent(() => organizationTokens().then((module) => module.OrganizationTokensFooter));
+const OrganizationTokenNewBody = lazyComponent(() => organizationTokens().then((module) => module.OrganizationTokenNewBody));
+
 const organizationSlide = () => import('@/Modules/Organization/Components/OrganizationSlide');
 const OrganizationSlide = lazyComponent(() => organizationSlide().then((module) => module.OrganizationSlide));
 const OrganizationSubtitle = lazyComponent(() => organizationSlide().then((module) => module.OrganizationSubtitle));
@@ -110,6 +122,9 @@ const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   'account-totp': [TotpBody, TotpFooter],
   'account-token-new': [TokenNewBody],
   audit: [AuditBody, AuditFooter],
+  'audit-event': [AuditEventBody],
+  'organization-tokens': [OrganizationTokensBody, OrganizationTokensFooter],
+  'organization-token-new': [OrganizationTokenNewBody],
   organization: [OrganizationSlide, OrganizationSubtitle, OrganizationFooter],
   organizations: [OrganizationsBody],
   'organization-new': [OrganizationNewBody],
@@ -127,6 +142,7 @@ const partOf = (id: TFrameId): TFramePart | null => {
   if (isThemeEditFrame(id)) return 'theme-edit';
   if (memberOf(id)) return 'member';
   if (teamOf(id)) return 'team';
+  if (auditEventOf(id)) return 'audit-event';
   return isPart(id) ? id : null;
 };
 
@@ -188,6 +204,10 @@ export const LazyTokenNewBody = withSkeleton(TokenNewBody);
 
 export const LazyAuditBody = withSkeleton(AuditBody);
 export const LazyAuditFooter = withNothing(AuditFooter);
+export const LazyAuditEventBody = withSkeleton(AuditEventBody);
+export const LazyOrganizationTokensBody = withSkeleton(OrganizationTokensBody);
+export const LazyOrganizationTokensFooter = withNothing(OrganizationTokensFooter);
+export const LazyOrganizationTokenNewBody = withSkeleton(OrganizationTokenNewBody);
 
 export const LazyOrganizationSlide = withSkeleton(OrganizationSlide);
 export const LazyOrganizationSubtitle = withNothing(OrganizationSubtitle);

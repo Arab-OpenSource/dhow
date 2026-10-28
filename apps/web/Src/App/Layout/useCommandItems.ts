@@ -1,5 +1,5 @@
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
-import { canManageMembers, canReadAudit } from '@/Core/Auth/AuthTypes';
+import { canManageMembers, canManageTokens, canReadAudit } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useSignOut } from '@/Core/Auth/useSignOut';
 import type { ICommandItem } from '@/Core/Ui/CommandPalette';
@@ -34,6 +34,9 @@ export const useCommandItems = (): ICommands => {
     ...(canReadAudit(role)
       ? [{ id: 'audit', icon: 'file' as const, label: t('palette.command.audit'), kind: t('palette.kind.panel') }]
       : []),
+    ...(canManageTokens(role)
+      ? [{ id: 'organization-tokens', icon: 'key' as const, label: t('palette.command.organizationTokens'), kind: t('palette.kind.panel') }]
+      : []),
     { id: 'sign-out', icon: 'out', label: t('palette.command.signOut'), kind: t('palette.kind.action') },
     {
       id: 'language',
@@ -53,6 +56,7 @@ export const useCommandItems = (): ICommands => {
     else if (item.id === 'organizations') openStack(['organizations']);
     else if (item.id === 'invite') openStack(['organization', 'organization-invite']);
     else if (item.id === 'audit') openStack(['audit']);
+    else if (item.id === 'organization-tokens') openStack(['organization', 'organization-tokens']);
     else if (item.id === 'password') openStack(['account', 'account-password']);
     else if (item.id === 'sign-out') void SignOut();
     else if (item.id === 'language') SetLocale(target);

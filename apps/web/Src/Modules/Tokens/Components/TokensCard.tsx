@@ -5,6 +5,7 @@ import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Rows } from '@/Core/Ui/Row';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
+import { RevokeConfirm } from '@/Modules/Tokens/Components/RevokeConfirm';
 import { TokenRow } from '@/Modules/Tokens/Components/TokenRow';
 import { useMyTokens, useTokenRevoke } from '@/Modules/Tokens/Hooks/useTokens';
 
@@ -43,25 +44,14 @@ export const TokensCard = ({ onNew }: ITokensCardProps) => {
             }}
           />,
           revoke.Open === token.Id ? (
-            <li key={`${token.Id}-revoke`} className="grid gap-3 px-4 pb-4">
-              <p className="m-0 text-body-sm text-secondary">{t('tokens.revoke.question')}</p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="danger"
-                  iconStart="trash"
-                  disabled={revoke.Busy}
-                  onClick={() => {
-                    revoke.Confirm(token);
-                  }}
-                >
-                  {t('tokens.revoke.confirm')}
-                </Button>
-                <Button size="sm" variant="ghost" disabled={revoke.Busy} onClick={revoke.Cancel}>
-                  {t('mfa.cancel')}
-                </Button>
-              </div>
-            </li>
+            <RevokeConfirm
+              key={`${token.Id}-revoke`}
+              busy={revoke.Busy}
+              onConfirm={() => {
+                revoke.Confirm(token);
+              }}
+              onCancel={revoke.Cancel}
+            />
           ) : null,
         ])}
       </Rows>

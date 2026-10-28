@@ -3,6 +3,7 @@ import {
   LazyAccountFooter,
   LazyAccountSlide,
   LazyAuditBody,
+  LazyAuditEventBody,
   LazyAuditFooter,
   LazyAccountSubtitle,
   LazyMfaSection,
@@ -13,7 +14,7 @@ import {
   LazyTotpBody,
   LazyTotpFooter,
 } from '@/App/Layout/LazyFrames';
-import type { TFrameId } from '@/App/Panels';
+import { auditEventFrame, auditEventOf, type TFrameId } from '@/App/Panels';
 import { canReadAudit } from '@/Core/Auth/AuthTypes';
 import type { ISlide } from '@/Core/Ui/SlideStack';
 
@@ -81,8 +82,23 @@ export const buildIdentitySlide = (id: TFrameId, { t, navigation, role }: IFrame
       id,
       title: t('audit.title'),
       subtitle: <span>{t('audit.subtitle')}</span>,
-      children: <LazyAuditBody />,
+      children: (
+        <LazyAuditBody
+          onOpenEvent={(eventId) => {
+            navigation.pushFrame(auditEventFrame(eventId));
+          }}
+        />
+      ),
       footer: canReadAudit(role) ? <LazyAuditFooter /> : undefined,
+    };
+  }
+  const event = auditEventOf(id);
+  if (event) {
+    return {
+      id,
+      title: t('audit.detail.title'),
+      subtitle: <span>{t('audit.detail.subtitle')}</span>,
+      children: <LazyAuditEventBody eventId={event} />,
     };
   }
   return null;

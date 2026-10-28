@@ -20,6 +20,7 @@ const AUDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const ORGANIZATION_EDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const MEMBER_READ_ROLES: readonly TRole[] = ['owner', 'admin', 'maintainer', 'developer'];
 const MEMBER_MANAGE_ROLES: readonly TRole[] = ['owner', 'admin'];
+const TOKEN_MANAGE_ROLES: readonly TRole[] = ['owner', 'admin'];
 
 export const canReadAudit = (role: TRole | undefined): boolean => role !== undefined && AUDIT_ROLES.includes(role);
 
@@ -30,6 +31,8 @@ export const canReadMembers = (role: TRole | undefined): boolean => role !== und
 
 export const canManageMembers = (role: TRole | undefined): boolean =>
   role !== undefined && MEMBER_MANAGE_ROLES.includes(role);
+
+export const canManageTokens = (role: TRole | undefined): boolean => role !== undefined && TOKEN_MANAGE_ROLES.includes(role);
 
 export const rankOf = (role: TRole | undefined): number => (role === undefined ? 0 : ROLES.length - ROLES.indexOf(role));
 

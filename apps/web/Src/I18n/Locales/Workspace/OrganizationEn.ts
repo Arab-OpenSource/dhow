@@ -1,3 +1,4 @@
+import { AdminEn } from '@/I18n/Locales/Workspace/AdminEn';
 import type { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
 
 export const OrganizationEn: Record<keyof typeof OrganizationAr, string> = {
@@ -189,4 +190,5 @@ export const OrganizationEn: Record<keyof typeof OrganizationAr, string> = {
   'audit.action.identity.invitation.accepted': 'Invitation accepted',
   'team.error.name': 'Enter the team name.',
   'team.error.description': 'The description is longer than 500 characters.',
+  ...AdminEn,
 };

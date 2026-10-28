@@ -7,15 +7,17 @@ import { actionIcon, actionKey } from '@/Modules/Audit/Types/AuditActions';
 export interface IAuditEventRowProps {
   event: TAuditEvent;
   actor: string;
+  onOpen?: () => void;
 }
 
-export const AuditEventRow = ({ event, actor }: IAuditEventRowProps) => {
+export const AuditEventRow = ({ event, actor, onOpen }: IAuditEventRowProps) => {
   const t = useT();
   const time = useRelativeTime();
   const key = actionKey(event.Action);
 
   return (
     <Row
+      onSelect={onOpen}
       icon={actionIcon(event.Action)}
       title={key === null ? <bdi dir="ltr" className="font-mono">{event.Action}</bdi> : t(key)}
       sub={
