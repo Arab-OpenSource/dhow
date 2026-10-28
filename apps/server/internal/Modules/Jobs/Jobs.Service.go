@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -33,13 +34,15 @@ type Publisher interface {
 type Listener func(ctx context.Context) (*pgx.Conn, error)
 
 type Options struct {
-	DB       DB
-	Keys     *runnerauth.Keys
-	Secrets  SecretResolver
-	Bus      Publisher
-	Listen   Listener
-	MaxPolls int
-	Log      *slog.Logger
+	DB              DB
+	Keys            *runnerauth.Keys
+	Secrets         SecretResolver
+	Bus             Publisher
+	Listen          Listener
+	MaxPolls        int
+	Logs            config.Logs
+	StreamWriteWait time.Duration
+	Log             *slog.Logger
 }
 
 type Service struct {
@@ -50,6 +53,9 @@ type Service struct {
 	log      *slog.Logger
 	hub      *hub
 	maxPolls int
+	logs     config.Logs
+	streams  *streamLimiter
+	wait     time.Duration
 
 	pollMu  sync.Mutex
 	polls   int
@@ -69,11 +75,24 @@ func NewService(o Options) *Service {
 	if maxPolls <= 0 {
 		maxPolls = config.RunnerDefaultMaxPolls
 	}
+	logs := o.Logs
+	if logs == (config.Logs{}) {
+		logs = config.DefaultLogs()
+	}
+	wait := o.StreamWriteWait
+	if wait <= 0 {
+		wait = config.LogStreamWriteWait
+	}
 	return &Service{
-		db: o.DB, keys: o.Keys, secrets: secrets, bus: o.Bus, log: o.Log, maxPolls: maxPolls,
-		hub: newHub(o.Listen, o.Log), pollers: map[uuid.UUID]struct{}{}, buckets: map[uuid.UUID]claimBucket{},
+		db: o.DB, keys: o.Keys, secrets: secrets, bus: o.Bus, log: o.Log, maxPolls: maxPolls, logs: logs, wait: wait,
+		streams: newStreamLimiter(logs.MaxStreams, config.LogStreamsPerUser),
+		hub:     newHub(o.Listen, o.Log), pollers: map[uuid.UUID]struct{}{}, buckets: map[uuid.UUID]claimBucket{},
 		stop: make(chan struct{}),
 	}
+}
+
+func (s *Service) inTx(ctx context.Context, fn func(q *sqlc.Queries) error) error {
+	return dbtx.Run(ctx, s.db, fn)
 }
 
 func (s *Service) Drain() { s.stopOnce.Do(func() { close(s.stop) }) }

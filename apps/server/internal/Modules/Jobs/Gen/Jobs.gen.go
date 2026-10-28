@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -62,6 +63,27 @@ func (e JobIsolation) Valid() bool {
 	case Container:
 		return true
 	case Gvisor:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobLogStream.
+const (
+	Stderr JobLogStream = "stderr"
+	Stdout JobLogStream = "stdout"
+	System JobLogStream = "system"
+)
+
+// Valid indicates whether the value is a known member of the JobLogStream enum.
+func (e JobLogStream) Valid() bool {
+	switch e {
+	case Stderr:
+		return true
+	case Stdout:
+		return true
+	case System:
 		return true
 	default:
 		return false
@@ -293,6 +315,53 @@ type JobListResponse struct {
 	Success bool      `json:"Success"`
 }
 
+// JobLogChunk defines model for JobLogChunk.
+type JobLogChunk struct {
+	CreatedAt time.Time `json:"CreatedAt"`
+
+	// EmittedAt The runner's clock, for display only.
+	EmittedAt *time.Time   `json:"EmittedAt,omitempty"`
+	Seq       int64        `json:"Seq"`
+	StepIndex *int         `json:"StepIndex,omitempty"`
+	Stream    JobLogStream `json:"Stream"`
+
+	// Text The bytes as UTF-8 with invalid bytes replaced by U+FFFD. Render it as text, never as HTML, each line with `dir="auto"`.
+	Text string `json:"Text"`
+}
+
+// JobLogPage defines model for JobLogPage.
+type JobLogPage struct {
+	Attempt   int                `json:"Attempt"`
+	AttemptId openapi_types.UUID `json:"AttemptId"`
+	Chunks    []JobLogChunk      `json:"Chunks"`
+
+	// LastSeq The highest sequence number the attempt has reached so far.
+	LastSeq int64 `json:"LastSeq"`
+
+	// NextSeq Pass it as `FromSeq` to read on. Absent when this page reached the end so far.
+	NextSeq *int64          `json:"NextSeq,omitempty"`
+	State   JobAttemptState `json:"State"`
+
+	// Truncated The log reached `DHOW_JOB_LOG_MAX_BYTES` and later output was dropped.
+	Truncated bool `json:"Truncated"`
+}
+
+// JobLogPageResponse defines model for JobLogPageResponse.
+type JobLogPageResponse struct {
+	Data  *JobLogPage  `json:"Data,omitempty"`
+	Error *ErrorDetail `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// JobLogStream defines model for JobLogStream.
+type JobLogStream string
+
 // JobNetwork defines model for JobNetwork.
 type JobNetwork struct {
 	// Egress Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`. IP literals are refused.
@@ -393,8 +462,20 @@ type JobId = openapi_types.UUID
 // JobStateFilter defines model for JobStateFilter.
 type JobStateFilter = JobState
 
+// LastEventId defines model for LastEventId.
+type LastEventId = int64
+
 // Limit defines model for Limit.
 type Limit = int
+
+// LogAttempt defines model for LogAttempt.
+type LogAttempt = int
+
+// LogFromSeq defines model for LogFromSeq.
+type LogFromSeq = int64
+
+// LogLimit defines model for LogLimit.
+type LogLimit = int
 
 // Page defines model for Page.
 type Page = int
@@ -407,6 +488,28 @@ type ListJobsParams struct {
 	Page  *Page           `form:"Page,omitempty" json:"Page,omitempty"`
 	Limit *Limit          `form:"Limit,omitempty" json:"Limit,omitempty"`
 	State *JobStateFilter `form:"State,omitempty" json:"State,omitempty"`
+}
+
+// GetJobLogsParams defines parameters for GetJobLogs.
+type GetJobLogsParams struct {
+	// Attempt The attempt number. Without it, the latest attempt.
+	Attempt *LogAttempt `form:"Attempt,omitempty" json:"Attempt,omitempty"`
+
+	// FromSeq The first chunk to return.
+	FromSeq *LogFromSeq `form:"FromSeq,omitempty" json:"FromSeq,omitempty"`
+	Limit   *LogLimit   `form:"Limit,omitempty" json:"Limit,omitempty"`
+}
+
+// StreamJobLogsParams defines parameters for StreamJobLogs.
+type StreamJobLogsParams struct {
+	// Attempt The attempt number. Without it, the latest attempt.
+	Attempt *LogAttempt `form:"Attempt,omitempty" json:"Attempt,omitempty"`
+
+	// FromSeq The first chunk to return.
+	FromSeq *LogFromSeq `form:"FromSeq,omitempty" json:"FromSeq,omitempty"`
+
+	// LastEventID The `Seq` of the last chunk the client received. The stream resumes after it and ignores `FromSeq`.
+	LastEventID *LastEventId `json:"Last-Event-ID,omitempty"`
 }
 
 // CreateJobJSONRequestBody defines body for CreateJob for application/json ContentType.
@@ -426,6 +529,12 @@ type ServerInterface interface {
 	// CancelJob Cancel a job
 	// (POST /organizations/{id}/jobs/{jobId}/cancel)
 	CancelJob(w http.ResponseWriter, r *http.Request, id Id, jobId JobId)
+	// GetJobLogs Read a page of the log of a job attempt
+	// (GET /organizations/{id}/jobs/{jobId}/logs)
+	GetJobLogs(w http.ResponseWriter, r *http.Request, id Id, jobId JobId, params GetJobLogsParams)
+	// StreamJobLogs Follow the log of a job attempt as server-sent events
+	// (GET /organizations/{id}/jobs/{jobId}/logs/stream)
+	StreamJobLogs(w http.ResponseWriter, r *http.Request, id Id, jobId JobId, params StreamJobLogsParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -453,6 +562,18 @@ func (_ Unimplemented) GetJob(w http.ResponseWriter, r *http.Request, id Id, job
 // CancelJob Cancel a job
 // (POST /organizations/{id}/jobs/{jobId}/cancel)
 func (_ Unimplemented) CancelJob(w http.ResponseWriter, r *http.Request, id Id, jobId JobId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetJobLogs Read a page of the log of a job attempt
+// (GET /organizations/{id}/jobs/{jobId}/logs)
+func (_ Unimplemented) GetJobLogs(w http.ResponseWriter, r *http.Request, id Id, jobId JobId, params GetJobLogsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// StreamJobLogs Follow the log of a job attempt as server-sent events
+// (GET /organizations/{id}/jobs/{jobId}/logs/stream)
+func (_ Unimplemented) StreamJobLogs(w http.ResponseWriter, r *http.Request, id Id, jobId JobId, params StreamJobLogsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -629,6 +750,168 @@ func (siw *ServerInterfaceWrapper) CancelJob(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// GetJobLogs operation middleware
+func (siw *ServerInterfaceWrapper) GetJobLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "jobId" -------------
+	var jobId JobId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "jobId", chi.URLParam(r, "jobId"), &jobId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "jobId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetJobLogsParams
+
+	// ------------- Optional query parameter "Attempt" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "Attempt", r.URL.Query(), &params.Attempt, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "Attempt"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Attempt", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "FromSeq" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "FromSeq", r.URL.Query(), &params.FromSeq, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "FromSeq"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "FromSeq", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "Limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "Limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "Limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetJobLogs(w, r, id, jobId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StreamJobLogs operation middleware
+func (siw *ServerInterfaceWrapper) StreamJobLogs(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "jobId" -------------
+	var jobId JobId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "jobId", chi.URLParam(r, "jobId"), &jobId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "jobId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params StreamJobLogsParams
+
+	// ------------- Optional query parameter "Attempt" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "Attempt", r.URL.Query(), &params.Attempt, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "Attempt"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Attempt", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "FromSeq" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "FromSeq", r.URL.Query(), &params.FromSeq, runtime.BindQueryParameterOptions{Type: "integer", Format: "int64"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "FromSeq"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "FromSeq", Err: err})
+		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "Last-Event-ID" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Last-Event-ID")]; found {
+		var LastEventID LastEventId
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Last-Event-ID", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Last-Event-ID", valueList[0], &LastEventID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false, Type: "integer", Format: "int64"})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Last-Event-ID", Err: err})
+			return
+		}
+
+		params.LastEventID = &LastEventID
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StreamJobLogs(w, r, id, jobId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -753,6 +1036,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/organizations/{id}/jobs/{jobId}/cancel", wrapper.CancelJob)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/organizations/{id}/jobs/{jobId}/logs", wrapper.GetJobLogs)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/organizations/{id}/jobs/{jobId}/logs/stream", wrapper.StreamJobLogs)
 	})
 
 	return r
@@ -920,6 +1209,117 @@ func (response CancelJobdefaultJSONResponse) VisitCancelJobResponse(w http.Respo
 	return err
 }
 
+type GetJobLogsRequestObject struct {
+	Id     Id    `json:"id"`
+	JobId  JobId `json:"jobId"`
+	Params GetJobLogsParams
+}
+
+type GetJobLogsResponseObject interface {
+	VisitGetJobLogsResponse(w http.ResponseWriter) error
+}
+
+type GetJobLogs200JSONResponse JobLogPageResponse
+
+func (response GetJobLogs200JSONResponse) VisitGetJobLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetJobLogsdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response GetJobLogsdefaultJSONResponse) VisitGetJobLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StreamJobLogsRequestObject struct {
+	Id     Id    `json:"id"`
+	JobId  JobId `json:"jobId"`
+	Params StreamJobLogsParams
+}
+
+type StreamJobLogsResponseObject interface {
+	VisitStreamJobLogsResponse(w http.ResponseWriter) error
+}
+
+type StreamJobLogs200TexteventStreamResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response StreamJobLogs200TexteventStreamResponse) VisitStreamJobLogsResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		// If w doesn't support flushing, fall back to io.Copy.
+		_, err := io.Copy(w, response.Body)
+		return err
+	}
+	// text/event-stream messages are typically small; use a
+	// modest buffer and flush after each chunk so clients see
+	// events immediately instead of waiting on OS buffering.
+	buf := make([]byte, 4096)
+	for {
+		n, err := response.Body.Read(buf)
+		if n > 0 {
+			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+				return writeErr
+			}
+			flusher.Flush()
+		}
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+	}
+}
+
+type StreamJobLogsdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response StreamJobLogsdefaultJSONResponse) VisitStreamJobLogsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// ListJobs List the jobs of an organization
@@ -934,6 +1334,12 @@ type StrictServerInterface interface {
 	// CancelJob Cancel a job
 	// (POST /organizations/{id}/jobs/{jobId}/cancel)
 	CancelJob(ctx context.Context, request CancelJobRequestObject) (CancelJobResponseObject, error)
+	// GetJobLogs Read a page of the log of a job attempt
+	// (GET /organizations/{id}/jobs/{jobId}/logs)
+	GetJobLogs(ctx context.Context, request GetJobLogsRequestObject) (GetJobLogsResponseObject, error)
+	// StreamJobLogs Follow the log of a job attempt as server-sent events
+	// (GET /organizations/{id}/jobs/{jobId}/logs/stream)
+	StreamJobLogs(ctx context.Context, request StreamJobLogsRequestObject) (StreamJobLogsResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -1082,6 +1488,62 @@ func (sh *strictHandler) CancelJob(w http.ResponseWriter, r *http.Request, id Id
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CancelJobResponseObject); ok {
 		if err := validResponse.VisitCancelJobResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetJobLogs operation middleware
+func (sh *strictHandler) GetJobLogs(w http.ResponseWriter, r *http.Request, id Id, jobId JobId, params GetJobLogsParams) {
+	var request GetJobLogsRequestObject
+
+	request.Id = id
+	request.JobId = jobId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetJobLogs(ctx, request.(GetJobLogsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetJobLogs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetJobLogsResponseObject); ok {
+		if err := validResponse.VisitGetJobLogsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// StreamJobLogs operation middleware
+func (sh *strictHandler) StreamJobLogs(w http.ResponseWriter, r *http.Request, id Id, jobId JobId, params StreamJobLogsParams) {
+	var request StreamJobLogsRequestObject
+
+	request.Id = id
+	request.JobId = jobId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.StreamJobLogs(ctx, request.(StreamJobLogsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "StreamJobLogs")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(StreamJobLogsResponseObject); ok {
+		if err := validResponse.VisitStreamJobLogsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

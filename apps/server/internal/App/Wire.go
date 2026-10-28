@@ -24,6 +24,7 @@ import (
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
+	systemmodels "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Models"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
 
@@ -39,6 +40,8 @@ type Infra struct {
 	Now        func() time.Time
 	Web        http.Handler
 	Mailer     mailer.Sender
+
+	LogStreamWriteWait time.Duration
 }
 
 type Wired struct {
@@ -108,7 +111,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	gate := runnerauth.NewGate(runnerauth.GateOptions{Verifier: runnersService, Log: in.Log, Now: in.Now})
 	jobsService := jobs.NewService(jobs.Options{
 		DB: in.Pool, Keys: runnerKeys, Secrets: in.Secrets, Bus: bus, Listen: listener(in.Pool),
-		MaxPolls: in.Config.RunnerMaxPolls, Log: in.Log,
+		MaxPolls: in.Config.RunnerMaxPolls, Logs: in.Config.Logs, StreamWriteWait: in.LogStreamWriteWait, Log: in.Log,
 	})
 	jobs.Subscribe(bus, jobsService)
 
@@ -117,6 +120,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Log:    in.Log,
 		System: system.Deps{
 			DB: in.Pool, Migrations: in.Migrations, Queries: sqlc.New(in.Pool), Build: in.Build, Log: in.Log,
+			Checks: []system.ReadinessCheck{{Name: systemmodels.CheckLogPartitions, Run: jobsService.CheckLogPartition}},
 		},
 		Identity: identityService,
 		Session:  sessionService,

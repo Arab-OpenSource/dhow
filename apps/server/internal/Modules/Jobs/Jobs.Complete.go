@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -112,7 +113,8 @@ func (s *Service) Complete(ctx context.Context, in CompleteInput) error {
 	if len(in.Digest) != runnersig.DigestSize {
 		return runnerauth.ValidationFailed("Digest")
 	}
-	return dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+	late := uuid.Nil
+	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
 		row, err := q.LockLeaseForCompletion(ctx, sqlc.LockLeaseForCompletionParams{LeaseID: r.id, FencingToken: r.fencing, RunnerID: p.RunnerID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return leaseLost()
@@ -131,19 +133,26 @@ func (s *Service) Complete(ctx context.Context, in CompleteInput) error {
 			case row.CompletionDigest != nil:
 				return completionConflict()
 			default:
-				return leaseLost()
+				late = row.AttemptId
+				return nil
 			}
 		}
 		if row.State != models.LeaseActive || !row.Live {
-			s.log.InfoContext(ctx, "a runner completed an attempt after its lease ended",
-				"attempt_id", row.AttemptId.String(), "result", outcome.State, "failure_reason", outcome.FailureReason)
-			return leaseLost()
+			late = row.AttemptId
+			return nil
 		}
 		if !models.AttemptCanMove(row.AttemptState, outcome.State) {
 			return notRunning()
 		}
 		return s.finalize(ctx, q, row.Id, outcome)
 	})
+	if err != nil || late == uuid.Nil {
+		return err
+	}
+	s.log.InfoContext(ctx, "a runner completed an attempt after its lease ended",
+		"attempt_id", late.String(), "result", outcome.State, "failure_reason", outcome.FailureReason)
+	s.recordLateResult(ctx, late, outcome)
+	return leaseLost()
 }
 
 func (s *Service) finalize(ctx context.Context, q *sqlc.Queries, leaseID uuid.UUID, o models.Outcome) error {
@@ -163,6 +172,9 @@ func (s *Service) finalize(ctx context.Context, q *sqlc.Queries, leaseID uuid.UU
 	})
 	if err != nil {
 		return fmt.Errorf("finish attempt: %w", err)
+	}
+	if err := q.NotifyLogAppended(ctx, attempt.Id.String()+":"+strconv.FormatInt(attempt.LastSeq, 10)); err != nil {
+		return err
 	}
 	if _, err := q.EndLease(ctx, sqlc.EndLeaseParams{State: o.LeaseState, ID: leaseID}); err != nil {
 		return err

@@ -22,6 +22,7 @@ const (
 	CodePollInProgress     = "POLL_IN_PROGRESS"
 	CodeStepNotStarted     = "STEP_NOT_STARTED"
 	CodeClaimRateLimited   = "LEASE_RATE_LIMITED"
+	CodeLogUnavailable     = "LOG_STORAGE_UNAVAILABLE"
 )
 
 var errInvalidTransition = errors.New("state transition is not in the state machine")
@@ -53,6 +54,8 @@ func secretsUnavailable() *connect.Error {
 func stepNotStarted() *connect.Error {
 	return rpcError(connect.CodeFailedPrecondition, CodeStepNotStarted)
 }
+
+func logUnavailable() *connect.Error { return rpcError(connect.CodeUnavailable, CodeLogUnavailable) }
 
 func exhausted(code string, retryAfter time.Duration) *connect.Error {
 	e := rpcError(connect.CodeResourceExhausted, code)

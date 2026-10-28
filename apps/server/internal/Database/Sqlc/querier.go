@@ -12,6 +12,7 @@ import (
 )
 
 type Querier interface {
+	AdvanceAttemptLog(ctx context.Context, arg AdvanceAttemptLogParams) error
 	AdvanceTotpStep(ctx context.Context, arg AdvanceTotpStepParams) (int64, error)
 	CancelQueuedJob(ctx context.Context, arg CancelQueuedJobParams) (Job, error)
 	ClaimQueuedJob(ctx context.Context, arg ClaimQueuedJobParams) (Job, error)
@@ -33,8 +34,10 @@ type Querier interface {
 	DeleteTeamBinding(ctx context.Context, arg DeleteTeamBindingParams) (int64, error)
 	DisableRunnerAsClone(ctx context.Context, arg DisableRunnerAsCloneParams) (int64, error)
 	DiscardPendingTotp(ctx context.Context, arg DiscardPendingTotpParams) error
+	DropLogPartitions(ctx context.Context, retentionDays int32) (int32, error)
 	EndAttemptStep(ctx context.Context, arg EndAttemptStepParams) (int64, error)
 	EndLease(ctx context.Context, arg EndLeaseParams) (int64, error)
+	EnsureLogPartitions(ctx context.Context, daysAhead int32) (int32, error)
 	EnsureRunnerThrottle(ctx context.Context, arg EnsureRunnerThrottleParams) error
 	EnsureThrottle(ctx context.Context, arg EnsureThrottleParams) error
 	EnsureWebauthnHandle(ctx context.Context, arg EnsureWebauthnHandleParams) ([]byte, error)
@@ -53,6 +56,8 @@ type Querier interface {
 	GetJob(ctx context.Context, arg GetJobParams) (Job, error)
 	GetLastAuditHash(ctx context.Context, organizationID *uuid.UUID) ([]byte, error)
 	GetLeaseAttempt(ctx context.Context, id uuid.UUID) (GetLeaseAttemptRow, error)
+	GetLogAttempt(ctx context.Context, arg GetLogAttemptParams) (GetLogAttemptRow, error)
+	GetLogAttemptState(ctx context.Context, arg GetLogAttemptStateParams) (GetLogAttemptStateRow, error)
 	GetMember(ctx context.Context, arg GetMemberParams) (GetMemberRow, error)
 	GetMfaFactors(ctx context.Context, userID uuid.UUID) (GetMfaFactorsRow, error)
 	GetOpenInvitation(ctx context.Context, arg GetOpenInvitationParams) (GetOpenInvitationRow, error)
@@ -77,6 +82,7 @@ type Querier interface {
 	InsertInvitation(ctx context.Context, arg InsertInvitationParams) (uuid.UUID, error)
 	InsertJob(ctx context.Context, arg InsertJobParams) (Job, error)
 	InsertLease(ctx context.Context, arg InsertLeaseParams) (Lease, error)
+	InsertLogChunks(ctx context.Context, arg InsertLogChunksParams) (int64, error)
 	InsertMembership(ctx context.Context, arg InsertMembershipParams) error
 	InsertOrganization(ctx context.Context, arg InsertOrganizationParams) (InsertOrganizationRow, error)
 	InsertPasskey(ctx context.Context, arg InsertPasskeyParams) (InsertPasskeyRow, error)
@@ -95,11 +101,13 @@ type Querier interface {
 	InvalidateSetupTokens(ctx context.Context, now time.Time) error
 	IsMemberByEmail(ctx context.Context, arg IsMemberByEmailParams) (bool, error)
 	JobCancelRequestedAt(ctx context.Context, id uuid.UUID) (*time.Time, error)
+	JobExists(ctx context.Context, arg JobExistsParams) (bool, error)
 	ListActiveUserSessions(ctx context.Context, arg ListActiveUserSessionsParams) ([]ListActiveUserSessionsRow, error)
 	ListAuditEvents(ctx context.Context, arg ListAuditEventsParams) ([]ListAuditEventsRow, error)
 	ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams) ([]JobAttempt, error)
 	ListJobSteps(ctx context.Context, arg ListJobStepsParams) ([]AttemptStep, error)
 	ListJobs(ctx context.Context, arg ListJobsParams) ([]ListJobsRow, error)
+	ListLogChunks(ctx context.Context, arg ListLogChunksParams) ([]ListLogChunksRow, error)
 	ListMemberRoles(ctx context.Context, arg ListMemberRolesParams) ([]ListMemberRolesRow, error)
 	ListMembers(ctx context.Context, arg ListMembersParams) ([]ListMembersRow, error)
 	ListOpenInvitations(ctx context.Context, arg ListOpenInvitationsParams) ([]ListOpenInvitationsRow, error)
@@ -113,7 +121,9 @@ type Querier interface {
 	ListUserPasskeys(ctx context.Context, userID uuid.UUID) ([]ListUserPasskeysRow, error)
 	ListUserRoles(ctx context.Context, userID uuid.UUID) ([]ListUserRolesRow, error)
 	ListenJobsQueued(ctx context.Context) error
+	ListenLogAppended(ctx context.Context) error
 	LockActiveLease(ctx context.Context, arg LockActiveLeaseParams) (LockActiveLeaseRow, error)
+	LockAttemptLog(ctx context.Context, id uuid.UUID) (LockAttemptLogRow, error)
 	LockAuditChain(ctx context.Context, chainKey string) error
 	LockInstance(ctx context.Context) (*time.Time, error)
 	LockJob(ctx context.Context, arg LockJobParams) (Job, error)
@@ -133,16 +143,19 @@ type Querier interface {
 	LockThrottle(ctx context.Context, key string) (LockThrottleRow, error)
 	LockUsableInvitation(ctx context.Context, arg LockUsableInvitationParams) (LockUsableInvitationRow, error)
 	LockUsableSetupToken(ctx context.Context, arg LockUsableSetupTokenParams) (uuid.UUID, error)
+	LogPartitionReady(ctx context.Context) (bool, error)
 	MarkInstanceOwner(ctx context.Context, arg MarkInstanceOwnerParams) error
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) (int64, error)
 	MarkJobLeased(ctx context.Context, id uuid.UUID) (int32, error)
 	MarkJobRunning(ctx context.Context, arg MarkJobRunningParams) (Job, error)
+	MarkLateResultLogged(ctx context.Context, arg MarkLateResultLoggedParams) error
 	MarkMfaReset(ctx context.Context, arg MarkMfaResetParams) error
 	MarkMutationStarted(ctx context.Context, id uuid.UUID) error
 	MarkSetupTokenUsed(ctx context.Context, arg MarkSetupTokenUsedParams) error
 	NextAuditId(ctx context.Context) (uuid.UUID, error)
 	NextFencingToken(ctx context.Context) (int64, error)
 	NotifyJobsQueued(ctx context.Context, organizationID string) error
+	NotifyLogAppended(ctx context.Context, payload string) error
 	PeekPendingTotp(ctx context.Context, arg PeekPendingTotpParams) (PeekPendingTotpRow, error)
 	PickCanceledUnstartedLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
 	PickExpiredLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
@@ -185,6 +198,7 @@ type Querier interface {
 	RotateRunnerKeys(ctx context.Context, arg RotateRunnerKeysParams) (int32, error)
 	RunnerSlots(ctx context.Context, runnerID uuid.UUID) (RunnerSlotsRow, error)
 	SetInvitationEmailStatus(ctx context.Context, arg SetInvitationEmailStatusParams) error
+	SetLocalLockTimeout(ctx context.Context, timeout string) error
 	SetMemberRole(ctx context.Context, arg SetMemberRoleParams) (int64, error)
 	SetMfaChallengeWebauthn(ctx context.Context, arg SetMfaChallengeWebauthnParams) (int64, error)
 	SetTeamBindingRole(ctx context.Context, arg SetTeamBindingRoleParams) (int64, error)
@@ -193,6 +207,7 @@ type Querier interface {
 	TakeWebauthnChallenge(ctx context.Context, arg TakeWebauthnChallengeParams) ([]byte, error)
 	TouchRunner(ctx context.Context, arg TouchRunnerParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
+	TryLockLogPartitions(ctx context.Context) (bool, error)
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
 	UpdateRunner(ctx context.Context, arg UpdateRunnerParams) (Runner, error)
 	UpdateRunnerThrottle(ctx context.Context, arg UpdateRunnerThrottleParams) error

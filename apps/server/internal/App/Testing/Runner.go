@@ -44,6 +44,7 @@ type RunnerClient struct {
 	Registration runnerv1connect.RegistrationServiceClient
 	Auth         runnerv1connect.AuthServiceClient
 	Lease        runnerv1connect.LeaseServiceClient
+	Logs         runnerv1connect.LogServiceClient
 	HTTP         *http.Client
 }
 
@@ -77,6 +78,7 @@ func (e *Env) RunnerClient(o RunnerClientOptions) *RunnerClient {
 		Registration: runnerv1connect.NewRegistrationServiceClient(hc, RunnerBaseURL),
 		Auth:         runnerv1connect.NewAuthServiceClient(hc, RunnerBaseURL),
 		Lease:        runnerv1connect.NewLeaseServiceClient(hc, RunnerBaseURL),
+		Logs:         runnerv1connect.NewLogServiceClient(hc, RunnerBaseURL),
 		HTTP:         hc,
 	}
 }

@@ -45,6 +45,7 @@ export const WorkspaceAr = {
   'status.checks.empty': 'السيرفر مابعتش أي فحوصات.',
   'status.check.database': 'قاعدة البيانات',
   'status.check.migrations': 'تحديثات قاعدة البيانات',
+  'status.check.log_partitions': 'مكان سجلات التشغيل النهارده',
   'status.state.live': 'شغّال',
   'status.state.failed': 'فشل',
   'status.summary.ok.title': 'السيرفر شغّال كويس',
@@ -147,6 +148,10 @@ export const WorkspaceAr = {
   'checkDetail.migrations.fix1': 'افتح سجل السيرفر وقت التشغيل. هتلاقي فيه التحديث اللي وقف وسبب الوقوف.',
   'checkDetail.migrations.fix2': 'صلّح السبب، وغالبًا بيكون صلاحيات المستخدم على قاعدة البيانات، وبعدين شغّل السيرفر تاني.',
   'checkDetail.migrations.fix3': 'ماتعدّلش الجداول بإيدك. لو التحديث وقف في النص، ارجع لنسخة احتياطية.',
+  'checkDetail.log_partitions.means': 'سجلات التشغيل بتتخزّن في جزء من قاعدة البيانات لكل يوم. الفحص ده بيتأكد إن جزء النهارده موجود، ومن غيره أجهزة التشغيل مش هتقدر تبعت السجلات.',
+  'checkDetail.log_partitions.fix1': 'افتح سجل السيرفر ودوّر على رسالة فشل تجهيز أجزاء السجلات، هتلاقي فيها السبب.',
+  'checkDetail.log_partitions.fix2': 'اتأكد إن قاعدة البيانات مش للقراية بس، وإن مستخدم السيرفر يقدر يعمل جداول.',
+  'checkDetail.log_partitions.fix3': 'أعد تشغيل السيرفر، فهو بيجهّز أجزاء النهارده و3 أيام قدّام وهو بيقوم.',
 
   'pager.label': 'التنقّل بين الصفحات',
   'pager.previous': 'الصفحة اللي قبلها',

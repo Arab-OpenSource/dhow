@@ -77,6 +77,30 @@ func TestReadiness(t *testing.T) {
 	}
 }
 
+func TestReadinessRunsTheExtraChecks(t *testing.T) {
+	missing := system.ReadinessCheck{Name: models.CheckLogPartitions, Run: func(context.Context) error { return errors.New("no partition") }}
+	present := system.ReadinessCheck{Name: models.CheckLogPartitions, Run: func(context.Context) error { return nil }}
+	tests := []struct {
+		name  string
+		mig   support.FakeMigrations
+		check system.ReadinessCheck
+		want  models.HealthState
+		ok    bool
+	}{
+		{"the partition of today exists", support.FakeMigrations{}, present, models.HealthOK, true},
+		{"the partition of today is missing", support.FakeMigrations{}, missing, models.HealthUnavailable, false},
+		{"an unmigrated schema skips the check", support.FakeMigrations{Pending: true}, present, models.HealthUnavailable, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status := system.NewHealthService(support.FakeDB{}, tt.mig, support.DiscardLogger(), tt.check).Readiness(context.Background())
+			assert.Equal(t, tt.want, status.Status)
+			require.Len(t, status.Checks, 3)
+			assert.Equal(t, models.HealthCheck{Name: models.CheckLogPartitions, Ok: tt.ok}, status.Checks[2])
+		})
+	}
+}
+
 func TestReadinessBoundsEachCheck(t *testing.T) {
 	pinger := &deadlinePinger{}
 	start := time.Now()

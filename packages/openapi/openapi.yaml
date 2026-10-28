@@ -60,7 +60,9 @@ paths:
       operationId: getReadiness
       tags: [system]
       summary: Readiness probe
-      description: Returns 200 when the database is reachable and fully migrated, otherwise 503.
+      description: >-
+        Returns 200 when the database is reachable and fully migrated and today's job log partition exists,
+        otherwise 503.
       security: []
       responses:
         "200":
@@ -1586,6 +1588,65 @@ paths:
                 $ref: "#/components/schemas/JobResponse"
         default:
           $ref: "#/components/responses/Error"
+  /organizations/{id}/jobs/{jobId}/logs:
+    get:
+      operationId: getJobLogs
+      tags: [jobs]
+      summary: Read a page of the log of a job attempt
+      description: >-
+        Needs `log.read`, which a viewer does not have. Reads the chunks of one attempt (the latest without `Attempt`)
+        from `FromSeq` on, in order. A page holds at most `Limit` chunks and about 1 MiB of text, and `NextSeq` is
+        set while more chunks follow. `Text` is the stored bytes as UTF-8, with every invalid byte replaced by
+        U+FFFD. A job without that attempt answers 404 `ATTEMPT_NOT_FOUND`, and a job of another organization 404
+        `NOT_FOUND`.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/LogAttempt"
+        - $ref: "#/components/parameters/LogFromSeq"
+        - $ref: "#/components/parameters/LogLimit"
+      responses:
+        "200":
+          description: A page of the log.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobLogPageResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/jobs/{jobId}/logs/stream:
+    get:
+      operationId: streamJobLogs
+      tags: [jobs]
+      summary: Follow the log of a job attempt as server-sent events
+      description: >-
+        Needs `log.read`. Streams the chunks of one attempt (the latest without `Attempt`) after `Last-Event-ID`,
+        or from `FromSeq`, or from the start. Events: `chunk` (its `id` is the `Seq` and its data a `JobLogChunk`),
+        `status` (data `JobLogStatus`, sent first and on every change of the attempt) and `end` (data
+        `JobLogStatus`, after the last chunk of a finished attempt; the stream then closes). A comment arrives every
+        15 seconds, and the session is checked again each time, so a signed-out or revoked session ends the stream
+        within 15 seconds. One user may hold 10 streams and one server instance `DHOW_SSE_MAX_STREAMS`; more answer
+        429 `TOO_MANY_STREAMS` with `Retry-After`. A client that cannot keep up is disconnected and resumes with
+        `Last-Event-ID`.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/JobId"
+        - $ref: "#/components/parameters/LogAttempt"
+        - $ref: "#/components/parameters/LogFromSeq"
+        - $ref: "#/components/parameters/LastEventId"
+      responses:
+        "200":
+          description: An event stream.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        default:
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     SessionCookie:
@@ -1625,6 +1686,42 @@ components:
       schema:
         type: string
         format: uuid
+    LogAttempt:
+      name: Attempt
+      in: query
+      required: false
+      description: The attempt number. Without it, the latest attempt.
+      schema:
+        type: integer
+        minimum: 1
+    LogFromSeq:
+      name: FromSeq
+      in: query
+      required: false
+      description: The first chunk to return.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+        default: 1
+    LogLimit:
+      name: Limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 100
+    LastEventId:
+      name: Last-Event-ID
+      in: header
+      required: false
+      description: The `Seq` of the last chunk the client received. The stream resumes after it and ignores `FromSeq`.
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
     JobStateFilter:
       name: State
       in: query
@@ -1783,7 +1880,7 @@ components:
       properties:
         Name:
           type: string
-          enum: [database, migrations]
+          enum: [database, migrations, log_partitions]
         Ok:
           type: boolean
     Meta:
@@ -3302,6 +3399,84 @@ components:
           properties:
             Data:
               $ref: "#/components/schemas/JobDetail"
+    JobLogStream:
+      type: string
+      enum: [stdout, stderr, system]
+    JobLogChunk:
+      type: object
+      additionalProperties: false
+      required: [Seq, Stream, CreatedAt, Text]
+      properties:
+        Seq:
+          type: integer
+          format: int64
+          minimum: 1
+        Stream:
+          $ref: "#/components/schemas/JobLogStream"
+        StepIndex:
+          type: integer
+          minimum: 0
+        EmittedAt:
+          type: string
+          format: date-time
+          description: The runner's clock, for display only.
+        CreatedAt:
+          type: string
+          format: date-time
+        Text:
+          type: string
+          description: >-
+            The bytes as UTF-8 with invalid bytes replaced by U+FFFD. Render it as text, never as HTML, each line
+            with `dir="auto"`.
+    JobLogStatus:
+      type: object
+      additionalProperties: false
+      required: [Attempt, State, Truncated]
+      properties:
+        Attempt:
+          type: integer
+          minimum: 1
+        State:
+          $ref: "#/components/schemas/JobAttemptState"
+        Truncated:
+          type: boolean
+    JobLogPage:
+      type: object
+      additionalProperties: false
+      required: [Attempt, AttemptId, State, LastSeq, Truncated, Chunks]
+      properties:
+        Attempt:
+          type: integer
+          minimum: 1
+        AttemptId:
+          type: string
+          format: uuid
+        State:
+          $ref: "#/components/schemas/JobAttemptState"
+        LastSeq:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The highest sequence number the attempt has reached so far.
+        Truncated:
+          type: boolean
+          description: The log reached `DHOW_JOB_LOG_MAX_BYTES` and later output was dropped.
+        NextSeq:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Pass it as `FromSeq` to read on. Absent when this page reached the end so far.
+        Chunks:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobLogChunk"
+    JobLogPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/JobLogPage"
     JobListResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"

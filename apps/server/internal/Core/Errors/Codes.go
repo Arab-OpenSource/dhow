@@ -29,6 +29,8 @@ const (
 	CodeSecretsUnavailable     = "SECRETS_UNAVAILABLE"
 	CodeJobFinished            = "JOB_FINISHED"
 	CodeJobQueueFull           = "JOB_QUEUE_FULL"
+	CodeAttemptNotFound        = "ATTEMPT_NOT_FOUND"
+	CodeTooManyStreams         = "TOO_MANY_STREAMS"
 )
 
 const (
@@ -70,6 +72,8 @@ const (
 	KeySecretsUnavailable     = "errors.secretsUnavailable"
 	KeyJobFinished            = "errors.jobFinished"
 	KeyJobQueueFull           = "errors.jobQueueFull"
+	KeyAttemptNotFound        = "errors.attemptNotFound"
+	KeyTooManyStreams         = "errors.tooManyStreams"
 )
 
 const (

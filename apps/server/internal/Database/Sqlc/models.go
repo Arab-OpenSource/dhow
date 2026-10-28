@@ -114,25 +114,27 @@ type Job struct {
 }
 
 type JobAttempt struct {
-	Id                uuid.UUID
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	IsDeleted         bool
-	JobId             uuid.UUID
-	OrganizationId    uuid.UUID
-	RunnerId          uuid.UUID
-	Number            int32
-	FencingToken      int64
-	State             string
-	FailureReason     string
-	ExitCode          pgtype.Int4
-	LeasedAt          time.Time
-	StartedAt         *time.Time
-	FinishedAt        *time.Time
-	MutationStartedAt *time.Time
-	CompletionDigest  []byte
-	LastSeq           int64
-	LogBytes          int64
+	Id                 uuid.UUID
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	IsDeleted          bool
+	JobId              uuid.UUID
+	OrganizationId     uuid.UUID
+	RunnerId           uuid.UUID
+	Number             int32
+	FencingToken       int64
+	State              string
+	FailureReason      string
+	ExitCode           pgtype.Int4
+	LeasedAt           time.Time
+	StartedAt          *time.Time
+	FinishedAt         *time.Time
+	MutationStartedAt  *time.Time
+	CompletionDigest   []byte
+	LastSeq            int64
+	LogBytes           int64
+	LogTruncatedAt     *time.Time
+	LateResultLoggedAt *time.Time
 }
 
 type Lease struct {
@@ -150,6 +152,21 @@ type Lease struct {
 	ExpiresAt       time.Time
 	LastHeartbeatAt time.Time
 	EndedAt         *time.Time
+}
+
+type LogChunk struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	OrganizationId uuid.UUID
+	JobId          uuid.UUID
+	AttemptId      uuid.UUID
+	Seq            int64
+	Stream         string
+	StepIndex      pgtype.Int4
+	EmittedAt      *time.Time
+	Data           []byte
 }
 
 type LoginThrottle struct {

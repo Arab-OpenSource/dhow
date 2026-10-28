@@ -117,4 +117,7 @@ var enMessages = map[string]string{ //nolint:gosec // This is a message catalog,
 	"jobs.job.loaded":                   "Job loaded.",
 	"jobs.job.created":                  "The job was queued.",
 	"jobs.job.cancelRequested":          "Cancellation was requested.",
+	"jobs.logs.loaded":                  "The log was loaded.",
+	"errors.attemptNotFound":            "This job has no such attempt yet. Wait until a runner takes it, then open the log.",
+	"errors.tooManyStreams":             "Too many live logs are open at once. Close some and try again.",
 }

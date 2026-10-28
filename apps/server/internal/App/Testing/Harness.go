@@ -136,6 +136,8 @@ type Options struct {
 	Mailer  mailer.Sender
 	Profile func(*config.Config)
 	Secrets *FakeSecrets
+
+	LogStreamWriteWait time.Duration
 }
 
 func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) *Env {
@@ -180,7 +182,7 @@ func NewWithOptions(t *testing.T, o Options) *Env {
 	breach := &FakeBreach{}
 	infra := app.Infra{
 		Config: cfg, Log: log, Pool: pool, Migrations: fakeMigrations{}, Build: buildinfo.Info{Version: "test", Commit: "test"},
-		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer,
+		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer, LogStreamWriteWait: o.LogStreamWriteWait,
 	}
 	if o.Secrets != nil {
 		infra.Secrets = o.Secrets

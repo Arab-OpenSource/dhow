@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * Readiness probe
-         * @description Returns 200 when the database is reachable and fully migrated, otherwise 503.
+         * @description Returns 200 when the database is reachable and fully migrated and today's job log partition exists, otherwise 503.
          */
         get: operations["getReadiness"];
         put?: never;
@@ -1094,6 +1094,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/jobs/{jobId}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a page of the log of a job attempt
+         * @description Needs `log.read`, which a viewer does not have. Reads the chunks of one attempt (the latest without `Attempt`) from `FromSeq` on, in order. A page holds at most `Limit` chunks and about 1 MiB of text, and `NextSeq` is set while more chunks follow. `Text` is the stored bytes as UTF-8, with every invalid byte replaced by U+FFFD. A job without that attempt answers 404 `ATTEMPT_NOT_FOUND`, and a job of another organization 404 `NOT_FOUND`.
+         */
+        get: operations["getJobLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/jobs/{jobId}/logs/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Follow the log of a job attempt as server-sent events
+         * @description Needs `log.read`. Streams the chunks of one attempt (the latest without `Attempt`) after `Last-Event-ID`, or from `FromSeq`, or from the start. Events: `chunk` (its `id` is the `Seq` and its data a `JobLogChunk`), `status` (data `JobLogStatus`, sent first and on every change of the attempt) and `end` (data `JobLogStatus`, after the last chunk of a finished attempt; the stream then closes). A comment arrives every 15 seconds, and the session is checked again each time, so a signed-out or revoked session ends the stream within 15 seconds. One user may hold 10 streams and one server instance `DHOW_SSE_MAX_STREAMS`; more answer 429 `TOO_MANY_STREAMS` with `Retry-After`. A client that cannot keep up is disconnected and resumes with `Last-Event-ID`.
+         */
+        get: operations["streamJobLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1144,7 +1184,7 @@ export interface components {
         };
         HealthCheck: {
             /** @enum {string} */
-            Name: "database" | "migrations";
+            Name: "database" | "migrations" | "log_partitions";
             Ok: boolean;
         };
         Meta: {
@@ -1876,6 +1916,50 @@ export interface components {
         JobDetailResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["JobDetail"];
         };
+        /** @enum {string} */
+        JobLogStream: "stdout" | "stderr" | "system";
+        JobLogChunk: {
+            /** Format: int64 */
+            Seq: number;
+            Stream: components["schemas"]["JobLogStream"];
+            StepIndex?: number;
+            /**
+             * Format: date-time
+             * @description The runner's clock, for display only.
+             */
+            EmittedAt?: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** @description The bytes as UTF-8 with invalid bytes replaced by U+FFFD. Render it as text, never as HTML, each line with `dir="auto"`. */
+            Text: string;
+        };
+        JobLogStatus: {
+            Attempt: number;
+            State: components["schemas"]["JobAttemptState"];
+            Truncated: boolean;
+        };
+        JobLogPage: {
+            Attempt: number;
+            /** Format: uuid */
+            AttemptId: string;
+            State: components["schemas"]["JobAttemptState"];
+            /**
+             * Format: int64
+             * @description The highest sequence number the attempt has reached so far.
+             */
+            LastSeq: number;
+            /** @description The log reached `DHOW_JOB_LOG_MAX_BYTES` and later output was dropped. */
+            Truncated: boolean;
+            /**
+             * Format: int64
+             * @description Pass it as `FromSeq` to read on. Absent when this page reached the end so far.
+             */
+            NextSeq?: number;
+            Chunks: components["schemas"]["JobLogChunk"][];
+        };
+        JobLogPageResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["JobLogPage"];
+        };
         JobListResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Job"][];
         };
@@ -1896,6 +1980,13 @@ export interface components {
         RunnerId: string;
         TokenId: string;
         JobId: string;
+        /** @description The attempt number. Without it, the latest attempt. */
+        LogAttempt: number;
+        /** @description The first chunk to return. */
+        LogFromSeq: number;
+        LogLimit: number;
+        /** @description The `Seq` of the last chunk the client received. The stream resumes after it and ignores `FromSeq`. */
+        LastEventId: number;
         JobStateFilter: components["schemas"]["JobState"];
         UserId: string;
         TeamId: string;
@@ -3524,6 +3615,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getJobLogs: {
+        parameters: {
+            query?: {
+                /** @description The attempt number. Without it, the latest attempt. */
+                Attempt?: components["parameters"]["LogAttempt"];
+                /** @description The first chunk to return. */
+                FromSeq?: components["parameters"]["LogFromSeq"];
+                Limit?: components["parameters"]["LogLimit"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                jobId: components["parameters"]["JobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of the log. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobLogPageResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    streamJobLogs: {
+        parameters: {
+            query?: {
+                /** @description The attempt number. Without it, the latest attempt. */
+                Attempt?: components["parameters"]["LogAttempt"];
+                /** @description The first chunk to return. */
+                FromSeq?: components["parameters"]["LogFromSeq"];
+            };
+            header?: {
+                /** @description The `Seq` of the last chunk the client received. The stream resumes after it and ignores `FromSeq`. */
+                "Last-Event-ID"?: components["parameters"]["LastEventId"];
+            };
+            path: {
+                id: components["parameters"]["Id"];
+                jobId: components["parameters"]["JobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An event stream. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
                 };
             };
             default: components["responses"]["Error"];

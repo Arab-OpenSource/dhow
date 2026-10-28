@@ -101,22 +101,25 @@ func publicRouter(o Options) chi.Router {
 
 	guard := o.guard()
 	r.Route(config.APIPrefix, func(api chi.Router) {
-		api.Use(middleware.Timeout(config.APITimeout), middleware.NoStore)
+		api.Use(middleware.NoStore)
 		api.NotFound(notFound)
-		o.System.Guard = guard
-		system.Routes(api, o.System)
-		if o.Identity != nil {
-			identity.Routes(api, identity.Deps{Service: o.Identity, Guard: guard, Log: o.Log})
-		}
-		if o.Session != nil {
-			session.Routes(api, session.Deps{Service: o.Session, Guard: guard, Log: o.Log})
-		}
-		if o.Audit != nil {
-			audit.Routes(api, audit.Deps{Service: o.Audit, Guard: guard, Log: o.Log})
-		}
-		if o.Runners != nil {
-			runners.Routes(api, runners.Deps{Service: o.Runners, Guard: guard, Log: o.Log})
-		}
+		api.Group(func(timed chi.Router) {
+			timed.Use(middleware.Timeout(config.APITimeout))
+			o.System.Guard = guard
+			system.Routes(timed, o.System)
+			if o.Identity != nil {
+				identity.Routes(timed, identity.Deps{Service: o.Identity, Guard: guard, Log: o.Log})
+			}
+			if o.Session != nil {
+				session.Routes(timed, session.Deps{Service: o.Session, Guard: guard, Log: o.Log})
+			}
+			if o.Audit != nil {
+				audit.Routes(timed, audit.Deps{Service: o.Audit, Guard: guard, Log: o.Log})
+			}
+			if o.Runners != nil {
+				runners.Routes(timed, runners.Deps{Service: o.Runners, Guard: guard, Log: o.Log})
+			}
+		})
 		if o.Jobs != nil {
 			jobs.Routes(api, jobs.Deps{Service: o.Jobs, Guard: guard, Log: o.Log})
 		}

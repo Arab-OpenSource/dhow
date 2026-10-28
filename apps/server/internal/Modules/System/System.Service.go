@@ -28,14 +28,20 @@ type InstanceQuerier interface {
 	GetInstance(ctx context.Context) (sqlc.Instance, error)
 }
 
+type ReadinessCheck struct {
+	Name models.HealthCheckName
+	Run  func(ctx context.Context) error
+}
+
 type HealthService struct {
 	db         Pinger
 	migrations MigrationStatus
+	checks     []ReadinessCheck
 	log        *slog.Logger
 }
 
-func NewHealthService(db Pinger, migrations MigrationStatus, log *slog.Logger) *HealthService {
-	return &HealthService{db: db, migrations: migrations, log: log}
+func NewHealthService(db Pinger, migrations MigrationStatus, log *slog.Logger, checks ...ReadinessCheck) *HealthService {
+	return &HealthService{db: db, migrations: migrations, checks: checks, log: log}
 }
 
 func (s *HealthService) Liveness() models.HealthStatus {
@@ -54,6 +60,13 @@ func (s *HealthService) Readiness(ctx context.Context) models.HealthStatus {
 	}
 	if !dbOK || !migOK {
 		status.Status = models.HealthUnavailable
+	}
+	for _, c := range s.checks {
+		ok := migOK && s.check(ctx, c.Name, c.Run)
+		status.Checks = append(status.Checks, models.HealthCheck{Name: c.Name, Ok: ok})
+		if !ok {
+			status.Status = models.HealthUnavailable
+		}
 	}
 	return status
 }

@@ -155,6 +155,20 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 	return WithPrincipal(ctx, principal), nil
 }
 
+func (g *Guard) Reauthorize(ctx context.Context, action policy.Action, org uuid.UUID) error {
+	principal, _, ae := g.authenticate(ctx)
+	if ae != nil {
+		return ae
+	}
+	if _, member := principal.RoleIn(org); !member {
+		return apperrors.NotFound()
+	}
+	if !policy.Can(principal.Subject, action, policy.Resource{OrganizationID: org}) {
+		return apperrors.Forbidden()
+	}
+	return nil
+}
+
 func (g *Guard) authenticate(ctx context.Context) (Principal, []byte, *apperrors.AppError) {
 	token := RequestMetaFrom(ctx).SessionToken
 	hash, ok := HashSessionToken(token, config.SessionTokenBytes)
