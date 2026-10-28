@@ -7,12 +7,11 @@
 package agentv1
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -825,9 +824,9 @@ const file_dhow_agent_v1_agent_proto_rawDesc = "" +
 	"\rProcessSignal\x12\x1e\n" +
 	"\x1aPROCESS_SIGNAL_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PROCESS_SIGNAL_TERM\x10\x01\x12\x17\n" +
-	"\x13PROCESS_SIGNAL_KILL\x10\x02B\xc2\x01\n" +
+	"\x13PROCESS_SIGNAL_KILL\x10\x02B\xba\x01\n" +
 	"\x11com.dhow.agent.v1B\n" +
-	"AgentProtoP\x01ZKgithub.com/Khaymah/dhow/packages/proto/gen/go/dhow/agent/v1;agentv1\xa2\x02\x03DAX\xaa\x02\rDhow.Agent.V1\xca\x02\rDhow\\Agent\\V1\xe2\x02\x19Dhow\\Agent\\V1\\GPBMetadata\xea\x02\x0fDhow::Agent::V1b\x06proto3"
+	"AgentProtoP\x01ZCgithub.com/Khaymah/dhow/packages/proto/gen/go/dhow/agent/v1;agentv1\xa2\x02\x03DAX\xaa\x02\rDhow.Agent.V1\xca\x02\rDhow\\Agent\\V1\xe2\x02\x19Dhow\\Agent\\V1\\GPBMetadata\xea\x02\x0fDhow::Agent::V1b\x06proto3"
 
 var (
 	file_dhow_agent_v1_agent_proto_rawDescOnce sync.Once

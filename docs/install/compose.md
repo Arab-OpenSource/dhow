@@ -75,7 +75,7 @@ Set these in `.env`. Compose reads the file automatically, and values exported i
 | `DHOW_TRUSTED_PROXIES` | empty | Comma-separated IPs or CIDRs of reverse proxies whose `X-Forwarded-For` header is trusted. A proxy on the same host reaches the container from the Docker bridge gateway, not from `127.0.0.1`: `docker network inspect dhow_edge --format '{{(index .IPAM.Config 0).Gateway}}'` prints it. See [Trusted proxies](reverse-proxy.md#trusted-proxies). |
 | `DHOW_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
 | `DHOW_BREACHED_PASSWORD_CHECK` | `true` | Rejects new passwords found in known breaches, using the Have I Been Pwned range API. Only the first 5 characters of the password's SHA-1 leave the server, and the check is skipped with a log warning when the service cannot be reached. Set `false` on networks without internet access. |
-| `DHOW_IMAGE` | `ghcr.io/Khaymah/dhow:latest` | The image to run. Pin it by digest, see [Verify an image](#verify-an-image). |
+| `DHOW_IMAGE` | `ghcr.io/khaymah/dhow:latest` | The image to run. Pin it by digest, see [Verify an image](#verify-an-image). |
 
 `DHOW_DEV` is not needed and the Compose file never sets it. The database connection uses TLS (`sslmode=require`) and the public URL is `https://`, so the server's strict checks pass without it. `DHOW_DEV=true` relaxes those checks for local development only. Never set it on a host that other people can reach.
 
@@ -128,7 +128,7 @@ To restore on a new host, run `./init.sh`, replace the generated `DHOW_SECRET_KE
 Release images are signed with [cosign](https://docs.sigstore.dev/) keyless signing from the release workflow in this repository. Anyone can check the signature without a key:
 
 ```sh
-cosign verify ghcr.io/Khaymah/dhow:1.0.0 \
+cosign verify ghcr.io/khaymah/dhow:1.0.0 \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --certificate-identity-regexp '^https://github\.com/Khaymah/dhow/\.github/workflows/release\.yml@refs/tags/v'
 ```
@@ -136,16 +136,16 @@ cosign verify ghcr.io/Khaymah/dhow:1.0.0 \
 The command fails unless a certificate issued to that workflow, on a `v*` tag of this repository, signed the image. The SPDX SBOM and the SLSA build provenance are attached to the image as signed attestations:
 
 ```sh
-gh attestation verify oci://ghcr.io/Khaymah/dhow:1.0.0 --repo Khaymah/dhow
+gh attestation verify oci://ghcr.io/khaymah/dhow:1.0.0 --repo Khaymah/dhow
 ```
 
 Once an image verifies, pin it by digest so a tag can never be moved under you:
 
 ```sh
-docker buildx imagetools inspect ghcr.io/Khaymah/dhow:1.0.0 | sed -n 's/^Digest: *//p'
+docker buildx imagetools inspect ghcr.io/khaymah/dhow:1.0.0 | sed -n 's/^Digest: *//p'
 ```
 
-Put the result in `.env` as `DHOW_IMAGE=ghcr.io/Khaymah/dhow@sha256:<digest>`.
+Put the result in `.env` as `DHOW_IMAGE=ghcr.io/khaymah/dhow@sha256:<digest>`.
 
 ## Uninstall
 
