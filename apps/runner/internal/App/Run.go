@@ -1,0 +1,226 @@
+package app
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
+	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
+	executor "github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"
+	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
+	journal "github.com/Arab-OpenSource/dhow/apps/runner/internal/Journal"
+	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
+	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+)
+
+type Runner struct {
+	cfg      config.Config
+	id       *identity.Identity
+	client   *client.Client
+	driver   sandbox.Driver
+	journal  *journal.Journal
+	exec     *executor.Executor
+	log      *slog.Logger
+	backoff  client.Backoff
+	wait     time.Duration
+	outcomes chan<- executor.Outcome
+}
+
+type RunnerOptions struct {
+	Config   config.Config
+	Identity *identity.Identity
+	Driver   sandbox.Driver
+	Log      *slog.Logger
+	Timing   executor.Timing
+	Backoff  client.Backoff
+	Wait     time.Duration
+	Outcomes chan<- executor.Outcome
+	Logs     func(*logs.Options)
+}
+
+func runRun(ctx context.Context, args []string, env Env) error {
+	fs := newFlags(CommandRun, env.Stdio.Err)
+	dev := fs.Bool("dev", false, "allow plain http:// to localhost, for local development only")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("%w: %s", ErrExtraArgs, strings.Join(fs.Args(), " "))
+	}
+	if err := env.Harden(); err != nil {
+		return err
+	}
+	machine, err := env.Machine()
+	if err != nil {
+		return err
+	}
+	cfg, err := config.Load(env.Getenv, config.Options{Dev: *dev, Machine: machine})
+	if err != nil {
+		return err
+	}
+	log := newLogger(env.Stdio.Err, cfg.LogLevel)
+	id, err := identity.Load(cfg.IdentityPath())
+	if err != nil {
+		return err
+	}
+	driver, err := newDriver(cfg)
+	if err != nil {
+		return err
+	}
+	r, err := NewRunner(RunnerOptions{Config: cfg, Identity: id, Driver: driver, Log: log})
+	if err != nil {
+		return err
+	}
+	return r.Run(ctx)
+}
+
+func NewRunner(o RunnerOptions) (*Runner, error) {
+	cfg := o.Config
+	if cfg.URL == nil {
+		u, err := config.ParseServerURL(o.Identity.ServerURL, cfg.Dev)
+		if err != nil {
+			return nil, fmt.Errorf("the server address saved at registration: %w", err)
+		}
+		cfg.URL = u
+	}
+	if o.Log == nil {
+		o.Log = slog.New(slog.DiscardHandler)
+	}
+	if o.Backoff == (client.Backoff{}) {
+		o.Backoff = client.DefaultBackoff()
+	}
+	if o.Wait == 0 {
+		o.Wait = config.LeaseWait
+	}
+	log := o.Log.With("runner_id", o.Identity.RunnerID)
+	c, err := client.New(client.Options{
+		BaseURL: cfg.URL, CAFile: cfg.CAFile, Dev: cfg.Dev, Version: buildinfo.Get().Version, Identity: o.Identity, Log: log,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := config.EnsurePrivateDir(cfg.StateDir); err != nil {
+		return nil, err
+	}
+	j, err := journal.Open(cfg.JournalPath())
+	if err != nil {
+		return nil, err
+	}
+	exec := executor.New(executor.Options{
+		API: c, Identity: o.Identity, Journal: j, Driver: o.Driver, Config: cfg, Log: log, Backoff: o.Backoff, Timing: o.Timing,
+		LogOptions: o.Logs,
+	})
+	return &Runner{
+		cfg: cfg, id: o.Identity, client: c, driver: o.Driver, journal: j, exec: exec, log: log, backoff: o.Backoff,
+		wait: o.Wait, outcomes: o.Outcomes,
+	}, nil
+}
+
+func (r *Runner) Run(ctx context.Context) error {
+	defer r.client.CloseIdle()
+	if err := r.authenticate(ctx); err != nil {
+		return err
+	}
+	if err := r.cleanup(ctx); err != nil {
+		return err
+	}
+	left, err := r.exec.Recover(ctx)
+	if err != nil {
+		return err
+	}
+	if len(left) > 0 {
+		r.log.Warn("some attempts from the last run could not be reported yet; the runner keeps trying while it works", "count", len(left))
+		go r.exec.RecoverLater(ctx, left)
+	}
+	r.log.Info("the runner is ready", "capacity", r.cfg.Capacity, "driver", r.driver.Name())
+	return r.loop(ctx)
+}
+
+func (r *Runner) authenticate(ctx context.Context) error {
+	for n := 0; ; n++ {
+		err := r.client.Authenticate(ctx)
+		switch {
+		case err == nil:
+			return nil
+		case client.Fatal(err) || !client.Transient(err):
+			return err
+		}
+		r.log.Warn("could not sign in to the server yet", "code", client.Code(err).String(), "reason", client.Reason(err))
+		if err := r.backoff.Sleep(ctx, n, err); err != nil {
+			return err
+		}
+	}
+}
+
+func (r *Runner) cleanup(ctx context.Context) error {
+	if err := r.driver.Cleanup(ctx, r.id.RunnerID); err != nil {
+		return fmt.Errorf("remove the sandboxes the last run left behind: %w", err)
+	}
+	if err := os.RemoveAll(r.cfg.AttemptsDir()); err != nil {
+		return fmt.Errorf("remove the attempt directories the last run left behind: %w", err)
+	}
+	return config.EnsurePrivateDir(r.cfg.AttemptsDir())
+}
+
+func (r *Runner) loop(ctx context.Context) error {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	slots := make(chan struct{}, r.cfg.Capacity)
+	freed := make(chan struct{}, 1)
+	for n := 0; ctx.Err() == nil; {
+		free := r.cfg.Capacity - len(slots)
+		if free == 0 {
+			select {
+			case <-freed:
+			case <-ctx.Done():
+			}
+			continue
+		}
+		sent := time.Now()
+		grant, err := r.client.Lease(ctx, int32(free), r.wait) //nolint:gosec // At most 16 slots.
+		if err != nil {
+			if ctx.Err() != nil {
+				break
+			}
+			if client.Fatal(err) {
+				r.log.Error("the server stopped this runner", "error", err)
+				return err
+			}
+			r.log.Warn("could not ask for work", "code", client.Code(err).String(), "reason", client.Reason(err))
+			if r.backoff.Sleep(ctx, n, err) != nil {
+				break
+			}
+			n++
+			continue
+		}
+		n = 0
+		if grant == nil {
+			continue
+		}
+		slots <- struct{}{}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			out := r.exec.Run(ctx, grant, sent)
+			<-slots
+			select {
+			case freed <- struct{}{}:
+			default:
+			}
+			if r.outcomes != nil {
+				r.outcomes <- out
+			}
+		}()
+	}
+	if err := ctx.Err(); err != nil && !errors.Is(err, context.Canceled) {
+		return err
+	}
+	return nil
+}

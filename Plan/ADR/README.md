@@ -54,3 +54,4 @@
 | [0050](0050-runner-identity-implementation.md) | تنفيذ هوية الـ runner في M3.2: صيغة الرسائل الموقّعة، والـ gate، والـ throttle، وكشف النسخ |
 | [0051](0051-jobs-and-leasing-implementation.md) | تنفيذ الـ jobs والـ leases في M3.3: الـ triggers، والـ claim، والرسائل الموقّعة، وقواعد الإنهاء، والـ reconciler |
 | [0052](0052-job-logs-implementation.md) | تنفيذ الـ logs في M3.4: الجدول المقسّم، والـ Append بقفل الـ attempt، والـ SSE بقراية لكل مشترك، والصيانة تحت advisory lock |
+| [0053](0053-runner-implementation.md) | تنفيذ الـ runner في M3.5: الطبقات، والهوية على القرص، والقفل الذاتي، والـ journal، والـ masking والـ logs، والـ driver الوهمي |

@@ -1,0 +1,119 @@
+import os
+import sys
+import unittest
+
+HOOKS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, HOOKS)
+
+from dhow_hooks import edit_rules
+
+RUNNER = "apps/runner/internal/"
+ROOT = os.path.dirname(os.path.dirname(HOOKS))
+
+
+def edit(rel, added, old=""):
+    return edit_rules.evaluate(rel=rel, root="/nonexistent", segments=[(added, old)], exists=False, final_content=added)
+
+
+def imp(path):
+    return 'package x\n\nimport "github.com/Arab-OpenSource/dhow/apps/runner/internal/' + path + '"\n'
+
+
+class RunnerLayoutRules(unittest.TestCase):
+    def test_allowed_locations(self):
+        for rel in ("App/App.go", "App/App.Run.go", "Config/Config.go", "Identity/Identity.go", "Client/Client.Auth.go",
+                    "Executor/Executor.go", "Journal/Journal.go", "Masking/Masker.go", "Logs/Logs.Spill.go",
+                    "Sandbox/Sandbox.go", "Sandbox/Fake/Fake.go", "Executor/executor_test.go"):
+            self.assertIsNone(edit(RUNNER + rel, "package x\n"), rel)
+
+    def test_unknown_layer_blocked(self):
+        for rel in ("Utils/Util.go", "agent/Agent.go", "Main.go", "Podman.go"):
+            self.assertIn("lives in one of", edit(RUNNER + rel, "package x\n"), rel)
+
+    def test_folder_names_are_pascal_case(self):
+        self.assertIn("PascalCase", edit(RUNNER + "Sandbox/fake/Fake.go", "package x\n"))
+        self.assertIn("PascalCase", edit(RUNNER + "Logs/spill_files/Spill.go", "package x\n"))
+
+    def test_file_names_are_pascal_case(self):
+        self.assertIn("PascalCase", edit(RUNNER + "Executor/executor.go", "package x\n"))
+        self.assertIn("PascalCase", edit(RUNNER + "Logs/spill_file.go", "package x\n"))
+
+    def test_test_files_keep_go_naming(self):
+        self.assertIsNone(edit(RUNNER + "Masking/masker_fuzz_test.go", "package x\n"))
+
+    def test_command_and_other_trees_untouched(self):
+        self.assertIsNone(edit("apps/runner/cmd/dhow-runner/main.go", "package main\n"))
+        self.assertIsNone(edit("internal/jobspec/x.go", imp("Executor")))
+
+
+class RunnerImportRules(unittest.TestCase):
+    def test_app_imports_every_layer(self):
+        for layer in ("Config", "Identity", "Client", "Executor", "Journal", "Masking", "Logs", "Sandbox", "Sandbox/Fake"):
+            self.assertIsNone(edit(RUNNER + "App/App.go", imp(layer)), layer)
+
+    def test_executor_imports_the_layers_it_drives(self):
+        for layer in ("Client", "Identity", "Journal", "Logs", "Masking", "Sandbox", "Config"):
+            self.assertIsNone(edit(RUNNER + "Executor/Executor.go", imp(layer)), layer)
+
+    def test_nothing_imports_app(self):
+        for src in ("Executor/Executor.go", "Client/Client.go", "Config/Config.go", "Sandbox/Fake/Fake.go"):
+            self.assertIn("composition root", edit(RUNNER + src, imp("App")), src)
+
+    def test_only_app_imports_executor(self):
+        for src in ("Client/Client.go", "Logs/Logs.go", "Sandbox/Sandbox.go"):
+            self.assertIn("forbidden import", edit(RUNNER + src, imp("Executor")), src)
+
+    def test_leaf_layers_stay_leaves(self):
+        cases = (
+            ("Masking/Masker.go", "Config"), ("Config/Config.go", "Identity"), ("Journal/Journal.go", "Client"),
+            ("Sandbox/Sandbox.go", "Logs"), ("Logs/Logs.go", "Client"), ("Client/Client.go", "Journal"),
+            ("Identity/Identity.go", "Client"), ("Sandbox/Fake/Fake.go", "Masking"),
+        )
+        for src, dst in cases:
+            self.assertIn("forbidden import", edit(RUNNER + src, imp(dst)), src + " -> " + dst)
+
+    def test_allowed_lower_layers(self):
+        cases = (("Logs/Logs.go", "Masking"), ("Client/Client.go", "Identity"), ("Identity/Identity.go", "Config"),
+                 ("Sandbox/Fake/Fake.go", "Sandbox"), ("Sandbox/Fake/Fake.go", "Config"), ("Journal/Journal.go", "Config"))
+        for src, dst in cases:
+            self.assertIsNone(edit(RUNNER + src, imp(dst)), src + " -> " + dst)
+
+    def test_unknown_runner_package_blocked(self):
+        self.assertIn("not a runner layer", edit(RUNNER + "App/App.go", imp("Agent")))
+
+    def test_server_code_is_never_imported(self):
+        src = 'package x\n\nimport "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"\n'
+        self.assertIn("never imports server code", edit(RUNNER + "Client/Client.go", src))
+
+    def test_grouped_and_aliased_imports_are_scanned(self):
+        src = ('package x\n\nimport (\n\t"fmt"\n\texec "github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"\n)\n')
+        self.assertIn("forbidden import", edit(RUNNER + "Logs/Logs.go", src))
+
+    def test_existing_imports_are_not_rescanned(self):
+        line = '\t"github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"\n'
+        self.assertIsNone(edit(RUNNER + "Logs/Logs.go", "x := 1\n" + line, old=line))
+
+    def test_tests_are_exempt(self):
+        self.assertIsNone(edit(RUNNER + "Logs/logs_test.go", imp("Executor")))
+
+    def test_the_real_runner_tree_passes(self):
+        base = os.path.join(ROOT, RUNNER)
+        if not os.path.isdir(base):
+            self.skipTest("apps/runner/internal is not in this checkout")
+        checked = 0
+        for folder, _, files in os.walk(base):
+            for name in files:
+                if not name.endswith(".go"):
+                    continue
+                path = os.path.join(folder, name)
+                rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+                with open(path, encoding="utf-8") as fh:
+                    content = fh.read()
+                self.assertIsNone(edit_rules.evaluate(rel=rel, root=ROOT, segments=[(content, "")], exists=True,
+                                                      final_content=content), rel)
+                checked += 1
+        self.assertGreater(checked, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -56,8 +56,14 @@ jobs:
         with:
           version: v2.15.0
           install-mode: goinstall
+      - name: Lint the runner with the fake driver build tag
+        run: make lint-runner
       - name: Test
         run: make test
+      - name: Test the runner with the fake sandbox driver
+        run: make test-runner
+      - name: Fuzz the runner briefly
+        run: make fuzz-runner FUZZTIME=10s
       - name: Fuzz the auth inputs (10 seconds per target)
         run: make fuzz FUZZTIME=10s
       - name: Vulnerabilities
@@ -66,6 +72,8 @@ jobs:
         run: make lint-actions
       - name: Build
         run: make build
+      - name: Build the runner
+        run: make build-runner
       - name: Test Claude Code hooks
         run: make hooks-test
 
