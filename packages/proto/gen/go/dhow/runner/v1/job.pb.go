@@ -522,6 +522,102 @@ func (x *SealedSecrets) GetCiphertext() []byte {
 	return nil
 }
 
+type SecretValue struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value         []byte                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretValue) Reset() {
+	*x = SecretValue{}
+	mi := &file_dhow_runner_v1_job_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretValue) ProtoMessage() {}
+
+func (x *SecretValue) ProtoReflect() protoreflect.Message {
+	mi := &file_dhow_runner_v1_job_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretValue.ProtoReflect.Descriptor instead.
+func (*SecretValue) Descriptor() ([]byte, []int) {
+	return file_dhow_runner_v1_job_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *SecretValue) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SecretValue) GetValue() []byte {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+type SecretBundle struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Secrets       []*SecretValue         `protobuf:"bytes,1,rep,name=secrets,proto3" json:"secrets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretBundle) Reset() {
+	*x = SecretBundle{}
+	mi := &file_dhow_runner_v1_job_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretBundle) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretBundle) ProtoMessage() {}
+
+func (x *SecretBundle) ProtoReflect() protoreflect.Message {
+	mi := &file_dhow_runner_v1_job_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretBundle.ProtoReflect.Descriptor instead.
+func (*SecretBundle) Descriptor() ([]byte, []int) {
+	return file_dhow_runner_v1_job_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SecretBundle) GetSecrets() []*SecretValue {
+	if x != nil {
+		return x.Secrets
+	}
+	return nil
+}
+
 type LeaseGrant struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	LeaseId         string                 `protobuf:"bytes,1,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"`
@@ -539,7 +635,7 @@ type LeaseGrant struct {
 
 func (x *LeaseGrant) Reset() {
 	*x = LeaseGrant{}
-	mi := &file_dhow_runner_v1_job_proto_msgTypes[6]
+	mi := &file_dhow_runner_v1_job_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -551,7 +647,7 @@ func (x *LeaseGrant) String() string {
 func (*LeaseGrant) ProtoMessage() {}
 
 func (x *LeaseGrant) ProtoReflect() protoreflect.Message {
-	mi := &file_dhow_runner_v1_job_proto_msgTypes[6]
+	mi := &file_dhow_runner_v1_job_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -564,7 +660,7 @@ func (x *LeaseGrant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeaseGrant.ProtoReflect.Descriptor instead.
 func (*LeaseGrant) Descriptor() ([]byte, []int) {
-	return file_dhow_runner_v1_job_proto_rawDescGZIP(), []int{6}
+	return file_dhow_runner_v1_job_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *LeaseGrant) GetLeaseId() string {
@@ -641,7 +737,7 @@ type SignedLeaseGrant struct {
 
 func (x *SignedLeaseGrant) Reset() {
 	*x = SignedLeaseGrant{}
-	mi := &file_dhow_runner_v1_job_proto_msgTypes[7]
+	mi := &file_dhow_runner_v1_job_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -653,7 +749,7 @@ func (x *SignedLeaseGrant) String() string {
 func (*SignedLeaseGrant) ProtoMessage() {}
 
 func (x *SignedLeaseGrant) ProtoReflect() protoreflect.Message {
-	mi := &file_dhow_runner_v1_job_proto_msgTypes[7]
+	mi := &file_dhow_runner_v1_job_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -666,7 +762,7 @@ func (x *SignedLeaseGrant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignedLeaseGrant.ProtoReflect.Descriptor instead.
 func (*SignedLeaseGrant) Descriptor() ([]byte, []int) {
-	return file_dhow_runner_v1_job_proto_rawDescGZIP(), []int{7}
+	return file_dhow_runner_v1_job_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SignedLeaseGrant) GetGrantBytes() []byte {
@@ -737,7 +833,12 @@ const file_dhow_runner_v1_job_proto_rawDesc = "" +
 	"\x03enc\x18\x02 \x01(\fR\x03enc\x12\x1e\n" +
 	"\n" +
 	"ciphertext\x18\x03 \x01(\fR\n" +
-	"ciphertext\"\xda\x02\n" +
+	"ciphertext\"7\n" +
+	"\vSecretValue\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value\"E\n" +
+	"\fSecretBundle\x125\n" +
+	"\asecrets\x18\x01 \x03(\v2\x1b.dhow.runner.v1.SecretValueR\asecrets\"\xda\x02\n" +
 	"\n" +
 	"LeaseGrant\x12\x19\n" +
 	"\blease_id\x18\x01 \x01(\tR\aleaseId\x12\x1d\n" +
@@ -774,7 +875,7 @@ func file_dhow_runner_v1_job_proto_rawDescGZIP() []byte {
 }
 
 var file_dhow_runner_v1_job_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dhow_runner_v1_job_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_dhow_runner_v1_job_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_dhow_runner_v1_job_proto_goTypes = []any{
 	(HpkeKem)(0),                  // 0: dhow.runner.v1.HpkeKem
 	(*JobSpec)(nil),               // 1: dhow.runner.v1.JobSpec
@@ -783,29 +884,32 @@ var file_dhow_runner_v1_job_proto_goTypes = []any{
 	(*Resources)(nil),             // 4: dhow.runner.v1.Resources
 	(*Network)(nil),               // 5: dhow.runner.v1.Network
 	(*SealedSecrets)(nil),         // 6: dhow.runner.v1.SealedSecrets
-	(*LeaseGrant)(nil),            // 7: dhow.runner.v1.LeaseGrant
-	(*SignedLeaseGrant)(nil),      // 8: dhow.runner.v1.SignedLeaseGrant
-	nil,                           // 9: dhow.runner.v1.JobSpec.EnvEntry
-	nil,                           // 10: dhow.runner.v1.Step.EnvEntry
-	(Isolation)(0),                // 11: dhow.runner.v1.Isolation
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
+	(*SecretValue)(nil),           // 7: dhow.runner.v1.SecretValue
+	(*SecretBundle)(nil),          // 8: dhow.runner.v1.SecretBundle
+	(*LeaseGrant)(nil),            // 9: dhow.runner.v1.LeaseGrant
+	(*SignedLeaseGrant)(nil),      // 10: dhow.runner.v1.SignedLeaseGrant
+	nil,                           // 11: dhow.runner.v1.JobSpec.EnvEntry
+	nil,                           // 12: dhow.runner.v1.Step.EnvEntry
+	(Isolation)(0),                // 13: dhow.runner.v1.Isolation
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
 }
 var file_dhow_runner_v1_job_proto_depIdxs = []int32{
 	2,  // 0: dhow.runner.v1.JobSpec.steps:type_name -> dhow.runner.v1.Step
-	9,  // 1: dhow.runner.v1.JobSpec.env:type_name -> dhow.runner.v1.JobSpec.EnvEntry
+	11, // 1: dhow.runner.v1.JobSpec.env:type_name -> dhow.runner.v1.JobSpec.EnvEntry
 	3,  // 2: dhow.runner.v1.JobSpec.secrets:type_name -> dhow.runner.v1.SecretRef
 	4,  // 3: dhow.runner.v1.JobSpec.resources:type_name -> dhow.runner.v1.Resources
 	5,  // 4: dhow.runner.v1.JobSpec.network:type_name -> dhow.runner.v1.Network
-	11, // 5: dhow.runner.v1.JobSpec.isolation:type_name -> dhow.runner.v1.Isolation
-	10, // 6: dhow.runner.v1.Step.env:type_name -> dhow.runner.v1.Step.EnvEntry
+	13, // 5: dhow.runner.v1.JobSpec.isolation:type_name -> dhow.runner.v1.Isolation
+	12, // 6: dhow.runner.v1.Step.env:type_name -> dhow.runner.v1.Step.EnvEntry
 	0,  // 7: dhow.runner.v1.SealedSecrets.kem:type_name -> dhow.runner.v1.HpkeKem
-	12, // 8: dhow.runner.v1.LeaseGrant.issued_at:type_name -> google.protobuf.Timestamp
-	1,  // 9: dhow.runner.v1.LeaseGrant.spec:type_name -> dhow.runner.v1.JobSpec
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	7,  // 8: dhow.runner.v1.SecretBundle.secrets:type_name -> dhow.runner.v1.SecretValue
+	14, // 9: dhow.runner.v1.LeaseGrant.issued_at:type_name -> google.protobuf.Timestamp
+	1,  // 10: dhow.runner.v1.LeaseGrant.spec:type_name -> dhow.runner.v1.JobSpec
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_dhow_runner_v1_job_proto_init() }
@@ -824,7 +928,7 @@ func file_dhow_runner_v1_job_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dhow_runner_v1_job_proto_rawDesc), len(file_dhow_runner_v1_job_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
