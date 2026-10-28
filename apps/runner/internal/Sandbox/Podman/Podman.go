@@ -2,13 +2,16 @@ package podman
 
 import (
 	"context"
+	"debug/elf"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 
 	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
 	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
@@ -16,9 +19,17 @@ import (
 )
 
 const (
+	dockerTransport   = "docker://"
 	controlDirName    = "control"
 	controlSocketName = "control.sock"
 	workspaceDirName  = "workspace"
+)
+
+var (
+	ErrShortImageName = errors.New("the image must start with its registry host, because short names are off")
+	ErrImageID        = errors.New("podman did not return the image ID")
+	ErrDynamicAgent   = errors.New("the runner binary asks for a dynamic loader, which would come from the job's image; build it with CGO_ENABLED=0")
+	imageIDPattern    = regexp.MustCompile(`^[a-f0-9]{64}$`)
 )
 
 type Driver struct {
@@ -29,6 +40,8 @@ type Driver struct {
 	levels      []runnerv1.Isolation
 	skipPull    bool
 	log         *slog.Logger
+	mu          sync.Mutex
+	live        map[string][]idRange
 }
 
 type Options struct {
@@ -61,6 +74,9 @@ func New(ctx context.Context, o Options) (*Driver, error) {
 		}
 		agentPath = self
 	}
+	if err := staticAgent(agentPath); err != nil {
+		return nil, err
+	}
 	if !o.SkipChecks {
 		if bad := failed(Preflight(ctx, binary)); len(bad) > 0 {
 			return nil, &PreflightError{Failed: bad}
@@ -74,7 +90,7 @@ func New(ctx context.Context, o Options) (*Driver, error) {
 	if len(levels) == 0 {
 		levels = []runnerv1.Isolation{runnerv1.Isolation_ISOLATION_CONTAINER}
 	}
-	return &Driver{binary: binary, attemptsDir: o.Config.AttemptsDir(), agentPath: agentPath, paths: p, levels: levels, skipPull: o.SkipPull, log: o.Log}, nil
+	return &Driver{binary: binary, attemptsDir: o.Config.AttemptsDir(), agentPath: agentPath, paths: p, levels: levels, skipPull: o.SkipPull, log: o.Log, live: map[string][]idRange{}}, nil
 }
 
 func (d *Driver) Name() string { return "podman" }
@@ -127,10 +143,11 @@ func (d *Driver) Prepare(ctx context.Context, spec sandbox.PrepareSpec) (sandbox
 			return nil, err
 		}
 	}
-	if err := d.pull(ctx, spec.Image); err != nil {
+	imageID, err := d.pull(ctx, spec.Image)
+	if err != nil {
 		return nil, fmt.Errorf("%w: %w", sandbox.ErrImagePull, err)
 	}
-	if _, err := r.run(ctx, createArgs(spec, l, d.paths.seccompFile)...); err != nil {
+	if _, err := r.run(ctx, createArgs(spec, l, d.paths.seccompFile, imageID)...); err != nil {
 		return nil, fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
 	}
 	in, err := inspect(ctx, r, l.name)
@@ -138,7 +155,7 @@ func (d *Driver) Prepare(ctx context.Context, spec sandbox.PrepareSpec) (sandbox
 		d.remove(ctx, l.name)
 		return nil, fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
 	}
-	if err := verify(in, spec); err != nil {
+	if err := verify(in, spec, l); err != nil {
 		d.remove(ctx, l.name)
 		return nil, fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
 	}
@@ -150,14 +167,45 @@ func (d *Driver) Prepare(ctx context.Context, spec sandbox.PrepareSpec) (sandbox
 	return box, nil
 }
 
-func (d *Driver) pull(ctx context.Context, image string) error {
-	r := d.runner()
-	if d.skipPull {
-		_, err := r.run(ctx, "image", "exists", "--", image)
-		return err
+func (d *Driver) pull(ctx context.Context, image string) (string, error) {
+	if !qualified(image) {
+		return "", ErrShortImageName
 	}
-	_, err := r.run(ctx, "pull", "--", image)
-	return err
+	r := d.runner()
+	var out []byte
+	var err error
+	if d.skipPull {
+		out, err = r.run(ctx, "image", "inspect", "--format", "{{.Id}}", "--", image)
+	} else {
+		out, err = r.run(ctx, "pull", "--quiet", "--", dockerTransport+image)
+	}
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Fields(string(out))
+	if len(lines) == 0 || !imageIDPattern.MatchString(lines[len(lines)-1]) {
+		return "", fmt.Errorf("%w: %q", ErrImageID, trim(out))
+	}
+	return lines[len(lines)-1], nil
+}
+
+func staticAgent(path string) error {
+	f, err := elf.Open(path)
+	if err != nil {
+		return fmt.Errorf("read the agent binary: %w", err)
+	}
+	defer func() { _ = f.Close() }()
+	for _, p := range f.Progs {
+		if p.Type == elf.PT_INTERP {
+			return ErrDynamicAgent
+		}
+	}
+	return nil
+}
+
+func qualified(image string) bool {
+	host, _, ok := strings.Cut(image, "/")
+	return ok && (strings.ContainsAny(host, ".:") || host == "localhost")
 }
 
 func (d *Driver) remove(ctx context.Context, name string) {

@@ -75,3 +75,16 @@ func processes(token string) result {
 	}
 	return blocked("the other job's processes")
 }
+
+func alone() result {
+	keep := map[string]bool{"1": true, strconv.Itoa(os.Getpid()): true, strconv.Itoa(os.Getppid()): true}
+	paths, _ := filepath.Glob("/proc/[0-9]*")
+	for _, p := range paths {
+		pid := filepath.Base(p)
+		if !keep[pid] {
+			cmd, _ := os.ReadFile(filepath.Join(p, "cmdline")) //nolint:gosec // A /proc entry of the job's own PID namespace.
+			return escaped("a process outlives its step", "PID %s (%s) is still running", pid, strings.ReplaceAll(string(cmd), "\x00", " "))
+		}
+	}
+	return blocked("a process outlives its step")
+}

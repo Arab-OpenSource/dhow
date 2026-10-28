@@ -27,7 +27,7 @@ type layout struct {
 	workDir    string
 }
 
-func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile string) []string {
+func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile, imageID string) []string {
 	r := spec.Resources
 	mem := r.MemoryBytes
 	diskMount := tmpfsMount(workspacePath, r.DiskBytes, "tmpfs-mode=0755,nosuid,nodev,U")
@@ -58,6 +58,7 @@ func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile string) []string
 		"--log-driver=none",
 		"--init=false",
 		"--http-proxy=false",
+		"--unsetenv-all",
 		"--ulimit=nofile=" + strconv.Itoa(nofileLimit) + ":" + strconv.Itoa(nofileLimit),
 		"--ulimit=core=0:0",
 		"--shm-size=" + strconv.Itoa(shmBytes),
@@ -72,7 +73,7 @@ func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile string) []string
 		"--mount", tmpfsMount(secretsMount, secretsTmpfs, "tmpfs-mode=0700,noexec,nosuid,nodev,U"),
 		"--workdir=" + workspacePath,
 		"--entrypoint=" + entrypoint,
-		"--", spec.Image,
+		"--", imageID,
 	}
 	return args
 }

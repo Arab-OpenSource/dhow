@@ -86,8 +86,10 @@ func (b *box) accept(ctx context.Context) (*wire.Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("the agent did not connect to the control channel: %w", err)
 	}
+	_ = raw.SetDeadline(deadline)
 	conn := wire.NewConn(raw)
 	frame, err := conn.Read()
+	_ = raw.SetDeadline(time.Time{})
 	if err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("the agent did not greet the runner: %w", err)
@@ -128,6 +130,9 @@ func (b *box) readStep(ctx context.Context, conn *wire.Conn, step sandbox.StepSp
 		case *agentv1.Frame_Output:
 			writeOutput(step, body.Output)
 		case *agentv1.Frame_StepExit:
+			if body.StepExit.GetIndex() != step.Index {
+				return sandbox.StepResult{}, fmt.Errorf("%w: the agent ended step %d while step %d was running", sandbox.ErrSandbox, body.StepExit.GetIndex(), step.Index)
+			}
 			return b.stepResult(body.StepExit, oomBefore)
 		}
 	}
@@ -232,6 +237,7 @@ func (b *box) Destroy(ctx context.Context) error {
 	if err != nil && !isGone(err) {
 		return err
 	}
+	b.d.untrack(b.name)
 	for _, dir := range b.owned {
 		if err := b.d.removeOwned(ctx, dir); err != nil {
 			return err

@@ -14,13 +14,20 @@ import (
 
 func startAgent(t *testing.T) (*wire.Conn, chan error) {
 	t.Helper()
+	return startAgentWith(t, Options{SecretsDir: t.TempDir()})
+}
+
+func startAgentWith(t *testing.T, o Options) (*wire.Conn, chan error) {
+	t.Helper()
 	runnerSide, agentSide := net.Pipe()
+	o.Harden = func() error { return nil }
+	o.Dialer = func(context.Context, string) (io.ReadWriteCloser, error) { return agentSide, nil }
+	if o.Sweep == nil {
+		o.Sweep = func() error { return nil }
+	}
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(context.Background(), Options{
-			Harden: func() error { return nil },
-			Dialer: func(context.Context, string) (io.ReadWriteCloser, error) { return agentSide, nil },
-		})
+		done <- Run(context.Background(), o)
 	}()
 	conn := wire.NewConn(runnerSide)
 	t.Cleanup(func() { _ = conn.Close() })

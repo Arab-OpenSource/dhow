@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"sync"
 	"time"
 
@@ -31,6 +30,8 @@ type Options struct {
 	Stdio      Stdio
 	Dialer     func(ctx context.Context, path string) (io.ReadWriteCloser, error)
 	Harden     func() error
+	Sweep      func() error
+	SecretsDir string
 	Clock      func() time.Time
 }
 
@@ -40,12 +41,14 @@ type Stdio struct {
 }
 
 type Agent struct {
-	conn     *wire.Conn
-	harden   func() error
-	mu       sync.Mutex
-	current  *process
-	stopping bool
-	busy     bool
+	conn       *wire.Conn
+	harden     func() error
+	sweep      func() error
+	secretsDir string
+	mu         sync.Mutex
+	current    *process
+	stopping   bool
+	busy       bool
 }
 
 func Run(ctx context.Context, o Options) error {
@@ -58,6 +61,16 @@ func Run(ctx context.Context, o Options) error {
 	if o.Dialer == nil {
 		o.Dialer = dialUnix
 	}
+	if o.SecretsDir == "" {
+		o.SecretsDir = SecretsDir
+	}
+	if o.Sweep == nil {
+		sweep, err := defaultSweep()
+		if err != nil {
+			return err
+		}
+		o.Sweep = sweep
+	}
 	if err := o.Harden(); err != nil {
 		return err
 	}
@@ -67,7 +80,7 @@ func Run(ctx context.Context, o Options) error {
 	if err != nil {
 		return fmt.Errorf("connect to the runner control channel: %w", err)
 	}
-	a := &Agent{conn: wire.NewConn(rwc), harden: o.Harden}
+	a := &Agent{conn: wire.NewConn(rwc), harden: o.Harden, sweep: o.Sweep, secretsDir: o.SecretsDir}
 	defer func() { _ = a.conn.Close() }()
 	if err := a.conn.Write(hello()); err != nil {
 		return fmt.Errorf("greet the runner: %w", err)
@@ -103,8 +116,11 @@ func (a *Agent) loop(ctx context.Context) error {
 			}
 			step := body.RunStep
 			steps.Go(func() {
-				defer a.release()
-				_ = a.runStep(ctx, step)
+				if err := a.runStep(ctx, step); err != nil {
+					_ = a.conn.Close()
+					return
+				}
+				a.release()
 			})
 		case *agentv1.Frame_Signal:
 			a.killCurrent(signalOf(body.Signal.GetSignal()))
@@ -136,6 +152,7 @@ func (a *Agent) killCurrent(sig unix.Signal) {
 }
 
 func hardenAgent() error {
+	ignoreJobSignals()
 	if err := unix.Prctl(unix.PR_SET_DUMPABLE, 0, 0, 0, 0); err != nil {
 		return fmt.Errorf("turn off ptrace inside the job (PR_SET_DUMPABLE): %w", err)
 	}
@@ -197,46 +214,4 @@ func (a *Agent) clearCurrent() {
 	a.mu.Lock()
 	a.current = nil
 	a.mu.Unlock()
-}
-
-func writeSecretFiles(files []*agentv1.SecretFile) error {
-	if len(files) == 0 {
-		return nil
-	}
-	if err := os.MkdirAll(SecretsDir, 0o700); err != nil {
-		return fmt.Errorf("prepare the secrets directory: %w", err)
-	}
-	for _, f := range files {
-		if err := writeSecretFile(f.GetName(), f.GetData()); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func writeSecretFile(name string, data []byte) error {
-	fd, err := unix.Openat(unix.AT_FDCWD, SecretsDir+"/"+name,
-		unix.O_WRONLY|unix.O_CREAT|unix.O_TRUNC|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0o400)
-	if err != nil {
-		return fmt.Errorf("create a secret file: %w", err)
-	}
-	f := os.NewFile(uintptr(fd), name)
-	if _, err := f.Write(data); err != nil {
-		_ = f.Close()
-		return fmt.Errorf("write a secret file: %w", err)
-	}
-	return f.Close()
-}
-
-func wipeSecretFiles(files []*agentv1.SecretFile) {
-	for _, f := range files {
-		path := SecretsDir + "/" + f.GetName()
-		if fd, err := unix.Openat(unix.AT_FDCWD, path, unix.O_WRONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0); err == nil {
-			zero := make([]byte, len(f.GetData()))
-			file := os.NewFile(uintptr(fd), path)
-			_, _ = file.WriteAt(zero, 0)
-			_ = file.Close()
-		}
-		_ = os.Remove(path)
-	}
 }

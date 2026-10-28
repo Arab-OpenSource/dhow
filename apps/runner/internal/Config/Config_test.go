@@ -115,13 +115,17 @@ func TestLimitsAboveTheMachineFailClosed(t *testing.T) {
 	e := base(t)
 	_, err := load(t, e, false, small)
 	assert.ErrorIs(t, err, config.ErrAboveMachine, "the tmpfs disk counts as memory, so the defaults do not fit 4 GiB")
+}
+
+func TestTheDirectoryDiskModeIsRefusedUntilItHasAnEnforcedLimit(t *testing.T) {
+	m := big8()
+	m.DiskFree = func(string) (int64, error) { return 100 << 30, nil }
+	e := base(t)
 	e[config.EnvDiskMode] = config.DiskModeDirectory
-	e[config.EnvMaxCPU] = "2"
-	small.DiskFree = func(string) (int64, error) { return 1 << 30, nil }
-	_, err = load(t, e, false, small)
-	assert.ErrorIs(t, err, config.ErrAboveMachine, "the directory disk must fit the free space")
-	small.DiskFree = func(string) (int64, error) { return 10 << 30, nil }
-	_, err = load(t, e, false, small)
+	_, err := load(t, e, false, m)
+	assert.ErrorIs(t, err, config.ErrDiskUnenforced)
+	e[config.EnvDiskMode] = config.DiskModeTmpfs
+	_, err = load(t, e, false, m)
 	assert.NoError(t, err)
 }
 

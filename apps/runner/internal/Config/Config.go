@@ -71,6 +71,7 @@ var (
 	ErrRelativePath   = errors.New("must be an absolute path")
 	ErrUnknownDriver  = errors.New("must be podman, kubernetes or fake")
 	ErrUnknownDisk    = errors.New("must be tmpfs or directory")
+	ErrDiskUnenforced = errors.New("is directory, which has no enforced disk limit yet, so only tmpfs is accepted (ADR-0056)")
 	ErrAboveMachine   = errors.New("is more than this machine has")
 	ErrOutOfRange     = errors.New("is out of range")
 	ErrCAFileNoCerts  = errors.New("has no PEM certificate")
@@ -108,6 +109,9 @@ func Load(getenv func(string) string, o Options) (Config, error) {
 	cfg.Driver, err = oneOf(getenv(EnvDriver), DriverPodman, ErrUnknownDriver, DriverPodman, DriverKubernetes, DriverFake)
 	add(EnvDriver, err)
 	cfg.DiskMode, err = oneOf(getenv(EnvDiskMode), DiskModeTmpfs, ErrUnknownDisk, DiskModeTmpfs, DiskModeDirectory)
+	if cfg.DiskMode == DiskModeDirectory {
+		err = ErrDiskUnenforced
+	}
 	add(EnvDiskMode, err)
 	cfg.Capacity, err = parseIntRange(getenv(EnvCapacity), DefaultCapacity, MinCapacity, MaxCapacity)
 	add(EnvCapacity, err)
@@ -219,8 +223,8 @@ func checkMachine(l Limits, m Machine, cfg Config) []error {
 		memory += l.DiskBytes
 	}
 	if m.MemoryBytes > 0 && memory > m.MemoryBytes {
-		errs = append(errs, fmt.Errorf("%s: %d bytes of memory per job (with the tmpfs disk) %w (%d); lower %s or %s, or set %s=%s",
-			EnvMaxMemory, memory, ErrAboveMachine, m.MemoryBytes, EnvMaxMemory, EnvMaxDisk, EnvDiskMode, DiskModeDirectory))
+		errs = append(errs, fmt.Errorf("%s: %d bytes of memory per job (with the tmpfs disk) %w (%d); lower %s or %s",
+			EnvMaxMemory, memory, ErrAboveMachine, m.MemoryBytes, EnvMaxMemory, EnvMaxDisk))
 	}
 	if m.DiskFree != nil {
 		jobs := int64(max(cfg.Capacity, 1))

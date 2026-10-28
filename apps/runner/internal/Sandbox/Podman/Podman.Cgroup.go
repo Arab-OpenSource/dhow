@@ -20,6 +20,9 @@ func (b *box) enforced(ctx context.Context) error {
 	if err := verifyCgroup(cgroupRoot, in.State.CgroupPath, b.spec); err != nil {
 		return err
 	}
+	if err := b.verifyUserNS(in.State.Pid); err != nil {
+		return err
+	}
 	b.mu.Lock()
 	b.cgroup = filepath.Join(cgroupRoot, in.State.CgroupPath)
 	b.mu.Unlock()
