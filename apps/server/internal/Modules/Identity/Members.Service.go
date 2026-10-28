@@ -100,6 +100,9 @@ func (s *Service) RemoveMember(ctx context.Context, org, target uuid.UUID) (mode
 		return models.MemberChange{}, err
 	}
 	if target == p.UserID {
+		if p.ViaToken() {
+			return models.MemberChange{}, apperrors.SessionRequired()
+		}
 		if err := s.removeSelf(ctx, p, org); err != nil {
 			return models.MemberChange{}, err
 		}

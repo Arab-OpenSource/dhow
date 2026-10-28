@@ -207,6 +207,20 @@ func TestTokensStayInTheirOrganization(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.get(token.Value, apptest.OrgPath(other, "/members")).Status)
 }
 
+func TestATokenCannotMakeItsCreatorLeave(t *testing.T) {
+	w := newWorld(t)
+	admin, adminID := w.env.SignedIn(w.org, "admin@example.com", "admin")
+	token := admin.MustCreateAPIToken(w.org, []string{"member.manage", "member.read"}, "a long password for admin@example.com")
+	res := w.env.Bearer(token.Value, apptest.Request{Method: http.MethodDelete, Path: apptest.OrgPath(w.org, "/members/"+adminID.String())})
+	assert.Equal(t, http.StatusForbidden, res.Status, string(res.Raw))
+	require.NotNil(t, res.Error)
+	assert.Equal(t, "SESSION_REQUIRED", res.Error.Code)
+	assert.Equal(t, http.StatusOK, w.get(token.Value, w.members()).Status, "the creator is still a member")
+	target := w.env.SeedUser(w.org, "viewer@example.com", "a long password for viewer", "viewer")
+	other := w.env.Bearer(token.Value, apptest.Request{Method: http.MethodDelete, Path: apptest.OrgPath(w.org, "/members/"+target.String())})
+	assert.Equal(t, http.StatusOK, other.Status, "removing someone else stays a token action: %s", other.Raw)
+}
+
 func TestTokensAreRefusedOnBrowserOnlyRoutes(t *testing.T) {
 	w := newWorld(t)
 	token := w.owner.MustCreateAPIToken(w.org, []string{"org.read", "org.update", "member.read", "member.manage"}, w.password)
@@ -231,6 +245,7 @@ func TestTokensAreRefusedOnBrowserOnlyRoutes(t *testing.T) {
 			"CurrentFactor": apptest.PasswordFactor(w.password),
 		}},
 		{Method: http.MethodPost, Path: "/organizations", Body: map[string]string{"Name": "New", "Slug": "new-org"}},
+		{Method: http.MethodPost, Path: apptest.OrgPath(w.org, "/jobs"), Body: map[string]any{}},
 		{Method: http.MethodPost, Path: "/sessions", Body: map[string]string{"Email": "owner@example.com", "Password": w.password}},
 	}
 	for _, req := range routes {
