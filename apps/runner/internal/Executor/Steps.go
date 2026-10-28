@@ -118,6 +118,9 @@ func (a *attempt) runStep(ctx, jobCtx context.Context, idx int32, step *runnerv1
 	}
 	_ = stdout.Close()
 	_ = stderr.Close()
+	for _, v := range files {
+		clear(v)
+	}
 	if end.ok {
 		clear(env)
 		clear(files)

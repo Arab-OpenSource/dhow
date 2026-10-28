@@ -62,6 +62,8 @@ type Event struct {
 	Signal    syscall.Signal
 	EnvNames  []string
 	FileNames []string
+	FileData  [][]byte
+	Env       map[string]string
 	At        time.Time
 }
 

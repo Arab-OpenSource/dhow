@@ -222,3 +222,17 @@ func TestASecretTooLargeToMaskStopsTheJob(t *testing.T) {
 	assert.NotContains(t, kinds(running.Driver.Events()), fake.EventExec)
 	assert.Contains(t, logText(srv.Leases()[0]), "the secret BLOB is too large to mask")
 }
+
+func TestSecretFilesAreZeroedAfterTheStep(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	spec := runnertest.Spec()
+	spec.Secrets = []*runnerv1.SecretRef{{Name: "KEY", Target: &runnerv1.SecretRef_AsFile{AsFile: "key"}}}
+	srv.Enqueue(spec, map[string][]byte{"KEY": []byte("file-secret-value")})
+	running := r.Start(fake.Recording{}, runnertest.StartOptions{})
+	require.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, running.Next(t, finishWithin).Result)
+	exec := runnertest.WaitEvent(t, running.Driver, fake.EventExec, finishWithin)
+	require.Equal(t, []string{"key"}, exec.FileNames)
+	require.Len(t, exec.FileData, 1)
+	assert.Equal(t, make([]byte, len("file-secret-value")), exec.FileData[0], "the bytes the step saw are wiped, not just dropped")
+}

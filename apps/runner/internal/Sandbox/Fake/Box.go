@@ -59,11 +59,18 @@ func (b *box) Exec(ctx context.Context, spec sandbox.StepSpec) (sandbox.StepResu
 	}
 	slices.Sort(envNames)
 	fileNames := make([]string, 0, len(spec.Files))
-	for k := range spec.Files {
+	fileData := make([][]byte, 0, len(spec.Files))
+	for k, v := range spec.Files {
 		fileNames = append(fileNames, k)
+		fileData = append(fileData, v)
 	}
 	slices.Sort(fileNames)
-	b.d.record(Event{Kind: EventExec, AttemptID: b.attempt, Step: spec.Index, EnvNames: envNames, FileNames: fileNames})
+	env := make(map[string]string, len(spec.Env))
+	for k, v := range spec.Env {
+		env[k] = v
+	}
+	b.d.record(Event{Kind: EventExec, AttemptID: b.attempt, Step: spec.Index, EnvNames: envNames, FileNames: fileNames,
+		FileData: fileData, Env: env})
 	if spec.Started != nil {
 		spec.Started()
 	}
