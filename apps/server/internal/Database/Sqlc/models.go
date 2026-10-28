@@ -226,12 +226,15 @@ type OidcFlow struct {
 }
 
 type Organization struct {
-	Id        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	IsDeleted bool
-	Name      string
-	Slug      string
+	Id                             uuid.UUID
+	CreatedAt                      time.Time
+	UpdatedAt                      time.Time
+	IsDeleted                      bool
+	Name                           string
+	Slug                           string
+	RequireSecondFactor            string
+	RequireSecondFactorSince       *time.Time
+	RequireSecondFactorAdminsSince *time.Time
 }
 
 type OrganizationTeamRole struct {

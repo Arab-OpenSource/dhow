@@ -81,6 +81,8 @@ func TestCatalogsCoverTheSameKeys(t *testing.T) {
 		"mfa.passkey.added",
 		"mfa.passkey.renamed",
 		"mfa.passkey.removed",
+		"errors.secondFactorRequired",
+		"identity.secondFactor.saved",
 	}
 	for _, k := range keys {
 		assert.NotEqual(t, k, i18n.Translate(i18n.Ar, k), "missing Arabic message for %s", k)

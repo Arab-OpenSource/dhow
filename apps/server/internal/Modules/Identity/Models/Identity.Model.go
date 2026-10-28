@@ -14,10 +14,12 @@ type User struct {
 }
 
 type Organization struct {
-	ID        uuid.UUID
-	Name      string
-	Slug      string
-	CreatedAt time.Time
+	ID                       uuid.UUID
+	Name                     string
+	Slug                     string
+	CreatedAt                time.Time
+	RequireSecondFactor      string
+	RequireSecondFactorSince *time.Time
 }
 
 type Member struct {

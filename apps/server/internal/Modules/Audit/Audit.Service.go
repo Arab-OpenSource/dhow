@@ -47,6 +47,7 @@ func NewService(db DB, log *slog.Logger, now func() time.Time) *Service {
 }
 
 func (s *Service) Handle(ctx context.Context, ev eventbus.Event) error {
+	ctx = context.WithoutCancel(ctx)
 	a, ok := ev.Payload.(eventbus.Audited)
 	if !ok {
 		return fmt.Errorf("audit event %s carries an unexpected payload", ev.Name)

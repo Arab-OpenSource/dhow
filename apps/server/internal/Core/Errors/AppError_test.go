@@ -36,6 +36,7 @@ func TestConstructors(t *testing.T) {
 		{"password breached", apperrors.PasswordBreached(), http.StatusUnprocessableEntity, "PASSWORD_BREACHED", "errors.passwordBreached"},
 		{"setup completed", apperrors.SetupCompleted(), http.StatusConflict, "SETUP_COMPLETED", "errors.setupCompleted"},
 		{"setup token invalid", apperrors.SetupTokenInvalid(), http.StatusForbidden, "SETUP_TOKEN_INVALID", "errors.setupTokenInvalid"},
+		{"second factor required", apperrors.SecondFactorRequired(), http.StatusForbidden, "SECOND_FACTOR_REQUIRED", "errors.secondFactorRequired"},
 		{"conflict", apperrors.Conflict(), http.StatusConflict, "CONFLICT", "errors.conflict"},
 		{"mfa challenge expired", apperrors.MfaChallengeExpired(), http.StatusUnauthorized, "MFA_CHALLENGE_EXPIRED", "errors.mfaChallengeExpired"},
 		{"invalid mfa code", apperrors.InvalidMfaCode(0), http.StatusUnauthorized, "INVALID_MFA_CODE", "errors.invalidMfaCode"},

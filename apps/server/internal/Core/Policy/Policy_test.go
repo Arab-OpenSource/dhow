@@ -14,7 +14,7 @@ func TestMatrix(t *testing.T) {
 	org := uuid.New()
 	want := map[policy.Role]map[policy.Action]bool{
 		policy.RoleOwner: {
-			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.OrgTransfer: true,
+			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.OrgTransfer: true, policy.OrgSecurity: true,
 			policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true,
 			policy.TokenCreate: true, policy.TokenManage: true, policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true,
 			policy.LogRead: true,

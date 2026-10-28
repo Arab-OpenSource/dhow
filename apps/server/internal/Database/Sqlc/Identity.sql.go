@@ -38,7 +38,7 @@ func (q *Queries) CountMembers(ctx context.Context, organizationID uuid.UUID) (i
 }
 
 const getOrganizationForMember = `-- name: GetOrganizationForMember :one
-SELECT o."Id", o."Name", o."Slug", o."CreatedAt"
+SELECT o."Id", o."Name", o."Slug", o."CreatedAt", o."RequireSecondFactor", o."RequireSecondFactorSince"
 FROM "Organizations" o
 JOIN "Memberships" m ON m."OrganizationId" = o."Id" AND m."UserId" = $1 AND NOT m."IsDeleted"
 WHERE o."Id" = $2 AND NOT o."IsDeleted"
@@ -50,10 +50,12 @@ type GetOrganizationForMemberParams struct {
 }
 
 type GetOrganizationForMemberRow struct {
-	Id        uuid.UUID
-	Name      string
-	Slug      string
-	CreatedAt time.Time
+	Id                       uuid.UUID
+	Name                     string
+	Slug                     string
+	CreatedAt                time.Time
+	RequireSecondFactor      string
+	RequireSecondFactorSince *time.Time
 }
 
 func (q *Queries) GetOrganizationForMember(ctx context.Context, arg GetOrganizationForMemberParams) (GetOrganizationForMemberRow, error) {
@@ -64,6 +66,8 @@ func (q *Queries) GetOrganizationForMember(ctx context.Context, arg GetOrganizat
 		&i.Name,
 		&i.Slug,
 		&i.CreatedAt,
+		&i.RequireSecondFactor,
+		&i.RequireSecondFactorSince,
 	)
 	return i, err
 }
@@ -116,7 +120,7 @@ func (q *Queries) InsertMembership(ctx context.Context, arg InsertMembershipPara
 const insertOrganization = `-- name: InsertOrganization :one
 INSERT INTO "Organizations" ("Name", "Slug", "CreatedAt", "UpdatedAt")
 VALUES ($1, $2, $3, $3)
-RETURNING "Id", "Name", "Slug", "CreatedAt"
+RETURNING "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
 `
 
 type InsertOrganizationParams struct {
@@ -126,10 +130,12 @@ type InsertOrganizationParams struct {
 }
 
 type InsertOrganizationRow struct {
-	Id        uuid.UUID
-	Name      string
-	Slug      string
-	CreatedAt time.Time
+	Id                       uuid.UUID
+	Name                     string
+	Slug                     string
+	CreatedAt                time.Time
+	RequireSecondFactor      string
+	RequireSecondFactorSince *time.Time
 }
 
 func (q *Queries) InsertOrganization(ctx context.Context, arg InsertOrganizationParams) (InsertOrganizationRow, error) {
@@ -140,6 +146,8 @@ func (q *Queries) InsertOrganization(ctx context.Context, arg InsertOrganization
 		&i.Name,
 		&i.Slug,
 		&i.CreatedAt,
+		&i.RequireSecondFactor,
+		&i.RequireSecondFactorSince,
 	)
 	return i, err
 }
@@ -338,12 +346,57 @@ func (q *Queries) MarkSetupTokenUsed(ctx context.Context, arg MarkSetupTokenUsed
 	return err
 }
 
+const setOrganizationSecondFactor = `-- name: SetOrganizationSecondFactor :one
+UPDATE "Organizations"
+SET "RequireSecondFactor" = $1, "RequireSecondFactorSince" = $2::timestamptz,
+    "RequireSecondFactorAdminsSince" = $3::timestamptz, "UpdatedAt" = $4
+WHERE "Id" = $5 AND NOT "IsDeleted"
+RETURNING "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
+`
+
+type SetOrganizationSecondFactorParams struct {
+	Rule        string
+	Since       *time.Time
+	AdminsSince *time.Time
+	Now         time.Time
+	ID          uuid.UUID
+}
+
+type SetOrganizationSecondFactorRow struct {
+	Id                       uuid.UUID
+	Name                     string
+	Slug                     string
+	CreatedAt                time.Time
+	RequireSecondFactor      string
+	RequireSecondFactorSince *time.Time
+}
+
+func (q *Queries) SetOrganizationSecondFactor(ctx context.Context, arg SetOrganizationSecondFactorParams) (SetOrganizationSecondFactorRow, error) {
+	row := q.db.QueryRow(ctx, setOrganizationSecondFactor,
+		arg.Rule,
+		arg.Since,
+		arg.AdminsSince,
+		arg.Now,
+		arg.ID,
+	)
+	var i SetOrganizationSecondFactorRow
+	err := row.Scan(
+		&i.Id,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.RequireSecondFactor,
+		&i.RequireSecondFactorSince,
+	)
+	return i, err
+}
+
 const updateOrganizationName = `-- name: UpdateOrganizationName :one
 UPDATE "Organizations" o
 SET "Name" = $1, "UpdatedAt" = $2
 WHERE o."Id" = $3 AND NOT o."IsDeleted"
   AND EXISTS (SELECT 1 FROM "Memberships" m WHERE m."OrganizationId" = o."Id" AND m."UserId" = $4 AND NOT m."IsDeleted")
-RETURNING o."Id", o."Name", o."Slug", o."CreatedAt"
+RETURNING o."Id", o."Name", o."Slug", o."CreatedAt", o."RequireSecondFactor", o."RequireSecondFactorSince"
 `
 
 type UpdateOrganizationNameParams struct {
@@ -354,10 +407,12 @@ type UpdateOrganizationNameParams struct {
 }
 
 type UpdateOrganizationNameRow struct {
-	Id        uuid.UUID
-	Name      string
-	Slug      string
-	CreatedAt time.Time
+	Id                       uuid.UUID
+	Name                     string
+	Slug                     string
+	CreatedAt                time.Time
+	RequireSecondFactor      string
+	RequireSecondFactorSince *time.Time
 }
 
 func (q *Queries) UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error) {
@@ -373,6 +428,8 @@ func (q *Queries) UpdateOrganizationName(ctx context.Context, arg UpdateOrganiza
 		&i.Name,
 		&i.Slug,
 		&i.CreatedAt,
+		&i.RequireSecondFactor,
+		&i.RequireSecondFactorSince,
 	)
 	return i, err
 }

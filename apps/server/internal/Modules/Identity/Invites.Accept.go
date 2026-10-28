@@ -118,7 +118,7 @@ func join(ctx context.Context, q *sqlc.Queries, inv sqlc.LockUsableInvitationRow
 	if err != nil {
 		return models.Organization{}, err
 	}
-	return models.Organization{ID: o.Id, Name: o.Name, Slug: o.Slug, CreatedAt: o.CreatedAt}, nil
+	return organizationOf(o.Id, o.Name, o.Slug, o.CreatedAt, o.RequireSecondFactor, o.RequireSecondFactorSince), nil
 }
 
 func validateAccept(in *models.AcceptInput) *apperrors.AppError {

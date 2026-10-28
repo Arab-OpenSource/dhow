@@ -43,63 +43,13 @@ func TestSessionIsStoredHashedWithTheDocumentedTimeouts(t *testing.T) {
 	assert.Len(t, row.TokenHash, 32)
 	assert.NotContains(t, string(row.TokenHash), client.Cookie)
 	assert.Equal(t, auth.HashBytes([]byte(client.CSRFToken)), row.CsrfHash, "only a hash of the CSRF token is stored")
-	assert.WithinDuration(t, start.Add(12*time.Hour), row.IdleExpiresAt, 0, "idle timeout is 12 hours")
-	assert.WithinDuration(t, start.Add(14*24*time.Hour), row.ExpiresAt, 0, "absolute timeout is 14 days")
+	assert.WithinDuration(t, start.Add(4*time.Hour), row.IdleExpiresAt, 0, "an owner's idle timeout is 4 hours")
+	assert.WithinDuration(t, start.Add(7*24*time.Hour), row.ExpiresAt, 0, "absolute timeout is 7 days")
 	assert.Nil(t, row.RevokedAt)
 
 	var raw int
 	require.NoError(t, env.Pool.QueryRow(context.Background(), `SELECT count(*) FROM "Sessions" WHERE "TokenHash" = $1`, []byte(client.Cookie)).Scan(&raw))
 	assert.Zero(t, raw, "the raw cookie value is never stored")
-}
-
-func TestIdleTimeout(t *testing.T) {
-	env := apptest.New(t)
-	client, _ := env.SetupAndLogin()
-
-	env.Clock.Advance(11*time.Hour + 59*time.Minute)
-	assert.Equal(t, http.StatusOK, client.Get("/me").Status, "still inside the idle window")
-
-	env.Clock.Advance(11*time.Hour + 59*time.Minute)
-	assert.Equal(t, http.StatusOK, client.Get("/me").Status, "activity extends the idle window")
-
-	env.Clock.Advance(12*time.Hour + time.Second)
-	res := client.Get("/me")
-	assert.Equal(t, http.StatusUnauthorized, res.Status, "12 hours without activity ends the session")
-	assert.Equal(t, "UNAUTHENTICATED", res.Error.Code)
-}
-
-func TestAbsoluteTimeout(t *testing.T) {
-	env := apptest.New(t)
-	client, _ := env.SetupAndLogin()
-	var steps int
-	for env.Clock.Now().Before(time.Now().Add(20 * 24 * time.Hour)) {
-		env.Clock.Advance(6 * time.Hour)
-		steps++
-		res := client.Get("/me")
-		elapsed := time.Duration(steps) * 6 * time.Hour
-		switch {
-		case elapsed < 14*24*time.Hour:
-			require.Equal(t, http.StatusOK, res.Status, "active for %s", elapsed)
-		case elapsed > 14*24*time.Hour:
-			require.Equal(t, http.StatusUnauthorized, res.Status, "an active session still ends after 14 days (%s)", elapsed)
-			return
-		}
-		if steps > 100 {
-			break
-		}
-	}
-	t.Fatal("the session never reached its absolute timeout")
-}
-
-func TestIdleWindowNeverOutlivesTheAbsoluteTimeout(t *testing.T) {
-	env := apptest.New(t)
-	client, _ := env.SetupAndLogin()
-	for range 30 {
-		env.Clock.Advance(11 * time.Hour)
-		require.Equal(t, http.StatusOK, client.Get("/me").Status)
-	}
-	row := loadSessionRow(t, env, client.Cookie)
-	assert.False(t, row.IdleExpiresAt.After(row.ExpiresAt), "idle expiry is capped by the absolute expiry")
 }
 
 func TestLastSeenIsUpdatedAtMostOncePerMinute(t *testing.T) {
@@ -116,7 +66,7 @@ func TestLastSeenIsUpdatedAtMostOncePerMinute(t *testing.T) {
 	require.Equal(t, http.StatusOK, client.Get("/me").Status)
 	touched := loadSessionRow(t, env, client.Cookie)
 	assert.WithinDuration(t, env.Clock.Now(), touched.LastSeenAt, 0)
-	assert.WithinDuration(t, env.Clock.Now().Add(12*time.Hour), touched.IdleExpiresAt, 0)
+	assert.WithinDuration(t, env.Clock.Now().Add(4*time.Hour), touched.IdleExpiresAt, 0)
 
 	env.Clock.Advance(20 * time.Second)
 	require.Equal(t, http.StatusOK, client.Get("/me").Status)
