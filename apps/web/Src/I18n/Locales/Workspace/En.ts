@@ -1,3 +1,4 @@
+import { AuditEn } from '@/I18n/Locales/Workspace/AuditEn';
 import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
 import type { TWorkspaceMessages } from '@/I18n/Messages';
 
@@ -288,14 +289,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'audit.verify.intact.sub': 'Checked {count} events and none was altered.',
   'audit.verify.broken.title': 'The chain is broken',
   'audit.verify.broken.sub': 'Checked {count} events, and the break starts at this event:',
-  'audit.action.auth.login': 'Successful sign-in',
-  'audit.action.auth.login_failed': 'Failed sign-in attempt',
-  'audit.action.auth.logout': 'Signed out',
-  'audit.action.auth.password_changed': 'Password changed',
-  'audit.action.auth.session_revoked': 'A signed-in device was ended',
-  'audit.action.auth.sessions_revoked_others': 'Every other device was ended',
-  'audit.action.identity.organization.updated': 'Organization details changed',
-  'audit.action.system.instance.setupCompleted': 'First-time setup completed',
 
   'palette.command.organization': 'Open the organization and its members',
   'organization.title': 'Organization',
@@ -384,20 +377,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'totp.error': 'Setup could not start',
   'totp.restart': 'Start again',
   'totp.enabled': 'Authenticator codes are on',
-  'audit.action.auth.mfa_pending': 'Password accepted, second step pending',
-  'audit.action.auth.mfa_failed': 'Failed second step',
-  'audit.action.auth.recovery_code_used': 'Recovery code used',
-  'audit.action.auth.totp_enabled': 'Authenticator codes turned on',
-  'audit.action.auth.totp_disabled': 'Authenticator codes turned off',
-  'audit.action.auth.recovery_codes_regenerated': 'New recovery codes',
-  'audit.action.auth.passkey_added': 'Passkey added',
-  'audit.action.auth.passkey_renamed': 'Passkey renamed',
-  'audit.action.auth.passkey_removed': 'Passkey removed',
-  'audit.action.auth.passkey_sign_count_regressed': 'Passkey counter went backwards',
-  'audit.action.auth.oidc_login_failed': 'Failed sign-in with an external provider',
-  'audit.action.auth.identity_linked': 'External sign-in account linked',
-  'audit.action.auth.identity_unlinked': 'External sign-in account unlinked',
-  'audit.action.auth.api_token_created': 'API token created',
-  'audit.action.auth.api_token_revoked': 'API token revoked',
+  ...AuditEn,
   ...OrganizationEn,
 };

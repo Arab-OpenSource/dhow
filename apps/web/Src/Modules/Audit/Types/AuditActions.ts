@@ -7,7 +7,7 @@ interface IAuditAction {
   Bad: boolean;
 }
 
-const ACTIONS: Record<string, IAuditAction> = {
+export const AUDIT_ACTIONS: Readonly<Record<string, IAuditAction>> = {
   'auth.login': { Icon: 'check', Bad: false },
   'auth.login_failed': { Icon: 'alert', Bad: true },
   'auth.logout': { Icon: 'out', Bad: false },
@@ -29,8 +29,54 @@ const ACTIONS: Record<string, IAuditAction> = {
   'auth.identity_unlinked': { Icon: 'user', Bad: true },
   'auth.api_token_created': { Icon: 'key', Bad: false },
   'auth.api_token_revoked': { Icon: 'key', Bad: true },
+  'identity.organization.created': { Icon: 'building', Bad: false },
   'identity.organization.updated': { Icon: 'building', Bad: false },
+  'identity.organization.ownership_transferred': { Icon: 'swap', Bad: true },
+  'identity.organization.second_factor_changed': { Icon: 'shield', Bad: false },
+  'identity.member.left': { Icon: 'out', Bad: false },
+  'identity.member.role_changed': { Icon: 'user', Bad: false },
+  'identity.member.removed': { Icon: 'user', Bad: true },
+  'identity.member.mfa_reset': { Icon: 'shield', Bad: true },
+  'identity.team.created': { Icon: 'users', Bad: false },
+  'identity.team.updated': { Icon: 'users', Bad: false },
+  'identity.team.deleted': { Icon: 'users', Bad: true },
+  'identity.team.member_added': { Icon: 'users', Bad: false },
+  'identity.team.member_removed': { Icon: 'users', Bad: false },
+  'identity.team.role_binding_added': { Icon: 'users', Bad: false },
+  'identity.team.role_binding_changed': { Icon: 'users', Bad: false },
+  'identity.team.role_binding_removed': { Icon: 'users', Bad: false },
+  'identity.invitation.created': { Icon: 'mail', Bad: false },
+  'identity.invitation.resent': { Icon: 'mail', Bad: false },
+  'identity.invitation.revoked': { Icon: 'mail', Bad: false },
+  'identity.invitation.accepted': { Icon: 'mail', Bad: false },
+  'runner.registered': { Icon: 'server', Bad: false },
+  'runner.updated': { Icon: 'server', Bad: false },
+  'runner.revoked': { Icon: 'server', Bad: true },
+  'runner.disabled_clone_suspected': { Icon: 'alert', Bad: true },
+  'runner.keys_rotated': { Icon: 'key', Bad: false },
+  'runner.registration_token_created': { Icon: 'key', Bad: false },
+  'runner.registration_token_revoked': { Icon: 'key', Bad: false },
+  'job.created': { Icon: 'queue', Bad: false },
+  'job.cancel_requested': { Icon: 'queue', Bad: false },
   'system.instance.setupCompleted': { Icon: 'shield', Bad: false },
+};
+
+const GROUPS = ['auth', 'identity', 'runner', 'job', 'system'] as const;
+
+export type TAuditGroup = (typeof GROUPS)[number] | 'other';
+
+const GROUP_ICONS: Record<TAuditGroup, TIconName> = {
+  auth: 'shield',
+  identity: 'building',
+  runner: 'server',
+  job: 'queue',
+  system: 'settings',
+  other: 'file',
+};
+
+export const actionGroup = (action: string): TAuditGroup => {
+  const prefix = action.split('.', 1)[0];
+  return GROUPS.find((group) => group === prefix) ?? 'other';
 };
 
 export const actionKey = (action: string): TMessageKey | null => {
@@ -38,6 +84,8 @@ export const actionKey = (action: string): TMessageKey | null => {
   return isMessageKey(key) ? key : null;
 };
 
-export const actionIcon = (action: string): TIconName => ACTIONS[action]?.Icon ?? 'file';
+export const groupKey = (action: string): TMessageKey => `audit.group.${actionGroup(action)}`;
 
-export const isBadAction = (action: string): boolean => ACTIONS[action]?.Bad ?? false;
+export const actionIcon = (action: string): TIconName => AUDIT_ACTIONS[action]?.Icon ?? GROUP_ICONS[actionGroup(action)];
+
+export const isBadAction = (action: string): boolean => AUDIT_ACTIONS[action]?.Bad ?? false;

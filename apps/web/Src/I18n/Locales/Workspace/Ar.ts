@@ -1,3 +1,4 @@
+import { AuditAr } from '@/I18n/Locales/Workspace/AuditAr';
 import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
 
 export const WorkspaceAr = {
@@ -287,14 +288,6 @@ export const WorkspaceAr = {
   'audit.verify.intact.sub': 'اتفحص {count} حدث ومفيش أي تعديل.',
   'audit.verify.broken.title': 'السلسلة مكسورة',
   'audit.verify.broken.sub': 'اتفحص {count} حدث، والكسر بدأ عند الحدث ده:',
-  'audit.action.auth.login': 'دخول ناجح',
-  'audit.action.auth.login_failed': 'محاولة دخول فاشلة',
-  'audit.action.auth.logout': 'خروج من الحساب',
-  'audit.action.auth.password_changed': 'تغيير كلمة السر',
-  'audit.action.auth.session_revoked': 'إنهاء جهاز داخل',
-  'audit.action.auth.sessions_revoked_others': 'إنهاء كل الأجهزة التانية',
-  'audit.action.identity.organization.updated': 'تعديل بيانات المؤسسة',
-  'audit.action.system.instance.setupCompleted': 'إكمال الإعداد الأولاني',
 
   'palette.command.organization': 'افتح بيانات المؤسسة والأعضاء',
   'organization.title': 'المؤسسة',
@@ -383,20 +376,6 @@ export const WorkspaceAr = {
   'totp.error': 'مقدرناش نبدأ التفعيل',
   'totp.restart': 'ابدأ من الأول',
   'totp.enabled': 'اتفعّل الكود من تطبيق المصادقة',
-  'audit.action.auth.mfa_pending': 'كلمة سر صح ومستني الخطوة التانية',
-  'audit.action.auth.mfa_failed': 'خطوة تانية فاشلة',
-  'audit.action.auth.recovery_code_used': 'استخدام كود طوارئ',
-  'audit.action.auth.totp_enabled': 'تفعيل الكود من تطبيق المصادقة',
-  'audit.action.auth.totp_disabled': 'قفل الكود من تطبيق المصادقة',
-  'audit.action.auth.recovery_codes_regenerated': 'أكواد طوارئ جديدة',
-  'audit.action.auth.passkey_added': 'إضافة مفتاح مرور',
-  'audit.action.auth.passkey_renamed': 'تغيير اسم مفتاح مرور',
-  'audit.action.auth.passkey_removed': 'شيل مفتاح مرور',
-  'audit.action.auth.passkey_sign_count_regressed': 'عدّاد مفتاح مرور رجع لورا',
-  'audit.action.auth.oidc_login_failed': 'محاولة دخول بخدمة خارجية ما نفعتش',
-  'audit.action.auth.identity_linked': 'اتربط حساب دخول خارجي',
-  'audit.action.auth.identity_unlinked': 'اتفك ربط حساب دخول خارجي',
-  'audit.action.auth.api_token_created': 'اتعمل مفتاح API',
-  'audit.action.auth.api_token_revoked': 'اتلغى مفتاح API',
+  ...AuditAr,
   ...OrganizationAr,
 } as const;
