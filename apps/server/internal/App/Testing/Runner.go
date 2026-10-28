@@ -43,6 +43,7 @@ func (t handlerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 type RunnerClient struct {
 	Registration runnerv1connect.RegistrationServiceClient
 	Auth         runnerv1connect.AuthServiceClient
+	Lease        runnerv1connect.LeaseServiceClient
 	HTTP         *http.Client
 }
 
@@ -75,6 +76,7 @@ func (e *Env) RunnerClient(o RunnerClientOptions) *RunnerClient {
 	return &RunnerClient{
 		Registration: runnerv1connect.NewRegistrationServiceClient(hc, RunnerBaseURL),
 		Auth:         runnerv1connect.NewAuthServiceClient(hc, RunnerBaseURL),
+		Lease:        runnerv1connect.NewLeaseServiceClient(hc, RunnerBaseURL),
 		HTTP:         hc,
 	}
 }

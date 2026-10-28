@@ -50,5 +50,6 @@
 | [0048](0048-runner-packaging-and-kubernetes.md) | تغليف الـ runner: binary وsystemd ووضع `runner` في الـ installer، وHelm chart واحد، وpod لكل job على Kubernetes |
 | [0049](0049-web-code-splitting-and-message-catalogs.md) | تقسيم الواجهة لـ chunks بتتحمّل وقت الحاجة، وكتالوج الرسائل لجزئين |
 | [0050](0050-runner-identity-implementation.md) | تنفيذ هوية الـ runner في M3.2: صيغة الرسائل الموقّعة، والـ gate، والـ throttle، وكشف النسخ |
+| [0051](0051-jobs-and-leasing-implementation.md) | تنفيذ الـ jobs والـ leases في M3.3: الـ triggers، والـ claim، والرسائل الموقّعة، وقواعد الإنهاء، والـ reconciler |
 
 الرقمين 0039 و0040 محجوزين لقرارات M2 اللي جاية.

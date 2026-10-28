@@ -136,3 +136,15 @@ func InvitationAccountExists() *AppError {
 func RunnerRevoked() *AppError {
 	return New(http.StatusConflict, CodeRunnerRevoked, KeyRunnerRevoked)
 }
+
+func SecretsUnavailable() *AppError {
+	return New(http.StatusUnprocessableEntity, CodeSecretsUnavailable, KeySecretsUnavailable)
+}
+
+func JobFinished() *AppError {
+	return New(http.StatusConflict, CodeJobFinished, KeyJobFinished)
+}
+
+func JobQueueFull() *AppError {
+	return New(http.StatusTooManyRequests, CodeJobQueueFull, KeyJobQueueFull)
+}

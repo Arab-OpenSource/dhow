@@ -16,14 +16,19 @@ func TestMatrix(t *testing.T) {
 		policy.RoleOwner: {
 			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.OrgTransfer: true,
 			policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true,
+			policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true,
 		},
 		policy.RoleAdmin: {
 			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.MemberRead: true, policy.MemberManage: true,
 			policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true,
+			policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true,
 		},
-		policy.RoleMaintainer: {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true},
-		policy.RoleDeveloper:  {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true},
-		policy.RoleViewer:     {policy.OrgRead: true, policy.OrgLeave: true},
+		policy.RoleMaintainer: {
+			policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true, policy.JobRead: true,
+			policy.JobCancel: true,
+		},
+		policy.RoleDeveloper: {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true, policy.JobRead: true},
+		policy.RoleViewer:    {policy.OrgRead: true, policy.OrgLeave: true, policy.JobRead: true},
 	}
 	for _, role := range policy.Roles() {
 		subject := policy.Subject{UserID: uuid.New(), Memberships: []policy.Membership{{OrganizationID: org, Role: role}}}

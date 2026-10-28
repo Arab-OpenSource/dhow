@@ -34,6 +34,10 @@ tags:
     description: >-
       Runners and their registration tokens. Served by the Runners module. Runners themselves talk to the server over
       Connect on /runner-api/, not over this API.
+  - name: jobs
+    description: >-
+      Jobs, their attempts and steps. Served by the Jobs module. In M3 a job is created directly from a job spec; runners
+      lease jobs over Connect on /runner-api/.
 paths:
   /health/live:
     get:
@@ -1485,6 +1489,103 @@ paths:
                 $ref: "#/components/schemas/RunnerRegistrationTokenResponse"
         default:
           $ref: "#/components/responses/Error"
+  /organizations/{id}/jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List the jobs of an organization
+      description: >-
+        Needs `job.read`. Newest first, optionally filtered by state. A caller who is not a member gets 404.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/JobStateFilter"
+      responses:
+        "200":
+          description: A page of jobs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Create a job from a job spec
+      description: >-
+        Needs `job.create`. The spec is validated and normalized (defaults filled in) and the job is queued. The image
+        must be pinned by digest. A spec that references secrets is refused with 422 `SECRETS_UNAVAILABLE` while no
+        secret store is configured, and an organization with 1000 queued jobs gets 429 `JOB_QUEUE_FULL`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobRequest"
+      responses:
+        "201":
+          description: The queued job.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobDetailResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/jobs/{jobId}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Read a job with its spec, attempts and steps
+      description: >-
+        Needs `job.read`. A queued job that no active runner of the organization can take carries `QueuedReason`
+        `NO_MATCHING_RUNNER`. A job of another organization gets 404.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: The job.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobDetailResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/jobs/{jobId}/cancel:
+    post:
+      operationId: cancelJob
+      tags: [jobs]
+      summary: Cancel a job
+      description: >-
+        Needs `job.cancel`. Idempotent. A queued job is canceled at once. A leased or running job is marked, its runner
+        sees the request on its next heartbeat and no step may begin after it. A job that already finished in another
+        state answers 409 `JOB_FINISHED`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: The job after the request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+        default:
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     SessionCookie:
@@ -1517,6 +1618,19 @@ components:
       schema:
         type: string
         format: uuid
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    JobStateFilter:
+      name: State
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/JobState"
     UserId:
       name: userId
       in: path
@@ -2889,3 +3003,311 @@ components:
           properties:
             Data:
               $ref: "#/components/schemas/InvitationAccepted"
+    JobState:
+      type: string
+      enum: [queued, leased, running, succeeded, failed, canceled, timed_out, lost]
+    JobAttemptState:
+      type: string
+      enum: [leased, running, succeeded, failed, canceled, timed_out, lost]
+    JobStepState:
+      type: string
+      enum: [running, succeeded, failed, interrupted]
+    JobIsolation:
+      type: string
+      enum: [container, gvisor]
+    JobQueuedReason:
+      type: string
+      enum: [NO_MATCHING_RUNNER]
+    JobStep:
+      type: object
+      additionalProperties: false
+      required: [Name, Run]
+      properties:
+        Name:
+          type: string
+          maxLength: 100
+        Run:
+          type: string
+          description: A shell script, run with `/bin/sh -e -s`.
+        Env:
+          type: object
+          additionalProperties:
+            type: string
+        Mutating:
+          type: boolean
+          description: The step changes a deploy target, so the job is never retried automatically once it began.
+        TimeoutSeconds:
+          type: integer
+          minimum: 0
+          description: Zero means the job timeout.
+    JobSecretRef:
+      type: object
+      additionalProperties: false
+      required: [Name]
+      properties:
+        Name:
+          type: string
+          maxLength: 64
+        AsEnv:
+          type: string
+          description: The environment variable that carries the value. Exactly one of AsEnv and AsFile.
+        AsFile:
+          type: string
+          description: A file name under /run/dhow/secrets. Exactly one of AsEnv and AsFile.
+        Steps:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+          description: The step indexes that see the secret. Empty means every step.
+    JobResources:
+      type: object
+      additionalProperties: false
+      properties:
+        CpuMillis:
+          type: integer
+          format: int64
+        MemoryBytes:
+          type: integer
+          format: int64
+        Pids:
+          type: integer
+          format: int64
+        DiskBytes:
+          type: integer
+          format: int64
+    JobNetwork:
+      type: object
+      additionalProperties: false
+      properties:
+        Egress:
+          type: array
+          maxItems: 64
+          items:
+            type: string
+          description: Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`. IP literals are refused.
+    JobSpec:
+      type: object
+      additionalProperties: false
+      required: [Image, Steps]
+      properties:
+        Image:
+          type: string
+          description: An image reference pinned by digest (`name@sha256:...`).
+        Steps:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/JobStep"
+        Env:
+          type: object
+          additionalProperties:
+            type: string
+          description: >-
+            Plain environment for every step. Names that start with `DHOW_` are reserved. Every member who can read the job
+            sees these values, viewers included, so never put a credential here: reference it from Secrets.
+        Secrets:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/JobSecretRef"
+        Resources:
+          $ref: "#/components/schemas/JobResources"
+        TimeoutSeconds:
+          type: integer
+          minimum: 0
+          maximum: 86400
+          description: Zero means one hour.
+        Network:
+          $ref: "#/components/schemas/JobNetwork"
+        Isolation:
+          $ref: "#/components/schemas/JobIsolation"
+        Labels:
+          type: array
+          maxItems: 32
+          items:
+            type: string
+          description: Every label must be on the runner, including the reserved `dhow.` capability labels.
+    CreateJobRequest:
+      type: object
+      additionalProperties: false
+      required: [Name, Spec]
+      properties:
+        Name:
+          type: string
+          maxLength: 100
+        Spec:
+          $ref: "#/components/schemas/JobSpec"
+        Priority:
+          type: integer
+          minimum: 0
+          maximum: 100
+          default: 0
+          description: Higher runs first among queued jobs.
+        MaxInfraRetries:
+          type: integer
+          minimum: 0
+          maximum: 5
+          default: 2
+          description: How many times a job that lost its runner before any mutating step is queued again.
+    Job:
+      type: object
+      additionalProperties: false
+      required: [Id, OrganizationId, Name, State, Labels, Isolation, Priority, Image, SpecDigest, AttemptCount,
+                 MaxInfraRetries, QueuedAt, QueueDeadline, CreatedAt, CreatedByUserId]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        OrganizationId:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        State:
+          $ref: "#/components/schemas/JobState"
+        FailureReason:
+          type: string
+          description: Why the job ended the way it did, for example `QUEUE_TIMEOUT` or `LOST_AFTER_MUTATION`.
+        QueuedReason:
+          $ref: "#/components/schemas/JobQueuedReason"
+        Labels:
+          type: array
+          items:
+            type: string
+        Isolation:
+          $ref: "#/components/schemas/JobIsolation"
+        Priority:
+          type: integer
+        Image:
+          type: string
+        SpecDigest:
+          type: string
+          description: Hex SHA-256 of the normalized spec.
+        AttemptCount:
+          type: integer
+          minimum: 0
+        MaxInfraRetries:
+          type: integer
+          minimum: 0
+        QueuedAt:
+          type: string
+          format: date-time
+        StartedAt:
+          type: string
+          format: date-time
+        FinishedAt:
+          type: string
+          format: date-time
+        Deadline:
+          type: string
+          format: date-time
+        QueueDeadline:
+          type: string
+          format: date-time
+        CancelRequestedAt:
+          type: string
+          format: date-time
+        CreatedAt:
+          type: string
+          format: date-time
+        CreatedByUserId:
+          type: string
+          format: uuid
+    JobAttemptStep:
+      type: object
+      additionalProperties: false
+      required: [Index, Name, Mutating, State, StartedAt]
+      properties:
+        Index:
+          type: integer
+          minimum: 0
+        Name:
+          type: string
+        Mutating:
+          type: boolean
+        State:
+          $ref: "#/components/schemas/JobStepState"
+        ExitCode:
+          type: integer
+        FailureReason:
+          type: string
+        StartedAt:
+          type: string
+          format: date-time
+        FinishedAt:
+          type: string
+          format: date-time
+    JobAttempt:
+      type: object
+      additionalProperties: false
+      required: [Id, Number, RunnerId, State, LeasedAt, Steps]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Number:
+          type: integer
+          minimum: 1
+        RunnerId:
+          type: string
+          format: uuid
+        State:
+          $ref: "#/components/schemas/JobAttemptState"
+        FailureReason:
+          type: string
+        ExitCode:
+          type: integer
+        LeasedAt:
+          type: string
+          format: date-time
+        StartedAt:
+          type: string
+          format: date-time
+        FinishedAt:
+          type: string
+          format: date-time
+        MutationStartedAt:
+          type: string
+          format: date-time
+        Steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobAttemptStep"
+    JobDetail:
+      type: object
+      additionalProperties: false
+      required: [Job, Spec, Attempts]
+      properties:
+        Job:
+          $ref: "#/components/schemas/Job"
+        Spec:
+          $ref: "#/components/schemas/JobSpec"
+        Attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobAttempt"
+    JobResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Job"
+    JobDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/JobDetail"
+    JobListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Job"

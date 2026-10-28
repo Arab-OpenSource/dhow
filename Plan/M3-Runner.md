@@ -239,6 +239,7 @@ docker run -d --name dhow-pg -e POSTGRES_USER=dhow -e POSTGRES_PASSWORD=dhow -e 
   - **قواعد الإعادة**، والإلغاء، والـ deadline، والـ queue timeout.
   - **الاشتراك في `runner.revoked`.**
   - **`SecretResolver`:** في الإنتاج بيرفض بـ `SECRETS_UNAVAILABLE`، وفي الاختبار من `Infra.Secrets`.
+  - **الفرق في التنفيذ** ([ADR-0051](ADR/0051-jobs-and-leasing-implementation.md)): الـ migration رقمها `00031`، و`"Result"` اتشال (الحالة النهائية هي النتيجة، والسبب في `"FailureReason"`)، و`leased → failed` اتضاف لرسم الـ attempt والـ job (فشل قبل `Start`)، ورفض `RESOURCE_REQUEST_EXCEEDS_RUNNER` وقت الإنشاء اتأجّل لـ M3.5 لأن الـ runner لسه مابيبلّغش عن سقف موارده.
 - **قبول:**
   - **انتقالات الحالة:**
     - اختبار table-driven لكل انتقال مسموح وممنوع، على مستوى الكود وعلى الـ trigger مباشرة بـ SQL.

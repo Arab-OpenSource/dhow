@@ -1030,6 +1030,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the jobs of an organization
+         * @description Needs `job.read`. Newest first, optionally filtered by state. A caller who is not a member gets 404.
+         */
+        get: operations["listJobs"];
+        put?: never;
+        /**
+         * Create a job from a job spec
+         * @description Needs `job.create`. The spec is validated and normalized (defaults filled in) and the job is queued. The image must be pinned by digest. A spec that references secrets is refused with 422 `SECRETS_UNAVAILABLE` while no secret store is configured, and an organization with 1000 queued jobs gets 429 `JOB_QUEUE_FULL`.
+         */
+        post: operations["createJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/jobs/{jobId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a job with its spec, attempts and steps
+         * @description Needs `job.read`. A queued job that no active runner of the organization can take carries `QueuedReason` `NO_MATCHING_RUNNER`. A job of another organization gets 404.
+         */
+        get: operations["getJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/jobs/{jobId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a job
+         * @description Needs `job.cancel`. Idempotent. A queued job is canceled at once. A leased or running job is marked, its runner sees the request on its next heartbeat and no step may begin after it. A job that already finished in another state answers 409 `JOB_FINISHED`.
+         */
+        post: operations["cancelJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1659,6 +1723,162 @@ export interface components {
         InvitationAcceptedResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["InvitationAccepted"];
         };
+        /** @enum {string} */
+        JobState: "queued" | "leased" | "running" | "succeeded" | "failed" | "canceled" | "timed_out" | "lost";
+        /** @enum {string} */
+        JobAttemptState: "leased" | "running" | "succeeded" | "failed" | "canceled" | "timed_out" | "lost";
+        /** @enum {string} */
+        JobStepState: "running" | "succeeded" | "failed" | "interrupted";
+        /** @enum {string} */
+        JobIsolation: "container" | "gvisor";
+        /** @enum {string} */
+        JobQueuedReason: "NO_MATCHING_RUNNER";
+        JobStep: {
+            Name: string;
+            /** @description A shell script, run with `/bin/sh -e -s`. */
+            Run: string;
+            Env?: {
+                [key: string]: string;
+            };
+            /** @description The step changes a deploy target, so the job is never retried automatically once it began. */
+            Mutating?: boolean;
+            /** @description Zero means the job timeout. */
+            TimeoutSeconds?: number;
+        };
+        JobSecretRef: {
+            Name: string;
+            /** @description The environment variable that carries the value. Exactly one of AsEnv and AsFile. */
+            AsEnv?: string;
+            /** @description A file name under /run/dhow/secrets. Exactly one of AsEnv and AsFile. */
+            AsFile?: string;
+            /** @description The step indexes that see the secret. Empty means every step. */
+            Steps?: number[];
+        };
+        JobResources: {
+            /** Format: int64 */
+            CpuMillis?: number;
+            /** Format: int64 */
+            MemoryBytes?: number;
+            /** Format: int64 */
+            Pids?: number;
+            /** Format: int64 */
+            DiskBytes?: number;
+        };
+        JobNetwork: {
+            /** @description Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`. IP literals are refused. */
+            Egress?: string[];
+        };
+        JobSpec: {
+            /** @description An image reference pinned by digest (`name@sha256:...`). */
+            Image: string;
+            Steps: components["schemas"]["JobStep"][];
+            /** @description Plain environment for every step. Names that start with `DHOW_` are reserved. Every member who can read the job sees these values, viewers included, so never put a credential here: reference it from Secrets. */
+            Env?: {
+                [key: string]: string;
+            };
+            Secrets?: components["schemas"]["JobSecretRef"][];
+            Resources?: components["schemas"]["JobResources"];
+            /** @description Zero means one hour. */
+            TimeoutSeconds?: number;
+            Network?: components["schemas"]["JobNetwork"];
+            Isolation?: components["schemas"]["JobIsolation"];
+            /** @description Every label must be on the runner, including the reserved `dhow.` capability labels. */
+            Labels?: string[];
+        };
+        CreateJobRequest: {
+            Name: string;
+            Spec: components["schemas"]["JobSpec"];
+            /**
+             * @description Higher runs first among queued jobs.
+             * @default 0
+             */
+            Priority: number;
+            /**
+             * @description How many times a job that lost its runner before any mutating step is queued again.
+             * @default 2
+             */
+            MaxInfraRetries: number;
+        };
+        Job: {
+            /** Format: uuid */
+            Id: string;
+            /** Format: uuid */
+            OrganizationId: string;
+            Name: string;
+            State: components["schemas"]["JobState"];
+            /** @description Why the job ended the way it did, for example `QUEUE_TIMEOUT` or `LOST_AFTER_MUTATION`. */
+            FailureReason?: string;
+            QueuedReason?: components["schemas"]["JobQueuedReason"];
+            Labels: string[];
+            Isolation: components["schemas"]["JobIsolation"];
+            Priority: number;
+            Image: string;
+            /** @description Hex SHA-256 of the normalized spec. */
+            SpecDigest: string;
+            AttemptCount: number;
+            MaxInfraRetries: number;
+            /** Format: date-time */
+            QueuedAt: string;
+            /** Format: date-time */
+            StartedAt?: string;
+            /** Format: date-time */
+            FinishedAt?: string;
+            /** Format: date-time */
+            Deadline?: string;
+            /** Format: date-time */
+            QueueDeadline: string;
+            /** Format: date-time */
+            CancelRequestedAt?: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: uuid */
+            CreatedByUserId: string;
+        };
+        JobAttemptStep: {
+            Index: number;
+            Name: string;
+            Mutating: boolean;
+            State: components["schemas"]["JobStepState"];
+            ExitCode?: number;
+            FailureReason?: string;
+            /** Format: date-time */
+            StartedAt: string;
+            /** Format: date-time */
+            FinishedAt?: string;
+        };
+        JobAttempt: {
+            /** Format: uuid */
+            Id: string;
+            Number: number;
+            /** Format: uuid */
+            RunnerId: string;
+            State: components["schemas"]["JobAttemptState"];
+            FailureReason?: string;
+            ExitCode?: number;
+            /** Format: date-time */
+            LeasedAt: string;
+            /** Format: date-time */
+            StartedAt?: string;
+            /** Format: date-time */
+            FinishedAt?: string;
+            /** Format: date-time */
+            MutationStartedAt?: string;
+            Steps: components["schemas"]["JobAttemptStep"][];
+        };
+        JobDetail: {
+            Job: components["schemas"]["Job"];
+            Spec: components["schemas"]["JobSpec"];
+            Attempts: components["schemas"]["JobAttempt"][];
+        };
+        JobResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Job"];
+        };
+        JobDetailResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["JobDetail"];
+        };
+        JobListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Job"][];
+        };
     };
     responses: {
         /** @description An error. Never contains internal details. */
@@ -1675,6 +1895,8 @@ export interface components {
         Id: string;
         RunnerId: string;
         TokenId: string;
+        JobId: string;
+        JobStateFilter: components["schemas"]["JobState"];
         UserId: string;
         TeamId: string;
         InvitationId: string;
@@ -3200,6 +3422,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunnerRegistrationTokenResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listJobs: {
+        parameters: {
+            query?: {
+                Page?: components["parameters"]["Page"];
+                Limit?: components["parameters"]["Limit"];
+                State?: components["parameters"]["JobStateFilter"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of jobs. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateJobRequest"];
+            };
+        };
+        responses: {
+            /** @description The queued job. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobDetailResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                jobId: components["parameters"]["JobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The job. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobDetailResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    cancelJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                jobId: components["parameters"]["JobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The job after the request. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobResponse"];
                 };
             };
             default: components["responses"]["Error"];

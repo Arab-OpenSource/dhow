@@ -106,6 +106,7 @@ type fixture struct {
 	loneID     string
 	runnerID   string
 	tokenID    string
+	jobID      string
 }
 
 func buildFixture(t *testing.T, env *apptest.Env) fixture {
@@ -125,6 +126,7 @@ func buildFixture(t *testing.T, env *apptest.Env) fixture {
 	fx.loneID = env.SeedUserWithoutMembership("lone@example.com", "a long password for lone").String()
 	fx.runnerID = env.SeedRunner(orgA, mustUUID(ownerID)).String()
 	fx.tokenID = env.SeedRegistrationToken(orgA, mustUUID(ownerID)).String()
+	fx.jobID = env.SeedJob(orgA, mustUUID(ownerID)).String()
 	return fx
 }
 
@@ -203,8 +205,9 @@ func policyFailure(res apptest.Response) bool {
 }
 
 func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request {
-	path := strings.NewReplacer("{id}", fx.orgA, "{runnerId}", fx.runnerID, "{tokenId}", fx.tokenID).Replace(rule.Path)
-	if strings.HasPrefix(rule.Path, "/organizations/{id}/") && !strings.Contains(rule.Path, "{runnerId}") && !strings.Contains(rule.Path, "{tokenId}") {
+	path := strings.NewReplacer("{id}", fx.orgA, "{runnerId}", fx.runnerID, "{tokenId}", fx.tokenID, "{jobId}", fx.jobID).Replace(rule.Path)
+	if strings.HasPrefix(rule.Path, "/organizations/{id}/") && !strings.Contains(rule.Path, "{runnerId}") && !strings.Contains(rule.Path, "{tokenId}") &&
+		!strings.Contains(rule.Path, "{jobId}") {
 		path = organizationPath(c.Env, fx, rule)
 	}
 	if rule.Path == "/sessions/{id}" {
@@ -229,6 +232,8 @@ func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request
 		req.Body = map[string]string{"CurrentPassword": "not the current one", "NewPassword": "a brand new passphrase"}
 	case rule.Method == http.MethodPost && rule.Path == "/organizations/{id}/runner-registration-tokens":
 		req.Body = map[string]any{}
+	case rule.Method == http.MethodPost && rule.Path == "/organizations/{id}/jobs":
+		req.Body = map[string]any{"Name": "Route table job", "Spec": apptest.SimpleSpec()}
 	case rule.Method == http.MethodPatch:
 		req.Body = map[string]string{"Name": "Route table was here"}
 	}
