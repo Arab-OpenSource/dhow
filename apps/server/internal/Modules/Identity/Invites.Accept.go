@@ -28,6 +28,9 @@ func inviterStillAllowed(ctx context.Context, q *sqlc.Queries, org, inviter uuid
 	if err != nil {
 		return false, err
 	}
+	if m.Disabled {
+		return false, nil
+	}
 	return policy.Allows(m.Effective, policy.MemberManage) && policy.CanGrant(m.Effective, policy.Role(role)), nil
 }
 

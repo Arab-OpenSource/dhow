@@ -20,7 +20,7 @@ type Querier interface {
 	ConsumeRegistrationToken(ctx context.Context, arg ConsumeRegistrationTokenParams) (ConsumeRegistrationTokenRow, error)
 	CountAuditEvents(ctx context.Context, organizationID *uuid.UUID) (int64, error)
 	CountMembers(ctx context.Context, organizationID uuid.UUID) (int64, error)
-	CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountOtherActiveOwners(ctx context.Context, arg CountOtherActiveOwnersParams) (int64, error)
 	CountRegistrationTokens(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRunnerSessionSwitches(ctx context.Context, arg CountRunnerSessionSwitchesParams) (int64, error)
 	CountRunners(ctx context.Context, organizationID uuid.UUID) (int64, error)

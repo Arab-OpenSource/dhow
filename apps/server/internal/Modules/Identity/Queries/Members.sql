@@ -5,7 +5,7 @@ WHERE "Id" = @id AND NOT "IsDeleted"
 FOR UPDATE;
 
 -- name: GetMember :one
-SELECT m."UserId", m."Role", m."CreatedAt" AS "JoinedAt", u."Email", u."Name",
+SELECT m."UserId", m."Role", m."CreatedAt" AS "JoinedAt", u."Email", u."Name", u."Disabled", u."IsInstanceOwner",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
              WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles"
 FROM "Memberships" m
@@ -19,10 +19,11 @@ SELECT m."UserId", m."Role",
 FROM "Memberships" m
 WHERE m."OrganizationId" = @organization_id AND m."UserId" = ANY(@user_ids::uuid[]) AND NOT m."IsDeleted";
 
--- name: CountOwners :one
+-- name: CountOtherActiveOwners :one
 SELECT count(*)
-FROM "Memberships"
-WHERE "OrganizationId" = @organization_id AND "Role" = 'owner' AND NOT "IsDeleted";
+FROM "Memberships" m
+JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
+WHERE m."OrganizationId" = @organization_id AND m."Role" = 'owner' AND NOT m."IsDeleted" AND m."UserId" <> @user_id;
 
 -- name: SetMemberRole :execrows
 UPDATE "Memberships"

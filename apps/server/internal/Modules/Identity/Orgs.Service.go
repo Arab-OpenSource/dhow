@@ -77,22 +77,22 @@ func (s *Service) removeSelf(ctx context.Context, p auth.Principal, org uuid.UUI
 		if err != nil {
 			return err
 		}
-		if err := protectLastOwner(ctx, q, org, self.Direct); err != nil {
+		if err := protectLastOwner(ctx, q, org, p.UserID, self.Direct); err != nil {
 			return err
 		}
 		return detach(ctx, q, org, p.UserID, now)
 	})
 }
 
-func protectLastOwner(ctx context.Context, q *sqlc.Queries, org uuid.UUID, role policy.Role) error {
+func protectLastOwner(ctx context.Context, q *sqlc.Queries, org, user uuid.UUID, role policy.Role) error {
 	if role != policy.RoleOwner {
 		return nil
 	}
-	owners, err := q.CountOwners(ctx, org)
+	others, err := q.CountOtherActiveOwners(ctx, sqlc.CountOtherActiveOwnersParams{OrganizationID: org, UserID: user})
 	if err != nil {
 		return err
 	}
-	if owners <= 1 {
+	if others == 0 {
 		return apperrors.LastOwner()
 	}
 	return nil
@@ -140,6 +140,9 @@ func (s *Service) TransferOwnership(ctx context.Context, org, target uuid.UUID, 
 			return err
 		}
 		if err := setRole(ctx, q, org, target, policy.RoleOwner, now); err != nil {
+			return err
+		}
+		if err := protectLastOwner(ctx, q, org, p.UserID, policy.RoleOwner); err != nil {
 			return err
 		}
 		if err := setRole(ctx, q, org, p.UserID, policy.RoleAdmin, now); err != nil {

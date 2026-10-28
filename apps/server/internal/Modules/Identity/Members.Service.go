@@ -72,7 +72,7 @@ func (s *Service) ChangeRole(ctx context.Context, org, target uuid.UUID, role st
 			return err
 		}
 		if fresh.Direct == policy.RoleOwner && next != policy.RoleOwner {
-			if err := protectLastOwner(ctx, q, org, fresh.Direct); err != nil {
+			if err := protectLastOwner(ctx, q, org, target, fresh.Direct); err != nil {
 				return err
 			}
 		}
@@ -130,7 +130,7 @@ func (s *Service) RemoveMember(ctx context.Context, org, target uuid.UUID) (mode
 		if !policy.CanManage(self.Effective, fresh.Direct) {
 			return apperrors.RoleNotAllowed()
 		}
-		if err := protectLastOwner(ctx, q, org, fresh.Direct); err != nil {
+		if err := protectLastOwner(ctx, q, org, target, fresh.Direct); err != nil {
 			return err
 		}
 		role = fresh.Direct

@@ -12,14 +12,20 @@ import (
 	"github.com/google/uuid"
 )
 
-const countOwners = `-- name: CountOwners :one
+const countOtherActiveOwners = `-- name: CountOtherActiveOwners :one
 SELECT count(*)
-FROM "Memberships"
-WHERE "OrganizationId" = $1 AND "Role" = 'owner' AND NOT "IsDeleted"
+FROM "Memberships" m
+JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
+WHERE m."OrganizationId" = $1 AND m."Role" = 'owner' AND NOT m."IsDeleted" AND m."UserId" <> $2
 `
 
-func (q *Queries) CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countOwners, organizationID)
+type CountOtherActiveOwnersParams struct {
+	OrganizationID uuid.UUID
+	UserID         uuid.UUID
+}
+
+func (q *Queries) CountOtherActiveOwners(ctx context.Context, arg CountOtherActiveOwnersParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countOtherActiveOwners, arg.OrganizationID, arg.UserID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -42,7 +48,7 @@ func (q *Queries) ExpireUserAuthChallenges(ctx context.Context, arg ExpireUserAu
 }
 
 const getMember = `-- name: GetMember :one
-SELECT m."UserId", m."Role", m."CreatedAt" AS "JoinedAt", u."Email", u."Name",
+SELECT m."UserId", m."Role", m."CreatedAt" AS "JoinedAt", u."Email", u."Name", u."Disabled", u."IsInstanceOwner",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
              WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles"
 FROM "Memberships" m
@@ -56,12 +62,14 @@ type GetMemberParams struct {
 }
 
 type GetMemberRow struct {
-	UserId    uuid.UUID
-	Role      string
-	JoinedAt  time.Time
-	Email     string
-	Name      string
-	TeamRoles []string
+	UserId          uuid.UUID
+	Role            string
+	JoinedAt        time.Time
+	Email           string
+	Name            string
+	Disabled        bool
+	IsInstanceOwner bool
+	TeamRoles       []string
 }
 
 func (q *Queries) GetMember(ctx context.Context, arg GetMemberParams) (GetMemberRow, error) {
@@ -73,6 +81,8 @@ func (q *Queries) GetMember(ctx context.Context, arg GetMemberParams) (GetMember
 		&i.JoinedAt,
 		&i.Email,
 		&i.Name,
+		&i.Disabled,
+		&i.IsInstanceOwner,
 		&i.TeamRoles,
 	)
 	return i, err
