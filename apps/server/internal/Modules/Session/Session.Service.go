@@ -15,6 +15,7 @@ import (
 	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
+	oidcauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
@@ -42,6 +43,10 @@ type Options struct {
 	Instance  policy.InstanceSettings
 	Log       *slog.Logger
 	Now       func() time.Time
+
+	Oidc         *oidcauth.Registry
+	OidcKey      []byte
+	CallbackBase string
 }
 
 type Service struct {
@@ -56,6 +61,10 @@ type Service struct {
 	instance  policy.InstanceSettings
 	log       *slog.Logger
 	now       func() time.Time
+
+	oidc         *oidcauth.Registry
+	oidcKey      []byte
+	callbackBase string
 }
 
 var (
@@ -71,6 +80,7 @@ func NewService(o Options) *Service {
 	return &Service{
 		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, csrf: o.CSRF, sealer: o.Sealer, recovery: o.Recovery,
 		webauthn: o.WebAuthn, bus: o.Bus, instance: o.Instance, log: o.Log, now: now,
+		oidc: o.Oidc, oidcKey: o.OidcKey, callbackBase: o.CallbackBase,
 	}
 }
 

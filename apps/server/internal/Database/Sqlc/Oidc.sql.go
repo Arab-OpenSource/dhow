@@ -99,7 +99,7 @@ func (q *Queries) HasIdentityForProvider(ctx context.Context, arg HasIdentityFor
 
 const insertIdentity = `-- name: InsertIdentity :one
 INSERT INTO "UserIdentities" ("UserId", "Provider", "Issuer", "Subject", "Email", "LastUsedAt", "CreatedAt", "UpdatedAt")
-VALUES ($1, $2, $3, $4, $5, $6, $6, $6)
+VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $6, $6)
 ON CONFLICT DO NOTHING
 RETURNING "Id", "Provider", "Email", "CreatedAt", "LastUsedAt"
 `
@@ -110,7 +110,7 @@ type InsertIdentityParams struct {
 	Issuer   string
 	Subject  string
 	Email    string
-	Now      *time.Time
+	Now      time.Time
 }
 
 type InsertIdentityRow struct {

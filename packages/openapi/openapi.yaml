@@ -28,6 +28,10 @@ tags:
     description: >-
       The second sign-in step, TOTP, recovery codes and passkeys (WebAuthn). Served by the Session module, because the
       second step is part of signing in.
+  - name: oidc
+    description: >-
+      Sign-in with external identity providers (OpenID Connect, and GitHub over OAuth 2.0) and the identities linked to
+      an account. Served by the Session module, because signing in opens a session.
   - name: audit
     description: The tamper-evident audit log. Served by the Audit module.
   - name: runners
@@ -627,6 +631,206 @@ paths:
       responses:
         "200":
           description: The password was changed and the other sessions were revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokedCountResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /oidc/providers:
+    get:
+      operationId: listOidcProviders
+      tags: [oidc]
+      summary: The external sign-in providers this instance offers
+      description: Lists the providers from `DHOW_OIDC_PROVIDERS` in their configured order. Never contains a secret.
+      security: []
+      responses:
+        "200":
+          description: The configured providers, possibly none.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /oidc/authorize:
+    post:
+      operationId: beginOidcLogin
+      tags: [oidc]
+      summary: Start signing in with an external provider
+      description: >-
+        Returns the provider's authorization URL with PKCE (S256), a state and, for OpenID Connect, a nonce. Sets the
+        `__Host-dhow_oidc` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`, 10 minutes) that binds the flow to this
+        browser. The browser then opens the URL, and the provider sends it back to `/oidc/callback/<provider>`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcAuthorizeRequest"
+      responses:
+        "200":
+          description: Where to send the browser.
+          headers:
+            Set-Cookie:
+              description: The `__Host-dhow_oidc` flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcAuthorizationResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /oidc/callback:
+    post:
+      operationId: completeOidcLogin
+      tags: [oidc]
+      summary: Finish signing in with an external provider
+      description: >-
+        Needs the `__Host-dhow_oidc` cookie of the flow and the `Code` and `State` the provider returned. The flow works
+        once, whatever the outcome. The identity is matched by issuer and subject only, never by email; an identity that
+        is not linked to an account answers `OIDC_NOT_LINKED`. An account with a second factor answers 202 with the same
+        `mfa_pending` challenge as the password step. Success sets the session cookie and replaces any session the
+        request carried.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcCallbackRequest"
+      responses:
+        "200":
+          description: Signed in.
+          headers:
+            Set-Cookie:
+              description: The session cookie, and an expired flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "202":
+          description: The identity is right and the second step is required.
+          headers:
+            Set-Cookie:
+              description: The `__Host-dhow_mfa` challenge cookie, and an expired flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaPendingResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/identities:
+    get:
+      operationId: listLinkedIdentities
+      tags: [oidc]
+      summary: The external identities linked to the signed-in user
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The linked identities, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkedIdentityListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/identities/authorize:
+    post:
+      operationId: beginOidcLink
+      tags: [oidc]
+      summary: Start linking an external identity
+      description: >-
+        Needs a current factor, like adding a passkey. The flow is bound to this session and this browser, and an account
+        links at most one identity per provider.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcLinkRequest"
+      responses:
+        "200":
+          description: Where to send the browser.
+          headers:
+            Set-Cookie:
+              description: The `__Host-dhow_oidc` flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcAuthorizationResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/identities/callback:
+    post:
+      operationId: completeOidcLink
+      tags: [oidc]
+      summary: Finish linking an external identity
+      description: >-
+        Needs the flow cookie from the same session. An identity already linked to any account answers
+        `OIDC_IDENTITY_IN_USE`. Revokes every other session of the user.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcCallbackRequest"
+      responses:
+        "200":
+          description: The identity was linked.
+          headers:
+            Set-Cookie:
+              description: An expired flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkedIdentityChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/identities/{id}/remove:
+    post:
+      operationId: removeLinkedIdentity
+      tags: [oidc]
+      summary: Unlink an external identity
+      description: >-
+        Needs a current factor. Refused with `LAST_SIGN_IN_METHOD` when the account would have no way left to sign in.
+        Revokes every other session. Another user's identity id answers 404.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurrentFactorRequest"
+      responses:
+        "200":
+          description: The identity was unlinked.
           content:
             application/json:
               schema:
@@ -2889,3 +3093,130 @@ components:
           properties:
             Data:
               $ref: "#/components/schemas/InvitationAccepted"
+    OidcProviderId:
+      type: string
+      pattern: "^[a-z][a-z0-9]{0,31}$"
+      maxLength: 32
+    OidcProviderKind:
+      type: string
+      enum: [oidc, github]
+    OidcProvider:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Kind]
+      properties:
+        Id:
+          $ref: "#/components/schemas/OidcProviderId"
+        Name:
+          type: string
+        Kind:
+          $ref: "#/components/schemas/OidcProviderKind"
+    OidcProviderListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/OidcProvider"
+    OidcAuthorizeRequest:
+      type: object
+      additionalProperties: false
+      required: [Provider]
+      properties:
+        Provider:
+          $ref: "#/components/schemas/OidcProviderId"
+    OidcLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [Provider, CurrentFactor]
+      properties:
+        Provider:
+          $ref: "#/components/schemas/OidcProviderId"
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    OidcAuthorization:
+      type: object
+      additionalProperties: false
+      required: [AuthorizationUrl, ExpiresAt]
+      properties:
+        AuthorizationUrl:
+          type: string
+          description: The provider's authorization endpoint with the flow parameters.
+        ExpiresAt:
+          type: string
+          format: date-time
+    OidcAuthorizationResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/OidcAuthorization"
+    OidcCallbackRequest:
+      type: object
+      additionalProperties: false
+      required: [Provider, Code, State]
+      properties:
+        Provider:
+          $ref: "#/components/schemas/OidcProviderId"
+        Code:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: The authorization code. Works once and is never logged.
+        State:
+          type: string
+          minLength: 1
+          maxLength: 256
+    LinkedIdentity:
+      type: object
+      additionalProperties: false
+      required: [Id, Provider, ProviderName, Email, CreatedAt]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Provider:
+          $ref: "#/components/schemas/OidcProviderId"
+        ProviderName:
+          type: string
+          description: The provider's label, or its id when the provider is no longer configured.
+        Email:
+          type: string
+          description: The verified email the provider reported at the last sign-in, or empty.
+        CreatedAt:
+          type: string
+          format: date-time
+        LastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+    LinkedIdentityListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/LinkedIdentity"
+    LinkedIdentityChange:
+      type: object
+      additionalProperties: false
+      required: [Identity, Revoked]
+      properties:
+        Identity:
+          $ref: "#/components/schemas/LinkedIdentity"
+        Revoked:
+          type: integer
+          minimum: 0
+          description: How many other sessions were revoked.
+    LinkedIdentityChangeResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/LinkedIdentityChange"

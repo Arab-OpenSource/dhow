@@ -22,6 +22,7 @@ type RequestMeta struct {
 	UserAgent    string
 	SessionToken string
 	MfaToken     string
+	OidcToken    string
 }
 
 type principalKey struct{}

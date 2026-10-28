@@ -79,6 +79,24 @@ func (e MfaMethod) Valid() bool {
 	}
 }
 
+// Defines values for OidcProviderKind.
+const (
+	Github OidcProviderKind = "github"
+	Oidc   OidcProviderKind = "oidc"
+)
+
+// Valid indicates whether the value is a known member of the OidcProviderKind enum.
+func (e OidcProviderKind) Valid() bool {
+	switch e {
+	case Github:
+		return true
+	case Oidc:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Role.
 const (
 	Admin      Role = "admin"
@@ -220,6 +238,54 @@ type ErrorResponse struct {
 // FactorMethod defines model for FactorMethod.
 type FactorMethod string
 
+// LinkedIdentity defines model for LinkedIdentity.
+type LinkedIdentity struct {
+	CreatedAt time.Time `json:"CreatedAt"`
+
+	// Email The verified email the provider reported at the last sign-in, or empty.
+	Email      string             `json:"Email"`
+	Id         openapi_types.UUID `json:"Id"`
+	LastUsedAt *time.Time         `json:"LastUsedAt,omitempty"`
+	Provider   OidcProviderId     `json:"Provider"`
+
+	// ProviderName The provider's label, or its id when the provider is no longer configured.
+	ProviderName string `json:"ProviderName"`
+}
+
+// LinkedIdentityChange defines model for LinkedIdentityChange.
+type LinkedIdentityChange struct {
+	Identity LinkedIdentity `json:"Identity"`
+
+	// Revoked How many other sessions were revoked.
+	Revoked int `json:"Revoked"`
+}
+
+// LinkedIdentityChangeResponse defines model for LinkedIdentityChangeResponse.
+type LinkedIdentityChangeResponse struct {
+	Data  *LinkedIdentityChange `json:"Data,omitempty"`
+	Error *ErrorDetail          `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// LinkedIdentityListResponse defines model for LinkedIdentityListResponse.
+type LinkedIdentityListResponse struct {
+	Data  *[]LinkedIdentity `json:"Data,omitempty"`
+	Error *ErrorDetail      `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
 // Locale defines model for Locale.
 type Locale string
 
@@ -359,6 +425,72 @@ type MfaStatus struct {
 type MfaStatusResponse struct {
 	Data  *MfaStatus   `json:"Data,omitempty"`
 	Error *ErrorDetail `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// OidcAuthorization defines model for OidcAuthorization.
+type OidcAuthorization struct {
+	// AuthorizationUrl The provider's authorization endpoint with the flow parameters.
+	AuthorizationUrl string    `json:"AuthorizationUrl"`
+	ExpiresAt        time.Time `json:"ExpiresAt"`
+}
+
+// OidcAuthorizationResponse defines model for OidcAuthorizationResponse.
+type OidcAuthorizationResponse struct {
+	Data  *OidcAuthorization `json:"Data,omitempty"`
+	Error *ErrorDetail       `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// OidcAuthorizeRequest defines model for OidcAuthorizeRequest.
+type OidcAuthorizeRequest struct {
+	Provider OidcProviderId `json:"Provider"`
+}
+
+// OidcCallbackRequest defines model for OidcCallbackRequest.
+type OidcCallbackRequest struct {
+	// Code The authorization code. Works once and is never logged.
+	Code     string         `json:"Code"`
+	Provider OidcProviderId `json:"Provider"`
+	State    string         `json:"State"`
+}
+
+// OidcLinkRequest defines model for OidcLinkRequest.
+type OidcLinkRequest struct {
+	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+	CurrentFactor CurrentFactor  `json:"CurrentFactor"`
+	Provider      OidcProviderId `json:"Provider"`
+}
+
+// OidcProvider defines model for OidcProvider.
+type OidcProvider struct {
+	Id   OidcProviderId   `json:"Id"`
+	Kind OidcProviderKind `json:"Kind"`
+	Name string           `json:"Name"`
+}
+
+// OidcProviderId defines model for OidcProviderId.
+type OidcProviderId = string
+
+// OidcProviderKind defines model for OidcProviderKind.
+type OidcProviderKind string
+
+// OidcProviderListResponse defines model for OidcProviderListResponse.
+type OidcProviderListResponse struct {
+	Data  *[]OidcProvider `json:"Data,omitempty"`
+	Error *ErrorDetail    `json:"Error,omitempty"`
 
 	// Message An i18n key such as `system.meta.loaded`. The client translates it.
 	//
@@ -555,6 +687,15 @@ type Id = openapi_types.UUID
 // Error defines model for Error.
 type Error = ErrorResponse
 
+// BeginOidcLinkJSONRequestBody defines body for BeginOidcLink for application/json ContentType.
+type BeginOidcLinkJSONRequestBody = OidcLinkRequest
+
+// CompleteOidcLinkJSONRequestBody defines body for CompleteOidcLink for application/json ContentType.
+type CompleteOidcLinkJSONRequestBody = OidcCallbackRequest
+
+// RemoveLinkedIdentityJSONRequestBody defines body for RemoveLinkedIdentity for application/json ContentType.
+type RemoveLinkedIdentityJSONRequestBody = CurrentFactorRequest
+
 // AddPasskeyJSONRequestBody defines body for AddPasskey for application/json ContentType.
 type AddPasskeyJSONRequestBody = AddPasskeyRequest
 
@@ -576,6 +717,12 @@ type ConfirmTotpJSONRequestBody = ConfirmTotpRequest
 // DisableTotpJSONRequestBody defines body for DisableTotp for application/json ContentType.
 type DisableTotpJSONRequestBody = CurrentFactorRequest
 
+// BeginOidcLoginJSONRequestBody defines body for BeginOidcLogin for application/json ContentType.
+type BeginOidcLoginJSONRequestBody = OidcAuthorizeRequest
+
+// CompleteOidcLoginJSONRequestBody defines body for CompleteOidcLogin for application/json ContentType.
+type CompleteOidcLoginJSONRequestBody = OidcCallbackRequest
+
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
 
@@ -590,6 +737,18 @@ type ServerInterface interface {
 	// GetMe The signed-in user, memberships and CSRF token
 	// (GET /me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// ListLinkedIdentities The external identities linked to the signed-in user
+	// (GET /me/identities)
+	ListLinkedIdentities(w http.ResponseWriter, r *http.Request)
+	// BeginOidcLink Start linking an external identity
+	// (POST /me/identities/authorize)
+	BeginOidcLink(w http.ResponseWriter, r *http.Request)
+	// CompleteOidcLink Finish linking an external identity
+	// (POST /me/identities/callback)
+	CompleteOidcLink(w http.ResponseWriter, r *http.Request)
+	// RemoveLinkedIdentity Unlink an external identity
+	// (POST /me/identities/{id}/remove)
+	RemoveLinkedIdentity(w http.ResponseWriter, r *http.Request, id Id)
 	// GetMfaStatus Which second factors the signed-in user has
 	// (GET /me/mfa)
 	GetMfaStatus(w http.ResponseWriter, r *http.Request)
@@ -626,6 +785,15 @@ type ServerInterface interface {
 	// DisableTotp Turn TOTP off
 	// (POST /me/totp/disable)
 	DisableTotp(w http.ResponseWriter, r *http.Request)
+	// BeginOidcLogin Start signing in with an external provider
+	// (POST /oidc/authorize)
+	BeginOidcLogin(w http.ResponseWriter, r *http.Request)
+	// CompleteOidcLogin Finish signing in with an external provider
+	// (POST /oidc/callback)
+	CompleteOidcLogin(w http.ResponseWriter, r *http.Request)
+	// ListOidcProviders The external sign-in providers this instance offers
+	// (GET /oidc/providers)
+	ListOidcProviders(w http.ResponseWriter, r *http.Request)
 	// ListSessions List the signed-in user's own sessions
 	// (GET /sessions)
 	ListSessions(w http.ResponseWriter, r *http.Request)
@@ -662,6 +830,30 @@ type Unimplemented struct{}
 // GetMe The signed-in user, memberships and CSRF token
 // (GET /me)
 func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListLinkedIdentities The external identities linked to the signed-in user
+// (GET /me/identities)
+func (_ Unimplemented) ListLinkedIdentities(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// BeginOidcLink Start linking an external identity
+// (POST /me/identities/authorize)
+func (_ Unimplemented) BeginOidcLink(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CompleteOidcLink Finish linking an external identity
+// (POST /me/identities/callback)
+func (_ Unimplemented) CompleteOidcLink(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RemoveLinkedIdentity Unlink an external identity
+// (POST /me/identities/{id}/remove)
+func (_ Unimplemented) RemoveLinkedIdentity(w http.ResponseWriter, r *http.Request, id Id) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -737,6 +929,24 @@ func (_ Unimplemented) DisableTotp(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// BeginOidcLogin Start signing in with an external provider
+// (POST /oidc/authorize)
+func (_ Unimplemented) BeginOidcLogin(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CompleteOidcLogin Finish signing in with an external provider
+// (POST /oidc/callback)
+func (_ Unimplemented) CompleteOidcLogin(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListOidcProviders The external sign-in providers this instance offers
+// (GET /oidc/providers)
+func (_ Unimplemented) ListOidcProviders(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListSessions List the signed-in user's own sessions
 // (GET /sessions)
 func (_ Unimplemented) ListSessions(w http.ResponseWriter, r *http.Request) {
@@ -805,6 +1015,74 @@ func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListLinkedIdentities operation middleware
+func (siw *ServerInterfaceWrapper) ListLinkedIdentities(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLinkedIdentities(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// BeginOidcLink operation middleware
+func (siw *ServerInterfaceWrapper) BeginOidcLink(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BeginOidcLink(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CompleteOidcLink operation middleware
+func (siw *ServerInterfaceWrapper) CompleteOidcLink(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CompleteOidcLink(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveLinkedIdentity operation middleware
+func (siw *ServerInterfaceWrapper) RemoveLinkedIdentity(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveLinkedIdentity(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -997,6 +1275,48 @@ func (siw *ServerInterfaceWrapper) DisableTotp(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DisableTotp(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// BeginOidcLogin operation middleware
+func (siw *ServerInterfaceWrapper) BeginOidcLogin(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BeginOidcLogin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CompleteOidcLogin operation middleware
+func (siw *ServerInterfaceWrapper) CompleteOidcLogin(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CompleteOidcLogin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListOidcProviders operation middleware
+func (siw *ServerInterfaceWrapper) ListOidcProviders(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListOidcProviders(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1323,6 +1643,27 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/me/password", wrapper.ChangePassword)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/oidc/providers", wrapper.ListOidcProviders)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/oidc/authorize", wrapper.BeginOidcLogin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/oidc/callback", wrapper.CompleteOidcLogin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/me/identities", wrapper.ListLinkedIdentities)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/identities/authorize", wrapper.BeginOidcLink)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/identities/callback", wrapper.CompleteOidcLink)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/me/identities/{id}/remove", wrapper.RemoveLinkedIdentity)
+	})
 
 	return r
 }
@@ -1356,6 +1697,178 @@ type GetMedefaultJSONResponse struct {
 }
 
 func (response GetMedefaultJSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLinkedIdentitiesRequestObject struct {
+}
+
+type ListLinkedIdentitiesResponseObject interface {
+	VisitListLinkedIdentitiesResponse(w http.ResponseWriter) error
+}
+
+type ListLinkedIdentities200JSONResponse LinkedIdentityListResponse
+
+func (response ListLinkedIdentities200JSONResponse) VisitListLinkedIdentitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLinkedIdentitiesdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response ListLinkedIdentitiesdefaultJSONResponse) VisitListLinkedIdentitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginOidcLinkRequestObject struct {
+	Body *BeginOidcLinkJSONRequestBody
+}
+
+type BeginOidcLinkResponseObject interface {
+	VisitBeginOidcLinkResponse(w http.ResponseWriter) error
+}
+
+type BeginOidcLink200ResponseHeaders struct {
+	SetCookie string
+}
+
+type BeginOidcLink200JSONResponse struct {
+	Body    OidcAuthorizationResponse
+	Headers BeginOidcLink200ResponseHeaders
+}
+
+func (response BeginOidcLink200JSONResponse) VisitBeginOidcLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginOidcLinkdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response BeginOidcLinkdefaultJSONResponse) VisitBeginOidcLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteOidcLinkRequestObject struct {
+	Body *CompleteOidcLinkJSONRequestBody
+}
+
+type CompleteOidcLinkResponseObject interface {
+	VisitCompleteOidcLinkResponse(w http.ResponseWriter) error
+}
+
+type CompleteOidcLink200ResponseHeaders struct {
+	SetCookie string
+}
+
+type CompleteOidcLink200JSONResponse struct {
+	Body    LinkedIdentityChangeResponse
+	Headers CompleteOidcLink200ResponseHeaders
+}
+
+func (response CompleteOidcLink200JSONResponse) VisitCompleteOidcLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteOidcLinkdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response CompleteOidcLinkdefaultJSONResponse) VisitCompleteOidcLinkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveLinkedIdentityRequestObject struct {
+	Id   Id `json:"id"`
+	Body *RemoveLinkedIdentityJSONRequestBody
+}
+
+type RemoveLinkedIdentityResponseObject interface {
+	VisitRemoveLinkedIdentityResponse(w http.ResponseWriter) error
+}
+
+type RemoveLinkedIdentity200JSONResponse RevokedCountResponse
+
+func (response RemoveLinkedIdentity200JSONResponse) VisitRemoveLinkedIdentityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveLinkedIdentitydefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response RemoveLinkedIdentitydefaultJSONResponse) VisitRemoveLinkedIdentityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -1832,6 +2345,160 @@ func (response DisableTotpdefaultJSONResponse) VisitDisableTotpResponse(w http.R
 	return err
 }
 
+type BeginOidcLoginRequestObject struct {
+	Body *BeginOidcLoginJSONRequestBody
+}
+
+type BeginOidcLoginResponseObject interface {
+	VisitBeginOidcLoginResponse(w http.ResponseWriter) error
+}
+
+type BeginOidcLogin200ResponseHeaders struct {
+	SetCookie string
+}
+
+type BeginOidcLogin200JSONResponse struct {
+	Body    OidcAuthorizationResponse
+	Headers BeginOidcLogin200ResponseHeaders
+}
+
+func (response BeginOidcLogin200JSONResponse) VisitBeginOidcLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BeginOidcLogindefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response BeginOidcLogindefaultJSONResponse) VisitBeginOidcLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteOidcLoginRequestObject struct {
+	Body *CompleteOidcLoginJSONRequestBody
+}
+
+type CompleteOidcLoginResponseObject interface {
+	VisitCompleteOidcLoginResponse(w http.ResponseWriter) error
+}
+
+type CompleteOidcLogin200ResponseHeaders struct {
+	SetCookie string
+}
+
+type CompleteOidcLogin200JSONResponse struct {
+	Body    LoginResponse
+	Headers CompleteOidcLogin200ResponseHeaders
+}
+
+func (response CompleteOidcLogin200JSONResponse) VisitCompleteOidcLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteOidcLogin202ResponseHeaders struct {
+	SetCookie string
+}
+
+type CompleteOidcLogin202JSONResponse struct {
+	Body    MfaPendingResponse
+	Headers CompleteOidcLogin202ResponseHeaders
+}
+
+func (response CompleteOidcLogin202JSONResponse) VisitCompleteOidcLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Set-Cookie", fmt.Sprint(response.Headers.SetCookie))
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteOidcLogindefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response CompleteOidcLogindefaultJSONResponse) VisitCompleteOidcLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListOidcProvidersRequestObject struct {
+}
+
+type ListOidcProvidersResponseObject interface {
+	VisitListOidcProvidersResponse(w http.ResponseWriter) error
+}
+
+type ListOidcProviders200JSONResponse OidcProviderListResponse
+
+func (response ListOidcProviders200JSONResponse) VisitListOidcProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListOidcProvidersdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response ListOidcProvidersdefaultJSONResponse) VisitListOidcProvidersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListSessionsRequestObject struct {
 }
 
@@ -2237,6 +2904,18 @@ type StrictServerInterface interface {
 	// GetMe The signed-in user, memberships and CSRF token
 	// (GET /me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// ListLinkedIdentities The external identities linked to the signed-in user
+	// (GET /me/identities)
+	ListLinkedIdentities(ctx context.Context, request ListLinkedIdentitiesRequestObject) (ListLinkedIdentitiesResponseObject, error)
+	// BeginOidcLink Start linking an external identity
+	// (POST /me/identities/authorize)
+	BeginOidcLink(ctx context.Context, request BeginOidcLinkRequestObject) (BeginOidcLinkResponseObject, error)
+	// CompleteOidcLink Finish linking an external identity
+	// (POST /me/identities/callback)
+	CompleteOidcLink(ctx context.Context, request CompleteOidcLinkRequestObject) (CompleteOidcLinkResponseObject, error)
+	// RemoveLinkedIdentity Unlink an external identity
+	// (POST /me/identities/{id}/remove)
+	RemoveLinkedIdentity(ctx context.Context, request RemoveLinkedIdentityRequestObject) (RemoveLinkedIdentityResponseObject, error)
 	// GetMfaStatus Which second factors the signed-in user has
 	// (GET /me/mfa)
 	GetMfaStatus(ctx context.Context, request GetMfaStatusRequestObject) (GetMfaStatusResponseObject, error)
@@ -2273,6 +2952,15 @@ type StrictServerInterface interface {
 	// DisableTotp Turn TOTP off
 	// (POST /me/totp/disable)
 	DisableTotp(ctx context.Context, request DisableTotpRequestObject) (DisableTotpResponseObject, error)
+	// BeginOidcLogin Start signing in with an external provider
+	// (POST /oidc/authorize)
+	BeginOidcLogin(ctx context.Context, request BeginOidcLoginRequestObject) (BeginOidcLoginResponseObject, error)
+	// CompleteOidcLogin Finish signing in with an external provider
+	// (POST /oidc/callback)
+	CompleteOidcLogin(ctx context.Context, request CompleteOidcLoginRequestObject) (CompleteOidcLoginResponseObject, error)
+	// ListOidcProviders The external sign-in providers this instance offers
+	// (GET /oidc/providers)
+	ListOidcProviders(ctx context.Context, request ListOidcProvidersRequestObject) (ListOidcProvidersResponseObject, error)
 	// ListSessions List the signed-in user's own sessions
 	// (GET /sessions)
 	ListSessions(ctx context.Context, request ListSessionsRequestObject) (ListSessionsResponseObject, error)
@@ -2358,6 +3046,125 @@ func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMeResponseObject); ok {
 		if err := validResponse.VisitGetMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListLinkedIdentities operation middleware
+func (sh *strictHandler) ListLinkedIdentities(w http.ResponseWriter, r *http.Request) {
+	var request ListLinkedIdentitiesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLinkedIdentities(ctx, request.(ListLinkedIdentitiesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLinkedIdentities")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLinkedIdentitiesResponseObject); ok {
+		if err := validResponse.VisitListLinkedIdentitiesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// BeginOidcLink operation middleware
+func (sh *strictHandler) BeginOidcLink(w http.ResponseWriter, r *http.Request) {
+	var request BeginOidcLinkRequestObject
+
+	var body BeginOidcLinkJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.BeginOidcLink(ctx, request.(BeginOidcLinkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BeginOidcLink")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BeginOidcLinkResponseObject); ok {
+		if err := validResponse.VisitBeginOidcLinkResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CompleteOidcLink operation middleware
+func (sh *strictHandler) CompleteOidcLink(w http.ResponseWriter, r *http.Request) {
+	var request CompleteOidcLinkRequestObject
+
+	var body CompleteOidcLinkJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CompleteOidcLink(ctx, request.(CompleteOidcLinkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CompleteOidcLink")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CompleteOidcLinkResponseObject); ok {
+		if err := validResponse.VisitCompleteOidcLinkResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveLinkedIdentity operation middleware
+func (sh *strictHandler) RemoveLinkedIdentity(w http.ResponseWriter, r *http.Request, id Id) {
+	var request RemoveLinkedIdentityRequestObject
+
+	request.Id = id
+
+	var body RemoveLinkedIdentityJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveLinkedIdentity(ctx, request.(RemoveLinkedIdentityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveLinkedIdentity")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveLinkedIdentityResponseObject); ok {
+		if err := validResponse.VisitRemoveLinkedIdentityResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2699,6 +3506,92 @@ func (sh *strictHandler) DisableTotp(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DisableTotpResponseObject); ok {
 		if err := validResponse.VisitDisableTotpResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// BeginOidcLogin operation middleware
+func (sh *strictHandler) BeginOidcLogin(w http.ResponseWriter, r *http.Request) {
+	var request BeginOidcLoginRequestObject
+
+	var body BeginOidcLoginJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.BeginOidcLogin(ctx, request.(BeginOidcLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "BeginOidcLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(BeginOidcLoginResponseObject); ok {
+		if err := validResponse.VisitBeginOidcLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CompleteOidcLogin operation middleware
+func (sh *strictHandler) CompleteOidcLogin(w http.ResponseWriter, r *http.Request) {
+	var request CompleteOidcLoginRequestObject
+
+	var body CompleteOidcLoginJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CompleteOidcLogin(ctx, request.(CompleteOidcLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CompleteOidcLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CompleteOidcLoginResponseObject); ok {
+		if err := validResponse.VisitCompleteOidcLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListOidcProviders operation middleware
+func (sh *strictHandler) ListOidcProviders(w http.ResponseWriter, r *http.Request) {
+	var request ListOidcProvidersRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListOidcProviders(ctx, request.(ListOidcProvidersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListOidcProviders")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListOidcProvidersResponseObject); ok {
+		if err := validResponse.VisitListOidcProvidersResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

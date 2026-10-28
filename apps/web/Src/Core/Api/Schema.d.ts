@@ -474,6 +474,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/oidc/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The external sign-in providers this instance offers
+         * @description Lists the providers from `DHOW_OIDC_PROVIDERS` in their configured order. Never contains a secret.
+         */
+        get: operations["listOidcProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start signing in with an external provider
+         * @description Returns the provider's authorization URL with PKCE (S256), a state and, for OpenID Connect, a nonce. Sets the `__Host-dhow_oidc` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`, 10 minutes) that binds the flow to this browser. The browser then opens the URL, and the provider sends it back to `/oidc/callback/<provider>`.
+         */
+        post: operations["beginOidcLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish signing in with an external provider
+         * @description Needs the `__Host-dhow_oidc` cookie of the flow and the `Code` and `State` the provider returned. The flow works once, whatever the outcome. The identity is matched by issuer and subject only, never by email; an identity that is not linked to an account answers `OIDC_NOT_LINKED`. An account with a second factor answers 202 with the same `mfa_pending` challenge as the password step. Success sets the session cookie and replaces any session the request carried.
+         */
+        post: operations["completeOidcLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The external identities linked to the signed-in user */
+        get: operations["listLinkedIdentities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/identities/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start linking an external identity
+         * @description Needs a current factor, like adding a passkey. The flow is bound to this session and this browser, and an account links at most one identity per provider.
+         */
+        post: operations["beginOidcLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/identities/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish linking an external identity
+         * @description Needs the flow cookie from the same session. An identity already linked to any account answers `OIDC_IDENTITY_IN_USE`. Revokes every other session of the user.
+         */
+        post: operations["completeOidcLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/identities/{id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unlink an external identity
+         * @description Needs a current factor. Refused with `LAST_SIGN_IN_METHOD` when the account would have no way left to sign in. Revokes every other session. Another user's identity id answers 404.
+         */
+        post: operations["removeLinkedIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations": {
         parameters: {
             query?: never;
@@ -1659,6 +1796,63 @@ export interface components {
         InvitationAcceptedResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["InvitationAccepted"];
         };
+        OidcProviderId: string;
+        /** @enum {string} */
+        OidcProviderKind: "oidc" | "github";
+        OidcProvider: {
+            Id: components["schemas"]["OidcProviderId"];
+            Name: string;
+            Kind: components["schemas"]["OidcProviderKind"];
+        };
+        OidcProviderListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["OidcProvider"][];
+        };
+        OidcAuthorizeRequest: {
+            Provider: components["schemas"]["OidcProviderId"];
+        };
+        OidcLinkRequest: {
+            Provider: components["schemas"]["OidcProviderId"];
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        OidcAuthorization: {
+            /** @description The provider's authorization endpoint with the flow parameters. */
+            AuthorizationUrl: string;
+            /** Format: date-time */
+            ExpiresAt: string;
+        };
+        OidcAuthorizationResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["OidcAuthorization"];
+        };
+        OidcCallbackRequest: {
+            Provider: components["schemas"]["OidcProviderId"];
+            /** @description The authorization code. Works once and is never logged. */
+            Code: string;
+            State: string;
+        };
+        LinkedIdentity: {
+            /** Format: uuid */
+            Id: string;
+            Provider: components["schemas"]["OidcProviderId"];
+            /** @description The provider's label, or its id when the provider is no longer configured. */
+            ProviderName: string;
+            /** @description The verified email the provider reported at the last sign-in, or empty. */
+            Email: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            LastUsedAt?: string | null;
+        };
+        LinkedIdentityListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["LinkedIdentity"][];
+        };
+        LinkedIdentityChange: {
+            Identity: components["schemas"]["LinkedIdentity"];
+            /** @description How many other sessions were revoked. */
+            Revoked: number;
+        };
+        LinkedIdentityChangeResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["LinkedIdentityChange"];
+        };
     };
     responses: {
         /** @description An error. Never contains internal details. */
@@ -2301,6 +2495,194 @@ export interface operations {
         };
         responses: {
             /** @description The password was changed and the other sessions were revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokedCountResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listOidcProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The configured providers, possibly none. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcProviderListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    beginOidcLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcAuthorizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Where to send the browser. */
+            200: {
+                headers: {
+                    /** @description The `__Host-dhow_oidc` flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcAuthorizationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    completeOidcLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in. */
+            200: {
+                headers: {
+                    /** @description The session cookie, and an expired flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            /** @description The identity is right and the second step is required. */
+            202: {
+                headers: {
+                    /** @description The `__Host-dhow_mfa` challenge cookie, and an expired flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaPendingResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listLinkedIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The linked identities, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkedIdentityListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    beginOidcLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Where to send the browser. */
+            200: {
+                headers: {
+                    /** @description The `__Host-dhow_oidc` flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcAuthorizationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    completeOidcLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description The identity was linked. */
+            200: {
+                headers: {
+                    /** @description An expired flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkedIdentityChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    removeLinkedIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description The identity was unlinked. */
             200: {
                 headers: {
                     [name: string]: unknown;

@@ -14,6 +14,7 @@ import (
 	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
+	oidcauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
@@ -36,6 +37,8 @@ type Infra struct {
 	Now        func() time.Time
 	Web        http.Handler
 	Mailer     mailer.Sender
+
+	OidcTransport http.RoundTripper
 }
 
 type Wired struct {
@@ -79,6 +82,14 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	if err != nil {
 		return nil, err
 	}
+	providers, err := oidcauth.NewRegistry(in.Config.OIDCProviders, oidcauth.Options{Transport: in.OidcTransport, Now: in.Now})
+	if err != nil {
+		return nil, err
+	}
+	oidcKey, err := appcrypto.DeriveKey(in.Config.SecretKey, config.OidcFlowKeyLabel)
+	if err != nil {
+		return nil, err
+	}
 	bus := eventbus.New(in.Log)
 	instance := policy.InstanceSettings{AnyUserCreatesOrganizations: in.Config.AnyUserCreatesOrganizations}
 
@@ -87,6 +98,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	sessionService := session.NewService(session.Options{
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, CSRF: csrf, Sealer: sealer, Recovery: recovery, WebAuthn: passkeys,
 		Bus: bus, Instance: instance, Log: in.Log, Now: in.Now,
+		Oidc: providers, OidcKey: oidcKey, CallbackBase: in.Config.PublicURL.String() + config.OidcCallbackPath,
 	})
 	mail := in.Mailer
 	if mail == nil {

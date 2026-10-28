@@ -116,6 +116,9 @@ func (g *Guard) requestMeta(r *http.Request) RequestMeta {
 	if c, err := r.Cookie(config.MfaCookieName); err == nil {
 		meta.MfaToken = c.Value
 	}
+	if c, err := r.Cookie(config.OidcCookieName); err == nil {
+		meta.OidcToken = c.Value
+	}
 	return meta
 }
 

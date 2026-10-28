@@ -44,6 +44,12 @@ const (
 	AuthPasskeyRemoved            = "auth.passkey_removed"              //nolint:gosec // An audit action name, not a credential.
 	AuthPasskeySignCountRegressed = "auth.passkey_sign_count_regressed" //nolint:gosec // An audit action name, not a credential.
 
+	AuthOidcLoginFailed  = "auth.oidc_login_failed"
+	AuthIdentityLinked   = "auth.identity_linked"
+	AuthIdentityUnlinked = "auth.identity_unlinked"
+	AuthApiTokenCreated  = "auth.api_token_created" //nolint:gosec // An audit action name, not a credential.
+	AuthApiTokenRevoked  = "auth.api_token_revoked" //nolint:gosec // An audit action name, not a credential.
+
 	RunnerRegistered               = "runner.registered"
 	RunnerUpdated                  = "runner.updated"
 	RunnerRevoked                  = "runner.revoked"
@@ -91,6 +97,11 @@ func AuditedEvents() []string {
 		AuthPasskeyRenamed,
 		AuthPasskeyRemoved,
 		AuthPasskeySignCountRegressed,
+		AuthOidcLoginFailed,
+		AuthIdentityLinked,
+		AuthIdentityUnlinked,
+		AuthApiTokenCreated,
+		AuthApiTokenRevoked,
 		RunnerRegistered,
 		RunnerUpdated,
 		RunnerRevoked,

@@ -35,7 +35,7 @@ SELECT EXISTS (
 
 -- name: InsertIdentity :one
 INSERT INTO "UserIdentities" ("UserId", "Provider", "Issuer", "Subject", "Email", "LastUsedAt", "CreatedAt", "UpdatedAt")
-VALUES (@user_id, @provider, @issuer, @subject, @email, @now, @now, @now)
+VALUES (@user_id, @provider, @issuer, @subject, @email, @now::timestamptz, @now, @now)
 ON CONFLICT DO NOTHING
 RETURNING "Id", "Provider", "Email", "CreatedAt", "LastUsedAt";
 

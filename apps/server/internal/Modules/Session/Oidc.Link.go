@@ -1,0 +1,186 @@
+package session
+
+import (
+	"context"
+	"errors"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
+	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
+	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
+	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
+	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session/Models"
+)
+
+const targetIdentity = "identity"
+
+func (s *Service) providerName(id string) string {
+	if p, err := s.oidc.Get(id); err == nil {
+		return p.Info().Name
+	}
+	return id
+}
+
+func (s *Service) ListIdentities(ctx context.Context) ([]models.LinkedIdentity, error) {
+	p, err := principalOf(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.queries().ListUserIdentities(ctx, p.UserID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]models.LinkedIdentity, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, models.LinkedIdentity{
+			ID: r.Id, Provider: r.Provider, ProviderName: s.providerName(r.Provider), Email: r.Email,
+			CreatedAt: r.CreatedAt, LastUsedAt: r.LastUsedAt,
+		})
+	}
+	return out, nil
+}
+
+func (s *Service) BeginOidcLink(ctx context.Context, provider string, factor models.Factor) (models.OidcAuthorization, error) {
+	p, err := principalOf(ctx)
+	if err != nil {
+		return models.OidcAuthorization{}, err
+	}
+	if _, err := s.oidcProvider(provider); err != nil {
+		return models.OidcAuthorization{}, err
+	}
+	linked, err := s.queries().HasIdentityForProvider(ctx, sqlc.HasIdentityForProviderParams{UserID: p.UserID, Provider: provider})
+	if err != nil {
+		return models.OidcAuthorization{}, err
+	}
+	if linked {
+		return models.OidcAuthorization{}, apperrors.OidcAlreadyLinked()
+	}
+	if err := s.confirmFactor(ctx, p, factor); err != nil {
+		return models.OidcAuthorization{}, err
+	}
+	userID, sessionID := p.UserID, p.SessionID
+	return s.startFlow(ctx, purposeLink, provider, &userID, &sessionID)
+}
+
+func (s *Service) CompleteOidcLink(ctx context.Context, in models.OidcCallback) (models.IdentityChange, error) {
+	p, err := principalOf(ctx)
+	if err != nil {
+		return models.IdentityChange{}, err
+	}
+	now := s.now()
+	t, err := s.takeFlow(ctx, purposeLink, in, now)
+	if err != nil {
+		return models.IdentityChange{}, err
+	}
+	if t.row.UserId == nil || t.row.SessionId == nil || *t.row.UserId != p.UserID || *t.row.SessionId != p.SessionID {
+		return models.IdentityChange{}, apperrors.OidcFlowInvalid()
+	}
+	got, _, err := s.exchange(ctx, t, in.Code)
+	if err != nil {
+		return models.IdentityChange{}, err
+	}
+	var change models.IdentityChange
+	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		row, err := q.InsertIdentity(ctx, sqlc.InsertIdentityParams{
+			UserID: p.UserID, Provider: t.row.Provider, Issuer: got.identity.Issuer, Subject: got.identity.Subject,
+			Email: got.email, Now: now,
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return s.linkConflict(ctx, q, p.UserID, t.row.Provider, got)
+		}
+		if err != nil {
+			return err
+		}
+		change.Identity = models.LinkedIdentity{
+			ID: row.Id, Provider: row.Provider, ProviderName: s.providerName(row.Provider), Email: row.Email,
+			CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
+		}
+		change.Revoked, err = q.RevokeOtherUserSessions(ctx, sqlc.RevokeOtherUserSessionsParams{UserID: p.UserID, ExceptID: p.SessionID, Now: now})
+		return err
+	})
+	if err != nil {
+		return models.IdentityChange{}, err
+	}
+	return change, s.publishTarget(ctx, eventbus.AuthIdentityLinked, p, targetIdentity, change.Identity.ID.String(), map[string]string{
+		"Provider": t.row.Provider, "RevokedSessions": itoa(change.Revoked),
+	})
+}
+
+func (s *Service) linkConflict(ctx context.Context, q *sqlc.Queries, userID uuid.UUID, provider string, got exchanged) error {
+	owner, err := q.FindIdentityOwner(ctx, sqlc.FindIdentityOwnerParams{
+		Issuer: got.identity.Issuer, Subject: got.identity.Subject, UserID: userID, Provider: provider,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return apperrors.Conflict()
+	}
+	if err != nil {
+		return err
+	}
+	if owner.UserId == userID {
+		return apperrors.OidcAlreadyLinked()
+	}
+	return apperrors.OidcIdentityInUse()
+}
+
+func signInMethods(m sqlc.LockUserSignInMethodsRow) int64 {
+	n := m.Identities + m.Passkeys
+	if m.HasPassword {
+		n++
+	}
+	return n
+}
+
+func (s *Service) RemoveIdentity(ctx context.Context, id uuid.UUID, factor models.Factor) (int64, error) {
+	p, err := principalOf(ctx)
+	if err != nil {
+		return 0, err
+	}
+	owned, err := s.ListIdentities(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if !containsIdentity(owned, id) {
+		return 0, apperrors.NotFound()
+	}
+	if err := s.confirmFactor(ctx, p, factor); err != nil {
+		return 0, err
+	}
+	now := s.now()
+	var revoked int64
+	var provider string
+	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		methods, err := q.LockUserSignInMethods(ctx, p.UserID)
+		if err != nil {
+			return err
+		}
+		if signInMethods(methods) <= 1 {
+			return apperrors.LastSignInMethod()
+		}
+		provider, err = q.RemoveUserIdentity(ctx, sqlc.RemoveUserIdentityParams{ID: id, UserID: p.UserID, Now: now})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperrors.NotFound()
+		}
+		if err != nil {
+			return err
+		}
+		revoked, err = q.RevokeOtherUserSessions(ctx, sqlc.RevokeOtherUserSessionsParams{UserID: p.UserID, ExceptID: p.SessionID, Now: now})
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+	return revoked, s.publishTarget(ctx, eventbus.AuthIdentityUnlinked, p, targetIdentity, id.String(), map[string]string{
+		"Provider": provider, "RevokedSessions": itoa(revoked),
+	})
+}
+
+func containsIdentity(list []models.LinkedIdentity, id uuid.UUID) bool {
+	for _, i := range list {
+		if i.ID == id {
+			return true
+		}
+	}
+	return false
+}
