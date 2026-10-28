@@ -164,3 +164,14 @@ func TestAFullLogQueueNeverHangsTheAttempt(t *testing.T) {
 	assert.True(t, out.Reported)
 	require.Len(t, srv.Leases()[0].Completes, 1)
 }
+
+func TestAGrantThatArrivesLateInTheLongPollIsHeartbeatAtOnce(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	srv.Configure(func(k *runnertest.Knobs) { k.LeaseTTL, k.GrantDelay = 20*time.Second, 8*time.Second })
+	srv.Enqueue(runnertest.Spec(), nil)
+	running := r.Start(fake.Recording{PrepareDelayMillis: 3000, Steps: []fake.Step{{HangMillis: 4000}}}, runnertest.StartOptions{})
+	out := running.Next(t, 40*time.Second)
+	assert.False(t, out.SelfFenced, "the deadline counts from the poll, so the first heartbeat cannot wait a full interval")
+	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, out.Result)
+}

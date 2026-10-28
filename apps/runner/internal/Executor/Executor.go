@@ -52,6 +52,7 @@ type Options struct {
 	Backoff    client.Backoff
 	Timing     Timing
 	LogOptions func(*logs.Options)
+	BootClock  func() (time.Duration, bool)
 }
 
 type Outcome struct {

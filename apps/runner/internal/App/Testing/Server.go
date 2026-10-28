@@ -65,6 +65,10 @@ type Knobs struct {
 	AppendUnavailable   int
 	AppendUnimplemented bool
 	CompleteUnavailable int
+	GrantDelay          time.Duration
+	StartDelay          time.Duration
+	HeartbeatFail       bool
+	EndStepFail         bool
 }
 
 type runnerRecord struct {

@@ -7,12 +7,18 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
 	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
 	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
-const heartbeatRetry = time.Second
+const (
+	heartbeatRetry = time.Second
+	minBeatWait    = 100 * time.Millisecond
+	bootCheck      = 250 * time.Millisecond
+)
 
 var (
 	ErrSelfFenced   = errors.New("no heartbeat succeeded in time, so the runner stopped the job before the server could give the lease away")
@@ -27,12 +33,14 @@ type fence struct {
 	margin   time.Duration
 	interval time.Duration
 	onLost   func(error)
+	boot     func() (time.Duration, bool)
 
-	mu       sync.Mutex
-	ttl      time.Duration
-	deadline time.Time
-	timer    *time.Timer
-	lostErr  error
+	mu           sync.Mutex
+	ttl          time.Duration
+	deadline     time.Time
+	bootDeadline time.Duration
+	timer        *time.Timer
+	lostErr      error
 
 	lost       chan struct{}
 	lostOnce   sync.Once
@@ -43,15 +51,68 @@ type fence struct {
 	done       chan struct{}
 }
 
-func newFence(api API, ref *runnerv1.LeaseRef, t Timing, leasedAt time.Time, ttl time.Duration, log *slog.Logger, onLost func(error)) *fence {
+type stamp struct {
+	mono time.Time
+	boot time.Duration
+	ok   bool
+}
+
+func BootClock() (time.Duration, bool) {
+	var ts unix.Timespec
+	if err := unix.ClockGettime(unix.CLOCK_BOOTTIME, &ts); err != nil {
+		return 0, false
+	}
+	return time.Duration(ts.Nano()), true
+}
+
+func (f *fence) now() stamp {
+	b, ok := f.boot()
+	return stamp{mono: time.Now(), boot: b, ok: ok}
+}
+
+func newFence(api API, ref *runnerv1.LeaseRef, t Timing, leasedAt time.Time, ttl time.Duration, log *slog.Logger,
+	onLost func(error), boot func() (time.Duration, bool),
+) *fence {
+	if boot == nil {
+		boot = BootClock
+	}
 	f := &fence{
-		api: api, ref: ref, log: log, margin: t.SelfFenceMargin, ttl: ttl, onLost: onLost,
+		api: api, ref: ref, log: log, margin: t.SelfFenceMargin, ttl: ttl, onLost: onLost, boot: boot,
 		lost: make(chan struct{}), cancel: make(chan struct{}), stop: make(chan struct{}), done: make(chan struct{}),
 	}
 	f.interval = min(t.HeartbeatInterval, (ttl-f.margin)/config.HeartbeatsPerWindow)
+	now := f.now()
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.deadline = leasedAt.Add(ttl - f.margin)
+	f.bootDeadline = now.boot - now.mono.Sub(leasedAt) + ttl - f.margin
 	f.timer = time.AfterFunc(time.Until(f.deadline), f.expire)
 	return f
+}
+
+func (f *fence) checkBoot() {
+	b, ok := f.boot()
+	f.mu.Lock()
+	late := ok && b >= f.bootDeadline
+	f.mu.Unlock()
+	if late {
+		f.markLost(ErrSelfFenced)
+	}
+}
+
+func (f *fence) watchBoot() {
+	t := time.NewTicker(bootCheck)
+	defer t.Stop()
+	for {
+		select {
+		case <-f.stop:
+			return
+		case <-f.lost:
+			return
+		case <-t.C:
+			f.checkBoot()
+		}
+	}
 }
 
 func (f *fence) expire() {
@@ -72,17 +133,20 @@ func (f *fence) Deadline() time.Time {
 	return f.deadline
 }
 
-func (f *fence) extend(sentAt time.Time, ctrl *runnerv1.LeaseControl) {
+func (f *fence) extend(sent stamp, ctrl *runnerv1.LeaseControl) {
 	f.observe(ctrl)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.lostErr != nil {
 		return
 	}
-	next := sentAt.Add(f.ttl - f.margin)
+	next := sent.mono.Add(f.ttl - f.margin)
 	if next.After(f.deadline) {
 		f.deadline = next
 		f.timer.Reset(time.Until(next))
+	}
+	if sent.ok {
+		f.bootDeadline = max(f.bootDeadline, sent.boot+f.ttl-f.margin)
 	}
 }
 
@@ -143,9 +207,14 @@ func (f *fence) Stop() {
 	<-f.done
 }
 
+func (f *fence) nextWait() time.Duration {
+	return max(minBeatWait, min(f.interval, time.Until(f.Deadline())/config.HeartbeatsPerWindow))
+}
+
 func (f *fence) run(ctx context.Context) {
 	defer close(f.done)
-	wait := f.interval
+	go f.watchBoot()
+	wait := time.Duration(0)
 	for {
 		t := time.NewTimer(wait)
 		select {
@@ -168,18 +237,18 @@ func (f *fence) beat(ctx context.Context) time.Duration {
 	}
 	hctx, cancel := context.WithTimeout(ctx, min(config.RPCTimeout, remaining))
 	defer cancel()
-	sent := time.Now()
+	sent := f.now()
 	ctrl, err := f.api.Heartbeat(hctx, f.ref)
 	switch {
 	case err == nil:
 		f.extend(sent, ctrl)
-		return f.interval
+		return f.nextWait()
 	case client.IsLeaseLost(err):
 		f.log.Warn("the server says the lease is lost, so the job stops")
 		f.markLost(ErrLeaseLost)
 		return f.interval
 	default:
 		f.log.Warn("a heartbeat failed", "code", client.Code(err).String(), "reason", client.Reason(err))
-		return min(heartbeatRetry, f.interval)
+		return min(heartbeatRetry, f.nextWait())
 	}
 }

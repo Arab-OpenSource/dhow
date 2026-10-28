@@ -80,6 +80,14 @@ func (h handlers) Lease(ctx context.Context, req *connect.Request[runnerv1.Lease
 	deadline := time.Now().Add(min(time.Duration(req.Msg.GetWaitSeconds())*time.Second, 2*time.Second))
 	for {
 		if signed, err := h.s.claim(); signed != nil || err != nil {
+			h.s.mu.Lock()
+			delay := h.s.knobs.GrantDelay
+			h.s.mu.Unlock()
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 			return connect.NewResponse(&runnerv1.LeaseResponse{Grant: signed}), err
 		}
 		if time.Now().After(deadline) {

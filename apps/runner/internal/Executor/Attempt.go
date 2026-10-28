@@ -92,7 +92,7 @@ func (a *attempt) run(parent context.Context, journalErr error) Outcome {
 		return a.report(ctx, failed(diskReason(journalErr), 0))
 	}
 	ttl := time.Duration(a.grant.GetLeaseTtlSeconds()) * time.Second
-	a.fence = newFence(a.e.o.API, a.ref, a.e.o.Timing, a.leasedAt, ttl, a.log, func(err error) { a.onLost(ctx, err) })
+	a.fence = newFence(a.e.o.API, a.ref, a.e.o.Timing, a.leasedAt, ttl, a.log, func(err error) { a.onLost(ctx, err) }, a.e.o.BootClock)
 	go a.fence.run(ctx)
 	defer a.fence.Stop()
 	if err := config.EnsurePrivateDir(a.dir); err != nil {

@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"errors"
-	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -111,7 +110,7 @@ func (a *attempt) start(ctx context.Context) (result, bool) {
 	var res *runnerv1.StartResponse
 	retried := false
 	err := a.retry(ctx, func(rctx context.Context) error {
-		sent := time.Now()
+		sent := a.fence.now()
 		r, err := a.e.o.API.Start(rctx, a.ref, proof)
 		if err == nil {
 			a.fence.extend(sent, r.GetControl())
