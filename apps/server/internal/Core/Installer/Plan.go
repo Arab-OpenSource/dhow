@@ -106,7 +106,8 @@ func (b *Builder) blockers() []string {
 	if a.ManagedProxy() {
 		out = append(out, b.proxyPortBlockers()...)
 	}
-	return out
+	blockers, _ := b.resourceBlockers()
+	return append(out, blockers...)
 }
 
 func (b *Builder) unavailable() []string {
@@ -148,7 +149,7 @@ func listenPort(addr string) int {
 }
 
 func (b *Builder) notes() []string {
-	var out []string
+	_, out := b.resourceBlockers()
 	if !b.Det.Distro.Supported {
 		out = append(out, b.M.T(KeyNoteManualMode, b.Det.Distro.PrettyName))
 	}

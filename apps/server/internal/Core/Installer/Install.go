@@ -185,6 +185,13 @@ func (app App) printDetection(det Detection, m Messages) {
 		{m.T(KeyRowFirewall), firewall},
 		{m.T(KeyRowExisting), yesNo(m, det.Existing)},
 	}
+	for _, c := range CheckResources(det.Resources, m).All() {
+		have := c.Have
+		if c.Level == LevelUnknown {
+			have = "?"
+		}
+		rows = append(rows, [2]string{c.Title, have})
+	}
 	for _, r := range rows {
 		app.say("  %-26s %s\n", r[0], strings.TrimSpace(r[1]))
 	}
