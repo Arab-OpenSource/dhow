@@ -95,7 +95,7 @@ const DeleteCard = ({ organizationId, team, onDeleted }: ITeamPartProps & { onDe
     mutationFn: () => deleteTeam(organizationId, team.Id),
     onSuccess: () => {
       Push({ Id: `team-deleted-${team.Id}`, Accent: 'live', Title: t('team.deleted', { name: team.Name }) });
-      void refresh();
+      void refresh(team.Id);
       onDeleted();
     },
   });

@@ -8,6 +8,7 @@ export interface IQueryClientOptions {
 }
 
 const DEFAULT_RETRIES = 1;
+const DEFAULT_STALE_MS = 30_000;
 
 const retryServerErrors = (failureCount: number, error: unknown): boolean =>
   failureCount < DEFAULT_RETRIES && !(isApiError(error) && error.Status >= 400 && error.Status < 500);
@@ -29,7 +30,7 @@ export const createQueryClient = ({ retry }: IQueryClientOptions = {}): QueryCli
       },
     }),
     defaultOptions: {
-      queries: { retry: retry ?? retryServerErrors, refetchOnWindowFocus: false, staleTime: 10_000 },
+      queries: { retry: retry ?? retryServerErrors, refetchOnWindowFocus: false, staleTime: DEFAULT_STALE_MS },
     },
   });
   return client;

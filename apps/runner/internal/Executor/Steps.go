@@ -223,7 +223,21 @@ func (a *attempt) killBox(ctx context.Context) {
 		a.mu.Unlock()
 		if err := box.Kill(ctx); err != nil {
 			a.log.Error("could not kill the sandbox", "error", a.masked(err))
+			a.noteSurvivors(err)
 		}
+	}
+}
+
+func (a *attempt) noteSurvivors(err error) {
+	if !errors.Is(err, sandbox.ErrSurvivors) {
+		return
+	}
+	a.mu.Lock()
+	seen := a.survivors
+	a.survivors = true
+	a.mu.Unlock()
+	if !seen && a.pipe != nil {
+		a.pipe.Systemf(nil, "dhow: SANDBOX_FAILED: processes of the job survived the kill")
 	}
 }
 

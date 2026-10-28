@@ -20,6 +20,7 @@ var (
 	ErrSandbox      = errors.New("the sandbox could not be created")
 	ErrShellMissing = errors.New("the job image has no /bin/sh")
 	ErrDestroyed    = errors.New("the sandbox is gone")
+	ErrSurvivors    = errors.New("processes of the sandbox survived the kill")
 )
 
 type Resources struct {
