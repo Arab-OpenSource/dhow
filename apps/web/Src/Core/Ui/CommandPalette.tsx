@@ -104,7 +104,7 @@ const PaletteBody = ({ items, onSelect, label, placeholder, emptyText }: TBodyPr
         ))}
       </div>
       {visible.length === 0 ? (
-        <p role="status" className="m-0 px-5 pb-4 text-caption text-secondary">
+        <p role="status" className="m-0 px-5 pb-4 text-body-sm text-secondary">
           {emptyText}
         </p>
       ) : null}

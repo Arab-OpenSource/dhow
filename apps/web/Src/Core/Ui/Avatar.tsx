@@ -11,7 +11,7 @@ export interface IAvatarProps {
 const SIZES: Record<TAvatarSize, string> = {
   sm: 'size-8 text-label-sm',
   md: 'size-10 text-label',
-  lg: 'size-12 text-title-sm',
+  lg: 'size-12 text-title-card',
 };
 
 export const initialOf = (name: string): string => {

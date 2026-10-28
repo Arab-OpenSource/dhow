@@ -22,7 +22,7 @@ export const Field = ({ label, error, className, children }: IFieldProps) => {
         </label>
         {children}
         {error ? (
-          <p id={errorId} role="alert" className="m-0 text-caption text-bad-fg">
+          <p id={errorId} role="alert" className="m-0 text-body-sm text-bad-fg">
             {error}
           </p>
         ) : null}

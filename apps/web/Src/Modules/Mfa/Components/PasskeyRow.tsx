@@ -26,7 +26,7 @@ export const PasskeyRow = ({ passkey, busy, confirming, onRename, onAskRemove }:
 
   if (Editing) {
     return (
-      <li className="grid gap-2 border-t border-line px-4 py-3 first:border-t-0">
+      <li className="grid gap-2 border-t border-line px-card py-3 first:border-t-0">
         <form
           className="flex flex-wrap gap-2"
           onSubmit={(event) => {

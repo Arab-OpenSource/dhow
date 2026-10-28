@@ -95,7 +95,7 @@ export const FactorsCard = ({ status, methods, onSetUpTotp }: IFactorsCardProps)
           </li>
         ) : null}
         {card.Codes !== null ? (
-          <li className="px-4 pb-4">
+          <li className="px-card pb-card">
             <RecoveryCodes codes={card.Codes} onDone={card.DoneCodes} />
           </li>
         ) : null}

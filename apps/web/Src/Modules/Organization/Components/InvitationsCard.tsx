@@ -117,18 +117,18 @@ const InvitationsList = ({ organizationId, role }: IInvitationsCardProps) => {
 
   if (invitations.isError) {
     return (
-      <div className="p-4">
+      <div className="p-card">
         <InlineAlert accent="failed" title={t('invitations.error')}>
           {errorText(invitations.error)}
         </InlineAlert>
       </div>
     );
   }
-  if (invitations.data === undefined) return <Skeleton label={t('invitations.loading')} lines={3} className="p-4" />;
+  if (invitations.data === undefined) return <Skeleton label={t('invitations.loading')} lines={3} className="p-card" />;
   return (
     <>
       {Issued ? (
-        <div className="border-b border-line px-4 pb-4">
+        <div className="border-b border-line px-card pb-card">
           <InviteLink issued={Issued} />
         </div>
       ) : null}

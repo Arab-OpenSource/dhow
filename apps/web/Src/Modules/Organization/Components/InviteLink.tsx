@@ -25,7 +25,7 @@ export const InviteLink = ({ issued, copy = true }: IInviteLinkProps) => {
       >
         {issued.Link}
       </code>
-      <p className="m-0 text-caption text-tertiary">{t('invite.link.once')}</p>
+      <p className="m-0 text-body-sm text-tertiary">{t('invite.link.once')}</p>
       {copy ? (
         <Button
           size="sm"

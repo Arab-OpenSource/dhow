@@ -15,7 +15,7 @@ export const ChecksCard = ({ health, onOpenCheck }: IChecksCardProps) => {
   return (
     <Card title={t('status.checks.title')} icon="server" end={<CheckBadge ok={health.Status === 'ok'} />}>
       {health.Checks.length === 0 ? (
-        <p className="m-0 px-4 pt-1.5 pb-4 text-body-sm text-secondary">{t('status.checks.empty')}</p>
+        <p className="m-0 px-card pt-1.5 pb-card text-body-sm text-secondary">{t('status.checks.empty')}</p>
       ) : (
         <Rows>
           {health.Checks.map((check) => (

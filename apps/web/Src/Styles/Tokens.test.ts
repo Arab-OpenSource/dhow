@@ -36,6 +36,8 @@ const sources = import.meta.glob<string>('../**/*.{ts,tsx}', { query: '?raw', im
 
 const HEX_COLOR = /#[0-9a-fA-F]{3,8}\b/;
 const EXEMPT = /\.test\.tsx?$|\/Locales\/|\/Testing\//;
+const TEXT_CLASS = /(?<![\w-])text-([\w[\]#.-]+)/g;
+const TAILWIND_TEXT = ['start', 'end', 'center', 'justify', 'ellipsis', 'clip', 'wrap', 'nowrap', 'balance', 'pretty', 'inherit', 'current', 'transparent'];
 
 const styles = tokens.type.groups.flatMap((group) => group.styles);
 const block = (selector: string): string => {
@@ -168,5 +170,18 @@ describe('type and spacing scale', () => {
     const phone = generated.slice(generated.indexOf('@media (width < 721px) {'));
     expect(phone).toContain('--spacing-gutter: 16px;');
     expect(phone).toContain('--spacing-card: 14px;');
+  });
+
+  it('uses only text classes the tokens define', () => {
+    const colors = [
+      ...tokens.color.tokens.map((token) => token.name.replace(/^(color|text|border)-/, '')),
+      ...themes.tokens.map((token) => token.variable.replace('--color-', '')),
+    ];
+    const known = new Set([...styles.map((style) => style.name), ...colors, ...TAILWIND_TEXT]);
+    const unknown = Object.entries(sources)
+      .filter(([path]) => !EXEMPT.test(path))
+      .flatMap(([path, source]) => [...source.matchAll(TEXT_CLASS)].map((match) => `${path}: text-${match[1] ?? ''}`))
+      .filter((entry) => !known.has(entry.slice(entry.indexOf(': text-') + 7)));
+    expect(unknown).toEqual([]);
   });
 });

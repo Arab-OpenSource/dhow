@@ -22,7 +22,7 @@ export const AddPasskeyPanel = ({ methods, defaultName, onAdded, onCancel }: IAd
 
   return (
     <div className="grid gap-3 border-t border-line pt-3">
-      <Field label={t('mfa.passkeys.name')} className="px-4">
+      <Field label={t('mfa.passkeys.name')} className="px-card">
         <Input
           maxLength={64}
           value={Name}

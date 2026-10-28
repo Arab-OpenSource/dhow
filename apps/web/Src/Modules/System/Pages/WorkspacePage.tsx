@@ -17,8 +17,8 @@ export const WorkspacePage = () => {
   };
 
   return (
-    <div className="grid max-w-[760px] gap-4">
-      <h1 className="m-0 text-title-xl">{t('home.title')}</h1>
+    <div className="grid max-w-[760px] gap-block">
+      <h1 className="m-0 text-title-page">{t('home.title')}</h1>
       {homeless ? (
         <Card title={t('organizations.none.title')} icon="building">
           <EmptyState icon="building" text={t('organizations.none.body')} />

@@ -30,9 +30,9 @@ export const TokensCard = ({ onNew }: ITokensCardProps) => {
 
   return (
     <Card title={t('tokens.title')} icon="key" end={live.length > 0 ? String(live.length) : undefined}>
-      <p className="m-0 px-4 pb-2 text-body-sm text-secondary">{t('tokens.lead')}</p>
+      <p className="m-0 px-card pb-2 text-body-sm text-secondary">{t('tokens.lead')}</p>
       {revoke.Notice ? <InlineAlert accent="failed" title={revoke.Notice} className="mx-4 mb-2 w-auto" /> : null}
-      {tokens.data.length === 0 ? <p className="m-0 px-4 pb-3 text-body-sm text-secondary">{t('tokens.empty')}</p> : null}
+      {tokens.data.length === 0 ? <p className="m-0 px-card pb-3 text-body-sm text-secondary">{t('tokens.empty')}</p> : null}
       <Rows label={t('tokens.title')}>
         {tokens.data.map((token) => [
           <TokenRow
@@ -43,7 +43,7 @@ export const TokensCard = ({ onNew }: ITokensCardProps) => {
             }}
           />,
           revoke.Open === token.Id ? (
-            <li key={`${token.Id}-revoke`} className="grid gap-3 px-4 pb-4">
+            <li key={`${token.Id}-revoke`} className="grid gap-3 px-card pb-card">
               <p className="m-0 text-body-sm text-secondary">{t('tokens.revoke.question')}</p>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -65,7 +65,7 @@ export const TokensCard = ({ onNew }: ITokensCardProps) => {
           ) : null,
         ])}
       </Rows>
-      <div className="p-4 pt-2">
+      <div className="p-card pt-2">
         <Button className="w-full" iconStart="plus" onClick={onNew}>
           {t('tokens.new')}
         </Button>

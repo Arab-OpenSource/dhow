@@ -17,8 +17,8 @@ export const Summary = ({ tone = 'ok', icon, title, sub, className }: ISummaryPr
   <div data-tone={tone} className={cx('flex items-center gap-3 rounded-md border px-4 py-3.5', TONE_SURFACE[tone], className)}>
     <Icon name={icon} size={22} className={cx('flex-none', TONE_TEXT[tone])} />
     <div className="grid min-w-0 gap-px">
-      <b className="text-title-sm">{title}</b>
-      {sub ? <small className="text-caption text-secondary">{sub}</small> : null}
+      <b className="text-title-card">{title}</b>
+      {sub ? <small className="text-body-sm text-secondary">{sub}</small> : null}
     </div>
   </div>
 );

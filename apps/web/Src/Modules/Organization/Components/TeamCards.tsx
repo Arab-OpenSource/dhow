@@ -46,7 +46,7 @@ export const TeamRoleCard = ({ organizationId, actor, team }: ITeamCardProps) =>
       {manager ? (
         <div className="grid gap-3">
           <TeamRolePicker actor={actor} value={Role} onChange={setRole} disabled={change.isPending} />
-          <p className="m-0 text-caption text-tertiary">{t('team.new.subtitle')}</p>
+          <p className="m-0 text-body-sm text-tertiary">{t('team.new.subtitle')}</p>
           <Button
             size="sm"
             variant="primary"
@@ -80,7 +80,7 @@ const AddMember = ({ organizationId, team }: TAddMemberProps) => {
 
   if (!Open) {
     return (
-      <div className="px-4 py-3">
+      <div className="px-card py-3">
         <Button
           size="sm"
           iconStart="plus"
@@ -94,10 +94,10 @@ const AddMember = ({ organizationId, team }: TAddMemberProps) => {
     );
   }
   return (
-    <div className="grid gap-2 border-t border-line px-4 py-3">
+    <div className="grid gap-2 border-t border-line px-card py-3">
       <span className="text-body-sm text-secondary">{t('team.members.pick')}</span>
       {members.data !== undefined && candidates.length === 0 ? (
-        <p className="m-0 text-caption text-tertiary">{t('team.members.none')}</p>
+        <p className="m-0 text-body-sm text-tertiary">{t('team.members.none')}</p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         {candidates.map((member) => (

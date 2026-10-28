@@ -65,7 +65,7 @@ export const Tabs = <T extends string>(props: ITabsProps<T>) => {
               onChange(tab.id);
             }}
             className={cx(
-              'h-btn-sm flex-1 cursor-pointer rounded-btn border-0 px-3 text-label-sm whitespace-nowrap transition-colors duration-140',
+              'h-btn-sm flex-1 cursor-pointer rounded-btn border-0 px-3 text-label whitespace-nowrap transition-colors duration-140',
               selected ? 'bg-surface-raised text-primary' : 'bg-transparent text-secondary hover:text-primary',
             )}
           >
