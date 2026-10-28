@@ -40,6 +40,12 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) {
         Stop-Setup 'git clone failed'
     }
+} else {
+    Write-Host "Updating ~/$Path inside $Distro"
+    & wsl.exe --distribution $Distro --cd '~' --exec git -C $Path pull --ff-only
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Could not update ~/$Path (local changes or another branch); the setup runs from it as it is." -ForegroundColor Yellow
+    }
 }
 
 & wsl.exe --distribution $Distro --cd '~' --exec bash "$Path/deploy/dev/setup.sh" @SetupArgs
@@ -48,5 +54,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ''
-Write-Host "The code is in ~/$Path inside $Distro. Open a shell there with: wsl -d $Distro, then cd ~/$Path"
+Write-Host "make and the tools run inside $Distro, not in PowerShell. From PowerShell:"
+Write-Host "  Database container:  wsl -d $Distro --cd ~ -- bash -lc 'cd $Path && make dev-db'"
+Write-Host "  Start the server:    wsl -d $Distro --cd ~ -- bash -lc 'cd $Path && make dev'"
+Write-Host "Or open a shell there with: wsl -d $Distro --cd ~, then cd $Path"
 Write-Host 'In VS Code, the WSL extension opens it from there. The browser on Windows reaches http://localhost:8080.'

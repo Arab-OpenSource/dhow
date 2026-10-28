@@ -24,6 +24,12 @@ have() {
   command -v "$1" >/dev/null 2>&1
 }
 
+have_lib() {
+  local ldconfig
+  ldconfig=$(command -v ldconfig || printf '/sbin/ldconfig')
+  "$ldconfig" -p 2>/dev/null | grep -qF "$1"
+}
+
 interactive() {
   [[ $assume_yes != true && -t 0 ]]
 }
@@ -45,17 +51,31 @@ ask_secret() {
   printf -v "$name" '%s' "$reply"
 }
 
+ask_valid() {
+  local name=$1 question=$2 default=$3 check=$4 hint=$5
+  while :; do
+    ask "$name" "$question" "$default"
+    "$check" "${!name}" && return 0
+    interactive || fail "$question: '${!name}' is not valid. $hint"
+    printf '%s\n' "$hint" >&2
+  done
+}
+
 confirm() {
-  local question=$1 default=${2:-y} reply=
-  if interactive; then
-    if [[ $default == y ]]; then
-      read -r -p "$question [Y/n]: " reply
-    else
-      read -r -p "$question [y/N]: " reply
+  local question=$1 default=${2:-y} reply= hint='[Y/n]'
+  [[ $default == y ]] || hint='[y/N]'
+  while :; do
+    reply=
+    if interactive; then
+      read -r -p "$question $hint: " reply
     fi
-  fi
-  reply=${reply:-$default}
-  [[ $reply == y || $reply == Y || $reply == yes ]]
+    reply=${reply:-$default}
+    case $reply in
+      [yY] | [yY][eE][sS]) return 0 ;;
+      [nN] | [nN][oO]) return 1 ;;
+    esac
+    printf 'Answer y or n.\n' >&2
+  done
 }
 
 as_root() {
@@ -87,8 +107,22 @@ fetch() {
   curl --proto '=https' --tlsv1.2 -fsSL "$@"
 }
 
+download() {
+  local out=$1 url=$2
+  printf 'Downloading %s\n' "$url"
+  if [[ -t 2 ]]; then
+    curl --proto '=https' --tlsv1.2 -fSL --progress-bar -o "$out" "$url"
+  else
+    fetch -o "$out" "$url"
+  fi
+}
+
 on_wsl() {
-  [[ -n ${WSL_DISTRO_NAME:-} || -e /proc/sys/fs/binfmt_misc/WSLInterop ]]
+  local release=
+  [[ -n ${WSL_DISTRO_NAME:-} || -n ${WSL_INTEROP:-} ]] && return 0
+  compgen -G '/proc/sys/fs/binfmt_misc/WSLInterop*' >/dev/null && return 0
+  [[ -r /proc/sys/kernel/osrelease ]] && release=$(</proc/sys/kernel/osrelease)
+  [[ $release == *[Mm]icrosoft* || $release == *[Ww][Ss][Ll]* ]]
 }
 
 drop_windows_paths() {

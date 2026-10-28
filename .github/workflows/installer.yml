@@ -37,6 +37,11 @@ jobs:
           bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh deploy/dev/setup.sh deploy/dev/lib/*.sh
           shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh
           shellcheck -x deploy/dev/setup.sh
+          shellcheck deploy/dev/test/fresh.sh
+          shellcheck -x deploy/dev/test/settings.sh
+          bash deploy/dev/test/settings.sh
+      - name: Check the setup script with the bash 3.2 of macOS
+        run: docker run --rm -v "$PWD":/w:ro -w /w bash:3.2 bash deploy/dev/test/settings.sh
       - name: Parse the Windows setup script
         shell: pwsh
         run: |
@@ -47,6 +52,27 @@ jobs:
         run: |
           systemd-analyze security --offline=yes --no-pager deploy/systemd/dhow.service | tail -1 | tee rating.txt
           grep -Eq 'exposure level for dhow.service: [0-9.]+ (OK|SAFE|PERFECT)' rating.txt
+
+  dev-setup-fresh:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: Development setup on a fresh ${{ matrix.image }} with a Windows PATH
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:24.04", "ubuntu:22.04", "debian:12", "fedora:latest"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run the setup script as a new user on a bare image
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: >-
+          docker run --rm -v "$PWD":/repo:ro "$IMAGE" /repo/deploy/dev/test/fresh.sh --yes --db=url
+          --db-url=postgres://dhow:unused@127.0.0.1:5432/dhow
+          --test-db-url=postgres://dhow:unused@127.0.0.1:5432/dhow_test
 
   dev-setup:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft

@@ -24,14 +24,15 @@ ensure_basics() {
     return
   fi
   have xz || missing+=(xz)
+  have_lib libatomic.so.1 || missing+=(libatomic)
   ((${#missing[@]})) || return 0
   confirm "Install ${missing[*]} with the system package manager?" || fail "these tools are required: ${missing[*]}"
   case $distro in
     debian)
       as_root apt-get update -q
-      as_root apt-get install -y -q git make curl python3 tar xz-utils ca-certificates
+      as_root apt-get install -y -q git make curl python3 tar xz-utils ca-certificates libatomic1
       ;;
-    fedora | rhel) as_root dnf install -y -q git make curl python3 tar xz ;;
+    fedora | rhel) as_root dnf install -y -q git make curl python3 tar xz libatomic ;;
     *) fail "install ${missing[*]} with your package manager, then run this script again" ;;
   esac
 }
@@ -52,6 +53,7 @@ ensure_go() {
   fi
   confirm "Download the latest stable Go from go.dev into $DEV_HOME/go?" || fail "Go $MIN_GO or newer is required"
   local listing file sum tmp
+  printf 'Looking up the latest Go release\n'
   listing=$(fetch 'https://go.dev/dl/?mode=json')
   read -r file sum < <(python3 -c '
 import json, sys
@@ -64,8 +66,9 @@ for release in json.load(sys.stdin):
             sys.exit(0)
 sys.exit(1)' "$os" "$arch" <<<"$listing") || fail "go.dev lists no Go archive for $os/$arch"
   tmp=$(mktemp -d)
-  fetch -o "$tmp/$file" "https://go.dev/dl/$file"
+  download "$tmp/$file" "https://go.dev/dl/$file"
   [[ $(sha256_of "$tmp/$file") == "$sum" ]] || fail "$file does not match the checksum go.dev publishes"
+  printf 'Checksum verified; unpacking into %s/go\n' "$DEV_HOME"
   mkdir -p "$DEV_HOME"
   rm -rf "$DEV_HOME/go"
   tar -xzf "$tmp/$file" -C "$DEV_HOME"
@@ -96,6 +99,7 @@ ensure_node() {
   fi
   confirm "Download the latest Node.js LTS from nodejs.org into $DEV_HOME/node?" || fail "Node.js $MIN_NODE or newer is required"
   local version file tmp expected
+  printf 'Looking up the latest Node.js LTS release\n'
   version=$(fetch 'https://nodejs.org/dist/index.json' | python3 -c '
 import json, sys
 for r in json.load(sys.stdin):
@@ -105,10 +109,11 @@ for r in json.load(sys.stdin):
 sys.exit(1)' "$MIN_NODE") || fail "nodejs.org lists no LTS release $MIN_NODE or newer"
   file="node-$version-$(node_platform).tar.gz"
   tmp=$(mktemp -d)
-  fetch -o "$tmp/$file" "https://nodejs.org/dist/$version/$file"
+  download "$tmp/$file" "https://nodejs.org/dist/$version/$file"
   fetch -o "$tmp/SHASUMS256.txt" "https://nodejs.org/dist/$version/SHASUMS256.txt"
   expected=$(awk -v f="$file" '$2 == f {print $1}' "$tmp/SHASUMS256.txt")
   [[ -n $expected && $(sha256_of "$tmp/$file") == "$expected" ]] || fail "$file does not match SHASUMS256.txt from nodejs.org"
+  printf 'Checksum verified; unpacking into %s/node\n' "$DEV_HOME"
   mkdir -p "$DEV_HOME"
   rm -rf "$DEV_HOME/node"
   tar -xzf "$tmp/$file" -C "$DEV_HOME"
@@ -124,6 +129,7 @@ ensure_pnpm() {
     printf 'pnpm %s found\n' "$want"
     return
   fi
+  printf 'Installing pnpm %s\n' "$want"
   mkdir -p "$LOCAL_BIN"
   add_path "$LOCAL_BIN"
   if have corepack; then
