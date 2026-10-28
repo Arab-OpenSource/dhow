@@ -24,6 +24,7 @@ type liveResolver struct {
 	mu       sync.Mutex
 	sessions map[string]auth.Resolved
 	err      error
+	peeks    int
 }
 
 func (l *liveResolver) Resolve(_ context.Context, hash []byte, _ time.Time) (auth.Resolved, error) {
@@ -37,6 +38,13 @@ func (l *liveResolver) Resolve(_ context.Context, hash []byte, _ time.Time) (aut
 		return auth.Resolved{}, auth.ErrNoSession
 	}
 	return r, nil
+}
+
+func (l *liveResolver) Peek(ctx context.Context, hash []byte, now time.Time) (auth.Resolved, error) {
+	l.mu.Lock()
+	l.peeks++
+	l.mu.Unlock()
+	return l.Resolve(ctx, hash, now)
 }
 
 func (l *liveResolver) set(hash []byte, r *auth.Resolved, err error) {
@@ -75,6 +83,7 @@ func TestReauthorizeFollowsTheSessionAndTheRole(t *testing.T) {
 
 	resolver.set(hash, member(policy.RoleDeveloper), nil)
 	require.NoError(t, guard.Reauthorize(ctx, policy.LogRead, org))
+	assert.Equal(t, 1, resolver.peeks, "re-authorization peeks and never resolves, so it does not touch the session")
 
 	tests := []struct {
 		name     string

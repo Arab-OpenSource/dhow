@@ -60,6 +60,10 @@ func (noSessions) Resolve(context.Context, []byte, time.Time) (auth.Resolved, er
 	return auth.Resolved{}, auth.ErrNoSession
 }
 
+func (noSessions) Peek(context.Context, []byte, time.Time) (auth.Resolved, error) {
+	return auth.Resolved{}, auth.ErrNoSession
+}
+
 func (o Options) guard() *auth.Guard {
 	var resolver auth.Resolver = noSessions{}
 	if o.Session != nil {

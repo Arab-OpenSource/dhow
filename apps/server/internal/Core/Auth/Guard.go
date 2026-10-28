@@ -36,6 +36,7 @@ type Resolved struct {
 
 type Resolver interface {
 	Resolve(ctx context.Context, tokenHash []byte, now time.Time) (Resolved, error)
+	Peek(ctx context.Context, tokenHash []byte, now time.Time) (Resolved, error)
 }
 
 type GuardOptions struct {
@@ -156,7 +157,7 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 }
 
 func (g *Guard) Reauthorize(ctx context.Context, action policy.Action, org uuid.UUID) error {
-	principal, _, ae := g.authenticate(ctx)
+	principal, _, ae := g.authenticateWith(ctx, g.resolver.Peek)
 	if ae != nil {
 		return ae
 	}
@@ -170,12 +171,16 @@ func (g *Guard) Reauthorize(ctx context.Context, action policy.Action, org uuid.
 }
 
 func (g *Guard) authenticate(ctx context.Context) (Principal, []byte, *apperrors.AppError) {
+	return g.authenticateWith(ctx, g.resolver.Resolve)
+}
+
+func (g *Guard) authenticateWith(ctx context.Context, resolve func(context.Context, []byte, time.Time) (Resolved, error)) (Principal, []byte, *apperrors.AppError) {
 	token := RequestMetaFrom(ctx).SessionToken
 	hash, ok := HashSessionToken(token, config.SessionTokenBytes)
 	if !ok {
 		return Principal{}, nil, apperrors.Unauthenticated()
 	}
-	res, err := g.resolver.Resolve(ctx, hash, g.now())
+	res, err := resolve(ctx, hash, g.now())
 	switch {
 	case errors.Is(err, ErrNoSession):
 		return Principal{}, nil, apperrors.Unauthenticated()

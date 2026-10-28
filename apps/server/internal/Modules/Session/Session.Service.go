@@ -77,6 +77,14 @@ func NewService(o Options) *Service {
 func (s *Service) queries() *sqlc.Queries { return sqlc.New(s.db) }
 
 func (s *Service) Resolve(ctx context.Context, tokenHash []byte, now time.Time) (auth.Resolved, error) {
+	return s.resolve(ctx, tokenHash, now, true)
+}
+
+func (s *Service) Peek(ctx context.Context, tokenHash []byte, now time.Time) (auth.Resolved, error) {
+	return s.resolve(ctx, tokenHash, now, false)
+}
+
+func (s *Service) resolve(ctx context.Context, tokenHash []byte, now time.Time, touch bool) (auth.Resolved, error) {
 	q := s.queries()
 	row, err := q.ResolveSession(ctx, sqlc.ResolveSessionParams{TokenHash: tokenHash, Now: now})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -89,7 +97,7 @@ func (s *Service) Resolve(ctx context.Context, tokenHash []byte, now time.Time) 
 	if err != nil {
 		return auth.Resolved{}, err
 	}
-	if now.Sub(row.LastSeenAt) >= config.SessionTouchInterval {
+	if touch && now.Sub(row.LastSeenAt) >= config.SessionTouchInterval {
 		touchErr := q.TouchSession(ctx, sqlc.TouchSessionParams{
 			ID: row.Id, Now: now, IdleExpiresAt: now.Add(config.SessionIdleTimeout), TouchBefore: now.Add(-config.SessionTouchInterval),
 		})
