@@ -9,21 +9,22 @@ Paths below are relative to `apps/server/internal/` unless they start with anoth
 ## 1. Method
 
 - A fresh read of every M2 path (setup, password, second factor, sessions, organizations, invitations, OIDC, API tokens, audit) against the [security model](../security-model.md) and OWASP ASVS 4.0.3 level 2, after the M2.5 hardening was in place.
+- An independent review of the branch followed and found no blocker; its findings are F16 to F24 below, all addressed in M2.5.
 - Every Critical or High finding is fixed in M2.5. Every Medium finding is fixed or recorded with its reason. M2 is done when every authorization test is green and no Critical or High finding is open.
 - Automated evidence: `make check` (lint, `go test -race` against PostgreSQL 18, govulncheck, hook tests), `make fuzz FUZZTIME=60s` (13 targets), `make timing` (statistical timing tests), and `deploy/smoke.sh` against the container image.
 
 ## 2. Routes in scope
 
-All routes are under `/api/v1`. "Origin" means the request must carry `Origin` equal to `DHOW_PUBLIC_URL`; "CSRF" means the `X-CSRF-Token` of the session is required as well. Every route has a row in a module's `Policies()`, and `App/RouteTable_test.go` walks the whole route table for every role.
+All routes are under `/api/v1`. Per-network limits count only requests that passed the Origin check. "Origin" means the request must carry `Origin` equal to `DHOW_PUBLIC_URL`; "CSRF" means the `X-CSRF-Token` of the session is required as well. Every route has a row in a module's `Policies()`, and `App/RouteTable_test.go` walks the whole route table for every role.
 
 | Route | Who | Request checks | Limits |
 |---|---|---|---|
 | `POST /setup` | anyone, before the first owner exists | Origin, one-time setup token in the body | per client network (`DHOW_RATE_LIMIT_PUBLIC`) |
-| `POST /sessions` | anyone | Origin | lockout per account and per client network |
-| `POST /sessions/mfa` | holder of `__Host-dhow_mfa` | Origin, challenge bound to the user and User-Agent | lockout per user and per client network, 5 codes per challenge |
-| `POST /sessions/mfa/passkey-options` | holder of `__Host-dhow_mfa` | Origin | bound to the pending challenge |
-| `POST /sessions/passkey-options` | anyone | Origin | per client network |
-| `POST /sessions/passkey` | anyone | Origin, stored single-use challenge | lockout per client network |
+| `POST /sessions` | anyone | Origin | lockout per account and per client network, and per client network (`DHOW_RATE_LIMIT_PUBLIC`) |
+| `POST /sessions/mfa` | holder of `__Host-dhow_mfa` | Origin, challenge bound to the user and User-Agent | lockout per user and per client network, 5 codes per challenge, and per client network |
+| `POST /sessions/mfa/passkey-options` | holder of `__Host-dhow_mfa` | Origin | bound to the pending challenge (the one listed exception to per-network limits) |
+| `POST /sessions/passkey-options` | anyone | Origin | per client network, shared with `POST /sessions/passkey` |
+| `POST /sessions/passkey` | anyone | Origin, stored single-use challenge | lockout per client network, and per client network |
 | `GET /oidc/providers` | anyone | none (read only) | none |
 | `POST /oidc/authorize`, `POST /oidc/callback` | anyone | Origin, `__Host-dhow_oidc`, state, PKCE, nonce | per client network, shared |
 | `POST /invitations/preview`, `POST /invitations/accept` | anyone with a link | Origin, token in the body | per client network, shared |
@@ -49,7 +50,7 @@ All routes are under `/api/v1`. "Origin" means the request must carry `Origin` e
 | Online guessing and credential stuffing | Failures counted before verification, per account (5) and per client network (20), exponential lock from 30 s to 15 min; IPv6 counted per /64 | `Modules/Session/Session.Throttle.go`, `Core/Auth/Throttle.go` | `Modules/Session/Test/Integration/Throttle_test.go` (including `TestAnIPv6AttackerCannotSpreadOverItsSlash64`) |
 | Parallel guesses beat the counter | Reservation in one transaction with `FOR UPDATE` on both counters | `Session.Throttle.go` | `Throttle_test.go` (`TestParallelGuesses...`) |
 | Account enumeration by answer | One `INVALID_CREDENTIALS` for every failure, locked or not | `Modules/Session/Session.Login.go` | `Modules/Session/Test/Edge/Generic_test.go`, `Flow_test.go` (`TestLoginErrorsAreGeneric`) |
-| Account enumeration by timing | Unknown and disabled accounts run a full Argon2id verification | `Session.Login.go`, `Core/Auth/Password.go` | `App/Timing/Timing_test.go` (`make timing`) |
+| Account enumeration by timing | Unknown and disabled accounts run a full Argon2id verification; no difference above max(10%, 300 µs) of the median, about 3.5 ms here | `Session.Login.go`, `Core/Auth/Password.go` | `App/Timing/Timing_test.go` (`make timing`), with a control that must notice 6 ms on sign-in |
 | Offline cracking after a database leak | Argon2id (19 MiB, t=2), rehash on sign-in after a parameter change | `Core/Auth/Password.go` | `Core/Auth/Password_test.go` |
 | Weak or breached passwords | 12 to 128 characters, Have I Been Pwned range check (k-anonymity) | `Core/Auth/PasswordPolicy.go`, `Core/Auth/Breached.go` | `Core/Auth/Breached_test.go`, `FuzzPasswordLength` |
 
@@ -72,7 +73,7 @@ All routes are under `/api/v1`. "Origin" means the request must carry `Origin` e
 | Stale sessions | 12 h idle and 14 days absolute; revocation on sign-out, password, factor and role change | `Modules/Session/Session.Service.go` | `Lifecycle_test.go`, `Flow_test.go` (`TestRevokeSessions`) |
 | CSRF | Origin on every unsafe request, plus an HMAC token bound to the session | `Core/Auth/Guard.go`, `Core/Auth/CSRF.go` | `Modules/Session/Test/E2E/Csrf_test.go`, `Core/Auth/CSRF_test.go` |
 | Token or cookie in a URL or a log | Tokens travel in bodies, cookies or the URL fragment; the access log drops the query; log keys are redacted | `Core/Middleware/AccessLog.go`, `internal/logging` | `Secrets_test.go`, `Core/Middleware/Middleware_test.go` |
-| Malformed or alternative token spellings | Exact encoded length, strict base64url, then SHA-256 or HMAC | `Core/Auth/Token.go`, `Core/Auth/ApiToken.go` | `Core/Auth/Token_test.go`, `FuzzHashSessionToken`, `FuzzAPITokenHash` |
+| Malformed or alternative token spellings | Exact encoded length, strict base64url, then SHA-256 or HMAC; the same for runner tokens | `Core/Auth/Token.go`, `Core/Auth/ApiToken.go`, `Core/RunnerAuth/Tokens.go` | `Core/Auth/Token_test.go`, `Core/RunnerAuth/RunnerAuth_test.go`, `FuzzHashSessionToken`, `FuzzAPITokenHash` |
 
 ### External identity providers
 
@@ -113,8 +114,9 @@ All routes are under `/api/v1`. "Origin" means the request must carry `Origin` e
 | Tampering with the trail | Hash chain per organization, trigger refusing `UPDATE`, `DELETE` and `TRUNCATE`, verify endpoint | `Modules/Audit/Audit.Service.go` | `Modules/Audit/Test/Integration/Chain_test.go` |
 | Secrets in the trail | Explicit allowlist of event fields; values with a Dhow credential prefix are dropped | `Modules/Audit/Audit.Data.go` | `Modules/Audit/Test/Integration/Sanitizer_test.go`, `Modules/Audit/Test/Unit/DataKeys_test.go` |
 | Missing events | The harness fails every E2E test whose flow loses an audit field | `App/Testing/Harness.go` | every E2E test |
-| Flooding public routes | Fixed windows in PostgreSQL per client network, shared by every instance; a forged `X-Forwarded-For` is ignored without a trusted proxy | `Core/RateLimit` | `Core/RateLimit/Postgres_test.go`, `App/RateLimit_test.go`, `FuzzClientIP`, `FuzzNetwork` |
-| Tables growing with every attempt | Batched deletes of expired temporary rows under an advisory lock | `Database/Retention` | `Database/Retention/Retention_test.go` |
+| Flooding public routes | Fixed windows in PostgreSQL per client network on the database clock, shared by every instance; counted only after the Origin check; keys over the limit refused from memory; a forged `X-Forwarded-For` is ignored without a trusted proxy; every public write is limited or a listed exception | `Core/RateLimit` | `Core/RateLimit/Postgres_test.go`, `App/RateLimit_test.go` (including `TestACrossSitePageCannotSpendTheLimitOfAnOffice` and `TestEveryPublicWriteIsRateLimitedOrAnExplicitException`), `FuzzClientIP`, `FuzzNetwork` |
+| Tables growing with every attempt | Batched deletes of expired temporary rows under an advisory lock, on the database clock; a locked address creates no new throttle rows | `Database/Retention`, `Modules/Session/Session.Throttle.go` | `Database/Retention/Retention_test.go`, `Throttle_test.go` (`TestALockedAddressCreatesNoMoreThrottleRows`) |
+| Destructive SQL slipping into queries | A project hook strips SQL comments and refuses `DELETE` and `TRUNCATE` in every queries file, except the batch template on the temporary tables in `Retention.sql` | `.claude/hooks/dhow_hooks/edit_rules.py` | `.claude/hooks/tests/test_hooks.py` (`make hooks-test`) |
 | Configuration mistakes | The server refuses to start on a missing, placeholder or reused secret and on any invalid provider or limit | `Config` | `Config/Secrets_test.go`, `Config/Oidc_test.go`, `Config/RateLimit_test.go` |
 
 ## 4. ASVS 4.0.3 level 2
@@ -136,7 +138,7 @@ All routes are under `/api/v1`. "Origin" means the request must carry `Origin` e
 | V4.3.1 MFA for administrative interfaces | Not met | MFA is optional for owners and admins (finding F11) |
 | V7.1 to V7.3 Logging | Met | No credentials in logs or audit data, security events audited, tamper-evident chain |
 | V8.3.1 Sensitive data in URLs | Met | Tokens in bodies, cookies or fragments only |
-| V11.1.4 Anti-automation | Met | Per-network limits on public routes, invitation caps |
+| V11.1.4 Anti-automation | Met | Per-network limits on public routes after the Origin check, invitation caps |
 | V14.4 HTTP security headers | Partial | CSP without Trusted Types (finding F9) |
 
 ## 5. Findings of the internal review
@@ -158,6 +160,15 @@ All routes are under `/api/v1`. "Origin" means the request must carry `Origin` e
 | F13 | Low | No recovery for a forgotten password. | Accepted for M2: an admin resets the second factor, and passwordless passkeys and linked identities still sign in. A recovery flow is a product decision. |
 | F14 | Low | An attacker who knows an email can keep that account's password sign-in locked (ADR-0035). | Accepted: the lock is short and doubling, and passkey and provider sign-in are not counted against the account. |
 | F15 | Info | API token guessing has no per-address limit. | Accepted: 256-bit tokens; each attempt costs one indexed lookup. |
+| F16 | Medium | Independent review: the limiter ran before the Origin check, so a cross-site page could spend the limit of an office behind one NAT with no-cors requests. | Fixed: the limiter runs inside the Guard. `TestACrossSitePageCannotSpendTheLimitOfAnOffice` |
+| F17 | Low | Independent review: a locked address still created one `LoginThrottles` row per new email, and password sign-in, the second step and passkey sign-in had no per-network limit. | Fixed: the reservation stops at the first locked key, and the three routes are limited. `TestALockedAddressCreatesNoMoreThrottleRows`, `App/RateLimit_test.go` |
+| F18 | Low | Independent review: one instance with a fast clock froze the rate limit window for all others. | Fixed: the window and retention use the database clock. `TestWithoutAClockTheDatabaseDecidesTheWindow`, `TestWithoutAClockRetentionUsesTheDatabaseTime` |
+| F19 | Low | Independent review: `DELETE /**/ FROM`, `FROM"X"`, a comment between the words, and `WHERE true` or a top-level `OR` in `Retention.sql` bypassed the hook. | Fixed: comments stripped, whole file checked, one batch template in `Retention.sql`. Hook tests for every form |
+| F20 | Low | Independent review: a resend spent the hourly limits before the existence, role and send-count checks. | Fixed: limits taken inside the transaction after them. `TestAResendThatCannotHappenSpendsNothing` |
+| F21 | Low | Independent review: a client already over a limit still cost one upsert per request. | Fixed: a per-instance memory of blocked keys until the window ends. `TestAKeyKnownToBeOverTheLimitIsRefusedWithoutTheDatabase` |
+| F22 | Info | Independent review: the timing control proved 1 ms only on a sub-millisecond path. | Addressed: the guarantee is now written as max(10%, 300 µs) of the median, and a second control must notice 6 ms on sign-in. |
+| F23 | Info | Independent review: runner tokens accepted a line break like the other tokens did. | Fixed: exact length. `Core/RunnerAuth/RunnerAuth_test.go` (`TestTokens`) |
+| F24 | Info | Independent review: nothing stopped a new public write route from shipping without a limit. | Fixed: `TestEveryPublicWriteIsRateLimitedOrAnExplicitException` |
 
 No Critical or High finding is open.
 

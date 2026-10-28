@@ -96,7 +96,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with email and password
-         * @description Failure is always `INVALID_CREDENTIALS` with the same body whether the account exists or not. A throttled account or address gets the same error plus a `Retry-After` header. Success sets the `__Host-dhow_session` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`), replaces any session cookie the request carried, and returns the CSRF token the client must send as `X-CSRF-Token` on every non-GET request. When the account has a second factor (TOTP or a passkey), a correct password answers 202 instead: no session is created, and the `__Host-dhow_mfa` cookie carries a challenge that is valid for 5 minutes, works once and is bound to the user and the browser. Only `POST /sessions/mfa` turns it into a session.
+         * @description Failure is always `INVALID_CREDENTIALS` with the same body whether the account exists or not. A throttled account or address gets the same error plus a `Retry-After` header. Success sets the `__Host-dhow_session` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`), replaces any session cookie the request carried, and returns the CSRF token the client must send as `X-CSRF-Token` on every non-GET request. When the account has a second factor (TOTP or a passkey), a correct password answers 202 instead: no session is created, and the `__Host-dhow_mfa` cookie carries a challenge that is valid for 5 minutes, works once and is bound to the user and the browser. Only `POST /sessions/mfa` turns it into a session. On top of that lockout, each client network may send `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["login"];
         delete?: never;
@@ -170,7 +170,7 @@ export interface paths {
         put?: never;
         /**
          * Finish signing in with the second factor
-         * @description Needs the `__Host-dhow_mfa` cookie from `POST /sessions`; the user comes from that challenge, never from the request. Accepts a TOTP code, an unused recovery code or a passkey assertion (after `POST /sessions/mfa/passkey-options`). A missing, expired, used or foreign-browser challenge answers `MFA_CHALLENGE_EXPIRED`. A wrong factor answers `INVALID_MFA_CODE` whatever the reason; attempts are throttled per account and per address like the password, and a throttled attempt adds `Retry-After`. Success sets the session cookie and clears the challenge cookie.
+         * @description Needs the `__Host-dhow_mfa` cookie from `POST /sessions`; the user comes from that challenge, never from the request. Accepts a TOTP code, an unused recovery code or a passkey assertion (after `POST /sessions/mfa/passkey-options`). A missing, expired, used or foreign-browser challenge answers `MFA_CHALLENGE_EXPIRED`. A wrong factor answers `INVALID_MFA_CODE` whatever the reason; attempts are throttled per account and per address like the password, and a throttled attempt adds `Retry-After`. Success sets the session cookie and clears the challenge cookie. On top of that lockout, each client network may send `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["completeMfaLogin"];
         delete?: never;
@@ -230,7 +230,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with a passkey
-         * @description Verifies the assertion against the stored challenge, the configured RP ID and origin, and the stored public key and sign count. Any failure answers `INVALID_CREDENTIALS`. Success sets the session cookie.
+         * @description Verifies the assertion against the stored challenge, the configured RP ID and origin, and the stored public key and sign count. Any failure answers `INVALID_CREDENTIALS`. Success sets the session cookie. Each client network may send `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes, shared with `POST /sessions/passkey-options`; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["passkeyLogin"];
         delete?: never;

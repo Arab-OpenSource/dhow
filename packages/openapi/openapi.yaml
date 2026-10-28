@@ -145,7 +145,8 @@ paths:
         request carried, and returns the CSRF token the client must send as `X-CSRF-Token` on every non-GET request.
         When the account has a second factor (TOTP or a passkey), a correct password answers 202 instead: no session
         is created, and the `__Host-dhow_mfa` cookie carries a challenge that is valid for 5 minutes, works once and
-        is bound to the user and the browser. Only `POST /sessions/mfa` turns it into a session.
+        is bound to the user and the browser. Only `POST /sessions/mfa` turns it into a session. On top of that lockout, each client network may send `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes;
+        above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
       security: []
       requestBody:
         required: true
@@ -266,7 +267,8 @@ paths:
         `POST /sessions/mfa/passkey-options`). A missing, expired, used or foreign-browser challenge answers
         `MFA_CHALLENGE_EXPIRED`. A wrong factor answers `INVALID_MFA_CODE` whatever the reason; attempts are throttled
         per account and per address like the password, and a throttled attempt adds `Retry-After`. Success sets the
-        session cookie and clears the challenge cookie.
+        session cookie and clears the challenge cookie. On top of that lockout, each client network may send `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes;
+        above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
       security: []
       requestBody:
         required: true
@@ -333,7 +335,9 @@ paths:
       summary: Sign in with a passkey
       description: >-
         Verifies the assertion against the stored challenge, the configured RP ID and origin, and the stored public
-        key and sign count. Any failure answers `INVALID_CREDENTIALS`. Success sets the session cookie.
+        key and sign count. Any failure answers `INVALID_CREDENTIALS`. Success sets the session cookie. Each client network may send `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes, shared with
+        `POST /sessions/passkey-options`;
+        above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
       security: []
       requestBody:
         required: true
