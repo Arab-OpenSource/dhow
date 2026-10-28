@@ -75,6 +75,18 @@ func boundedInt(v string, def, lowest, highest int64) (int64, error) {
 	return n, nil
 }
 
+func boundedSmall(v string, def, lowest, highest int) (int, error) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return def, nil
+	}
+	n, err := strconv.ParseInt(v, 10, 32)
+	if err != nil || n < int64(lowest) || n > int64(highest) {
+		return 0, errors.New("must be a whole number from " + strconv.Itoa(lowest) + " to " + strconv.Itoa(highest))
+	}
+	return int(n), nil
+}
+
 func loadLogs(getenv func(string) string) (Logs, []error) {
 	out := DefaultLogs()
 	var errs []error
@@ -82,20 +94,20 @@ func loadLogs(getenv func(string) string) (Logs, []error) {
 	if err != nil {
 		errs = append(errs, errors.New(EnvJobLogMaxBytes+": "+err.Error()))
 	}
-	retention, err := boundedInt(getenv(EnvLogRetentionDays), LogRetentionDefault, 1, LogRetentionMax)
+	retention, err := boundedSmall(getenv(EnvLogRetentionDays), LogRetentionDefault, 1, LogRetentionMax)
 	if err != nil {
 		errs = append(errs, errors.New(EnvLogRetentionDays+": "+err.Error()))
 	}
-	streams, err := boundedInt(getenv(EnvSSEMaxStreams), SSEMaxStreamsDefault, 1, SSEMaxStreamsMax)
+	streams, err := boundedSmall(getenv(EnvSSEMaxStreams), SSEMaxStreamsDefault, 1, SSEMaxStreamsMax)
 	if err != nil {
 		errs = append(errs, errors.New(EnvSSEMaxStreams+": "+err.Error()))
 	}
-	conns, err := boundedInt(getenv(EnvLogReadConns), LogReadConnsDefault, 1, DatabaseMaxConns)
+	conns, err := boundedSmall(getenv(EnvLogReadConns), LogReadConnsDefault, 1, DatabaseMaxConns)
 	if err != nil {
 		errs = append(errs, errors.New(EnvLogReadConns+": "+err.Error()))
 	}
 	if len(errs) > 0 {
 		return out, errs
 	}
-	return Logs{MaxBytes: maxBytes, RetentionDays: int(retention), MaxStreams: int(streams), ReadConns: int(conns)}, nil
+	return Logs{MaxBytes: maxBytes, RetentionDays: retention, MaxStreams: streams, ReadConns: conns}, nil
 }
