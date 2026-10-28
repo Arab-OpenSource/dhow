@@ -45,6 +45,7 @@ const (
 	ReasonLeaseLost         = "LEASE_LOST"
 	ReasonRunnerRevoked     = "RUNNER_REVOKED"
 	ReasonTimedOut          = "TIMED_OUT"
+	ReasonStartTimeout      = "START_TIMEOUT"
 	ReasonSecretsMissing    = "SECRETS_UNAVAILABLE"
 	ReasonNoMatchingRunner  = "NO_MATCHING_RUNNER"
 )

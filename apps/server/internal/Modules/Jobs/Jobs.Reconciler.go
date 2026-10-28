@@ -17,14 +17,16 @@ import (
 )
 
 type ReconcileResult struct {
-	ExpiredLeases int
-	RevokedLeases int
-	TimedOut      int
-	QueueTimeouts int
+	ExpiredLeases     int
+	RevokedLeases     int
+	CanceledUnstarted int
+	StartTimeouts     int
+	TimedOut          int
+	QueueTimeouts     int
 }
 
 func (r ReconcileResult) Total() int {
-	return r.ExpiredLeases + r.RevokedLeases + r.TimedOut + r.QueueTimeouts
+	return r.ExpiredLeases + r.RevokedLeases + r.CanceledUnstarted + r.StartTimeouts + r.TimedOut + r.QueueTimeouts
 }
 
 type picker func(ctx context.Context, q *sqlc.Queries) (uuid.UUID, error)
@@ -47,6 +49,9 @@ func (s *Service) Reconcile(ctx context.Context) (ReconcileResult, error) {
 	}, lost(models.ReasonRunnerRevoked, models.LeaseRevoked)); err != nil {
 		return out, fmt.Errorf("revoke leases of revoked runners: %w", err)
 	}
+	if err := s.sweepUnstarted(ctx, &out); err != nil {
+		return out, err
+	}
 	deadline := config.JobDeadlineGrace.Seconds()
 	if out.TimedOut, err = s.sweep(ctx, func(ctx context.Context, q *sqlc.Queries) (uuid.UUID, error) {
 		return q.PickOverdueLease(ctx, deadline)
@@ -59,6 +64,23 @@ func (s *Service) Reconcile(ctx context.Context) (ReconcileResult, error) {
 	}
 	out.QueueTimeouts = len(rows)
 	return out, nil
+}
+
+func (s *Service) sweepUnstarted(ctx context.Context, out *ReconcileResult) error {
+	var err error
+	grace := config.JobLeasedCancelGrace.Seconds()
+	if out.CanceledUnstarted, err = s.sweep(ctx, func(ctx context.Context, q *sqlc.Queries) (uuid.UUID, error) {
+		return q.PickCanceledUnstartedLease(ctx, grace)
+	}, models.Outcome{State: models.AttemptCanceled, FailureReason: models.ReasonCanceled, LeaseState: models.LeaseRevoked}); err != nil {
+		return fmt.Errorf("cancel unstarted attempts: %w", err)
+	}
+	limit := config.JobStartDeadline.Seconds()
+	if out.StartTimeouts, err = s.sweep(ctx, func(ctx context.Context, q *sqlc.Queries) (uuid.UUID, error) {
+		return q.PickUnstartedLease(ctx, limit)
+	}, lost(models.ReasonStartTimeout, models.LeaseRevoked)); err != nil {
+		return fmt.Errorf("end attempts that never started: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) sweep(ctx context.Context, pick picker, o models.Outcome) (int, error) {
@@ -102,7 +124,8 @@ func (s *Service) RunReconciler(ctx context.Context) {
 			s.log.ErrorContext(ctx, "job reconciler pass failed", "error", err)
 		case res.Total() > 0:
 			s.log.InfoContext(ctx, "job reconciler pass", "expired_leases", res.ExpiredLeases, "revoked_leases", res.RevokedLeases,
-				"timed_out", res.TimedOut, "queue_timeouts", res.QueueTimeouts)
+				"canceled_unstarted", res.CanceledUnstarted, "start_timeouts", res.StartTimeouts, "timed_out", res.TimedOut,
+				"queue_timeouts", res.QueueTimeouts)
 		}
 	}
 }
