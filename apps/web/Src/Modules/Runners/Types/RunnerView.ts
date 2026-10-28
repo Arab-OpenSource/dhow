@@ -15,7 +15,8 @@ export const DEFAULT_EXPIRY: TExpiryHours = '1';
 
 const SECONDS_PER_HOUR = 3600;
 const LABEL_PATTERN = /^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?(=[A-Za-z0-9]([A-Za-z0-9._-]{0,62}[A-Za-z0-9])?)?$/;
-const RESERVED_PREFIX = 'dhow.';
+export const RESERVED_PREFIX = 'dhow.';
+export const LABEL_EXAMPLE = 'linux-builders region=eu';
 const LABEL_SEPARATOR = /[\s,]+/;
 
 export const viewOf = (runner: TRunner): TRunnerView => {

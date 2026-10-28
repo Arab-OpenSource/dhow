@@ -1,8 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { canManageRunners } from '@/Core/Auth/AuthTypes';
-import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Button } from '@/Core/Ui/Button';
 import { Card } from '@/Core/Ui/Card';
@@ -10,16 +8,20 @@ import { ChoiceList } from '@/Core/Ui/ChoiceList';
 import { EmptyState } from '@/Core/Ui/EmptyState';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Input } from '@/Core/Ui/Input';
+import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
 import { createRegistrationToken, registrationTokensKey, type TCreatedRegistrationToken } from '@/Modules/Runners/Api/RunnersApi';
 import { HintedField } from '@/Modules/Runners/Components/HintedField';
+import { useRunnerAccess } from '@/Modules/Runners/Hooks/useRunnerAccess';
 import { RunnerTokenCreated } from '@/Modules/Runners/Components/RunnerTokenCreated';
 import {
   DEFAULT_EXPIRY,
   EXPIRY_HOURS,
   expirySeconds,
+  LABEL_EXAMPLE,
   labelsValid,
   MAX_USES_LIMIT,
+  RESERVED_PREFIX,
   splitLabels,
   TOKEN_DESCRIPTION_MAX,
   type TExpiryHours,
@@ -50,7 +52,7 @@ const TokenForm = ({ organizationId, onCreated }: IFormProps) => {
   const HandleSubmit = () => {
     const labels = splitLabels(Labels);
     const next = {
-      Labels: labelsValid(labels) ? undefined : t('runners.new.error.labels'),
+      Labels: labelsValid(labels) ? undefined : t('runners.new.error.labels', { prefix: RESERVED_PREFIX }),
       Uses: usesValid(Uses.trim()) ? undefined : t('runners.new.error.uses', { max: MAX_USES_LIMIT }),
     };
     setProblem(next);
@@ -92,7 +94,7 @@ const TokenForm = ({ organizationId, onCreated }: IFormProps) => {
             }}
           />
       </HintedField>
-      <HintedField label={t('runners.new.labels')} hint={t('runners.new.labels.hint')} error={Problem.Labels}>
+      <HintedField label={t('runners.new.labels')} hint={t('runners.new.labels.hint', { example: LABEL_EXAMPLE, prefix: RESERVED_PREFIX })} error={Problem.Labels}>
           <Input
             dir="ltr"
             autoComplete="off"
@@ -137,10 +139,11 @@ const TokenForm = ({ organizationId, onCreated }: IFormProps) => {
 
 export const RunnerNewBody = ({ onDone }: IRunnerNewBodyProps) => {
   const t = useT();
-  const membership = useCurrentMembership();
+  const access = useRunnerAccess();
   const [Created, setCreated] = useState<TCreatedRegistrationToken | null>(null);
 
-  if (membership === undefined || !canManageRunners(membership.Role)) {
+  if (access.Kind === 'loading') return <Skeleton label={t('ui.loading')} lines={5} />;
+  if (access.Kind === 'denied' || !access.Manager) {
     return (
       <Card>
         <EmptyState icon="shield" text={t('runners.new.forbidden')} />
@@ -148,5 +151,5 @@ export const RunnerNewBody = ({ onDone }: IRunnerNewBodyProps) => {
     );
   }
   if (Created !== null) return <RunnerTokenCreated created={Created} onDone={onDone} />;
-  return <TokenForm organizationId={membership.OrganizationId} onCreated={setCreated} />;
+  return <TokenForm organizationId={access.OrganizationId} onCreated={setCreated} />;
 };

@@ -48,7 +48,7 @@ const TokenRow = ({ token, onAskRevoke }: ITokenRowProps) => {
           <Badge tone={TOKEN_TONE[token.Status]}>{t(TOKEN_LABEL[token.Status])}</Badge>
           {token.Status === 'active' ? (
             <Button size="sm" variant="ghost" iconStart="trash" aria-label={t('runners.token.revoke.aria', { name })} onClick={onAskRevoke}>
-              {t('runners.token.revoke')}
+              <span className="max-sm:sr-only">{t('runners.token.revoke')}</span>
             </Button>
           ) : null}
         </>

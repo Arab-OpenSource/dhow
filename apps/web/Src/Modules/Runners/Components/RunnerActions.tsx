@@ -11,7 +11,7 @@ import { useT } from '@/I18n/useT';
 import type { TRunner } from '@/Modules/Runners/Api/RunnersApi';
 import { HintedField } from '@/Modules/Runners/Components/HintedField';
 import { useRevokeRunner, useUpdateRunner } from '@/Modules/Runners/Hooks/useRunners';
-import { labelsValid, RUNNER_NAME_MAX, sameLabels, splitLabels } from '@/Modules/Runners/Types/RunnerView';
+import { labelsValid, RESERVED_PREFIX, RUNNER_NAME_MAX, sameLabels, splitLabels } from '@/Modules/Runners/Types/RunnerView';
 
 export interface IRunnerPartProps {
   organizationId: string;
@@ -33,7 +33,7 @@ export const RunnerEditCard = ({ organizationId, runner }: IRunnerPartProps) => 
     const name = Name.trim();
     const next = {
       Name: name === '' || name.length > RUNNER_NAME_MAX ? t('runners.edit.error.name') : undefined,
-      Labels: labelsValid(labels) ? undefined : t('runners.new.error.labels'),
+      Labels: labelsValid(labels) ? undefined : t('runners.new.error.labels', { prefix: RESERVED_PREFIX }),
     };
     setProblem(next);
     if (next.Name !== undefined || next.Labels !== undefined) return;
@@ -70,7 +70,7 @@ export const RunnerEditCard = ({ organizationId, runner }: IRunnerPartProps) => 
             }}
           />
         </Field>
-        <HintedField label={t('runners.edit.labels')} hint={t('runners.edit.labels.hint')} error={Problem.Labels}>
+        <HintedField label={t('runners.edit.labels')} hint={t('runners.edit.labels.hint', { prefix: RESERVED_PREFIX })} error={Problem.Labels}>
             <Input
               dir="ltr"
               autoComplete="off"

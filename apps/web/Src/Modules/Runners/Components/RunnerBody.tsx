@@ -1,6 +1,4 @@
 import { isApiError } from '@/Core/Api/ApiError';
-import { canManageRunners, canReadRunners } from '@/Core/Auth/AuthTypes';
-import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Badge } from '@/Core/Ui/Badge';
 import { Button } from '@/Core/Ui/Button';
@@ -14,6 +12,7 @@ import type { TMessageKey } from '@/I18n/Messages';
 import type { TRunner } from '@/Modules/Runners/Api/RunnersApi';
 import { RunnerEditCard, RunnerPauseCard, RunnerRevokeCard } from '@/Modules/Runners/Components/RunnerActions';
 import { RunnerFacts } from '@/Modules/Runners/Components/RunnerFacts';
+import { useRunnerAccess } from '@/Modules/Runners/Hooks/useRunnerAccess';
 import { useRunner } from '@/Modules/Runners/Hooks/useRunners';
 import { VIEW_LABEL, VIEW_TONE, viewOf, type TRunnerView } from '@/Modules/Runners/Types/RunnerView';
 
@@ -100,13 +99,14 @@ const Loaded = ({ organizationId, runnerId, manager }: IRunnerBodyProps & { orga
 
 export const RunnerBody = ({ runnerId }: IRunnerBodyProps) => {
   const t = useT();
-  const membership = useCurrentMembership();
-  if (membership === undefined || !canReadRunners(membership.Role)) {
+  const access = useRunnerAccess();
+  if (access.Kind === 'loading') return <Skeleton label={t('runners.loading')} lines={6} />;
+  if (access.Kind === 'denied') {
     return (
       <Card>
         <EmptyState icon="shield" text={t('runners.forbidden')} />
       </Card>
     );
   }
-  return <Loaded organizationId={membership.OrganizationId} runnerId={runnerId} manager={canManageRunners(membership.Role)} />;
+  return <Loaded organizationId={access.OrganizationId} runnerId={runnerId} manager={access.Manager} />;
 };

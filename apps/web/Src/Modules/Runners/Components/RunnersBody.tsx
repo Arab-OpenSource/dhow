@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { isApiError } from '@/Core/Api/ApiError';
-import { canManageRunners, canReadRunners } from '@/Core/Auth/AuthTypes';
+import { canManageRunners } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Button } from '@/Core/Ui/Button';
@@ -16,6 +16,7 @@ import { RUNNERS_PAGE_SIZE } from '@/Modules/Runners/Api/RunnersApi';
 import { CopyBlock } from '@/Modules/Runners/Components/CopyBlock';
 import { RegistrationTokensCard } from '@/Modules/Runners/Components/RegistrationTokensCard';
 import { RunnerRow } from '@/Modules/Runners/Components/RunnerRow';
+import { useRunnerAccess } from '@/Modules/Runners/Hooks/useRunnerAccess';
 import { useRunners } from '@/Modules/Runners/Hooks/useRunners';
 import { registerCommandFor } from '@/Modules/Runners/Types/RunnerView';
 
@@ -55,7 +56,7 @@ const FirstRunner = ({ manager, onAddRunner }: { manager: boolean; onAddRunner: 
             ) : null
           }
         />
-        <ol className="m-0 grid gap-2 ps-5 text-body-sm text-secondary">
+        <ol className="m-0 grid list-decimal gap-2 ps-5 text-body-sm text-secondary">
           <li>{t('runners.steps.token')}</li>
           <li className="grid gap-2">
             {t('runners.steps.command')}
@@ -127,9 +128,11 @@ const RunnersContent = ({ organizationId, manager, onOpenRunner, onAddRunner }: 
 };
 
 export const RunnersBody = (props: IRunnersBodyProps) => {
-  const membership = useCurrentMembership();
-  if (membership === undefined || !canReadRunners(membership.Role)) return <Forbidden />;
-  return <RunnersContent {...props} organizationId={membership.OrganizationId} manager={canManageRunners(membership.Role)} />;
+  const t = useT();
+  const access = useRunnerAccess();
+  if (access.Kind === 'loading') return <Skeleton label={t('runners.loading')} lines={5} />;
+  if (access.Kind === 'denied') return <Forbidden />;
+  return <RunnersContent {...props} organizationId={access.OrganizationId} manager={access.Manager} />;
 };
 
 export const RunnersFooter = ({ onAddRunner }: Pick<IRunnersBodyProps, 'onAddRunner'>) => {

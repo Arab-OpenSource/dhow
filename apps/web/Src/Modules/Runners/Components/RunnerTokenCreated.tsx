@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Button } from '@/Core/Ui/Button';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
@@ -17,9 +19,14 @@ export const RunnerTokenCreated = ({ created, onDone }: IRunnerTokenCreatedProps
   const t = useT();
   const time = useRelativeTime();
   const token = created.RegistrationToken;
+  const topRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ block: 'start' });
+  }, []);
 
   return (
-    <div className="grid gap-5">
+    <div ref={topRef} className="grid gap-5">
       <InlineAlert accent="awaiting" title={t('runners.created.title')}>
         {t('runners.created.lead')}
       </InlineAlert>
