@@ -57,7 +57,10 @@ func (o Options) guard() *auth.Guard {
 	if csrf == nil {
 		csrf = auth.NewCSRF(o.Config.SecretKey)
 	}
-	return auth.NewGuard(auth.GuardOptions{Resolver: resolver, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now})
+	return auth.NewGuard(auth.GuardOptions{
+		Resolver: resolver, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now,
+		Instance: policy.InstanceSettings{AnyUserCreatesOrganizations: o.Config.AnyUserCreatesOrganizations},
+	})
 }
 
 func NewRouter(o Options) http.Handler {

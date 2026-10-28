@@ -211,7 +211,13 @@ func (q *Queries) InvalidateSetupTokens(ctx context.Context, now time.Time) erro
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT u."Id" AS "UserId", u."Name", u."Email", m."Role", m."CreatedAt" AS "JoinedAt"
+SELECT u."Id" AS "UserId", u."Name", u."Email", m."Role", m."CreatedAt" AS "JoinedAt",
+       ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
+             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
+       EXISTS (SELECT 1 FROM "TotpFactors" t
+               WHERE t."UserId" = u."Id" AND t."ConfirmedAt" IS NOT NULL AND NOT t."IsDeleted") AS "HasTotp",
+       EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted") AS "HasPasskey",
+       u."MfaResetAt"
 FROM "Memberships" m
 JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted"
 WHERE m."OrganizationId" = $1 AND NOT m."IsDeleted"
@@ -226,11 +232,15 @@ type ListMembersParams struct {
 }
 
 type ListMembersRow struct {
-	UserId   uuid.UUID
-	Name     string
-	Email    string
-	Role     string
-	JoinedAt time.Time
+	UserId     uuid.UUID
+	Name       string
+	Email      string
+	Role       string
+	JoinedAt   time.Time
+	TeamRoles  []string
+	HasTotp    bool
+	HasPasskey bool
+	MfaResetAt *time.Time
 }
 
 func (q *Queries) ListMembers(ctx context.Context, arg ListMembersParams) ([]ListMembersRow, error) {
@@ -248,6 +258,10 @@ func (q *Queries) ListMembers(ctx context.Context, arg ListMembersParams) ([]Lis
 			&i.Email,
 			&i.Role,
 			&i.JoinedAt,
+			&i.TeamRoles,
+			&i.HasTotp,
+			&i.HasPasskey,
+			&i.MfaResetAt,
 		); err != nil {
 			return nil, err
 		}
@@ -290,6 +304,22 @@ func (q *Queries) LockUsableSetupToken(ctx context.Context, arg LockUsableSetupT
 	var Id uuid.UUID
 	err := row.Scan(&Id)
 	return Id, err
+}
+
+const markInstanceOwner = `-- name: MarkInstanceOwner :exec
+UPDATE "Users"
+SET "IsInstanceOwner" = true, "UpdatedAt" = $1
+WHERE "Id" = $2 AND NOT "IsDeleted"
+`
+
+type MarkInstanceOwnerParams struct {
+	Now time.Time
+	ID  uuid.UUID
+}
+
+func (q *Queries) MarkInstanceOwner(ctx context.Context, arg MarkInstanceOwnerParams) error {
+	_, err := q.db.Exec(ctx, markInstanceOwner, arg.Now, arg.ID)
+	return err
 }
 
 const markSetupTokenUsed = `-- name: MarkSetupTokenUsed :exec

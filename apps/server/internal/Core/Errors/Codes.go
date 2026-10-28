@@ -28,6 +28,16 @@ const (
 )
 
 const (
+	CodeLastOwner               = "LAST_OWNER"
+	CodeRoleNotAllowed          = "ROLE_NOT_ALLOWED"
+	CodeAlreadyMember           = "ALREADY_MEMBER"
+	CodeInvitationPending       = "INVITATION_PENDING"
+	CodeInvitationInvalid       = "INVITATION_INVALID"
+	CodeInvitationEmailMismatch = "INVITATION_EMAIL_MISMATCH"
+	CodeInvitationAccountExists = "INVITATION_ACCOUNT_EXISTS"
+)
+
+const (
 	KeyInternal           = "errors.internal"
 	KeyNotFound           = "errors.notFound"
 	KeyMethodNotAllowed   = "errors.methodNotAllowed"
@@ -52,4 +62,14 @@ const (
 	KeyInvalidCurrentFactor   = "errors.invalidCurrentFactor"
 	KeyEnrollmentExpired      = "errors.enrollmentExpired"
 	KeyPasskeyRejected        = "errors.passkeyRejected"
+)
+
+const (
+	KeyLastOwner               = "errors.lastOwner"
+	KeyRoleNotAllowed          = "errors.roleNotAllowed"
+	KeyAlreadyMember           = "errors.alreadyMember"
+	KeyInvitationPending       = "errors.invitationPending"
+	KeyInvitationInvalid       = "errors.invitationInvalid"
+	KeyInvitationEmailMismatch = "errors.invitationEmailMismatch"
+	KeyInvitationAccountExists = "errors.invitationAccountExists"
 )

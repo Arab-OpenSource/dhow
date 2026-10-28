@@ -171,6 +171,12 @@ func expected(rule policy.Rule, p principal) outcome {
 	if rule.Scope == policy.ScopeAuthenticated {
 		return allowed
 	}
+	if rule.Scope == policy.ScopeInstance {
+		if p.kind == "member" && p.role == policy.RoleOwner {
+			return allowed
+		}
+		return forbidden
+	}
 	if p.kind != "member" {
 		return notFound
 	}
@@ -194,6 +200,9 @@ func policyFailure(res apptest.Response) bool {
 
 func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request {
 	path := strings.ReplaceAll(rule.Path, "{id}", fx.orgA)
+	if strings.HasPrefix(rule.Path, "/organizations/{id}/") {
+		path = organizationPath(c.Env, fx, rule)
+	}
 	if rule.Path == "/sessions/{id}" {
 		path = "/sessions/00000000-0000-7000-8000-000000000001"
 		if c.UserID != "" {
@@ -217,6 +226,9 @@ func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request
 	case rule.Method == http.MethodPatch:
 		req.Body = map[string]string{"Name": "Route table was here"}
 	}
+	if body := organizationBody(c.Env, fx, rule); body != nil {
+		req.Body = body
+	}
 	return req
 }
 
@@ -229,6 +241,9 @@ func TestRouteTable(t *testing.T) {
 		for _, p := range principals(fx) {
 			t.Run(rule.Key()+"/"+p.name, func(t *testing.T) {
 				c := fx.client(env, p)
+				if rule.Path == "/organizations/{id}/leave" && p.kind == "member" {
+					c = env.SeedSession(env.SeedUser(mustUUID(fx.orgA), randomEmail(t), "a long password for leaving", string(p.role)))
+				}
 				res := c.Do(requestFor(rule, fx, c))
 				want := expected(rule, p)
 				if want == allowed {
@@ -286,7 +301,8 @@ func TestRouteTableCoversEveryRoleAndScope(t *testing.T) {
 	assert.Positive(t, scopes[policy.ScopePublic])
 	assert.Positive(t, scopes[policy.ScopeAuthenticated])
 	assert.Positive(t, scopes[policy.ScopeOrganization])
-	for _, a := range []policy.Action{policy.OrgRead, policy.OrgUpdate, policy.MemberRead, policy.AuditRead, policy.SessionManageSelf} {
+	assert.Positive(t, scopes[policy.ScopeInstance])
+	for _, a := range policy.Actions() {
 		assert.True(t, actions[a], "no route uses %s", a)
 	}
 	assert.Len(t, policy.Roles(), 5, fmt.Sprint(policy.Roles()))

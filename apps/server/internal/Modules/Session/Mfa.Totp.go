@@ -129,6 +129,9 @@ func (s *Service) ConfirmTotp(ctx context.Context, code string, factor models.Fa
 		if err := q.ConfirmTotpFactor(ctx, sqlc.ConfirmTotpFactorParams{ID: id, Step: pgInt8(step), Now: now}); err != nil {
 			return err
 		}
+		if err := q.ClearMfaReset(ctx, sqlc.ClearMfaResetParams{ID: p.UserID, Now: now}); err != nil {
+			return err
+		}
 		change, err = s.finishChange(ctx, q, p, !hasMfa(before))
 		return err
 	})

@@ -39,6 +39,9 @@ type Me struct {
 	CSRFToken   string
 	SessionID   uuid.UUID
 	ExpiresAt   time.Time
+
+	CanCreateOrganizations bool
+	MfaReenrollRequired    bool
 }
 
 type SessionInfo struct {

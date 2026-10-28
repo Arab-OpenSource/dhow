@@ -104,3 +104,31 @@ func EnrollmentExpired() *AppError {
 func PasskeyRejected() *AppError {
 	return New(http.StatusUnprocessableEntity, CodePasskeyRejected, KeyPasskeyRejected)
 }
+
+func LastOwner() *AppError {
+	return New(http.StatusConflict, CodeLastOwner, KeyLastOwner)
+}
+
+func RoleNotAllowed() *AppError {
+	return New(http.StatusForbidden, CodeRoleNotAllowed, KeyRoleNotAllowed)
+}
+
+func AlreadyMember() *AppError {
+	return New(http.StatusConflict, CodeAlreadyMember, KeyAlreadyMember)
+}
+
+func InvitationPending() *AppError {
+	return New(http.StatusConflict, CodeInvitationPending, KeyInvitationPending)
+}
+
+func InvitationInvalid() *AppError {
+	return New(http.StatusGone, CodeInvitationInvalid, KeyInvitationInvalid)
+}
+
+func InvitationEmailMismatch() *AppError {
+	return New(http.StatusForbidden, CodeInvitationEmailMismatch, KeyInvitationEmailMismatch)
+}
+
+func InvitationAccountExists() *AppError {
+	return New(http.StatusConflict, CodeInvitationAccountExists, KeyInvitationAccountExists)
+}

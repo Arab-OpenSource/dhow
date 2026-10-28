@@ -34,6 +34,22 @@ func (q *Queries) AdvanceTotpStep(ctx context.Context, arg AdvanceTotpStepParams
 	return result.RowsAffected(), nil
 }
 
+const clearMfaReset = `-- name: ClearMfaReset :exec
+UPDATE "Users"
+SET "MfaResetAt" = NULL, "UpdatedAt" = $1
+WHERE "Id" = $2 AND "MfaResetAt" IS NOT NULL
+`
+
+type ClearMfaResetParams struct {
+	Now time.Time
+	ID  uuid.UUID
+}
+
+func (q *Queries) ClearMfaReset(ctx context.Context, arg ClearMfaResetParams) error {
+	_, err := q.db.Exec(ctx, clearMfaReset, arg.Now, arg.ID)
+	return err
+}
+
 const confirmTotpFactor = `-- name: ConfirmTotpFactor :exec
 UPDATE "TotpFactors"
 SET "ConfirmedAt" = $1::timestamptz, "LastUsedStep" = $2, "SessionId" = NULL, "UpdatedAt" = $1

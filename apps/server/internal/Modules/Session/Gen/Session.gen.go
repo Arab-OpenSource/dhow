@@ -187,7 +187,7 @@ type Envelope struct {
 
 // ErrorDetail defines model for ErrorDetail.
 type ErrorDetail struct {
-	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED` or `PASSKEY_REJECTED`.
+	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH` or `INVITATION_ACCOUNT_EXISTS`.
 	//
 	// Example: INTERNAL
 	Code    string              `json:"Code"`
@@ -256,11 +256,16 @@ type LoginResult struct {
 
 // Me defines model for Me.
 type Me struct {
-	CsrfToken   string             `json:"CsrfToken"`
-	ExpiresAt   time.Time          `json:"ExpiresAt"`
-	Memberships []MembershipView   `json:"Memberships"`
-	SessionId   openapi_types.UUID `json:"SessionId"`
-	User        User               `json:"User"`
+	// CanCreateOrganizations True when this user may call `POST /organizations`.
+	CanCreateOrganizations bool             `json:"CanCreateOrganizations"`
+	CsrfToken              string           `json:"CsrfToken"`
+	ExpiresAt              time.Time        `json:"ExpiresAt"`
+	Memberships            []MembershipView `json:"Memberships"`
+
+	// MfaReenrollRequired An admin reset this user's second factor, and a new one is not set up yet.
+	MfaReenrollRequired bool               `json:"MfaReenrollRequired"`
+	SessionId           openapi_types.UUID `json:"SessionId"`
+	User                User               `json:"User"`
 }
 
 // MeResponse defines model for MeResponse.
@@ -276,7 +281,7 @@ type MeResponse struct {
 	Success bool      `json:"Success"`
 }
 
-// MembershipView defines model for MembershipView.
+// MembershipView One organization of the user. `Role` is the effective role: the higher of the direct role and every role the user's teams grant there.
 type MembershipView struct {
 	OrganizationId   openapi_types.UUID `json:"OrganizationId"`
 	OrganizationName string             `json:"OrganizationName"`

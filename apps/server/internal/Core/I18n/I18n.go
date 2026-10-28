@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"context"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -35,6 +36,16 @@ func Translate(locale Locale, key string) string {
 		return msg
 	}
 	return key
+}
+
+func Keys(locale Locale) []string {
+	m := catalog(locale)
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func catalog(locale Locale) map[string]string {
