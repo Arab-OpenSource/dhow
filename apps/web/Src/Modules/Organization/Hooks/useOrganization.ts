@@ -43,17 +43,20 @@ export const useInvitations = (organizationId: string, enabled: boolean): UseQue
     enabled,
   });
 
-export const useRefreshOrganization = (organizationId: string): (() => Promise<void>) => {
+export const useRefreshOrganization = (organizationId: string): ((settledTeamId?: string) => Promise<void>) => {
   const client = useQueryClient();
-  return useCallback(async () => {
-    await Promise.all([
-      client.invalidateQueries({ queryKey: ME_QUERY_KEY }),
-      client.invalidateQueries({ queryKey: [...MEMBERS_QUERY_KEY, organizationId] }),
-      client.invalidateQueries({ queryKey: teamsKey(organizationId) }),
-      client.invalidateQueries({ queryKey: ['team', organizationId] }),
-      client.invalidateQueries({ queryKey: invitationsKey(organizationId) }),
-    ]);
-  }, [client, organizationId]);
+  return useCallback(
+    async (settledTeamId?: string) => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ME_QUERY_KEY }),
+        client.invalidateQueries({ queryKey: [...MEMBERS_QUERY_KEY, organizationId] }),
+        client.invalidateQueries({ queryKey: teamsKey(organizationId) }),
+        client.invalidateQueries({ queryKey: ['team', organizationId], predicate: (query) => query.queryKey[2] !== settledTeamId }),
+        client.invalidateQueries({ queryKey: invitationsKey(organizationId) }),
+      ]);
+    },
+    [client, organizationId],
+  );
 };
 
 export const useRenameOrganization = (organizationId: string) => {
