@@ -71,3 +71,48 @@ func TestFencingTokensOnlyGrow(t *testing.T) {
 		last = token
 	}
 }
+
+const foreignKeyViolation = "23503"
+
+func TestFinishedRowsAreFrozenAndKeysStayInOneOrganization(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	job, attempt := f.newAttempt(t)
+	_, err := f.env.Pool.Exec(ctx, setAttemptState, attempt, "running")
+	require.NoError(t, err)
+	_, err = f.env.Pool.Exec(ctx, setAttemptState, attempt, "succeeded")
+	require.NoError(t, err)
+	_, err = f.env.Pool.Exec(ctx, setJobState, job, "leased")
+	require.NoError(t, err)
+	_, err = f.env.Pool.Exec(ctx, setJobState, job, "canceled")
+	require.NoError(t, err)
+
+	otherOrg := f.env.SeedOrganization("Other", "other")
+	foreignRunner := f.env.SeedRunner(otherOrg, f.creator)
+	tests := []struct {
+		name string
+		sql  string
+		args []any
+		code string
+	}{
+		{"renaming a finished job", `UPDATE "Jobs" SET "Name" = 'renamed' WHERE "Id" = $1`, []any{job}, checkViolation},
+		{"rewriting the exit code of a finished attempt", `UPDATE "JobAttempts" SET "ExitCode" = 1 WHERE "Id" = $1`, []any{attempt}, checkViolation},
+		{"an attempt on a runner of another organization", `INSERT INTO "JobAttempts" ("JobId", "OrganizationId", "RunnerId", "Number")
+			VALUES ($1, $2, $3, 1)`, []any{f.env.SeedJob(f.org, f.creator), f.org, foreignRunner}, foreignKeyViolation},
+		{"an attempt for a job of another organization", `INSERT INTO "JobAttempts" ("JobId", "OrganizationId", "RunnerId", "Number")
+			VALUES ($1, $2, $3, 1)`, []any{f.env.SeedJob(f.org, f.creator), otherOrg, foreignRunner}, foreignKeyViolation},
+		{"a lease with another fencing token than its attempt", `INSERT INTO "Leases" ("AttemptId", "JobId", "OrganizationId", "RunnerId",
+			"FencingToken", "GrantDigest", "ExpiresAt") SELECT "Id", "JobId", "OrganizationId", "RunnerId", "FencingToken" + 1, sha256('g'),
+			now() + interval '1 minute' FROM "JobAttempts" WHERE "Id" = $1`, []any{attempt}, foreignKeyViolation},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := f.env.Pool.Exec(ctx, tt.sql, tt.args...)
+			require.Error(t, err)
+			require.NotNil(t, pgErr(err), err.Error())
+			assert.Equal(t, tt.code, pgErr(err).Code, err.Error())
+		})
+	}
+	_, err = f.env.Pool.Exec(ctx, `UPDATE "Jobs" SET "IsDeleted" = true, "UpdatedAt" = now() WHERE "Id" = $1`, job)
+	assert.NoError(t, err, "a soft delete of a finished job is allowed")
+}

@@ -23,6 +23,7 @@ type Querier interface {
 	CountJobs(ctx context.Context, arg CountJobsParams) (int64, error)
 	CountMatchingRunners(ctx context.Context, arg CountMatchingRunnersParams) (int64, error)
 	CountMembers(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountQueuedJobs(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRegistrationTokens(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRunnerSessionSwitches(ctx context.Context, arg CountRunnerSessionSwitchesParams) (int64, error)
 	CountRunners(ctx context.Context, organizationID uuid.UUID) (int64, error)
@@ -80,7 +81,7 @@ type Querier interface {
 	ListAuditEvents(ctx context.Context, arg ListAuditEventsParams) ([]ListAuditEventsRow, error)
 	ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams) ([]JobAttempt, error)
 	ListJobSteps(ctx context.Context, arg ListJobStepsParams) ([]AttemptStep, error)
-	ListJobs(ctx context.Context, arg ListJobsParams) ([]Job, error)
+	ListJobs(ctx context.Context, arg ListJobsParams) ([]ListJobsRow, error)
 	ListMembers(ctx context.Context, arg ListMembersParams) ([]ListMembersRow, error)
 	ListRegistrationTokens(ctx context.Context, arg ListRegistrationTokensParams) ([]RunnerRegistrationToken, error)
 	ListRunners(ctx context.Context, arg ListRunnersParams) ([]Runner, error)
@@ -94,6 +95,7 @@ type Querier interface {
 	LockJobByID(ctx context.Context, id uuid.UUID) (Job, error)
 	LockLeaseForCompletion(ctx context.Context, arg LockLeaseForCompletionParams) (LockLeaseForCompletionRow, error)
 	LockMfaChallenge(ctx context.Context, arg LockMfaChallengeParams) (LockMfaChallengeRow, error)
+	LockOrganizationQueue(ctx context.Context, organizationID string) error
 	LockPendingTotp(ctx context.Context, arg LockPendingTotpParams) (LockPendingTotpRow, error)
 	LockRunnerIdentity(ctx context.Context, id uuid.UUID) (LockRunnerIdentityRow, error)
 	LockRunnerLease(ctx context.Context, runnerID uuid.UUID) (uuid.UUID, error)
@@ -109,9 +111,11 @@ type Querier interface {
 	NextFencingToken(ctx context.Context) (int64, error)
 	NotifyJobsQueued(ctx context.Context, organizationID string) error
 	PeekPendingTotp(ctx context.Context, arg PeekPendingTotpParams) (PeekPendingTotpRow, error)
+	PickCanceledUnstartedLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
 	PickExpiredLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
 	PickOverdueLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
 	PickRevokedRunnerLease(ctx context.Context) (uuid.UUID, error)
+	PickUnstartedLease(ctx context.Context, startSeconds float64) (uuid.UUID, error)
 	RecordPasskeyUse(ctx context.Context, arg RecordPasskeyUseParams) (int64, error)
 	RefundRunnerThrottle(ctx context.Context, arg RefundRunnerThrottleParams) error
 	RefundThrottle(ctx context.Context, arg RefundThrottleParams) error

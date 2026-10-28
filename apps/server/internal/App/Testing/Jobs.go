@@ -119,9 +119,9 @@ func (e *Env) SeedJob(org, creator uuid.UUID) uuid.UUID {
 	require.NoError(e.T, err)
 	var id uuid.UUID
 	require.NoError(e.T, e.Pool.QueryRow(context.Background(),
-		`INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Isolation", "QueueDeadline")
-		 VALUES ($1, $2, 'seeded', $3, $4, 'container', now() + interval '1 hour') RETURNING "Id"`,
-		org, creator, raw, digest).Scan(&id))
+		`INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Isolation", "QueueDeadline")
+		 VALUES ($1, $2, 'seeded', $3, $4, $5, 'container', now() + interval '1 hour') RETURNING "Id"`,
+		org, creator, raw, digest, TestImage).Scan(&id))
 	return id
 }
 

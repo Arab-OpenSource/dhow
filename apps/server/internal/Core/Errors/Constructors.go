@@ -116,3 +116,7 @@ func SecretsUnavailable() *AppError {
 func JobFinished() *AppError {
 	return New(http.StatusConflict, CodeJobFinished, KeyJobFinished)
 }
+
+func JobQueueFull() *AppError {
+	return New(http.StatusTooManyRequests, CodeJobQueueFull, KeyJobQueueFull)
+}

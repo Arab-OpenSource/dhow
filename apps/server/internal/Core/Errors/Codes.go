@@ -28,6 +28,7 @@ const (
 	CodeRunnerRevoked          = "RUNNER_REVOKED"
 	CodeSecretsUnavailable     = "SECRETS_UNAVAILABLE"
 	CodeJobFinished            = "JOB_FINISHED"
+	CodeJobQueueFull           = "JOB_QUEUE_FULL"
 )
 
 const (
@@ -58,4 +59,5 @@ const (
 	KeyRunnerRevoked          = "errors.runnerRevoked"
 	KeySecretsUnavailable     = "errors.secretsUnavailable"
 	KeyJobFinished            = "errors.jobFinished"
+	KeyJobQueueFull           = "errors.jobQueueFull"
 )

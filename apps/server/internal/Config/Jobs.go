@@ -27,6 +27,9 @@ const (
 	JobPriorityMax           = 100
 	JobDefaultInfraRetries   = 2
 	JobMaxInfraRetries       = 5
+	JobStartDeadline         = 10 * time.Minute
+	JobLeasedCancelGrace     = time.Minute
+	JobMaxQueuedPerOrg       = 1000
 	RunnerDefaultMaxPolls    = 2000
 	RunnerMaxPollsUpperBound = 100_000
 )

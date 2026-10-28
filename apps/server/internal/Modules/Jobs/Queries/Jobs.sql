@@ -1,7 +1,7 @@
 -- name: InsertJob :one
-INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Labels", "Isolation", "Priority",
-                    "MaxInfraRetries", "QueueDeadline")
-VALUES (@organization_id, @created_by_user_id, @name, @spec, @spec_digest, @labels::text[], @isolation, @priority,
+INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation",
+                    "Priority", "MaxInfraRetries", "QueueDeadline")
+VALUES (@organization_id, @created_by_user_id, @name, @spec, @spec_digest, @image, @labels::text[], @isolation, @priority,
         @max_infra_retries, now() + make_interval(secs => @queue_timeout_seconds::float8))
 RETURNING *;
 
@@ -15,12 +15,22 @@ WHERE "OrganizationId" = @organization_id AND NOT "IsDeleted"
   AND (sqlc.narg(state)::text IS NULL OR "State" = sqlc.narg(state)::text);
 
 -- name: ListJobs :many
-SELECT *
+SELECT "Id", "CreatedAt", "OrganizationId", "CreatedByUserId", "Name", "SpecDigest", "Image", "Labels", "Isolation",
+       "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline",
+       "CancelRequestedAt", "AttemptCount", "MaxInfraRetries"
 FROM "Jobs"
 WHERE "OrganizationId" = @organization_id AND NOT "IsDeleted"
   AND (sqlc.narg(state)::text IS NULL OR "State" = sqlc.narg(state)::text)
 ORDER BY "CreatedAt" DESC, "Id" DESC
 LIMIT @page_limit OFFSET @page_offset;
+
+-- name: LockOrganizationQueue :exec
+SELECT pg_advisory_xact_lock(hashtextextended('dhow.organization-queue:' || @organization_id::text, 0));
+
+-- name: CountQueuedJobs :one
+SELECT count(*)
+FROM "Jobs"
+WHERE "OrganizationId" = @organization_id AND "State" = 'queued' AND NOT "IsDeleted";
 
 -- name: GetJob :one
 SELECT *
@@ -234,6 +244,27 @@ JOIN "Jobs" j ON j."Id" = l."JobId"
 WHERE l."State" = 'active' AND NOT l."IsDeleted" AND j."Deadline" IS NOT NULL
   AND j."Deadline" < now() - make_interval(secs => @grace_seconds::float8)
 ORDER BY j."Deadline"
+LIMIT 1
+FOR UPDATE OF l SKIP LOCKED;
+
+-- name: PickUnstartedLease :one
+SELECT l."Id"
+FROM "Leases" l
+JOIN "JobAttempts" a ON a."Id" = l."AttemptId"
+WHERE l."State" = 'active' AND NOT l."IsDeleted" AND a."State" = 'leased'
+  AND a."LeasedAt" < now() - make_interval(secs => @start_seconds::float8)
+ORDER BY a."LeasedAt"
+LIMIT 1
+FOR UPDATE OF l SKIP LOCKED;
+
+-- name: PickCanceledUnstartedLease :one
+SELECT l."Id"
+FROM "Leases" l
+JOIN "JobAttempts" a ON a."Id" = l."AttemptId"
+JOIN "Jobs" j ON j."Id" = l."JobId"
+WHERE l."State" = 'active' AND NOT l."IsDeleted" AND a."State" = 'leased'
+  AND j."CancelRequestedAt" < now() - make_interval(secs => @grace_seconds::float8)
+ORDER BY j."CancelRequestedAt"
 LIMIT 1
 FOR UPDATE OF l SKIP LOCKED;
 

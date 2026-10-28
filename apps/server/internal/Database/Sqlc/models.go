@@ -77,6 +77,7 @@ type Job struct {
 	Name              string
 	Spec              []byte
 	SpecDigest        []byte
+	Image             string
 	Labels            []string
 	Isolation         string
 	Priority          int32

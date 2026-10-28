@@ -66,13 +66,13 @@ func path(table map[string][]string, start, target string) []string {
 
 const (
 	setJobState = `UPDATE "Jobs" SET "State" = $2,
-		"FinishedAt" = CASE WHEN $2 IN ('succeeded', 'failed', 'canceled', 'timed_out', 'lost') THEN now() END
+		"FinishedAt" = CASE WHEN $2 IN ('succeeded', 'failed', 'canceled', 'timed_out', 'lost') THEN COALESCE("FinishedAt", now()) END
 		WHERE "Id" = $1`
-	setAttemptState = `UPDATE "JobAttempts" SET "State" = $2, "StartedAt" = now(),
-		"FinishedAt" = CASE WHEN $2 IN ('succeeded', 'failed', 'canceled', 'timed_out', 'lost') THEN now() END
+	setAttemptState = `UPDATE "JobAttempts" SET "State" = $2, "StartedAt" = COALESCE("StartedAt", now()),
+		"FinishedAt" = CASE WHEN $2 IN ('succeeded', 'failed', 'canceled', 'timed_out', 'lost') THEN COALESCE("FinishedAt", now()) END
 		WHERE "Id" = $1`
-	setLeaseState = `UPDATE "Leases" SET "State" = $2, "EndedAt" = CASE WHEN $2 <> 'active' THEN now() END WHERE "Id" = $1`
-	setStepState  = `UPDATE "AttemptSteps" SET "State" = $2, "FinishedAt" = CASE WHEN $2 <> 'running' THEN now() END WHERE "Id" = $1`
+	setLeaseState = `UPDATE "Leases" SET "State" = $2, "EndedAt" = CASE WHEN $2 <> 'active' THEN COALESCE("EndedAt", now()) END WHERE "Id" = $1`
+	setStepState  = `UPDATE "AttemptSteps" SET "State" = $2, "FinishedAt" = CASE WHEN $2 <> 'running' THEN COALESCE("FinishedAt", now()) END WHERE "Id" = $1`
 )
 
 func (f fixture) newAttempt(t *testing.T) (uuid.UUID, uuid.UUID) {
@@ -146,7 +146,11 @@ func TestTheTriggersEnforceTheStateMachines(t *testing.T) {
 					e := pgErr(err)
 					require.NotNil(t, e, err.Error())
 					assert.Equal(t, checkViolation, e.Code)
-					assert.Contains(t, e.Message, "cannot move from "+from+" to "+to)
+					if len(m.table[from]) > 0 {
+						assert.Contains(t, e.Message, "cannot move from "+from+" to "+to)
+					} else {
+						assert.Contains(t, e.Message, "cannot change", "a finished row is frozen")
+					}
 				})
 			}
 		}
@@ -162,8 +166,8 @@ func TestRowsStartInTheirInitialState(t *testing.T) {
 		sql  string
 		args []any
 	}{
-		{"a job inserted as running", `INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Isolation",
-			"QueueDeadline", "State", "StartedAt") SELECT "OrganizationId", "CreatedByUserId", 'x', "Spec", "SpecDigest", 'container',
+		{"a job inserted as running", `INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Isolation",
+			"QueueDeadline", "State", "StartedAt") SELECT "OrganizationId", "CreatedByUserId", 'x', "Spec", "SpecDigest", "Image", 'container',
 			"QueueDeadline", 'running', now() FROM "Jobs" WHERE "Id" = $1`, []any{job}},
 		{"an attempt inserted as running", `INSERT INTO "JobAttempts" ("JobId", "OrganizationId", "RunnerId", "Number", "State", "StartedAt")
 			VALUES ($1, $2, $3, 1, 'running', now())`, []any{job, f.org, f.runner}},

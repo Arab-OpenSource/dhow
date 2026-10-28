@@ -104,10 +104,11 @@ func TestListFiltersByState(t *testing.T) {
 	queued := w.owner.Get(w.path("/jobs?State=queued"))
 	assert.Equal(t, 1, queued.Meta.Total)
 	canceledRes := w.owner.Get(w.path("/jobs?State=canceled"))
-	var items []struct{ Id, State string }
+	var items []struct{ Id, State, Image string }
 	canceledRes.Decode(t, &items)
 	require.Len(t, items, 1)
 	assert.Equal(t, first.String(), items[0].Id)
+	assert.Equal(t, apptest.TestImage, items[0].Image, "the list reads the image from its own column")
 	bad := w.owner.Get(w.path("/jobs?State=paused"))
 	assert.Equal(t, http.StatusUnprocessableEntity, bad.Status, string(bad.Raw))
 }

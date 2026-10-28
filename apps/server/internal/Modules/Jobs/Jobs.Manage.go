@@ -103,8 +103,18 @@ func (s *Service) insert(ctx context.Context, p auth.Principal, org uuid.UUID, n
 	}
 	var row sqlc.Job
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		if err := q.LockOrganizationQueue(ctx, org.String()); err != nil {
+			return err
+		}
+		queued, err := q.CountQueuedJobs(ctx, org)
+		if err != nil {
+			return err
+		}
+		if queued >= config.JobMaxQueuedPerOrg {
+			return apperrors.JobQueueFull()
+		}
 		row, err = q.InsertJob(ctx, sqlc.InsertJobParams{
-			OrganizationID: org, CreatedByUserID: p.UserID, Name: name, Spec: raw, SpecDigest: digest,
+			OrganizationID: org, CreatedByUserID: p.UserID, Name: name, Spec: raw, SpecDigest: digest, Image: spec.GetImage(),
 			Labels: spec.GetLabels(), Isolation: isolationOf(spec), Priority: int32(priority), //nolint:gosec // Bounded to 0..100 above.
 			MaxInfraRetries: int32(retries), QueueTimeoutSeconds: config.JobQueueTimeout.Seconds(), //nolint:gosec // Bounded to 0..5 above.
 		})
@@ -122,7 +132,7 @@ func (s *Service) insert(ctx context.Context, p auth.Principal, org uuid.UUID, n
 	}); err != nil {
 		return models.Detail{}, err
 	}
-	return models.Detail{Job: jobOf(row, spec), Spec: spec, Attempts: []models.Attempt{}}, nil
+	return models.Detail{Job: jobOf(row), Spec: spec, Attempts: []models.Attempt{}}, nil
 }
 
 func (s *Service) List(ctx context.Context, org uuid.UUID, state *string, page, limit int) ([]models.Job, int64, error) {
@@ -143,11 +153,7 @@ func (s *Service) List(ctx context.Context, org uuid.UUID, state *string, page, 
 	}
 	out := make([]models.Job, 0, len(rows))
 	for _, r := range rows {
-		spec, err := decodeSpec(r.Spec)
-		if err != nil {
-			return nil, 0, err
-		}
-		out = append(out, jobOf(r, spec))
+		out = append(out, listedJob(r))
 	}
 	return out, total, nil
 }
@@ -173,7 +179,7 @@ func (s *Service) Get(ctx context.Context, org, id uuid.UUID) (models.Detail, er
 	if err != nil {
 		return models.Detail{}, err
 	}
-	job := jobOf(row, spec)
+	job := jobOf(row)
 	if row.State == models.JobQueued {
 		matching, err := q.CountMatchingRunners(ctx, sqlc.CountMatchingRunnersParams{
 			OrganizationID: org, Labels: row.Labels, Isolation: row.Isolation,
@@ -226,16 +232,12 @@ func (s *Service) Cancel(ctx context.Context, org, id uuid.UUID) (models.Job, er
 	if err != nil {
 		return models.Job{}, err
 	}
-	spec, err := decodeSpec(row.Spec)
-	if err != nil {
-		return models.Job{}, err
-	}
 	if changed {
 		if err := s.publishByUser(ctx, eventbus.JobCancelRequested, p, org, id, map[string]string{"State": row.State}); err != nil {
 			return models.Job{}, err
 		}
 	}
-	return jobOf(row, spec), nil
+	return jobOf(row), nil
 }
 
 func (s *Service) publishByUser(ctx context.Context, name string, p auth.Principal, org, id uuid.UUID, data map[string]string) error {

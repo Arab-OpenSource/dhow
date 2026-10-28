@@ -55,6 +55,7 @@ func TestCatalogsCoverTheSameKeys(t *testing.T) {
 		"runners.token.revoked",
 		"errors.secretsUnavailable",
 		"errors.jobFinished",
+		"errors.jobQueueFull",
 		"jobs.list.loaded",
 		"jobs.job.loaded",
 		"jobs.job.created",

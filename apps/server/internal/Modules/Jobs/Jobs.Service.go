@@ -96,10 +96,20 @@ func decodeSpec(raw []byte) (*runnerv1.JobSpec, error) {
 	return &spec, nil
 }
 
-func jobOf(j sqlc.Job, spec *runnerv1.JobSpec) models.Job {
+func jobOf(j sqlc.Job) models.Job {
+	return listedJob(sqlc.ListJobsRow{
+		Id: j.Id, CreatedAt: j.CreatedAt, OrganizationId: j.OrganizationId, CreatedByUserId: j.CreatedByUserId, Name: j.Name,
+		SpecDigest: j.SpecDigest, Image: j.Image, Labels: j.Labels, Isolation: j.Isolation, Priority: j.Priority, State: j.State,
+		FailureReason: j.FailureReason, QueuedAt: j.QueuedAt, StartedAt: j.StartedAt, FinishedAt: j.FinishedAt, Deadline: j.Deadline,
+		QueueDeadline: j.QueueDeadline, CancelRequestedAt: j.CancelRequestedAt, AttemptCount: j.AttemptCount,
+		MaxInfraRetries: j.MaxInfraRetries,
+	})
+}
+
+func listedJob(j sqlc.ListJobsRow) models.Job {
 	return models.Job{
 		ID: j.Id, OrganizationID: j.OrganizationId, Name: j.Name, State: j.State, FailureReason: j.FailureReason,
-		Labels: j.Labels, Isolation: j.Isolation, Priority: int(j.Priority), Image: spec.GetImage(), SpecDigest: j.SpecDigest,
+		Labels: j.Labels, Isolation: j.Isolation, Priority: int(j.Priority), Image: j.Image, SpecDigest: j.SpecDigest,
 		AttemptCount: int(j.AttemptCount), MaxInfraRetries: int(j.MaxInfraRetries), QueuedAt: j.QueuedAt,
 		StartedAt: j.StartedAt, FinishedAt: j.FinishedAt, Deadline: j.Deadline, QueueDeadline: j.QueueDeadline,
 		CancelRequestedAt: j.CancelRequestedAt, CreatedAt: j.CreatedAt, CreatedByUserID: j.CreatedByUserId,
