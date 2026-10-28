@@ -5,7 +5,7 @@ import { factorMethods, getMfaStatus, MFA_QUERY_KEY, type TFactorMethod, type TM
 import { passkeysSupported } from '@/Core/Auth/WebAuthn';
 
 export const useMfaStatus = (): UseQueryResult<TMfaStatus, ApiError> =>
-  useQuery<TMfaStatus, ApiError>({ queryKey: MFA_QUERY_KEY, queryFn: getMfaStatus, staleTime: 0 });
+  useQuery<TMfaStatus, ApiError>({ queryKey: MFA_QUERY_KEY, queryFn: getMfaStatus });
 
 export const useFactorMethods = (): TFactorMethod[] | undefined => {
   const status = useMfaStatus();

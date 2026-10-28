@@ -170,43 +170,45 @@ export const SlideStack = ({ slides, onPop, onJump, onCloseAll }: ISlideStackPro
                 '[--peek:30px] max-md:start-0 max-md:bottom-bottombar max-md:w-full max-md:[--peek:14px]'
               }
             >
-              {slides.map((slide, index) => (
-                <SlideView
-                  key={slide.id}
-                  slide={slide}
-                  index={index}
-                  total={total}
-                  trail={slides.slice(0, index + 1).map((entry) => entry.title)}
-                  depth={total - 1 - index}
-                  leaving={false}
-                  reducedMotion={reducedMotion}
-                  sectionRef={index === total - 1 ? topRef : undefined}
-                  onBack={onPop}
-                  onCloseAll={onCloseAll}
-                  onCrumb={(position) => {
-                    onJump(position, 'crumb');
-                  }}
-                  onReturn={() => {
-                    onJump(index, 'slide');
-                  }}
-                />
-              ))}
-              {ghosts.map((ghost) => (
-                <SlideView
-                  key={ghost.slide.id}
-                  slide={ghost.slide}
-                  index={ghost.index}
-                  total={ghost.total}
-                  trail={ghost.trail}
-                  depth={0}
-                  leaving
-                  reducedMotion={reducedMotion}
-                  onBack={onPop}
-                  onCloseAll={onCloseAll}
-                  onCrumb={() => undefined}
-                  onReturn={() => undefined}
-                />
-              ))}
+              {[
+                ...slides.map((slide, index) => (
+                  <SlideView
+                    key={slide.id}
+                    slide={slide}
+                    index={index}
+                    total={total}
+                    trail={slides.slice(0, index + 1).map((entry) => entry.title)}
+                    depth={total - 1 - index}
+                    leaving={false}
+                    reducedMotion={reducedMotion}
+                    sectionRef={index === total - 1 ? topRef : undefined}
+                    onBack={onPop}
+                    onCloseAll={onCloseAll}
+                    onCrumb={(position) => {
+                      onJump(position, 'crumb');
+                    }}
+                    onReturn={() => {
+                      onJump(index, 'slide');
+                    }}
+                  />
+                )),
+                ...ghosts.map((ghost) => (
+                  <SlideView
+                    key={ghost.slide.id}
+                    slide={ghost.slide}
+                    index={ghost.index}
+                    total={ghost.total}
+                    trail={ghost.trail}
+                    depth={0}
+                    leaving
+                    reducedMotion={reducedMotion}
+                    onBack={onPop}
+                    onCloseAll={onCloseAll}
+                    onCrumb={() => undefined}
+                    onReturn={() => undefined}
+                  />
+                )),
+              ]}
             </Dialog.Content>
           </>
         ) : null}
