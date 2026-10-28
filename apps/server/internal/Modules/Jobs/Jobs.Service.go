@@ -179,9 +179,9 @@ func intOf(v pgtype.Int4) *int {
 
 func attemptOf(a sqlc.JobAttempt, steps []sqlc.AttemptStep) models.Attempt {
 	out := models.Attempt{
-		ID: a.Id, Number: int(a.Number), RunnerID: a.RunnerId, State: a.State, FailureReason: a.FailureReason,
-		ExitCode: intOf(a.ExitCode), LeasedAt: a.LeasedAt, StartedAt: a.StartedAt, FinishedAt: a.FinishedAt,
-		MutationStartedAt: a.MutationStartedAt, Steps: []models.Step{},
+		ID: a.Id, Number: int(a.Number), RunnerID: a.RunnerId, FencingToken: a.FencingToken, State: a.State,
+		FailureReason: a.FailureReason, ExitCode: intOf(a.ExitCode), LeasedAt: a.LeasedAt, StartedAt: a.StartedAt,
+		FinishedAt: a.FinishedAt, MutationStartedAt: a.MutationStartedAt, Steps: []models.Step{},
 	}
 	for _, s := range steps {
 		if s.AttemptId != a.Id {

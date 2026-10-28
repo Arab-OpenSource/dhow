@@ -126,6 +126,28 @@ func TestQueuedReasonShowsWhenNoRunnerCanTakeTheJob(t *testing.T) {
 	assert.Empty(t, w.get(t, id).Job.QueuedReason)
 }
 
+func TestTheListShowsWhichQueuedJobsNoRunnerCanTake(t *testing.T) {
+	w := newWorld(t)
+	gpu := apptest.SimpleSpec()
+	gpu["Labels"] = []string{"gpu"}
+	stuck := w.job(t, gpu, nil)
+	plain := w.job(t, apptest.SimpleSpec(), nil)
+	canceled := w.job(t, gpu, nil)
+	res := w.owner.Do(apptest.Request{Method: http.MethodPost, Path: w.path("/jobs/" + canceled.String() + "/cancel")})
+	require.Equal(t, http.StatusOK, res.Status, string(res.Raw))
+	w.runner(apptest.SeedRunnerSpec{})
+
+	var items []struct{ Id, State, QueuedReason string }
+	w.owner.Get(w.path("/jobs")).Decode(t, &items)
+	reasons := map[string]string{}
+	for _, item := range items {
+		reasons[item.Id] = item.QueuedReason
+	}
+	assert.Equal(t, map[string]string{
+		stuck.String(): "NO_MATCHING_RUNNER", plain.String(): "", canceled.String(): "",
+	}, reasons, "only a queued job without a matching runner carries the reason")
+}
+
 func TestMembersOfAnotherOrganizationSeeNothing(t *testing.T) {
 	w := newWorld(t)
 	id := w.job(t, apptest.SimpleSpec(), nil)

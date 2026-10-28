@@ -120,7 +120,9 @@ func TestASecretThatDisappearedFailsTheAttemptWithoutRetry(t *testing.T) {
 }
 
 func TestJobDTOsCarryNoSecretValues(t *testing.T) {
-	allowed := map[string]bool{"JobSpec.Secrets": true, "JobDetail.Spec": true, "JobSecretRef.Name": true}
+	allowed := map[string]bool{
+		"JobSpec.Secrets": true, "JobDetail.Spec": true, "JobSecretRef.Name": true, "JobAttempt.FencingToken": true,
+	}
 	suspicious := []string{"value", "token", "key", "password", "ciphertext", "signature"}
 	for _, v := range []any{
 		gen.Job{},

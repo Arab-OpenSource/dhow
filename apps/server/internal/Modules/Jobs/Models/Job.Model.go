@@ -47,6 +47,7 @@ type Attempt struct {
 	ID                uuid.UUID
 	Number            int
 	RunnerID          uuid.UUID
+	FencingToken      int64
 	State             string
 	FailureReason     string
 	ExitCode          *int

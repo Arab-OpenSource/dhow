@@ -174,7 +174,8 @@ func detailToGen(d models.Detail) gen.JobDetail {
 	out := gen.JobDetail{Job: jobToGen(d.Job), Spec: specToGen(d.Spec), Attempts: make([]gen.JobAttempt, 0, len(d.Attempts))}
 	for _, a := range d.Attempts {
 		attempt := gen.JobAttempt{
-			Id: a.ID, Number: a.Number, RunnerId: a.RunnerID, State: gen.JobAttemptState(a.State), ExitCode: a.ExitCode,
+			Id: a.ID, Number: a.Number, RunnerId: a.RunnerID, FencingToken: a.FencingToken, State: gen.JobAttemptState(a.State),
+			ExitCode: a.ExitCode,
 			LeasedAt: a.LeasedAt, StartedAt: a.StartedAt, FinishedAt: a.FinishedAt, MutationStartedAt: a.MutationStartedAt,
 			Steps: make([]gen.JobAttemptStep, 0, len(a.Steps)),
 		}

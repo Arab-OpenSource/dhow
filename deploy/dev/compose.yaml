@@ -1,0 +1,82 @@
+name: dhow-dev
+
+x-repo: &repo
+  type: bind
+  source: ../..
+  target: /src
+
+services:
+  db:
+    image: ${DHOW_DEV_POSTGRES_IMAGE:-postgres:18}
+    environment:
+      POSTGRES_USER: dhow
+      POSTGRES_PASSWORD: dhow-dev-only
+      POSTGRES_DB: dhow
+    ports:
+      - "127.0.0.1:${DHOW_DEV_DB_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./stack/databases.sql:/docker-entrypoint-initdb.d/10-databases.sql:ro
+    healthcheck:
+      test: ["CMD", "psql", "-h", "127.0.0.1", "-U", "dhow", "-d", "dhow_test", "-tAc", "SELECT 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+
+  init:
+    image: ${DHOW_DEV_GO_IMAGE:-golang:1.27.3-bookworm}
+    working_dir: /src
+    entrypoint: ["bash", "/src/deploy/dev/stack/init.sh"]
+    environment:
+      DHOW_DEV_DB_PORT: ${DHOW_DEV_DB_PORT:-55432}
+    volumes:
+      - *repo
+
+  server:
+    image: ${DHOW_DEV_GO_IMAGE:-golang:1.27.3-bookworm}
+    init: true
+    working_dir: /src
+    entrypoint: ["bash", "/src/deploy/dev/stack/server.sh"]
+    environment:
+      DHOW_DEV_WEB_PORT: ${DHOW_DEV_WEB_PORT:-5173}
+      DHOW_DEV_POLL_SECONDS: ${DHOW_DEV_POLL_SECONDS:-1}
+      DHOW_TEST_DATABASE_URL: postgres://dhow:dhow-dev-only@db:5432/dhow_test?sslmode=disable
+      GOTOOLCHAIN: auto
+      GOFLAGS: -buildvcs=false
+    ports:
+      - "127.0.0.1:${DHOW_DEV_HTTP_PORT:-8080}:8080"
+    volumes:
+      - *repo
+      - gomod:/go/pkg/mod
+      - gocache:/root/.cache/go-build
+    depends_on:
+      db:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
+
+  web:
+    image: ${DHOW_DEV_NODE_IMAGE:-node:26-bookworm-slim}
+    init: true
+    working_dir: /src/apps/web
+    entrypoint: ["bash", "/src/deploy/dev/stack/web.sh"]
+    environment:
+      DHOW_DEV_WEB_PORT: ${DHOW_DEV_WEB_PORT:-5173}
+      DHOW_DEV_API_URL: http://server:8080
+      DHOW_DEV_POLLING: "true"
+      npm_config_update_notifier: "false"
+      PATH: /pnpm/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    ports:
+      - "127.0.0.1:${DHOW_DEV_WEB_PORT:-5173}:${DHOW_DEV_WEB_PORT:-5173}"
+    volumes:
+      - *repo
+      - node_modules:/src/apps/web/node_modules
+      - pnpm:/pnpm
+
+volumes:
+  pgdata: {}
+  gomod: {}
+  gocache: {}
+  node_modules: {}
+  pnpm: {}
