@@ -31,6 +31,7 @@ All routes are under `/api/v1`. Per-network limits count only requests that pass
 | `GET /me`, `/sessions`, `/me/*` | signed-in user | session; CSRF for writes; current factor for factor changes, identity links and token creation | password change shares the account lockout |
 | `POST /organizations` | instance owner, or any user with `DHOW_ORG_CREATION=any-user` | session and CSRF | none |
 | `/organizations/{id}/**` | members, by role | session and CSRF, or a personal API token on routes that allow it | invitations per member and per organization each hour |
+| `PUT /organizations/{id}/second-factor-rule` | Owner with a second factor | session, CSRF and the current factor; never a token | none |
 | `/organizations/{id}/audit-events`, `.../verify` | `audit.read` | session or token | none |
 
 ## 3. Threats, controls and proof
@@ -70,7 +71,7 @@ All routes are under `/api/v1`. Per-network limits count only requests that pass
 |---|---|---|---|
 | Cookie theft by script or sub-domain | `__Host-` cookies, `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/` | `Core/Auth/Cookie.go` | `Modules/Session/Test/E2E/Secrets_test.go`, smoke |
 | Session fixation | A new 256-bit id at every sign-in; the old one is revoked | `Session.Login.go` (`openSession`) | `Modules/Session/Test/Integration/Lifecycle_test.go` |
-| Stale sessions | 12 h idle and 14 days absolute; revocation on sign-out, password, factor and role change | `Modules/Session/Session.Service.go` | `Lifecycle_test.go`, `Flow_test.go` (`TestRevokeSessions`) |
+| Stale sessions | 12 h idle (4 h for anyone who is an Owner or Admin anywhere, from the current role on every request) and 7 days absolute; revocation on sign-out, password, factor and role change | `Modules/Session/Session.Service.go`, `Session.Policy.go` | `Lifecycle_test.go`, `SessionPolicy_test.go`, `Flow_test.go` (`TestRevokeSessions`) |
 | CSRF | Origin on every unsafe request, plus an HMAC token bound to the session | `Core/Auth/Guard.go`, `Core/Auth/CSRF.go` | `Modules/Session/Test/E2E/Csrf_test.go`, `Core/Auth/CSRF_test.go` |
 | Token or cookie in a URL or a log | Tokens travel in bodies, cookies or the URL fragment; the access log drops the query; log keys are redacted | `Core/Middleware/AccessLog.go`, `internal/logging` | `Secrets_test.go`, `Core/Middleware/Middleware_test.go` |
 | Malformed or alternative token spellings | Exact encoded length, strict base64url, then SHA-256 or HMAC; the same for runner tokens | `Core/Auth/Token.go`, `Core/Auth/ApiToken.go`, `Core/RunnerAuth/Tokens.go` | `Core/Auth/Token_test.go`, `Core/RunnerAuth/RunnerAuth_test.go`, `FuzzHashSessionToken`, `FuzzAPITokenHash` |
@@ -104,6 +105,8 @@ All routes are under `/api/v1`. Per-network limits count only requests that pass
 | Owner changes without step-up | Granting, demoting and transferring Owner need the current factor; an Owner is removed only after a demotion | `Members.Service.go`, `Modules/Identity/Orgs.Service.go` | `Modules/Identity/Test/E2E/OwnerRemoval_test.go` |
 | Losing the last owner in a race | Row lock on the organization for every membership change | `Orgs.Service.go` | `Modules/Identity/Test/Integration/Owners_test.go`, `Locks_test.go` |
 | Admin MFA reset as a takeover path | Strictly higher rank in every organization of the member, current factor, high-severity audit | `Members.Service.go` | `Modules/Identity/Test/E2E/MfaRank_test.go`, `MfaReset_test.go` |
+| Admins without a second factor | `RequireSecondFactor` per organization, 7-day grace, then `403 SECOND_FACTOR_REQUIRED` on sensitive actions for sessions and tokens | `Core/Policy/SecondFactor.go`, `Modules/Identity/Identity.SecondFactor.go` | `App/RouteTable_secondfactor_test.go`, `Modules/Identity/Test/E2E/SecondFactor_test.go`, `Core/Policy/SecondFactor_test.go` |
+| A credential change the user does not notice | An email in the user's language after each of 10 credential events, in the background, with no secret; the audit in every case | `Modules/Alerts` | `Modules/Alerts/Test/E2E/Alerts_test.go`, `Modules/Alerts/Test/Unit/Message_test.go` |
 | Invitation link leaks or replays | Token in the fragment, SHA-256 stored, single use, 7 days, one answer for every invalid state | `Modules/Identity/Invites.Accept.go` | `Modules/Identity/Test/E2E/Invitations_test.go`, `App/Timing/Timing_test.go` |
 | The server as a spam relay | Per member and per organization invitations each hour, 5 sends per invitation | `Modules/Identity/Invites.Service.go` | `Modules/Identity/Test/E2E/InviteLimits_test.go` |
 
@@ -124,18 +127,18 @@ All routes are under `/api/v1`. Per-network limits count only requests that pass
 | Area | Status | Notes |
 |---|---|---|
 | V2.1 Password security | Met | 12 to 128 characters, no composition rules, breached-password check, paste allowed |
-| V2.2 General authenticator | Partial | Anti-automation met. 2.2.3 (notify the user after a credential change) is not met: Dhow sends no email on password, factor or token changes yet (finding F12) |
+| V2.2 General authenticator | Met | Anti-automation met. 2.2.3: an email after every credential change when SMTP is configured, and the audit log in every case (F12) |
 | V2.4 Credential storage | Met | Argon2id; recovery codes and API tokens under HMAC with derived keys |
 | V2.5 Credential recovery | Partial | No self-service recovery. A lost second factor is reset by a higher-ranked admin with a factor; a forgotten password has no flow (finding F13) |
 | V2.8 One-time passwords | Met | TOTP with replay protection, one step of skew |
 | V2.9 Cryptographic authenticators | Met | Passkeys with user verification for passwordless sign-in |
 | V3.2 Session binding | Met | 256-bit ids, new id at sign-in |
-| V3.3 Session termination | Partial | 3.3.2 asks for re-authentication after 12 hours of use; Dhow allows 14 days, with 12 hours idle (finding F10) |
+| V3.3 Session termination | Partial | 7 days absolute, 12 hours idle and 4 hours for Owners and Admins. 3.3.2 asks for re-authentication after 12 hours of use; the 7 days are a product decision (F10, ADR-0054) |
 | V3.4 Cookies | Met | `__Host-`, `Secure`, `HttpOnly`, `SameSite=Strict` |
 | V3.5 Token-based sessions | Met | API tokens scoped, expiring, revocable, HMAC stored |
 | V3.7 Re-authentication | Met | Current factor in the same request for every sensitive change |
 | V4.1 and V4.2 Access control | Met | One policy function, deny by default, route-table tests, 404 across tenants, Origin and CSRF |
-| V4.3.1 MFA for administrative interfaces | Not met | MFA is optional for owners and admins (finding F11) |
+| V4.3.1 MFA for administrative interfaces | Met when enabled | An organization can require a second factor for Owners and Admins or everyone, with a 7-day grace period (F11) |
 | V7.1 to V7.3 Logging | Met | No credentials in logs or audit data, security events audited, tamper-evident chain |
 | V8.3.1 Sensitive data in URLs | Met | Tokens in bodies, cookies or fragments only |
 | V11.1.4 Anti-automation | Met | Per-network limits on public routes after the Origin check, invitation caps |
@@ -154,9 +157,9 @@ All routes are under `/api/v1`. Per-network limits count only requests that pass
 | F7 | Low | Throttle, challenge, flow and counter rows were never deleted. | Fixed in T3: `Database/Retention` |
 | F8 | Low | `POST /setup` had no per-address limit. | Fixed: per client network. `App/RateLimit_test.go` |
 | F9 | Medium | The CSP has no `require-trusted-types-for 'script'`, although the security model listed Trusted Types. | Not fixed. The web has no `innerHTML` sinks (a hook forbids them), and turning the directive on needs a browser test over every screen, which M7 brings. The security model now says it is planned. |
-| F10 | Medium | Sessions last up to 14 days (12 hours idle); ASVS 3.3.2 asks for re-authentication after 12 hours. | Accepted for M2 (ADR-0033): every sensitive change needs the current factor in the same request. To be decided with the external review. |
-| F11 | Medium | Owners and admins are not required to use a second factor (ASVS 4.3.1). | Not fixed: an organization policy that requires MFA is a product feature, not a hardening item. Tracked for a later milestone. |
-| F12 | Medium | No email to the user after a password, factor or token change (ASVS 2.2.3). | Not fixed: needs the notification system (M7). Every change is audited. |
+| F10 | Medium | Sessions last up to 14 days (12 hours idle); ASVS 3.3.2 asks for re-authentication after 12 hours. | Fixed in M2.6 (ADR-0054): 7 days absolute, also for sessions opened before, and 4 hours idle for anyone who is an Owner or Admin in any organization, from the current role. `SessionPolicy_test.go` |
+| F11 | Medium | Owners and admins are not required to use a second factor (ASVS 4.3.1). | Fixed in M2.6 (ADR-0054): the `RequireSecondFactor` organization setting with a 7-day grace period, then `403 SECOND_FACTOR_REQUIRED` on sensitive actions. `RouteTable_secondfactor_test.go`, `Modules/Identity/Test/E2E/SecondFactor_test.go` |
+| F12 | Medium | No email to the user after a password, factor or token change (ASVS 2.2.3). | Fixed in M2.6 (ADR-0054): `Modules/Alerts` emails the user after each of 10 credential events when SMTP is configured, in the background and without any secret. `Modules/Alerts/Test` |
 | F13 | Low | No recovery for a forgotten password. | Accepted for M2: an admin resets the second factor, and passwordless passkeys and linked identities still sign in. A recovery flow is a product decision. |
 | F14 | Low | An attacker who knows an email can keep that account's password sign-in locked (ADR-0035). | Accepted: the lock is short and doubling, and passkey and provider sign-in are not counted against the account. |
 | F15 | Info | API token guessing has no per-address limit. | Accepted: 256-bit tokens; each attempt costs one indexed lookup. |

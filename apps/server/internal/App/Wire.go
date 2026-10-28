@@ -23,6 +23,7 @@ import (
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	retention "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Retention"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	alerts "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Alerts"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
 	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
@@ -61,9 +62,13 @@ type Wired struct {
 	Jobs          *jobs.Service
 	LogPool       *pgxpool.Pool
 	Retention     *retention.Runner
+	Alerts        *alerts.Service
 }
 
 func (w *Wired) Close() {
+	if w.Alerts != nil {
+		w.Alerts.Wait()
+	}
 	if w.LogPool != nil {
 		w.LogPool.Close()
 	}
@@ -119,10 +124,8 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Bus: bus, Instance: instance, Log: in.Log, Now: in.Now,
 		Oidc: external.providers, OidcKey: external.oidcKey, CallbackBase: in.Config.PublicURL.String() + config.OidcCallbackPath,
 	})
-	mail := in.Mailer
-	if mail == nil {
-		mail = mailerFor(in.Config, in.Now)
-	}
+	mail := mailerFor(in)
+	alertsService := alertsFor(in, mail, bus)
 	identityService := identity.NewService(identity.Options{
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, Bus: bus, Factors: sessionService, Mailer: mail,
 		PublicURL: in.Config.PublicURL.String(), Limiter: limiter, Limits: limits, Log: in.Log, Now: in.Now,
@@ -165,6 +168,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	wired := &Wired{
 		Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool,
 		Retention: retention.New(retention.Options{Pool: in.Pool, Log: in.Log, Now: in.Now}),
+		Alerts:    alertsService,
 	}
 	if in.Config.RunnerPlaneSeparate() {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
@@ -241,12 +245,24 @@ func listener(pool *pgxpool.Pool) jobs.Listener {
 	}
 }
 
-func mailerFor(cfg config.Config, now func() time.Time) mailer.Sender {
+func alertsFor(in Infra, mail mailer.Sender, bus *eventbus.Bus) *alerts.Service {
+	service := alerts.NewService(alerts.Options{
+		DB: in.Pool, Mailer: mail, PublicURL: in.Config.PublicURL.String(), Log: in.Log, Now: in.Now,
+	})
+	alerts.Subscribe(bus, service)
+	return service
+}
+
+func mailerFor(in Infra) mailer.Sender {
+	if in.Mailer != nil {
+		return in.Mailer
+	}
+	cfg := in.Config
 	if !cfg.SMTP.Enabled() {
 		return mailer.Disabled{}
 	}
 	return mailer.NewSMTP(mailer.SMTPOptions{
 		Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, From: cfg.SMTP.From,
-		TLS: cfg.SMTP.TLS, Timeout: config.MailTimeout, Now: now,
+		TLS: cfg.SMTP.TLS, Timeout: config.MailTimeout, Now: in.Now,
 	})
 }

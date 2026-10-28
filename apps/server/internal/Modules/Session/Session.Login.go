@@ -136,9 +136,14 @@ func (s *Service) openSession(ctx context.Context, now time.Time, user sessionUs
 		if memberships, err = q.ListUserMemberships(ctx, user.ID); err != nil {
 			return err
 		}
+		flags, err := q.GetUserAccountFlags(ctx, user.ID)
+		if err != nil {
+			return err
+		}
+		idle := idleTimeout(flags.IsInstanceOwner, policyMemberships(membershipsOf(memberships, false)))
 		row, err := q.InsertSession(ctx, sqlc.InsertSessionParams{
 			UserID: user.ID, TokenHash: tokenHash, CsrfHash: s.csrf.Hash(csrfToken), Now: now, ExpiresAt: expires,
-			IdleExpiresAt: now.Add(config.SessionIdleTimeout), UserAgent: meta.UserAgent, IpAddress: meta.IPString(),
+			IdleExpiresAt: now.Add(idle), UserAgent: meta.UserAgent, IpAddress: meta.IPString(),
 		})
 		if err != nil {
 			return err

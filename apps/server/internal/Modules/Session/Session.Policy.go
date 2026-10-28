@@ -1,6 +1,8 @@
 package session
 
 import (
+	"time"
+
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
@@ -36,4 +38,34 @@ func policyMemberships(ms []resolvedMembership) []policy.Membership {
 		out = append(out, m.Membership)
 	}
 	return out
+}
+
+func privileged(instanceOwner bool, ms []policy.Membership) bool {
+	if instanceOwner {
+		return true
+	}
+	for _, m := range ms {
+		if policy.AtLeast(m.Role, policy.RoleAdmin) {
+			return true
+		}
+	}
+	return false
+}
+
+func idleTimeout(instanceOwner bool, ms []policy.Membership) time.Duration {
+	if privileged(instanceOwner, ms) {
+		return config.SessionPrivilegedIdleTimeout
+	}
+	return config.SessionIdleTimeout
+}
+
+func absoluteExpiry(created, stored time.Time) time.Time {
+	if limit := created.Add(config.SessionAbsoluteTimeout); limit.Before(stored) {
+		return limit
+	}
+	return stored
+}
+
+func idleExpired(lastSeen time.Time, idle time.Duration, now time.Time) bool {
+	return !now.Before(lastSeen.Add(idle))
 }

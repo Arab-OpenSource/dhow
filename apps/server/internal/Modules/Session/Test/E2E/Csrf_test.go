@@ -125,7 +125,7 @@ func TestSessionCookieAttributes(t *testing.T) {
 	c := cookies[0]
 	assert.True(t, strings.HasPrefix(c, "__Host-dhow_session="), c)
 	attrs := strings.Split(c, "; ")[1:]
-	assert.ElementsMatch(t, []string{"Path=/", "Max-Age=1209600", "HttpOnly", "Secure", "SameSite=Strict"}, attrs, "no Domain, as the __Host- prefix requires")
+	assert.ElementsMatch(t, []string{"Path=/", "Max-Age=604800", "HttpOnly", "Secure", "SameSite=Strict"}, attrs, "no Domain, as the __Host- prefix requires")
 	assert.Len(t, client.Cookie, 43, "32 random bytes, base64url")
 }
 

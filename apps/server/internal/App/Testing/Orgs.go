@@ -40,6 +40,11 @@ func (f *FakeMailer) FailNext(fail bool) {
 	f.fail = fail
 }
 
+func (e *Env) SentMail(f *FakeMailer) []mailer.Message {
+	e.Wired.Alerts.Wait()
+	return f.Messages()
+}
+
 func (f *FakeMailer) Messages() []mailer.Message {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -110,8 +115,8 @@ func (c *Client) ChangeRole(org uuid.UUID, user, role string, factor map[string]
 }
 
 type MeView struct {
-	User                   struct{ Id, Email string }
-	Memberships            []struct {
+	User        struct{ Id, Email string }
+	Memberships []struct {
 		OrganizationId, Role string
 		SecondFactorDue      *time.Time
 	}

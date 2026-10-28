@@ -131,12 +131,14 @@ const listActiveUserSessions = `-- name: ListActiveUserSessions :many
 SELECT "Id", "CreatedAt", "LastSeenAt", "ExpiresAt", "UserAgent", "IpAddress"
 FROM "Sessions"
 WHERE "UserId" = $1 AND NOT "IsDeleted" AND "RevokedAt" IS NULL AND "ExpiresAt" > $2 AND "IdleExpiresAt" > $2
+  AND "CreatedAt" > $3
 ORDER BY "CreatedAt" DESC, "Id" DESC
 `
 
 type ListActiveUserSessionsParams struct {
-	UserID uuid.UUID
-	Now    time.Time
+	UserID       uuid.UUID
+	Now          time.Time
+	CreatedAfter time.Time
 }
 
 type ListActiveUserSessionsRow struct {
@@ -149,7 +151,7 @@ type ListActiveUserSessionsRow struct {
 }
 
 func (q *Queries) ListActiveUserSessions(ctx context.Context, arg ListActiveUserSessionsParams) ([]ListActiveUserSessionsRow, error) {
-	rows, err := q.db.Query(ctx, listActiveUserSessions, arg.UserID, arg.Now)
+	rows, err := q.db.Query(ctx, listActiveUserSessions, arg.UserID, arg.Now, arg.CreatedAfter)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +307,7 @@ func (q *Queries) ResetThrottle(ctx context.Context, arg ResetThrottleParams) er
 }
 
 const resolveSession = `-- name: ResolveSession :one
-SELECT s."Id", s."UserId", s."CsrfHash", s."LastSeenAt", s."ExpiresAt", s."IdleExpiresAt",
+SELECT s."Id", s."UserId", s."CsrfHash", s."CreatedAt", s."LastSeenAt", s."ExpiresAt", s."IdleExpiresAt",
        u."Email", u."Name", u."Locale", u."IsInstanceOwner",
        (EXISTS (SELECT 1 FROM "TotpFactors" t
                 WHERE t."UserId" = s."UserId" AND t."ConfirmedAt" IS NOT NULL AND NOT t."IsDeleted")
@@ -313,18 +315,20 @@ SELECT s."Id", s."UserId", s."CsrfHash", s."LastSeenAt", s."ExpiresAt", s."IdleE
 FROM "Sessions" s
 JOIN "Users" u ON u."Id" = s."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
 WHERE s."TokenHash" = $1 AND NOT s."IsDeleted" AND s."RevokedAt" IS NULL
-  AND s."ExpiresAt" > $2 AND s."IdleExpiresAt" > $2
+  AND s."ExpiresAt" > $2 AND s."IdleExpiresAt" > $2 AND s."CreatedAt" > $3
 `
 
 type ResolveSessionParams struct {
-	TokenHash []byte
-	Now       time.Time
+	TokenHash    []byte
+	Now          time.Time
+	CreatedAfter time.Time
 }
 
 type ResolveSessionRow struct {
 	Id              uuid.UUID
 	UserId          uuid.UUID
 	CsrfHash        []byte
+	CreatedAt       time.Time
 	LastSeenAt      time.Time
 	ExpiresAt       time.Time
 	IdleExpiresAt   time.Time
@@ -336,12 +340,13 @@ type ResolveSessionRow struct {
 }
 
 func (q *Queries) ResolveSession(ctx context.Context, arg ResolveSessionParams) (ResolveSessionRow, error) {
-	row := q.db.QueryRow(ctx, resolveSession, arg.TokenHash, arg.Now)
+	row := q.db.QueryRow(ctx, resolveSession, arg.TokenHash, arg.Now, arg.CreatedAfter)
 	var i ResolveSessionRow
 	err := row.Scan(
 		&i.Id,
 		&i.UserId,
 		&i.CsrfHash,
+		&i.CreatedAt,
 		&i.LastSeenAt,
 		&i.ExpiresAt,
 		&i.IdleExpiresAt,
