@@ -241,20 +241,6 @@ func (q *Queries) LockUserSignInMethods(ctx context.Context, id uuid.UUID) (Lock
 	return i, err
 }
 
-const purgeOidcFlows = `-- name: PurgeOidcFlows :execrows
-UPDATE "OidcFlows"
-SET "IsDeleted" = true, "UpdatedAt" = $1
-WHERE NOT "IsDeleted" AND ("ExpiresAt" <= $1 OR "UsedAt" IS NOT NULL)
-`
-
-func (q *Queries) PurgeOidcFlows(ctx context.Context, now time.Time) (int64, error) {
-	result, err := q.db.Exec(ctx, purgeOidcFlows, now)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const removeUserIdentity = `-- name: RemoveUserIdentity :one
 UPDATE "UserIdentities"
 SET "IsDeleted" = true, "UpdatedAt" = $1

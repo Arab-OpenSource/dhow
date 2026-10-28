@@ -56,6 +56,7 @@ Public routes that write rows or start sign-in flows are limited per client netw
 - **People behind one NAT** share one limit. An office of 100 people who all sign in with OIDC within 10 minutes sends about 200 requests, under the default of 300. Raise `DHOW_RATE_LIMIT_PUBLIC` for larger sites.
 - **The answer** is `429` with the code `RATE_LIMITED`, a translated message and `Retry-After` in seconds until the window ends.
 - **Each invitation** can get a new link at most 4 times (5 sends in all). After that, resending answers `409 INVITATION_SEND_LIMIT`: revoke it and invite again, which counts against the hourly limits.
+- Counter rows are deleted an hour after their window ends, by the cleanup that runs every 10 minutes (see [Retention of temporary rows](../security-model.md#retention-of-temporary-rows)).
 
 ## Secrets in files
 

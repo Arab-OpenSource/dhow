@@ -481,6 +481,38 @@ class DatabaseRules(unittest.TestCase):
         self.assertIsNone(edit(path, '-- name: DeleteProject :exec\nUPDATE "Projects" SET "IsDeleted" = true WHERE "Id" = $1;\n'))
         self.assertIsNone(edit("apps/server/internal/Database/Migrations/00003_x.sql", 'DELETE FROM "Instance" WHERE "Id" = 2;\n'))
 
+    RETENTION = "apps/server/internal/Database/Retention/Queries/Retention.sql"
+    PURGE = ('-- name: PurgeOidcFlows :execrows\nDELETE FROM "OidcFlows"\nWHERE "Id" IN (\n'
+             '    SELECT f."Id" FROM "OidcFlows" f WHERE f."ExpiresAt" < @before LIMIT @batch FOR UPDATE SKIP LOCKED\n);\n')
+
+    def test_retention_may_delete_expired_rows_of_temporary_tables(self):
+        self.assertIsNone(edit(self.RETENTION, self.PURGE))
+        for table in ("LoginThrottles", "RunnerThrottles", "AuthChallenges", "Invitations", "SetupTokens", "RateLimits"):
+            self.assertIsNone(edit(self.RETENTION, self.PURGE.replace('"OidcFlows"', '"%s"' % table)), table)
+
+    def test_retention_may_not_delete_from_a_table_with_history(self):
+        for table in ("AuditEvents", "Memberships", "Sessions", "Users", "ApiTokens"):
+            self.assertIn("temporary tables", edit(self.RETENTION, self.PURGE.replace('DELETE FROM "OidcFlows"', 'DELETE FROM "%s"' % table)), table)
+
+    def test_retention_delete_needs_a_where_with_a_time_bound(self):
+        self.assertIn("fixed period", edit(self.RETENTION, '-- name: PurgeAll :execrows\nDELETE FROM "OidcFlows";\n'))
+        self.assertIn("fixed period", edit(self.RETENTION, '-- name: PurgeOne :execrows\nDELETE FROM "OidcFlows" WHERE "Id" = @id;\n'))
+        self.assertIn("fixed period", edit(self.RETENTION, '-- name: P :execrows\nDELETE FROM "OidcFlows" USING "Users" WHERE "ExpiresAt" < @before;\n'))
+
+    def test_retention_checks_the_whole_file_on_a_partial_edit(self):
+        final = self.PURGE + '\n-- name: Bad :execrows\nDELETE FROM "AuditEvents" WHERE "CreatedAt" < @before;\n'
+        self.assertIn("temporary tables", edit(self.RETENTION, "LIMIT @batch", old="LIMIT @batch", exists=True, final=final))
+
+    def test_the_exception_is_only_for_the_retention_file(self):
+        for path in ("apps/server/internal/Modules/Session/Queries/Retention.sql",
+                     "apps/server/internal/Database/Retention/Queries/Other.sql",
+                     "apps/server/internal/Core/RateLimit/Queries/RateLimit.sql"):
+            self.assertIn("soft", edit(path, self.PURGE), path)
+
+    def test_truncate_is_never_allowed_in_queries(self):
+        self.assertIn("TRUNCATE", edit(self.RETENTION, '-- name: T :exec\nTRUNCATE "OidcFlows";\n'))
+        self.assertIn("TRUNCATE", edit("apps/server/internal/Modules/System/Queries/X.sql", '-- name: T :exec\nTRUNCATE "Projects";\n'))
+
 
 class OpenapiRules(unittest.TestCase):
     PATH = "packages/openapi/openapi.yaml"

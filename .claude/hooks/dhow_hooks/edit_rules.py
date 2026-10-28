@@ -34,7 +34,15 @@ GO_POLICY_TABLE = re.compile(r"\bpolicy\.NewTable\(")
 GO_ROUTE_MIDDLEWARES = re.compile(r"\bMiddlewares\s*:")
 
 MIGRATION_SQL = re.compile(r"(^|/)migrations/[^/]+\.sql$", re.IGNORECASE)
-MODULE_QUERY_SQL = re.compile(r"(^|/)Modules/[^/]+/Queries/[^/]+\.sql$", re.IGNORECASE)
+MODULE_QUERY_SQL = re.compile(r"(^|/)(Modules|Core|Database)/[^/]+/Queries/[^/]+\.sql$", re.IGNORECASE)
+RETENTION_SQL = "apps/server/internal/Database/Retention/Queries/Retention.sql"
+RETENTION_TABLES = (
+    '"LoginThrottles"', '"RunnerThrottles"', '"AuthChallenges"', '"OidcFlows"', '"Invitations"', '"SetupTokens"',
+    '"RateLimits"',
+)
+SQL_DELETE_STATEMENT = re.compile(r'(?is)\bdelete\s+from\s+("[^"]*"|\S+)(.*?)(?:;|\Z)')
+SQL_TRUNCATE = re.compile(r"(?i)\btruncate\b")
+SQL_TIME_BOUND = re.compile(r"(?i)<\s*@before\b")
 BASE_COLUMN_TABLE_ALLOWLIST = ('"Instance"',)
 BASE_COLUMNS = (
     (re.compile(r'(?i)"Id"\s+uuid\s+PRIMARY\s+KEY\s+DEFAULT\s+uuidv7\(\)'), '"Id" uuid PRIMARY KEY DEFAULT uuidv7()'),
@@ -408,11 +416,29 @@ def check_migration_rules(rel, added, old, **_):
     return None
 
 
-def check_module_queries(rel, added, old, **_):
+def retention_violation(rel, text):
+    for m in SQL_DELETE_STATEMENT.finditer(text):
+        table, rest = m.group(1), m.group(2)
+        if table not in RETENTION_TABLES:
+            return (f"{rel}: retention may only DELETE from the temporary tables {', '.join(RETENTION_TABLES)}, "
+                    f"not {table}. Rows with history (audit, memberships, sessions) are soft-deleted only.")
+        if not re.match(r"(?is)\s*where\b", rest) or not SQL_TIME_BOUND.search(rest):
+            return (f"{rel}: every retention DELETE on {table} needs a WHERE bounded by a fixed period "
+                    "(`... < @before`), so it never removes live rows.")
+    return None
+
+
+def check_module_queries(rel, added, old, final_content=None, **_):
     if not MODULE_QUERY_SQL.search(rel):
         return None
-    if SQL_DELETE_FROM.search("\n".join(new_lines(added, old))):
-        return f"{rel}: no DELETE FROM in module queries. Deletion is soft: UPDATE ... SET \"IsDeleted\" = true, \"UpdatedAt\" = now()."
+    text = "\n".join(new_lines(added, old))
+    if SQL_TRUNCATE.search(text):
+        return f"{rel}: no TRUNCATE in queries."
+    if rel == RETENTION_SQL:
+        return retention_violation(rel, final_content if final_content is not None else added)
+    if SQL_DELETE_FROM.search(text):
+        return (f"{rel}: no DELETE FROM in queries. Deletion is soft: UPDATE ... SET \"IsDeleted\" = true, \"UpdatedAt\" = now(). "
+                f"The only exception is {RETENTION_SQL}, for expired rows of temporary tables.")
     return None
 
 

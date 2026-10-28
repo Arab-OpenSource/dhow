@@ -70,7 +70,7 @@ WHERE "Id" = @id AND NOT "IsDeleted" AND "PasswordHash" = @old_hash;
 -- name: EnsureThrottle :exec
 INSERT INTO "LoginThrottles" ("Key", "Failures", "LastFailureAt", "CreatedAt", "UpdatedAt")
 VALUES (@key, 0, @now, @now, @now)
-ON CONFLICT ("Key") DO NOTHING;
+ON CONFLICT ("Key") DO UPDATE SET "UpdatedAt" = GREATEST("LoginThrottles"."UpdatedAt", EXCLUDED."UpdatedAt");
 
 -- name: LockThrottle :one
 SELECT "Failures", "LastFailureAt", "LockedUntil"

@@ -106,7 +106,7 @@ func (q *Queries) DisableRunnerAsClone(ctx context.Context, arg DisableRunnerAsC
 const ensureRunnerThrottle = `-- name: EnsureRunnerThrottle :exec
 INSERT INTO "RunnerThrottles" ("Key", "Failures", "LastFailureAt", "CreatedAt", "UpdatedAt")
 VALUES ($1, 0, $2, $2, $2)
-ON CONFLICT ("Key") DO NOTHING
+ON CONFLICT ("Key") DO UPDATE SET "UpdatedAt" = GREATEST("RunnerThrottles"."UpdatedAt", EXCLUDED."UpdatedAt")
 `
 
 type EnsureRunnerThrottleParams struct {

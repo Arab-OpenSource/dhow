@@ -1,0 +1,68 @@
+-- name: TryRetentionLock :one
+SELECT pg_try_advisory_lock(@lock_key::bigint) AS "Locked";
+
+-- name: ReleaseRetentionLock :one
+SELECT pg_advisory_unlock(@lock_key::bigint) AS "Released";
+
+-- name: PurgeLoginThrottles :execrows
+DELETE FROM "LoginThrottles"
+WHERE "Id" IN (
+    SELECT t."Id" FROM "LoginThrottles" t
+    WHERE t."LastFailureAt" < @before AND t."UpdatedAt" < @before AND (t."LockedUntil" IS NULL OR t."LockedUntil" < @before)
+    LIMIT @batch
+    FOR UPDATE SKIP LOCKED
+);
+
+-- name: PurgeRunnerThrottles :execrows
+DELETE FROM "RunnerThrottles"
+WHERE "Id" IN (
+    SELECT t."Id" FROM "RunnerThrottles" t
+    WHERE t."LastFailureAt" < @before AND t."UpdatedAt" < @before AND (t."LockedUntil" IS NULL OR t."LockedUntil" < @before)
+    LIMIT @batch
+    FOR UPDATE SKIP LOCKED
+);
+
+-- name: PurgeAuthChallenges :execrows
+DELETE FROM "AuthChallenges"
+WHERE "Id" IN (
+    SELECT c."Id" FROM "AuthChallenges" c
+    WHERE c."ExpiresAt" < @before
+    LIMIT @batch
+    FOR UPDATE SKIP LOCKED
+);
+
+-- name: PurgeOidcFlows :execrows
+DELETE FROM "OidcFlows"
+WHERE "Id" IN (
+    SELECT f."Id" FROM "OidcFlows" f
+    WHERE f."ExpiresAt" < @before
+    LIMIT @batch
+    FOR UPDATE SKIP LOCKED
+);
+
+-- name: PurgeInvitations :execrows
+DELETE FROM "Invitations"
+WHERE "Id" IN (
+    SELECT i."Id" FROM "Invitations" i
+    WHERE i."AcceptedAt" IS NULL AND (i."ExpiresAt" < @before OR i."RevokedAt" < @before)
+    LIMIT @batch
+    FOR UPDATE SKIP LOCKED
+);
+
+-- name: PurgeSetupTokens :execrows
+DELETE FROM "SetupTokens"
+WHERE "Id" IN (
+    SELECT s."Id" FROM "SetupTokens" s
+    WHERE s."ExpiresAt" < @before
+    LIMIT @batch
+    FOR UPDATE SKIP LOCKED
+);
+
+-- name: PurgeRateLimits :execrows
+DELETE FROM "RateLimits"
+WHERE "Id" IN (
+    SELECT r."Id" FROM "RateLimits" r
+    WHERE r."ExpiresAt" < @before
+    LIMIT @batch
+    FOR UPDATE SKIP LOCKED
+);

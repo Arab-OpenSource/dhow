@@ -21,6 +21,7 @@ import (
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
+	retention "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Retention"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
@@ -59,6 +60,7 @@ type Wired struct {
 	Identity      *identity.Service
 	Jobs          *jobs.Service
 	LogPool       *pgxpool.Pool
+	Retention     *retention.Runner
 }
 
 func (w *Wired) Close() {
@@ -160,7 +162,10 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Now:       in.Now,
 		Web:       in.Web,
 	}
-	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool}
+	wired := &Wired{
+		Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool,
+		Retention: retention.New(retention.Options{Pool: in.Pool, Log: in.Log, Now: in.Now}),
+	}
 	if in.Config.RunnerPlaneSeparate() {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
 	}

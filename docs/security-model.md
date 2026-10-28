@@ -50,7 +50,7 @@ The assets to protect are:
 - **Passkeys.** The RP ID and the only accepted origin come from `DHOW_PUBLIC_URL`. Challenges are stored on the server, live 5 minutes and work once. Passwordless sign-in requires user verification. A sign-count that goes backwards is refused and audited.
 - **Changing a factor.** Turning TOTP on, off or replacing it, making new recovery codes, and adding or removing a passkey need a current factor in the same request: the password while the account has no second factor, and a TOTP code, recovery code or passkey afterwards. Every such change revokes the user's other sessions and is audited.
 
-**External identity providers (ADR-0039).** Providers are configured only through the environment (`DHOW_OIDC_PROVIDERS`, see [Sign in with OIDC](guides/oidc.md)), and any invalid provider stops the server. Two providers cannot share an issuer. Discovery happens on first use, so an unreachable provider disables only that provider (`503 OIDC_PROVIDER_UNAVAILABLE`); one discovery runs at a time and no caller waits past its own deadline. The authorization, token and JWKS endpoints the provider announces must be `https` (plain `http` only with `DHOW_DEV=true`), otherwise the provider counts as unavailable. Expired and used flow rows are marked deleted every 10 minutes.
+**External identity providers (ADR-0039).** Providers are configured only through the environment (`DHOW_OIDC_PROVIDERS`, see [Sign in with OIDC](guides/oidc.md)), and any invalid provider stops the server. Two providers cannot share an issuer. Discovery happens on first use, so an unreachable provider disables only that provider (`503 OIDC_PROVIDER_UNAVAILABLE`); one discovery runs at a time and no caller waits past its own deadline. The authorization, token and JWKS endpoints the provider announces must be `https` (plain `http` only with `DHOW_DEV=true`), otherwise the provider counts as unavailable. Flow rows are deleted a day after they expire (see [Retention of temporary rows](#retention-of-temporary-rows)).
 
 - **The flow.** `POST /api/v1/oidc/authorize` sets `__Host-dhow_oidc` (32 random bytes, `HttpOnly`, `Secure`, `SameSite=Strict`, 10 minutes) and returns the provider URL with a random `state`, a PKCE `S256` challenge and, for OIDC, a `nonce`. The PKCE verifier and the nonce are not stored: they are HMACs of the cookie under a key derived from `DHOW_SECRET_KEY`. The server stores only SHA-256 hashes of the cookie, the state and the User-Agent, so a database copy cannot finish a flow.
 - **The callback.** The provider returns to the web page `<DHOW_PUBLIC_URL>/oidc/callback/<id>` (one URL per provider, against mix-up attacks), which strips `code` and `state` from the address and posts them once to `POST /api/v1/oidc/callback`. The flow row is consumed before the code is exchanged; a missing or forged cookie, a wrong state, another browser, another provider, or a used or expired flow burns it without contacting the provider and answers `400 OIDC_FLOW_INVALID`.
@@ -87,6 +87,19 @@ The web UI and the API are served from the same origin, so browsers use **server
   - **No mixing.** A Bearer token together with a Dhow cookie answers `401`. Bearer requests skip the `Origin` and CSRF checks, because browsers never attach an `Authorization` header on their own and the server sends no CORS headers. Runner tokens (`dhow_rat_`) are refused on the REST API, and personal tokens are refused on `/runner-api/`.
   - `LastUsedAt` and `LastUsedIp` are written at most once a minute.
   - **Credential events.** An admin's MFA reset revokes every token of the member together with their sessions, because it is the path for recovering a compromised account whose owner may not hold it. Changing the password or a factor and "sign out of every other device" do not revoke tokens: a token is a separate credential for automation, bound to the membership and role and limited by its scopes and expiry, and revoking it on a routine password change would silently stop CI. Someone who suspects a compromise revokes their tokens from the account page, and disabling the account stops all of them.
+
+### Retention of temporary rows
+
+Rows that only exist to run a sign-in, a throttle or a rate limit are deleted for real once they can no longer matter, so the tables do not grow with every attempt (ADR-0040). Every 10 minutes one instance, chosen by a PostgreSQL advisory lock, deletes them in batches of 1000 with `FOR UPDATE SKIP LOCKED`, so a row a request is using is never touched and no table stays locked for long:
+
+| Table | Deleted |
+|---|---|
+| `LoginThrottles`, `RunnerThrottles` | a day after the last failure, once no lock is active |
+| `AuthChallenges`, `OidcFlows`, `SetupTokens` | a day after they expire |
+| `Invitations` | 30 days after they expire or are revoked; accepted invitations stay |
+| `RateLimits` | an hour after their window ends |
+
+These are the only deletes in the code base, all in one query file that a project hook checks: every other table, including the audit log, memberships, sessions and tokens, is only ever marked deleted.
 
 ## 6. Authorization (ADR-0015)
 

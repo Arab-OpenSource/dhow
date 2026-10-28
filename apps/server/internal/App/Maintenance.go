@@ -5,13 +5,13 @@ import (
 	"sync"
 	"time"
 
-	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
+	retention "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Retention"
 )
 
-func StartMaintenance(ctx context.Context, s *session.Service, every time.Duration) func() {
+func StartMaintenance(ctx context.Context, r *retention.Runner, every time.Duration) func() {
 	bgCtx, cancel := context.WithCancel(ctx)
 	var background sync.WaitGroup
-	background.Go(func() { s.RunOidcFlowPurge(bgCtx, every) })
+	background.Go(func() { r.Loop(bgCtx, every) })
 	return func() {
 		cancel()
 		background.Wait()
