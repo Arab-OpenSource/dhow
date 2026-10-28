@@ -195,8 +195,12 @@ func (s *Service) List(ctx context.Context) ([]models.SessionInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	idle := idleTimeout(p.InstanceOwner, p.Memberships)
 	out := make([]models.SessionInfo, 0, len(rows))
 	for _, r := range rows {
+		if idleExpired(r.LastSeenAt, idle, now) {
+			continue
+		}
 		out = append(out, models.SessionInfo{
 			ID: r.Id, CreatedAt: r.CreatedAt, LastSeenAt: r.LastSeenAt, ExpiresAt: absoluteExpiry(r.CreatedAt, r.ExpiresAt),
 			UserAgent: r.UserAgent, IPAddress: r.IpAddress, Current: r.Id == p.SessionID,

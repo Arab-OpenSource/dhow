@@ -23,7 +23,7 @@ SELECT t."Id", t."UserId", t."OrganizationId", t."Scopes", t."ExpiresAt", t."Las
        u."Email", u."Name", u."Locale", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
              WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
-       o."RequireSecondFactor", o."RequireSecondFactorSince", m."CreatedAt" AS "JoinedAt",
+       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt",
        (EXISTS (SELECT 1 FROM "TotpFactors" f
                 WHERE f."UserId" = t."UserId" AND f."ConfirmedAt" IS NOT NULL AND NOT f."IsDeleted")
         OR EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = t."UserId" AND NOT p."IsDeleted"))::boolean AS "HasSecondFactor"

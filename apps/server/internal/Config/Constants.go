@@ -95,6 +95,7 @@ const (
 	InvitationTokenBytes = 32
 	InvitationListLimit  = 200
 	MailTimeout          = 10 * time.Second
+	AlertMaxPending      = 32
 	TeamDescriptionMax   = 500
 )
 

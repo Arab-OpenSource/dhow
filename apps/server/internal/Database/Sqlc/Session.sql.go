@@ -181,7 +181,7 @@ const listUserMemberships = `-- name: ListUserMemberships :many
 SELECT m."OrganizationId", o."Name" AS "OrganizationName", o."Slug" AS "OrganizationSlug", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
              WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
-       o."RequireSecondFactor", o."RequireSecondFactorSince", m."CreatedAt" AS "JoinedAt"
+       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt"
 FROM "Memberships" m
 JOIN "Organizations" o ON o."Id" = m."OrganizationId" AND NOT o."IsDeleted"
 WHERE m."UserId" = $1 AND NOT m."IsDeleted"
@@ -189,14 +189,15 @@ ORDER BY m."CreatedAt", m."Id"
 `
 
 type ListUserMembershipsRow struct {
-	OrganizationId           uuid.UUID
-	OrganizationName         string
-	OrganizationSlug         string
-	Role                     string
-	TeamRoles                []string
-	RequireSecondFactor      string
-	RequireSecondFactorSince *time.Time
-	JoinedAt                 time.Time
+	OrganizationId                 uuid.UUID
+	OrganizationName               string
+	OrganizationSlug               string
+	Role                           string
+	TeamRoles                      []string
+	RequireSecondFactor            string
+	RequireSecondFactorSince       *time.Time
+	RequireSecondFactorAdminsSince *time.Time
+	JoinedAt                       time.Time
 }
 
 func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]ListUserMembershipsRow, error) {
@@ -216,6 +217,7 @@ func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]
 			&i.TeamRoles,
 			&i.RequireSecondFactor,
 			&i.RequireSecondFactorSince,
+			&i.RequireSecondFactorAdminsSince,
 			&i.JoinedAt,
 		); err != nil {
 			return nil, err

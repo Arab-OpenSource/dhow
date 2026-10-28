@@ -1,5 +1,5 @@
 -- name: LockOrganization :one
-SELECT "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
+SELECT "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince", "RequireSecondFactorAdminsSince"
 FROM "Organizations"
 WHERE "Id" = @id AND NOT "IsDeleted"
 FOR UPDATE;

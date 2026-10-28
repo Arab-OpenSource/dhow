@@ -246,19 +246,20 @@ func (q *Queries) ListUserRoles(ctx context.Context, userID uuid.UUID) ([]ListUs
 }
 
 const lockOrganization = `-- name: LockOrganization :one
-SELECT "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
+SELECT "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince", "RequireSecondFactorAdminsSince"
 FROM "Organizations"
 WHERE "Id" = $1 AND NOT "IsDeleted"
 FOR UPDATE
 `
 
 type LockOrganizationRow struct {
-	Id                       uuid.UUID
-	Name                     string
-	Slug                     string
-	CreatedAt                time.Time
-	RequireSecondFactor      string
-	RequireSecondFactorSince *time.Time
+	Id                             uuid.UUID
+	Name                           string
+	Slug                           string
+	CreatedAt                      time.Time
+	RequireSecondFactor            string
+	RequireSecondFactorSince       *time.Time
+	RequireSecondFactorAdminsSince *time.Time
 }
 
 func (q *Queries) LockOrganization(ctx context.Context, id uuid.UUID) (LockOrganizationRow, error) {
@@ -271,6 +272,7 @@ func (q *Queries) LockOrganization(ctx context.Context, id uuid.UUID) (LockOrgan
 		&i.CreatedAt,
 		&i.RequireSecondFactor,
 		&i.RequireSecondFactorSince,
+		&i.RequireSecondFactorAdminsSince,
 	)
 	return i, err
 }

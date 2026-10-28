@@ -45,7 +45,7 @@ func (s *Service) ResolveToken(ctx context.Context, hash []byte, now time.Time) 
 		rule = policy.SecondFactorEveryone
 	}
 	due := policy.SecondFactorDue(policy.SecondFactorState{
-		Rule: rule, Since: row.RequireSecondFactorSince, JoinedAt: row.JoinedAt, Role: role, HasFactor: row.HasSecondFactor,
+		Rule: rule, Since: row.RequireSecondFactorSince, AdminsSince: row.RequireSecondFactorAdminsSince, JoinedAt: row.JoinedAt, Role: role, HasFactor: row.HasSecondFactor,
 	}, config.SecondFactorGrace)
 	return auth.ResolvedToken{
 		TokenID: row.Id, UserID: row.UserId, OrganizationID: row.OrganizationId, Role: role, Scopes: scopes,

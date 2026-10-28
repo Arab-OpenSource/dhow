@@ -196,7 +196,7 @@ SELECT t."Id", t."UserId", t."OrganizationId", t."Scopes", t."ExpiresAt", t."Las
        u."Email", u."Name", u."Locale", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
              WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
-       o."RequireSecondFactor", o."RequireSecondFactorSince", m."CreatedAt" AS "JoinedAt",
+       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt",
        (EXISTS (SELECT 1 FROM "TotpFactors" f
                 WHERE f."UserId" = t."UserId" AND f."ConfirmedAt" IS NOT NULL AND NOT f."IsDeleted")
         OR EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = t."UserId" AND NOT p."IsDeleted"))::boolean AS "HasSecondFactor"
@@ -214,21 +214,22 @@ type ResolveApiTokenParams struct {
 }
 
 type ResolveApiTokenRow struct {
-	Id                       uuid.UUID
-	UserId                   uuid.UUID
-	OrganizationId           uuid.UUID
-	Scopes                   []string
-	ExpiresAt                time.Time
-	LastUsedAt               *time.Time
-	Email                    string
-	Name                     string
-	Locale                   string
-	Role                     string
-	TeamRoles                []string
-	RequireSecondFactor      string
-	RequireSecondFactorSince *time.Time
-	JoinedAt                 time.Time
-	HasSecondFactor          bool
+	Id                             uuid.UUID
+	UserId                         uuid.UUID
+	OrganizationId                 uuid.UUID
+	Scopes                         []string
+	ExpiresAt                      time.Time
+	LastUsedAt                     *time.Time
+	Email                          string
+	Name                           string
+	Locale                         string
+	Role                           string
+	TeamRoles                      []string
+	RequireSecondFactor            string
+	RequireSecondFactorSince       *time.Time
+	RequireSecondFactorAdminsSince *time.Time
+	JoinedAt                       time.Time
+	HasSecondFactor                bool
 }
 
 func (q *Queries) ResolveApiToken(ctx context.Context, arg ResolveApiTokenParams) (ResolveApiTokenRow, error) {
@@ -248,6 +249,7 @@ func (q *Queries) ResolveApiToken(ctx context.Context, arg ResolveApiTokenParams
 		&i.TeamRoles,
 		&i.RequireSecondFactor,
 		&i.RequireSecondFactorSince,
+		&i.RequireSecondFactorAdminsSince,
 		&i.JoinedAt,
 		&i.HasSecondFactor,
 	)

@@ -348,16 +348,18 @@ func (q *Queries) MarkSetupTokenUsed(ctx context.Context, arg MarkSetupTokenUsed
 
 const setOrganizationSecondFactor = `-- name: SetOrganizationSecondFactor :one
 UPDATE "Organizations"
-SET "RequireSecondFactor" = $1, "RequireSecondFactorSince" = $2::timestamptz, "UpdatedAt" = $3
-WHERE "Id" = $4 AND NOT "IsDeleted"
+SET "RequireSecondFactor" = $1, "RequireSecondFactorSince" = $2::timestamptz,
+    "RequireSecondFactorAdminsSince" = $3::timestamptz, "UpdatedAt" = $4
+WHERE "Id" = $5 AND NOT "IsDeleted"
 RETURNING "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince"
 `
 
 type SetOrganizationSecondFactorParams struct {
-	Rule  string
-	Since *time.Time
-	Now   time.Time
-	ID    uuid.UUID
+	Rule        string
+	Since       *time.Time
+	AdminsSince *time.Time
+	Now         time.Time
+	ID          uuid.UUID
 }
 
 type SetOrganizationSecondFactorRow struct {
@@ -373,6 +375,7 @@ func (q *Queries) SetOrganizationSecondFactor(ctx context.Context, arg SetOrgani
 	row := q.db.QueryRow(ctx, setOrganizationSecondFactor,
 		arg.Rule,
 		arg.Since,
+		arg.AdminsSince,
 		arg.Now,
 		arg.ID,
 	)

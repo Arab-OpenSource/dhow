@@ -69,6 +69,12 @@ func TestSecondFactorDue(t *testing.T) {
 		{"a later member counts from joining", policy.SecondFactorState{
 			Rule: policy.SecondFactorEveryone, Since: &enabled, JoinedAt: joinedAfter, Role: policy.RoleViewer,
 		}, joinedAfter.Add(grace)},
+		{"an admin counts from when admins were first covered", policy.SecondFactorState{
+			Rule: policy.SecondFactorEveryone, Since: &joinedAfter, AdminsSince: &enabled, JoinedAt: joinedBefore, Role: policy.RoleAdmin,
+		}, enabled.Add(grace)},
+		{"a viewer counts from the widening", policy.SecondFactorState{
+			Rule: policy.SecondFactorEveryone, Since: &joinedAfter, AdminsSince: &enabled, JoinedAt: joinedBefore, Role: policy.RoleViewer,
+		}, joinedAfter.Add(grace)},
 		{"a rule without a start counts from joining", policy.SecondFactorState{
 			Rule: policy.SecondFactorEveryone, JoinedAt: joinedBefore, Role: policy.RoleViewer,
 		}, joinedBefore.Add(grace)},

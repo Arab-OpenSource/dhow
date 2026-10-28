@@ -63,7 +63,8 @@ RETURNING o."Id", o."Name", o."Slug", o."CreatedAt", o."RequireSecondFactor", o.
 
 -- name: SetOrganizationSecondFactor :one
 UPDATE "Organizations"
-SET "RequireSecondFactor" = @rule, "RequireSecondFactorSince" = sqlc.narg(since)::timestamptz, "UpdatedAt" = @now
+SET "RequireSecondFactor" = @rule, "RequireSecondFactorSince" = sqlc.narg(since)::timestamptz,
+    "RequireSecondFactorAdminsSince" = sqlc.narg(admins_since)::timestamptz, "UpdatedAt" = @now
 WHERE "Id" = @id AND NOT "IsDeleted"
 RETURNING "Id", "Name", "Slug", "CreatedAt", "RequireSecondFactor", "RequireSecondFactorSince";
 

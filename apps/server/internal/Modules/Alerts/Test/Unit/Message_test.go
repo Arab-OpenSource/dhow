@@ -64,12 +64,25 @@ func TestEveryMessageFillsItsPlaceholdersAndKeepsTheSubjectOnOneLine(t *testing.
 			m := alerts.Message(l, alerts.Details{To: "a@example.com", Name: "Mona", Change: c, At: at, Link: "https://dhow.example/?stack=account"})
 			assert.NotContains(t, m.Subject+m.Body, "{", "%s %s", l, c)
 			assert.NotContains(t, m.Subject, "\n")
+			assert.Equal(t, "a@example.com", m.To)
 			assert.Contains(t, m.Body, "2026-10-28 06:05")
 			assert.Contains(t, m.Body, "https://dhow.example/?stack=account")
+			if c == "mfa_reset" {
+				assert.NotContains(t, m.Body, i18n.Translate(l, "mail.alert.unknown"), "the admin's network and browser are not shown")
+				continue
+			}
 			assert.Contains(t, m.Body, i18n.Translate(l, "mail.alert.unknown"), "an unknown network and browser are said plainly")
-			assert.Equal(t, "a@example.com", m.To)
 		}
 	}
 	m := alerts.Message(i18n.En, alerts.Details{Name: "Mona\r\nBcc: x@example.com", Change: "password_changed"})
 	assert.False(t, strings.Contains(m.Subject, "\r") || strings.Contains(m.Subject, "\n"), "the name never reaches a header")
+}
+
+func TestTheMfaResetAlertLeavesOutTheAdminsNetworkAndBrowser(t *testing.T) {
+	m := alerts.Message(i18n.En, alerts.Details{
+		Name: "Mona", Change: "mfa_reset", IP: "198.51.100.23", UserAgent: "Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0",
+	})
+	assert.NotContains(t, m.Body, "198.51.100")
+	assert.NotContains(t, m.Body, "Firefox")
+	assert.NotContains(t, m.Body, "change your password")
 }

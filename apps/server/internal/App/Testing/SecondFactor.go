@@ -27,7 +27,7 @@ func (e *Env) SetSecondFactorRule(org uuid.UUID, rule string, since time.Time) {
 		at = &since
 	}
 	_, err := e.Pool.Exec(context.Background(),
-		`UPDATE "Organizations" SET "RequireSecondFactor" = $2, "RequireSecondFactorSince" = $3 WHERE "Id" = $1`, org, rule, at)
+		`UPDATE "Organizations" SET "RequireSecondFactor" = $2, "RequireSecondFactorSince" = $3, "RequireSecondFactorAdminsSince" = $3 WHERE "Id" = $1`, org, rule, at)
 	require.NoError(e.T, err)
 }
 

@@ -57,20 +57,25 @@ func SensitiveActions() []Action {
 func IsSensitive(a Action) bool { return slices.Contains(SensitiveActions(), a) }
 
 type SecondFactorState struct {
-	Rule      SecondFactorRule
-	Since     *time.Time
-	JoinedAt  time.Time
-	Role      Role
-	HasFactor bool
+	Rule        SecondFactorRule
+	Since       *time.Time
+	AdminsSince *time.Time
+	JoinedAt    time.Time
+	Role        Role
+	HasFactor   bool
 }
 
 func SecondFactorDue(s SecondFactorState, grace time.Duration) time.Time {
 	if s.HasFactor || !s.Rule.Covers(s.Role) {
 		return time.Time{}
 	}
+	since := s.Since
+	if s.AdminsSince != nil && SecondFactorAdmins.Covers(s.Role) {
+		since = s.AdminsSince
+	}
 	start := s.JoinedAt
-	if s.Since != nil && s.Since.After(start) {
-		start = *s.Since
+	if since != nil && since.After(start) {
+		start = *since
 	}
 	return start.Add(grace)
 }

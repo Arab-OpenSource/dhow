@@ -172,6 +172,12 @@ All routes are under `/api/v1`. Per-network limits count only requests that pass
 | F22 | Info | Independent review: the timing control proved 1 ms only on a sub-millisecond path. | Addressed: the guarantee is now written as max(10%, 300 µs) of the median, and a second control must notice 6 ms on sign-in. |
 | F23 | Info | Independent review: runner tokens accepted a line break like the other tokens did. | Fixed: exact length. `Core/RunnerAuth/RunnerAuth_test.go` (`TestTokens`) |
 | F24 | Info | Independent review: nothing stopped a new public write route from shipping without a limit. | Fixed: `TestEveryPublicWriteIsRateLimitedOrAnExplicitException` |
+| F25 | Medium | M2.6 review: the audit record and the credential alert ran on the request context after the commit, so a client that dropped the connection at that moment kept the change without either. | Fixed: both handlers detach from the request. `TestAnEventIsRecordedEvenWhenTheRequestIsGone`, `TestTheAlertIsSentEvenWhenTheRequestIsGone` |
+| F26 | Low | M2.6 review: widening the second-factor rule from admins to everyone restarted the grace period of admins who were already overdue. | Fixed: a separate start for Owners and Admins. `TestWideningGivesOnlyNewlyCoveredRolesANewGracePeriodAndNarrowingKeepsIt` |
+| F27 | Low | M2.6 review: every alert opened its own goroutine and SMTP connection with no cap. | Fixed: at most 32 pending sends; the rest are dropped with a warning. `TestPendingAlertsAreCapped` |
+| F28 | Low | M2.6 review: the MFA-reset alert showed the admin's network and browser to the member. | Fixed: a separate text without them. `TestTheMfaResetAlertLeavesOutTheAdminsNetworkAndBrowser` |
+| F29 | Info | M2.6 review: an alert could start while shutdown waited for the pending ones, and the session list showed sessions past the 4-hour idle window. | Fixed: the alert service closes before it waits, and the list uses the current idle window. `TestNoAlertStartsAfterShutdown`, `TestTheSessionListLeavesOutSessionsPastTheCurrentIdleWindow` |
+| F30 | Info | M2.6 review: a mail server's error reply, which may name the address, reaches the server log; `token.manage` and `job.cancel` are not blocked after the grace period. | Accepted (ADR-0054): the log is the operator's, as for invitations; revoking tokens and cancelling jobs only reduce access. |
 
 No Critical or High finding is open.
 

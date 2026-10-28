@@ -67,7 +67,7 @@ type Wired struct {
 
 func (w *Wired) Close() {
 	if w.Alerts != nil {
-		w.Alerts.Wait()
+		w.Alerts.Close()
 	}
 	if w.LogPool != nil {
 		w.LogPool.Close()

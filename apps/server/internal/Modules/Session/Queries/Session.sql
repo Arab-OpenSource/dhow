@@ -7,7 +7,7 @@ WHERE "Email" = @email AND NOT "IsDeleted";
 SELECT m."OrganizationId", o."Name" AS "OrganizationName", o."Slug" AS "OrganizationSlug", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
              WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
-       o."RequireSecondFactor", o."RequireSecondFactorSince", m."CreatedAt" AS "JoinedAt"
+       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt"
 FROM "Memberships" m
 JOIN "Organizations" o ON o."Id" = m."OrganizationId" AND NOT o."IsDeleted"
 WHERE m."UserId" = @user_id AND NOT m."IsDeleted"

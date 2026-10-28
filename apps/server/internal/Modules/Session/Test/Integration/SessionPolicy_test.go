@@ -166,3 +166,22 @@ func TestIdleWindowNeverOutlivesTheAbsoluteTimeout(t *testing.T) {
 	row := loadSessionRow(t, env, client.Cookie)
 	assert.False(t, row.IdleExpiresAt.After(row.ExpiresAt), "idle expiry is capped by the absolute expiry")
 }
+
+func TestTheSessionListLeavesOutSessionsPastTheCurrentIdleWindow(t *testing.T) {
+	env := apptest.New(t)
+	idle, org, user := signedInAs(t, env, "developer")
+	active, _ := env.Login("developer@example.com", "a long password for developer@example.com")
+	require.Equal(t, http.StatusOK, idle.Get("/me").Status)
+
+	setRole(t, env, org, user, "admin")
+	env.Clock.Advance(privilegedIdle - time.Minute)
+	require.Equal(t, http.StatusOK, active.Get("/me").Status)
+	env.Clock.Advance(2 * time.Minute)
+
+	var list []struct{ Current bool }
+	res := active.Get("/sessions")
+	require.Equal(t, http.StatusOK, res.Status, string(res.Raw))
+	res.Decode(t, &list)
+	require.Len(t, list, 1, "the session idle for more than 4 hours is not listed as active")
+	assert.True(t, list[0].Current)
+}

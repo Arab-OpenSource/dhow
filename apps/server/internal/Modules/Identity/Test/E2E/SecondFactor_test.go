@@ -134,7 +134,7 @@ func TestTheGracePeriodThenTheBlock(t *testing.T) {
 	assert.Nil(t, admin.SecondFactorDue(org))
 }
 
-func TestWideningTheRuleStartsANewGracePeriodAndNarrowingKeepsIt(t *testing.T) {
+func TestWideningGivesOnlyNewlyCoveredRolesANewGracePeriodAndNarrowingKeepsIt(t *testing.T) {
 	env := apptest.New(t)
 	start, org, fresh := ownerWithTotp(t, env)
 	ownerID := uuid.MustParse(start.UserID)
@@ -149,13 +149,17 @@ func TestWideningTheRuleStartsANewGracePeriodAndNarrowingKeepsIt(t *testing.T) {
 	require.Equal(t, http.StatusOK, owner().ChangeSecondFactorRule(org, "everyone", fresh()).Status)
 	widened := *ruleOf(t, owner(), org).RequireSecondFactorSince
 	assert.True(t, widened.After(first), "the rule reached more roles, so the clock restarts")
-	assert.WithinDuration(t, widened.Add(config.SecondFactorGrace), *dueOf(developerID), time.Second)
-	assert.WithinDuration(t, widened.Add(config.SecondFactorGrace), *dueOf(adminID), time.Second,
-		"one start for the whole rule keeps the model simple")
+	assert.WithinDuration(t, widened.Add(config.SecondFactorGrace), *dueOf(developerID), time.Second,
+		"a role the rule did not cover before gets a full grace period")
+	assert.WithinDuration(t, first.Add(config.SecondFactorGrace), *dueOf(adminID), time.Second,
+		"a role that was already covered keeps its running grace period")
 
-	env.Clock.Advance(time.Hour)
+	env.Clock.Advance(5 * 24 * time.Hour)
+	assert.Equal(t, "SECOND_FACTOR_REQUIRED", errorCode(rename(env.SeedSession(adminID), org, "Late")),
+		"widening never frees an admin who is already overdue")
 	require.Equal(t, http.StatusOK, owner().ChangeSecondFactorRule(org, "admins", fresh()).Status)
-	assert.Equal(t, widened, *ruleOf(t, owner(), org).RequireSecondFactorSince, "narrowing never extends the grace period")
+	assert.Equal(t, first, *ruleOf(t, owner(), org).RequireSecondFactorSince, "narrowing never extends the grace period")
+	assert.WithinDuration(t, first.Add(config.SecondFactorGrace), *dueOf(adminID), time.Second)
 	assert.Nil(t, dueOf(developerID))
 
 	env.Clock.Advance(time.Hour)

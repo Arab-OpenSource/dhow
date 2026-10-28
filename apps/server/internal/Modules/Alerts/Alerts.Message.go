@@ -14,6 +14,8 @@ const (
 	ownerKey       = "Owner"
 	keySubject     = "mail.alert.subject"
 	keyBody        = "mail.alert.body"
+	keyResetBody   = "mail.alert.reset.body"
+	changeMfaReset = "mfa_reset"
 	keyUnknown     = "mail.alert.unknown"
 	keyChange      = "mail.alert.change."
 	mailDateLayout = "2006-01-02 15:04"
@@ -42,7 +44,7 @@ func changeOf(event string) (string, bool) {
 	case eventbus.AuthApiTokenCreated:
 		return "api_token_created", true
 	case eventbus.IdentityMemberMfaReset:
-		return "mfa_reset", true
+		return changeMfaReset, true
 	default:
 		return "", false
 	}
@@ -91,7 +93,11 @@ func Message(locale i18n.Locale, d Details) mailer.Message {
 		"{ip}", orUnknown(ApproximateIP(d.IP), unknown), "{browser}", orUnknown(Browser(d.UserAgent), unknown), "{link}", d.Link,
 	)
 	subject := strings.NewReplacer("{change}", change).Replace(i18n.Translate(locale, keySubject))
-	return mailer.Message{To: d.To, Subject: oneLine(subject), Body: r.Replace(i18n.Translate(locale, keyBody))}
+	body := keyBody
+	if d.Change == changeMfaReset {
+		body = keyResetBody
+	}
+	return mailer.Message{To: d.To, Subject: oneLine(subject), Body: r.Replace(i18n.Translate(locale, body))}
 }
 
 func orUnknown(v, unknown string) string {

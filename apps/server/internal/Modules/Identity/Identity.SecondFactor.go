@@ -25,14 +25,31 @@ func organizationOf(id uuid.UUID, name, slug string, created time.Time, rule str
 	}
 }
 
-func nextSince(current, next policy.SecondFactorRule, since *time.Time, now time.Time) *time.Time {
-	switch {
-	case next == policy.SecondFactorOff:
-		return nil
-	case next.Reach() > current.Reach() || since == nil:
+func orNow(t *time.Time, now time.Time) *time.Time {
+	if t == nil {
 		return &now
+	}
+	return t
+}
+
+func nextSince(current, next policy.SecondFactorRule, since, adminsSince *time.Time, now time.Time) (*time.Time, *time.Time) {
+	if next == policy.SecondFactorOff {
+		return nil, nil
+	}
+	if current == policy.SecondFactorOff {
+		return &now, &now
+	}
+	if adminsSince == nil {
+		adminsSince = since
+	}
+	adminsSince = orNow(adminsSince, now)
+	switch {
+	case next.Reach() > current.Reach():
+		return &now, adminsSince
+	case next == policy.SecondFactorAdmins:
+		return adminsSince, adminsSince
 	default:
-		return since
+		return orNow(since, now), adminsSince
 	}
 }
 
@@ -78,8 +95,9 @@ func (s *Service) UpdateSecondFactorRule(ctx context.Context, org uuid.UUID, rul
 			current = policy.SecondFactorEveryone
 		}
 		from = current
+		since, adminsSince := nextSince(current, next, locked.RequireSecondFactorSince, locked.RequireSecondFactorAdminsSince, now)
 		row, err := q.SetOrganizationSecondFactor(ctx, sqlc.SetOrganizationSecondFactorParams{
-			ID: org, Rule: string(next), Since: nextSince(current, next, locked.RequireSecondFactorSince, now), Now: now,
+			ID: org, Rule: string(next), Since: since, AdminsSince: adminsSince, Now: now,
 		})
 		if err != nil {
 			return err
