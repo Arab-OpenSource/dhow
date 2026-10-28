@@ -21,7 +21,7 @@ If you are not sure, use Docker Compose. Every method runs the same server with 
 
 - **A Linux host** on `amd64` or `arm64`. The release images are built for both.
 - **PostgreSQL 18.** The Compose stack brings its own. Elsewhere, Dhow needs a database and a user that owns it, reached over TLS (`sslmode=require` or stronger).
-- **About 1 GB of memory** for Dhow and PostgreSQL together. The Compose stack limits Dhow to 256 MB and PostgreSQL to 512 MB.
+- **At least 1 CPU core, 2 GiB of memory and 5 GiB of free disk** for Dhow and PostgreSQL on one host; 2 cores, 4 GiB and 20 GiB are recommended. The installer refuses a smaller host and `dhow-server doctor` reports one. See [Hardware requirements](../requirements.md) for the measured numbers and what happens below them.
 - **A host name and a TLS certificate.** Users reach Dhow at an `https://` address on its own host name, such as `dhow.example.com`, never under a path like `example.com/dhow`. A reverse proxy in front of Dhow terminates TLS: see [Put Dhow behind a reverse proxy](reverse-proxy.md) for nginx, Caddy and Traefik.
 - **Ports 80 and 443** open to users on the proxy. Dhow's own port, 8080, stays on the loopback interface or a private network.
 - **Outbound HTTPS, optionally.** It is used to pull images and for the breached-password check, which `DHOW_BREACHED_PASSWORD_CHECK=false` turns off.
@@ -59,6 +59,7 @@ Go through this list before other people use the instance.
 
 ## More
 
+- [Hardware requirements](../requirements.md): the CPU, memory and disk Dhow and its runners need, and how they were measured.
 - [Configuration](configuration.md): every `DHOW_*` variable, its default and its validation.
 - [Sign in with OIDC](../guides/oidc.md): sign-in with Google, Keycloak, GitHub or any OIDC provider.
 - [Troubleshooting](troubleshooting.md): `CSRF_FAILED`, cookies that are not stored, the public URL and `sslmode` errors, the wrong client address, locked-out sign-ins, and the setup link.
