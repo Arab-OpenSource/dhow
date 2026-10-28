@@ -308,6 +308,12 @@ docker run -d --name dhow-pg -e POSTGRES_USER=dhow -e POSTGRES_PASSWORD=dhow -e 
   - **`Logs`:** التقسيم لسطور، والـ chunker، والـ spill، والضغط على الـ pipe.
   - **`Sandbox`:** الـ interface، وdriver وهمي تحت build tag `dhowtest` بيرجّع output متسجّل ومابيشغّلش أي process.
   - **`make build-runner`**، والـ CI بيبني الـ runner.
+  - **الفرق في التنفيذ** ([ADR-0053](ADR/0053-runner-implementation.md)):
+    - الـ journal بيحفظ النتيجة لما تبقى معروفة، فالإقلاع بيبعتها هي بدل `lost` لو الـ runner وقع قبل الرد.
+    - الـ masker بيحجز أطول بداية ممكنة لسر بس، بدل تداخل بطول أطول سر.
+    - انتهاء وقت الخطوة بيقفل `failed` بـ `STEP_FAILED` (والخطوة `TIMED_OUT`)، لأن السيرفر بيرفض `failed` بسبب `TIMED_OUT`.
+    - الـ E2E بيبني الـ runner ويشغّله كـ process، لأن قاعدة `internal` في Go بتمنع اختبار واحد يستورد الاتنين.
+    - رفض `RESOURCE_REQUEST_EXCEEDS_RUNNER` وقت الإنشاء لسه متأجل (محتاج حقل في `RegisterRequest`).
 - **قبول:**
   - **E2E (سيرفر حقيقي في نفس العملية وPostgres، والـ runner بالـ driver الوهمي):** تسجيل ثم lease ثم logs ثم إنهاء، والـ job `succeeded`.
   - **grant متوقّع بمفتاح تاني:** مرفوض ومش بيتنفّذ.

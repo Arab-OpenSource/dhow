@@ -13,6 +13,8 @@ Dhow is one server process with the web app built in, and a PostgreSQL 18 databa
 | Helm chart for Kubernetes | With M3, together with the runners | Clusters with an external PostgreSQL | The cluster, the database, ingress |
 | Signed air-gapped bundle | Enterprise, later | Networks without internet access | The offline registry and updates |
 
+Jobs run on separate runner hosts: see [Dhow runners](../runner/README.md) to install and register one.
+
 If you are not sure, use Docker Compose. Every method runs the same server with the same [configuration](configuration.md), so you can move between them by restoring a database backup and keeping the same `DHOW_SECRET_KEY`.
 
 ## Requirements for every method
