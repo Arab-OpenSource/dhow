@@ -25,6 +25,7 @@ type Driver struct {
 	agentPath string
 	paths     paths
 	levels    []runnerv1.Isolation
+	skipPull  bool
 	log       *slog.Logger
 }
 
@@ -35,6 +36,7 @@ type Options struct {
 	AgentPath  string
 	Levels     []runnerv1.Isolation
 	SkipChecks bool
+	SkipPull   bool
 }
 
 func New(ctx context.Context, o Options) (*Driver, error) {
@@ -70,7 +72,7 @@ func New(ctx context.Context, o Options) (*Driver, error) {
 	if len(levels) == 0 {
 		levels = []runnerv1.Isolation{runnerv1.Isolation_ISOLATION_CONTAINER}
 	}
-	return &Driver{binary: binary, agentPath: agentPath, paths: p, levels: levels, log: o.Log}, nil
+	return &Driver{binary: binary, agentPath: agentPath, paths: p, levels: levels, skipPull: o.SkipPull, log: o.Log}, nil
 }
 
 func (d *Driver) Name() string { return "podman" }
@@ -78,6 +80,10 @@ func (d *Driver) Name() string { return "podman" }
 func (d *Driver) Isolation() []runnerv1.Isolation { return d.levels }
 
 func (d *Driver) runner() runner { return d.paths.env(d.binary) }
+
+func (d *Driver) Podman(ctx context.Context, args ...string) ([]byte, error) {
+	return d.runner().run(ctx, args...)
+}
 
 func (d *Driver) Cleanup(ctx context.Context, runnerID string) error {
 	r := d.runner()
@@ -109,7 +115,7 @@ func (d *Driver) Prepare(ctx context.Context, spec sandbox.PrepareSpec) (sandbox
 			return nil, err
 		}
 	}
-	if _, err := r.run(ctx, "pull", "--", spec.Image); err != nil {
+	if err := d.pull(ctx, spec.Image); err != nil {
 		return nil, fmt.Errorf("%w: %w", sandbox.ErrImagePull, err)
 	}
 	if _, err := r.run(ctx, createArgs(spec, l, d.paths.seccompFile)...); err != nil {
@@ -130,6 +136,16 @@ func (d *Driver) Prepare(ctx context.Context, spec sandbox.PrepareSpec) (sandbox
 		return nil, fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
 	}
 	return box, nil
+}
+
+func (d *Driver) pull(ctx context.Context, image string) error {
+	r := d.runner()
+	if d.skipPull {
+		_, err := r.run(ctx, "image", "exists", "--", image)
+		return err
+	}
+	_, err := r.run(ctx, "pull", "--", image)
+	return err
 }
 
 func (d *Driver) remove(ctx context.Context, name string) {

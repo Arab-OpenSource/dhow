@@ -55,3 +55,4 @@
 | [0051](0051-jobs-and-leasing-implementation.md) | تنفيذ الـ jobs والـ leases في M3.3: الـ triggers، والـ claim، والرسائل الموقّعة، وقواعد الإنهاء، والـ reconciler |
 | [0052](0052-job-logs-implementation.md) | تنفيذ الـ logs في M3.4: الجدول المقسّم، والـ Append بقفل الـ attempt، والـ SSE بقراية لكل مشترك، والصيانة تحت advisory lock |
 | [0053](0053-runner-implementation.md) | تنفيذ الـ runner في M3.5: الطبقات، والهوية على القرص، والقفل الذاتي، والـ journal، والـ masking والـ logs، والـ driver الوهمي |
+| [0055](0055-podman-driver-and-agent-implementation.md) | تنفيذ الـ sandbox في M3.6: driver الـ Podman، والـ agent كـ PID 1، وقناة التحكم، والـ seccomp، والـ escape والـ limits suites |

@@ -2,6 +2,7 @@ package wire
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"testing"
 
@@ -43,7 +44,7 @@ func TestRoundTripFramesInBothDirections(t *testing.T) {
 func TestReadRejectsAnOversizedFrame(t *testing.T) {
 	buf := bytes.NewBuffer([]byte{0xff, 0xff, 0xff, 0xff})
 	c := NewConn(pipe{Reader: buf, Writer: io.Discard})
-	if _, err := c.Read(); err != ErrFrameTooLarge {
+	if _, err := c.Read(); !errors.Is(err, ErrFrameTooLarge) {
 		t.Fatalf("want ErrFrameTooLarge, got %v", err)
 	}
 }
