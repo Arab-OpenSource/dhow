@@ -1,10 +1,9 @@
 import { Suspense } from 'react';
 
-import { checkOf, isThemeEditFrame, type TFrameId } from '@/App/Panels';
+import { checkOf, isThemeEditFrame, memberOf, teamOf, type TFrameId } from '@/App/Panels';
 import { lazyComponent, type IPreloadable, type TLazyComponent } from '@/Core/Ui/LazyComponent';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
-
 
 type TFramePart =
   | 'system-status'
@@ -15,7 +14,14 @@ type TFramePart =
   | 'account-password'
   | 'account-totp'
   | 'audit'
-  | 'organization';
+  | 'organization'
+  | 'organizations'
+  | 'organization-new'
+  | 'organization-invite'
+  | 'organization-transfer'
+  | 'team-new'
+  | 'team'
+  | 'member';
 
 const SystemStatusBody = lazyComponent(() =>
   import('@/Modules/System/Components/SystemStatusBody').then((module) => module.SystemStatusBody),
@@ -67,9 +73,26 @@ const AuditFooter = lazyComponent(() =>
   import('@/Modules/Audit/Components/AuditFooter').then((module) => module.AuditFooter),
 );
 
-const OrganizationSlide = lazyComponent(() =>
-  import('@/Modules/Identity/Components/OrganizationSlide').then((module) => module.OrganizationSlide),
+const organizationSlide = () => import('@/Modules/Organization/Components/OrganizationSlide');
+const OrganizationSlide = lazyComponent(() => organizationSlide().then((module) => module.OrganizationSlide));
+const OrganizationSubtitle = lazyComponent(() => organizationSlide().then((module) => module.OrganizationSubtitle));
+const OrganizationFooter = lazyComponent(() => organizationSlide().then((module) => module.OrganizationFooter));
+const OrganizationsBody = lazyComponent(() =>
+  import('@/Modules/Organization/Components/OrganizationsBody').then((module) => module.OrganizationsBody),
 );
+const OrganizationNewBody = lazyComponent(() =>
+  import('@/Modules/Organization/Components/OrganizationNewBody').then((module) => module.OrganizationNewBody),
+);
+const InviteBody = lazyComponent(() => import('@/Modules/Organization/Components/InviteBody').then((module) => module.InviteBody));
+const InviteFooter = lazyComponent(() =>
+  import('@/Modules/Organization/Components/InviteFooter').then((module) => module.InviteFooter),
+);
+const TransferBody = lazyComponent(() =>
+  import('@/Modules/Organization/Components/TransferBody').then((module) => module.TransferBody),
+);
+const TeamNewBody = lazyComponent(() => import('@/Modules/Organization/Components/TeamNewBody').then((module) => module.TeamNewBody));
+const TeamBody = lazyComponent(() => import('@/Modules/Organization/Components/TeamBody').then((module) => module.TeamBody));
+const MemberBody = lazyComponent(() => import('@/Modules/Organization/Components/MemberBody').then((module) => module.MemberBody));
 
 const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   'system-status': [SystemStatusBody, SystemStatusFooter],
@@ -80,7 +103,14 @@ const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   'account-password': [PasswordBody, PasswordFooter],
   'account-totp': [TotpBody, TotpFooter],
   audit: [AuditBody, AuditFooter],
-  organization: [OrganizationSlide],
+  organization: [OrganizationSlide, OrganizationSubtitle, OrganizationFooter],
+  organizations: [OrganizationsBody],
+  'organization-new': [OrganizationNewBody],
+  'organization-invite': [InviteBody, InviteFooter],
+  'organization-transfer': [TransferBody],
+  'team-new': [TeamNewBody],
+  team: [TeamBody],
+  member: [MemberBody],
 };
 
 const isPart = (id: string): id is TFramePart => Object.hasOwn(PARTS, id);
@@ -88,6 +118,8 @@ const isPart = (id: string): id is TFramePart => Object.hasOwn(PARTS, id);
 const partOf = (id: TFrameId): TFramePart | null => {
   if (checkOf(id)) return 'check';
   if (isThemeEditFrame(id)) return 'theme-edit';
+  if (memberOf(id)) return 'member';
+  if (teamOf(id)) return 'team';
   return isPart(id) ? id : null;
 };
 
@@ -149,3 +181,13 @@ export const LazyAuditBody = withSkeleton(AuditBody);
 export const LazyAuditFooter = withNothing(AuditFooter);
 
 export const LazyOrganizationSlide = withSkeleton(OrganizationSlide);
+export const LazyOrganizationSubtitle = withNothing(OrganizationSubtitle);
+export const LazyOrganizationFooter = withNothing(OrganizationFooter);
+export const LazyOrganizationsBody = withSkeleton(OrganizationsBody);
+export const LazyOrganizationNewBody = withSkeleton(OrganizationNewBody);
+export const LazyInviteBody = withSkeleton(InviteBody);
+export const LazyInviteFooter = withNothing(InviteFooter);
+export const LazyTransferBody = withSkeleton(TransferBody);
+export const LazyTeamNewBody = withSkeleton(TeamNewBody);
+export const LazyTeamBody = withSkeleton(TeamBody);
+export const LazyMemberBody = withSkeleton(MemberBody);

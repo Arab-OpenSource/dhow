@@ -3,16 +3,19 @@ import type { components } from '@/Core/Api/Schema';
 type TSchemas = components['schemas'];
 
 export type TRole = TSchemas['Role'];
+export type TBindableRole = TSchemas['BindableRole'];
 export type TUser = TSchemas['User'];
 export type TMembership = TSchemas['MembershipView'];
 export type TOrganization = TSchemas['Organization'];
 export type TMe = Omit<TSchemas['Me'], 'CsrfToken'>;
 
 export const ROLES: readonly TRole[] = ['owner', 'admin', 'maintainer', 'developer', 'viewer'];
+export const BINDABLE_ROLES: readonly TBindableRole[] = ['admin', 'maintainer', 'developer', 'viewer'];
 
 const AUDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const ORGANIZATION_EDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const MEMBER_READ_ROLES: readonly TRole[] = ['owner', 'admin', 'maintainer', 'developer'];
+const MEMBER_MANAGE_ROLES: readonly TRole[] = ['owner', 'admin'];
 
 export const canReadAudit = (role: TRole | undefined): boolean => role !== undefined && AUDIT_ROLES.includes(role);
 
@@ -20,3 +23,16 @@ export const canEditOrganization = (role: TRole | undefined): boolean =>
   role !== undefined && ORGANIZATION_EDIT_ROLES.includes(role);
 
 export const canReadMembers = (role: TRole | undefined): boolean => role !== undefined && MEMBER_READ_ROLES.includes(role);
+
+export const canManageMembers = (role: TRole | undefined): boolean =>
+  role !== undefined && MEMBER_MANAGE_ROLES.includes(role);
+
+export const rankOf = (role: TRole | undefined): number => (role === undefined ? 0 : ROLES.length - ROLES.indexOf(role));
+
+export const canGrant = (actor: TRole | undefined, role: TRole): boolean => rankOf(actor) >= rankOf(role);
+
+export const canManage = (actor: TRole | undefined, target: TRole): boolean =>
+  target === 'owner' ? actor === 'owner' : canManageMembers(actor) && canGrant(actor, target);
+
+export const grantableRoles = (actor: TRole | undefined): TBindableRole[] =>
+  BINDABLE_ROLES.filter((role) => canGrant(actor, role));

@@ -27,7 +27,9 @@ export type TIconName =
   | 'next'
   | 'plus'
   | 'eye'
-  | 'eyeOff';
+  | 'eyeOff'
+  | 'copy'
+  | 'swap';
 
 export const MIRRORED_ICONS: readonly TIconName[] = ['back', 'next'];
 
@@ -168,4 +170,11 @@ export const ICONS: Record<TIconName, ReactElement> = {
       <path d="M10 10a3 3 0 0 0 4 4" />
     </>
   ),
+  copy: (
+    <>
+      <rect x="8" y="8" width="12" height="12" rx="2" />
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+    </>
+  ),
+  swap: <path d="M7 4L3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7" />,
 };

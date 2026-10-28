@@ -474,6 +474,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create an organization
+         * @description Needs `org.create`, an instance-level action: only the instance owner may create organizations, unless the server runs with `DHOW_ORG_CREATION=any-user`. The caller becomes its only owner.
+         */
+        post: operations["createOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}": {
         parameters: {
             query?: never;
@@ -512,6 +532,350 @@ export interface paths {
         get: operations["listMembers"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leave an organization
+         * @description Needs `org.leave`, which every role has. The last owner cannot leave (`LAST_OWNER`): transfer the ownership first. Team memberships in the organization end too.
+         */
+        post: operations["leaveOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/transfer-ownership": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hand the ownership to another member
+         * @description Needs `org.transfer` (owners only) and a current factor of the caller. The target becomes an owner and the caller becomes an admin. Every session of the target and every other session of the caller are revoked.
+         */
+        post: operations["transferOwnership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a member from the organization
+         * @description Needs `member.manage` and the same rank rules as a role change. The last owner is never removed (`LAST_OWNER`). Removing yourself works like leaving. The member's team memberships in the organization end and every session of the member is revoked.
+         */
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a member's role
+         * @description Needs `member.manage`. Nobody grants a role above their own (`ROLE_NOT_ALLOWED`), only owners change an owner, and the caller cannot change their own role. Granting or taking away the owner role also needs a current factor of the caller. Every session of the member is revoked, so the new role applies at once.
+         */
+        patch: operations["changeMemberRole"];
+        trace?: never;
+    };
+    "/organizations/{id}/members/{userId}/mfa-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset a member's two-step verification
+         * @description For a member who lost every second factor and every recovery code. Needs `member.manage`, a current factor of the caller, and authority over every organization the member belongs to, because the factors belong to the account. Removes the member's TOTP, passkeys and recovery codes, revokes every session, and asks the member to set up a second factor again. Audited as a high-severity event.
+         */
+        post: operations["resetMemberMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the teams of an organization
+         * @description Needs `member.read`.
+         */
+        get: operations["listTeams"];
+        put?: never;
+        /**
+         * Create a team
+         * @description Needs `member.manage`. An optional `Role` binds the team to the organization at that role in the same request, capped by the caller's own role. Team names are unique in the organization, ignoring case.
+         */
+        post: operations["createTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/teams/{teamId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a team with its members and role bindings
+         * @description Needs `member.read`. A team of another organization is 404.
+         */
+        get: operations["getTeam"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a team
+         * @description Needs `member.manage`, and the caller's role must be at least every role the team grants. Members whose effective role drops are signed out everywhere.
+         */
+        delete: operations["deleteTeam"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename a team or change its description
+         * @description Needs `member.manage`.
+         */
+        patch: operations["updateTeam"];
+        trace?: never;
+    };
+    "/organizations/{id}/teams/{teamId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a member of the organization to a team
+         * @description Needs `member.manage`, and the caller's role must be at least every role the team grants. Only members of the organization can join its teams. If the member's effective role rises, every session of the member is revoked.
+         */
+        post: operations["addTeamMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/teams/{teamId}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a member from a team
+         * @description Needs `member.manage`, and the caller's role must be at least every role the team grants. If the member's effective role drops, every session of the member is revoked.
+         */
+        delete: operations["removeTeamMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/teams/{teamId}/role-bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant a role to a team
+         * @description Needs `member.manage`. The role is capped by the caller's own role and is never `owner`. A team has at most one binding per scope target. Only the `org` scope exists today; project and environment scopes arrive with projects. Members whose effective role rises are signed out everywhere.
+         */
+        post: operations["createRoleBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/teams/{teamId}/role-bindings/{bindingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Take a role away from a team
+         * @description Needs `member.manage`, and the caller's role must be at least the role the binding grants. Members whose effective role drops are signed out everywhere.
+         */
+        delete: operations["deleteRoleBinding"];
+        options?: never;
+        head?: never;
+        /**
+         * Change the role a binding grants
+         * @description Needs `member.manage`, and the caller's role must be at least both the old and the new role. Members whose effective role changes are signed out everywhere.
+         */
+        patch: operations["updateRoleBinding"];
+        trace?: never;
+    };
+    "/organizations/{id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the open invitations of an organization
+         * @description Needs `member.manage`. Open means neither accepted nor revoked; expired ones are listed with `Expired` so they can be resent. Newest first.
+         */
+        get: operations["listInvitations"];
+        put?: never;
+        /**
+         * Invite someone by email
+         * @description Needs `member.manage`. The role is capped by the caller's own role and is never `owner`. The answer carries the invitation link once (`${PUBLIC_URL}/invite#<token>`); the server keeps only the token's SHA-256. The link works once and expires after 7 days. When SMTP is set up the link is emailed too, and `EmailStatus` says whether that worked: the invitation exists either way. An open invitation for the same address is `INVITATION_PENDING`, and an existing member is `ALREADY_MEMBER`.
+         */
+        post: operations["createInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/invitations/{invitationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke an invitation
+         * @description Needs `member.manage` and a role at least the invited one. The link stops working at once.
+         */
+        delete: operations["revokeInvitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/invitations/{invitationId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a new link for an invitation
+         * @description Needs `member.manage` and a role at least the invited one. Replaces the token, so the old link stops working, and starts a new 7-day period. Emails the new link when SMTP is set up.
+         */
+        post: operations["resendInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invitations/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read what an invitation link offers
+         * @description Public. The token travels in the body, never in the URL, so it stays out of access logs. An unknown, used, revoked or expired token, or one whose inviter no longer has the authority to invite, is `INVITATION_INVALID` with nothing else.
+         */
+        post: operations["previewInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept an invitation with a new account
+         * @description Public. Creates the account for the invited email with the given name and password (12 to 128 characters, checked against known breaches) and adds it to the organization at the invited role. The token works once: two parallel calls never both succeed. An address that already has an account is `INVITATION_ACCOUNT_EXISTS`: sign in and use `POST /me/invitations/accept`. No session is created; sign in afterwards.
+         */
+        post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept an invitation as the signed-in user
+         * @description The invitation's email must be the signed-in user's email (`INVITATION_EMAIL_MISMATCH` otherwise). A user is never added to an organization because of a matching email alone: the token is always required.
+         */
+        post: operations["acceptInvitationSignedIn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -694,7 +1058,7 @@ export interface components {
         };
         ErrorDetail: {
             /**
-             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED` or `PASSKEY_REJECTED`.
+             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH` or `INVITATION_ACCOUNT_EXISTS`.
              * @example INTERNAL
              */
             Code: string;
@@ -776,8 +1140,14 @@ export interface components {
             Name: string;
             Email: string;
             Role: components["schemas"]["Role"];
+            /** @description The higher of the direct role and every role the member's teams grant in the organization. */
+            EffectiveRole: components["schemas"]["Role"];
             /** Format: date-time */
             JoinedAt: string;
+            /** @description The member's strongest second factor. Present only for callers with `member.manage`. */
+            Mfa?: components["schemas"]["MfaState"];
+            /** @description An admin reset the member's second factor and the member has not set up a new one yet. */
+            MfaResetPending?: boolean;
         };
         MemberListResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Member"][];
@@ -800,6 +1170,7 @@ export interface components {
              */
             ExpiresAt: string;
         };
+        /** @description One organization of the user. `Role` is the effective role: the higher of the direct role and every role the user's teams grant there. */
         MembershipView: {
             /** Format: uuid */
             OrganizationId: string;
@@ -818,6 +1189,10 @@ export interface components {
             SessionId: string;
             /** Format: date-time */
             ExpiresAt: string;
+            /** @description True when this user may call `POST /organizations`. */
+            CanCreateOrganizations: boolean;
+            /** @description An admin reset this user's second factor, and a new one is not set up yet. */
+            MfaReenrollRequired: boolean;
         };
         SessionView: {
             /** Format: uuid */
@@ -1106,6 +1481,184 @@ export interface components {
         CreatedRunnerRegistrationTokenResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["CreatedRunnerRegistrationToken"];
         };
+        /**
+         * @description A role that an invitation or a team binding may grant. Owner comes only from a direct membership.
+         * @enum {string}
+         */
+        BindableRole: "admin" | "maintainer" | "developer" | "viewer";
+        /** @enum {string} */
+        MfaState: "passkey" | "totp" | "none";
+        CreateOrganizationRequest: {
+            Name: string;
+            /** @description Lowercase letters, digits and single hyphens. Unique among organizations. */
+            Slug: string;
+        };
+        TransferOwnershipRequest: {
+            /** Format: uuid */
+            UserId: string;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        ChangeMemberRoleRequest: {
+            Role: components["schemas"]["Role"];
+            CurrentFactor?: components["schemas"]["CurrentFactor"];
+        };
+        MemberChange: {
+            /** Format: uuid */
+            UserId: string;
+            Role?: components["schemas"]["Role"];
+            /** @description How many sessions of the member were revoked. */
+            Revoked: number;
+        };
+        MemberChangeResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["MemberChange"];
+        };
+        RoleBinding: {
+            /** Format: uuid */
+            Id: string;
+            Scope: components["schemas"]["BindingScope"];
+            Role: components["schemas"]["BindableRole"];
+            /** Format: date-time */
+            CreatedAt: string;
+        };
+        /**
+         * @description Where a binding applies. `project` and `environment` arrive with projects.
+         * @enum {string}
+         */
+        BindingScope: "org";
+        Team: {
+            /** Format: uuid */
+            Id: string;
+            Name: string;
+            Description: string;
+            MemberCount: number;
+            Bindings: components["schemas"]["RoleBinding"][];
+            /** Format: date-time */
+            CreatedAt: string;
+        };
+        TeamMember: {
+            /** Format: uuid */
+            UserId: string;
+            Name: string;
+            Email: string;
+            Role: components["schemas"]["Role"];
+            /** Format: date-time */
+            AddedAt: string;
+        };
+        TeamDetail: {
+            /** Format: uuid */
+            Id: string;
+            Name: string;
+            Description: string;
+            MemberCount: number;
+            Bindings: components["schemas"]["RoleBinding"][];
+            /** Format: date-time */
+            CreatedAt: string;
+            Members: components["schemas"]["TeamMember"][];
+        };
+        TeamListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Team"][];
+        };
+        TeamDetailResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["TeamDetail"];
+        };
+        TeamChange: {
+            Team: components["schemas"]["TeamDetail"];
+            /** @description How many sessions were revoked because an effective role changed. */
+            Revoked: number;
+        };
+        TeamChangeResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["TeamChange"];
+        };
+        CreateTeamRequest: {
+            Name: string;
+            Description?: string;
+            Role?: components["schemas"]["BindableRole"];
+        };
+        UpdateTeamRequest: {
+            Name: string;
+            Description?: string;
+        };
+        AddTeamMemberRequest: {
+            /** Format: uuid */
+            UserId: string;
+        };
+        CreateRoleBindingRequest: {
+            Scope: components["schemas"]["BindingScope"];
+            Role: components["schemas"]["BindableRole"];
+        };
+        UpdateRoleBindingRequest: {
+            Role: components["schemas"]["BindableRole"];
+        };
+        /**
+         * @description `disabled` when SMTP is not set up, `sent` when the mail server accepted the email, `failed` when it did not. The link works in every case.
+         * @enum {string}
+         */
+        EmailStatus: "disabled" | "sent" | "failed";
+        Invitation: {
+            /** Format: uuid */
+            Id: string;
+            Email: string;
+            Role: components["schemas"]["BindableRole"];
+            InvitedByName: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            ExpiresAt: string;
+            /** Format: date-time */
+            SentAt: string;
+            SendCount: number;
+            EmailStatus: components["schemas"]["EmailStatus"];
+            Expired: boolean;
+        };
+        InvitationResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Invitation"];
+        };
+        InvitationListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Invitation"][];
+        };
+        CreateInvitationRequest: {
+            Email: string;
+            Role: components["schemas"]["BindableRole"];
+        };
+        InvitationIssued: {
+            Invitation: components["schemas"]["Invitation"];
+            /** @description The only copy of the link. Never stored and never logged. */
+            Link: string;
+        };
+        InvitationIssuedResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["InvitationIssued"];
+        };
+        InvitationTokenRequest: {
+            Token: string;
+        };
+        InvitationPreview: {
+            OrganizationName: string;
+            InviterName: string;
+            Email: string;
+            Role: components["schemas"]["BindableRole"];
+            /** Format: date-time */
+            ExpiresAt: string;
+            /** @description True when the email already has an account, which accepts by signing in. */
+            AccountExists: boolean;
+        };
+        InvitationPreviewResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["InvitationPreview"];
+        };
+        AcceptInvitationRequest: {
+            Token: string;
+            Name: string;
+            /** @description 12 to 128 characters. Never returned and never logged. */
+            Password: string;
+            Locale?: components["schemas"]["Locale"];
+        };
+        InvitationAccepted: {
+            User: components["schemas"]["User"];
+            Organization: components["schemas"]["Organization"];
+            Role: components["schemas"]["Role"];
+        };
+        InvitationAcceptedResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["InvitationAccepted"];
+        };
     };
     responses: {
         /** @description An error. Never contains internal details. */
@@ -1122,6 +1675,10 @@ export interface components {
         Id: string;
         RunnerId: string;
         TokenId: string;
+        UserId: string;
+        TeamId: string;
+        InvitationId: string;
+        BindingId: string;
         Page: number;
         Limit: number;
     };
@@ -1755,6 +2312,31 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    createOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrganizationRequest"];
+            };
+        };
+        responses: {
+            /** @description The new organization. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     getOrganization: {
         parameters: {
             query?: never;
@@ -1826,6 +2408,570 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MemberListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    leaveOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller is no longer a member. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    transferOwnership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferOwnershipRequest"];
+            };
+        };
+        responses: {
+            /** @description The ownership moved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The member was removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    changeMemberRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeMemberRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description The role changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    resetMemberMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description The second factors were removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listTeams: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every team, by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTeamRequest"];
+            };
+        };
+        responses: {
+            /** @description The new team. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamDetailResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                teamId: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The team. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamDetailResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                teamId: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The team was deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokedCountResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateTeam: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                teamId: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTeamRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated team. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamDetailResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    addTeamMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                teamId: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTeamMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated team. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    removeTeamMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                teamId: components["parameters"]["TeamId"];
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The updated team. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createRoleBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                teamId: components["parameters"]["TeamId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRoleBindingRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated team. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteRoleBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                teamId: components["parameters"]["TeamId"];
+                bindingId: components["parameters"]["BindingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The updated team. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateRoleBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                teamId: components["parameters"]["TeamId"];
+                bindingId: components["parameters"]["BindingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoleBindingRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated team. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listInvitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The open invitations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description The invitation and its link. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationIssuedResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                invitationId: components["parameters"]["InvitationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The revoked invitation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    resendInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                invitationId: components["parameters"]["InvitationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invitation and its new link. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationIssuedResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    previewInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description The invitation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationPreviewResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    acceptInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description The account was created and joined the organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationAcceptedResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    acceptInvitationSignedIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description The user joined the organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationAcceptedResponse"];
                 };
             };
             default: components["responses"]["Error"];

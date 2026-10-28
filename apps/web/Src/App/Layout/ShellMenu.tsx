@@ -3,7 +3,7 @@ import { OrganizationChip } from '@/App/Layout/OrganizationChip';
 import type { TFrameId } from '@/App/Panels';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
 import { canReadAudit } from '@/Core/Auth/AuthTypes';
-import { useMe } from '@/Core/Auth/useMe';
+import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { useSignOut } from '@/Core/Auth/useSignOut';
 import { Mark } from '@/Core/Ui/Mark';
 import { SideMenu, type IMenuItem, type TMenuEntry } from '@/Core/Ui/SideMenu';
@@ -19,7 +19,7 @@ export const ShellMenu = () => {
 
   const me = useMe();
   const { SignOut, Pending } = useSignOut();
-  const role = me.data?.Memberships[0]?.Role;
+  const role = useCurrentMembership()?.Role;
 
   const items: TMenuEntry[] = [
     { id: 'home', icon: 'home', label: t('shell.nav.home'), href: '/', current: stack.length === 0, onSelect: goWorkspace },

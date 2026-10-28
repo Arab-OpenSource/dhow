@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { TMe } from '@/Core/Auth/AuthTypes';
+import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Badge } from '@/Core/Ui/Badge';
 import { Card } from '@/Core/Ui/Card';
@@ -17,7 +18,7 @@ export interface IAccountBodyProps {
 export const AccountBody = ({ me, security }: IAccountBodyProps) => {
   const t = useT();
   const time = useRelativeTime();
-  const membership = me.Memberships[0];
+  const membership = useCurrentMembership();
 
   return (
     <>

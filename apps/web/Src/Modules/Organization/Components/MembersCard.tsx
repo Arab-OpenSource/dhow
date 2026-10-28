@@ -1,7 +1,8 @@
 import { useState } from 'react';
 
-import { canReadMembers, type TRole } from '@/Core/Auth/AuthTypes';
-import { useMembers } from '@/Core/Auth/useMembers';
+import { canManageMembers, canReadMembers, type TRole } from '@/Core/Auth/AuthTypes';
+import { useMe } from '@/Core/Auth/useMe';
+import { useMembers, type TMember } from '@/Core/Auth/useMembers';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Avatar } from '@/Core/Ui/Avatar';
@@ -20,14 +21,45 @@ const PAGE_SIZE = 25;
 export interface IMembersCardProps {
   organizationId: string;
   role: TRole;
+  onOpenMember?: (userId: string) => void;
 }
 
-const MembersList = ({ organizationId }: { organizationId: string }) => {
+const MemberBadges = ({ member, manager }: { member: TMember; manager: boolean }) => {
+  const t = useT();
+  return (
+    <>
+      {manager && member.Mfa === 'none' ? (
+        <Badge tone="warn">{member.MfaResetPending ? t('members.mfa.resetPending') : t('members.mfa.needs')}</Badge>
+      ) : null}
+      <Badge tone="mute">{t(`role.${member.EffectiveRole}`)}</Badge>
+    </>
+  );
+};
+
+const MemberSub = ({ member, manager }: { member: TMember; manager: boolean }) => {
+  const t = useT();
+  const time = useRelativeTime();
+  return (
+    <>
+      <bdi dir="ltr" className="block font-mono">
+        {member.Email}
+      </bdi>
+      <span className="block">
+        {member.EffectiveRole === member.Role ? null : `${t('members.viaTeam', { role: t(`role.${member.EffectiveRole}`) })} · `}
+        {manager && member.Mfa !== undefined && member.Mfa !== 'none' ? `${t(`members.mfa.${member.Mfa}`)} · ` : null}
+        {t('members.joined', { when: time.ago(member.JoinedAt) })}
+      </span>
+    </>
+  );
+};
+
+const MembersList = ({ organizationId, role, onOpenMember }: IMembersCardProps) => {
   const t = useT();
   const errorText = useApiErrorText();
-  const time = useRelativeTime();
+  const me = useMe().data?.User.Id;
   const [Page, setPage] = useState(1);
   const members = useMembers(organizationId, Page, PAGE_SIZE);
+  const manager = canManageMembers(role);
 
   if (members.isError) {
     return (
@@ -56,16 +88,16 @@ const MembersList = ({ organizationId }: { organizationId: string }) => {
           <Row
             key={member.UserId}
             start={<Avatar name={member.Name} size="sm" />}
-            title={member.Name}
-            sub={
-              <>
-                <bdi dir="ltr" className="block font-mono">
-                  {member.Email}
-                </bdi>
-                <span className="block">{t('members.joined', { when: time.ago(member.JoinedAt) })}</span>
-              </>
+            title={member.UserId === me ? `${member.Name} (${t('members.you')})` : member.Name}
+            sub={<MemberSub member={member} manager={manager} />}
+            end={<MemberBadges member={member} manager={manager} />}
+            onSelect={
+              onOpenMember === undefined
+                ? undefined
+                : () => {
+                    onOpenMember(member.UserId);
+                  }
             }
-            end={<Badge tone="mute">{t(`role.${member.Role}`)}</Badge>}
           />
         ))}
       </Rows>
@@ -76,13 +108,13 @@ const MembersList = ({ organizationId }: { organizationId: string }) => {
   );
 };
 
-export const MembersCard = ({ organizationId, role }: IMembersCardProps) => {
+export const MembersCard = ({ organizationId, role, onOpenMember }: IMembersCardProps) => {
   const t = useT();
 
   return (
     <Card title={t('members.title')} icon="users">
       {canReadMembers(role) ? (
-        <MembersList organizationId={organizationId} />
+        <MembersList organizationId={organizationId} role={role} onOpenMember={onOpenMember} />
       ) : (
         <EmptyState icon="users" text={t('members.forbidden')} />
       )}

@@ -17,8 +17,8 @@ import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Input } from '@/Core/Ui/Input';
 import { Row, Rows } from '@/Core/Ui/Row';
 import { useT } from '@/I18n/useT';
-import { useRenameOrganization } from '@/Modules/Identity/Hooks/useOrganization';
-import { ORGANIZATION_FIELDS, organizationFormSchema, type TOrganizationForm } from '@/Modules/Identity/Types/OrganizationForm';
+import { useRenameOrganization } from '@/Modules/Organization/Hooks/useOrganization';
+import { ORGANIZATION_FIELDS, organizationFormSchema, type TOrganizationForm } from '@/Modules/Organization/Types/OrganizationForm';
 
 export interface IOrganizationCardProps {
   organization: TOrganization;

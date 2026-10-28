@@ -43,6 +43,8 @@ export const meBody = (role = 'owner', csrfToken = CSRF_TOKEN, organizationName 
     CsrfToken: csrfToken,
     SessionId: SESSION_ID,
     ExpiresAt: '2026-11-10T12:00:00Z',
+    CanCreateOrganizations: role === 'owner',
+    MfaReenrollRequired: false,
   },
 });
 

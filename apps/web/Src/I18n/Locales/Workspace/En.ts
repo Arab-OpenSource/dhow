@@ -1,3 +1,4 @@
+import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
 import type { TWorkspaceMessages } from '@/I18n/Messages';
 
 export const WorkspaceEn: TWorkspaceMessages = {
@@ -153,11 +154,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'pager.next': 'Next page',
   'pager.status': 'Page {page} of {pages}',
 
-  'role.owner': 'Owner',
-  'role.admin': 'Admin',
-  'role.maintainer': 'Maintainer',
-  'role.developer': 'Developer',
-  'role.viewer': 'Viewer',
 
   'palette.command.account': 'Open my account',
   'palette.command.password': 'Change password',
@@ -231,7 +227,7 @@ export const WorkspaceEn: TWorkspaceMessages = {
 
   'palette.command.organization': 'Open the organization and its members',
   'organization.title': 'Organization',
-  'organization.subtitle': 'The organization name and its members.',
+  'organization.subtitle': 'Members, teams, invitations and settings.',
   'organization.card.title': 'Organization details',
   'organization.name': 'Organization name',
   'organization.slug': 'Short link name',
@@ -326,4 +322,5 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'audit.action.auth.passkey_renamed': 'Passkey renamed',
   'audit.action.auth.passkey_removed': 'Passkey removed',
   'audit.action.auth.passkey_sign_count_regressed': 'Passkey counter went backwards',
+  ...OrganizationEn,
 };
