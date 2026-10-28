@@ -140,7 +140,7 @@ func setUpStack(s *stack, cleanups *[]func()) error {
 		return err
 	}
 	s.serverAddr = "127.0.0.1:" + port
-	s.publicURL = "http://" + s.serverAddr
+	s.publicURL = "http://localhost:" + port
 	setupToken, err := s.startServer()
 	if err != nil {
 		return err

@@ -122,7 +122,7 @@ func (s *stack) startServer() (string, error) {
 	s.mu.Lock()
 	s.server = p
 	s.mu.Unlock()
-	if err := waitReady(s.publicURL+"/api/v1/health/ready", 2*time.Minute); err != nil {
+	if err := waitReady(s.publicURL+"/api/v1/health/ready", 2*time.Minute, p.done); err != nil {
 		return "", err
 	}
 	select {
@@ -133,9 +133,14 @@ func (s *stack) startServer() (string, error) {
 	}
 }
 
-func waitReady(url string, within time.Duration) error {
+func waitReady(url string, within time.Duration, exited <-chan struct{}) error {
 	deadline := time.Now().Add(within)
 	for time.Now().Before(deadline) {
+		select {
+		case <-exited:
+			return fmt.Errorf("the process exited before %s was ready", url)
+		default:
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		resp, err := http.DefaultClient.Do(req)
