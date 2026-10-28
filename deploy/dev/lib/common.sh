@@ -24,6 +24,12 @@ have() {
   command -v "$1" >/dev/null 2>&1
 }
 
+have_lib() {
+  local ldconfig
+  ldconfig=$(command -v ldconfig || printf '/sbin/ldconfig')
+  "$ldconfig" -p 2>/dev/null | grep -qF "$1"
+}
+
 interactive() {
   [[ $assume_yes != true && -t 0 ]]
 }

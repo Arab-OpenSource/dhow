@@ -24,14 +24,15 @@ ensure_basics() {
     return
   fi
   have xz || missing+=(xz)
+  have_lib libatomic.so.1 || missing+=(libatomic)
   ((${#missing[@]})) || return 0
   confirm "Install ${missing[*]} with the system package manager?" || fail "these tools are required: ${missing[*]}"
   case $distro in
     debian)
       as_root apt-get update -q
-      as_root apt-get install -y -q git make curl python3 tar xz-utils ca-certificates
+      as_root apt-get install -y -q git make curl python3 tar xz-utils ca-certificates libatomic1
       ;;
-    fedora | rhel) as_root dnf install -y -q git make curl python3 tar xz ;;
+    fedora | rhel) as_root dnf install -y -q git make curl python3 tar xz libatomic ;;
     *) fail "install ${missing[*]} with your package manager, then run this script again" ;;
   esac
 }
