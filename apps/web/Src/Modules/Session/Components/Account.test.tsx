@@ -39,9 +39,23 @@ describe('my account slide', () => {
     const { dialog } = await mount();
     expect(await within(dialog).findAllByText('sabry@future.dev')).toHaveLength(2);
     expect(await within(dialog).findAllByText(Ar['role.owner'])).toHaveLength(2);
-    expect(await within(dialog).findByText(Ar['account.summary.title'])).toBeInTheDocument();
-    expect(within(dialog).getByText('Sabry Dawood')).toBeInTheDocument();
-    expect(within(dialog).getByText('Future Solution')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Sabry Dawood')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Future Solution')).toBeInTheDocument();
+  });
+
+  it('says plainly that the account needs a second step while none is on, instead of a green all-clear', async () => {
+    const { dialog } = await mount();
+    const title = await within(dialog).findByText(Ar['account.summary.weak.title']);
+    expect(title.closest('[data-tone]')).toHaveAttribute('data-tone', 'warn');
+    expect(within(dialog).getByText(Ar['account.summary.weak.sub'])).toBeInTheDocument();
+    expect(within(dialog).queryByText(Ar['account.summary.strong.title'])).not.toBeInTheDocument();
+  });
+
+  it('shows the green summary with the session end once a second step is on', async () => {
+    const { dialog } = await mount({ mfa: { TotpEnabled: true, RecoveryCodesRemaining: 10, Passkeys: [] } });
+    const title = await within(dialog).findByText(Ar['account.summary.strong.title']);
+    expect(title.closest('[data-tone]')).toHaveAttribute('data-tone', 'ok');
+    expect(within(dialog).queryByText(Ar['account.summary.weak.title'])).not.toBeInTheDocument();
   });
 
   it('opens from the account link in the side menu and puts the slide in the URL', async () => {
