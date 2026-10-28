@@ -26,7 +26,7 @@ const found = oneEvent((id) => {
   return event ? envelope({ Success: true, Data: { ...event, Data: { Via: 'api_token', ViaId: 'tok-1', Reason: 'rotation' } } }) : undefined;
 });
 
-const mount = async (options: IBackendOptions = {}, url = '/?stack=audit', title = Ar['audit.title']) => {
+const mount = async (options: IBackendOptions = {}, url = '/?stack=audit', title: string = Ar['audit.title']) => {
   const backend = startBackend({ audit: EVENTS, ...options });
   const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const user = userEvent.setup();
