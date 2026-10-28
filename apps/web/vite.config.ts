@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+const ApiUrl = process.env.DHOW_DEV_API_URL ?? 'http://127.0.0.1:8080';
+const Polling = process.env.DHOW_DEV_POLLING === 'true';
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -11,7 +14,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: { '/api': 'http://127.0.0.1:8080' },
+    proxy: { '/api': ApiUrl },
+    watch: { usePolling: Polling, interval: 300 },
   },
   preview: {
     port: 4173,
