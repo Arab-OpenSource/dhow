@@ -10,7 +10,7 @@ Dhow is in the **design phase**, and design feedback is the most valuable contri
 
 ## Code contributions
 
-- **Set up:** follow [Develop Dhow on your machine](docs/development.md). You need Go (the version pinned in `go.mod`; `go` downloads it automatically), Node.js LTS and pnpm for `apps/web`, PostgreSQL 18 (Docker, Podman or a native install) and Python 3. `make dev-env`, `make dev-db` and `make dev` get a server running.
+- **Set up:** follow [Develop Dhow on your machine](docs/development.md). The quickest way needs only Git and Docker: `docker compose -f deploy/dev/compose.yaml up` runs the server and the web app with live reload. For the native tools you need Go (the version pinned in `go.mod`; `go` downloads it automatically), Node.js LTS and pnpm for `apps/web`, PostgreSQL 18 (Docker, Podman or a native install) and Python 3. `make dev-env`, `make dev-db` and `make dev` get a server running.
 - **Before you push:** run `make dev-check`, which is `make check` (lint, tests with the race detector, vulnerability scan, hooks tests) with the test database set. A bare `make check` skips the database tests. For web changes also run `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm size` in `apps/web`.
 - **Pull requests** are small and focused, follow the PR template, and must pass CI. `main` is protected; nothing merges without review.
 - **Commits** follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:` …), are written in English, and carry a DCO sign-off with your real name. Commit messages and pull requests must not contain AI attribution trailers or signatures.

@@ -1,6 +1,7 @@
 package podman
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -79,7 +80,31 @@ func (p paths) env(binary string) runner {
 	}}
 }
 
+var ErrStateDirClosed = errors.New("the job user namespace cannot reach the state directory")
+
+func traversable(stateDir string) error {
+	abs, err := filepath.Abs(stateDir)
+	if err != nil {
+		return err
+	}
+	for dir := filepath.Dir(abs); ; dir = filepath.Dir(dir) {
+		info, err := os.Stat(dir)
+		if err != nil {
+			return fmt.Errorf("check %s: %w", dir, err)
+		}
+		if info.Mode().Perm()&0o001 == 0 {
+			return fmt.Errorf("%w: %s is mode %o, so crun cannot pass through it; run chmod o+x %s or put DHOW_RUNNER_STATE_DIR under a directory others can enter, such as /var/lib", ErrStateDirClosed, dir, info.Mode().Perm(), dir)
+		}
+		if dir == filepath.Dir(dir) {
+			return nil
+		}
+	}
+}
+
 func writeConfig(stateDir string) (paths, error) {
+	if err := traversable(stateDir); err != nil {
+		return paths{}, err
+	}
 	dir := filepath.Join(stateDir, configDirName)
 	p := paths{
 		home:          stateDir,

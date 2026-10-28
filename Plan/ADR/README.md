@@ -59,3 +59,5 @@
 | [0055](0055-podman-driver-and-agent-implementation.md) | تنفيذ الـ sandbox في M3.6: driver الـ Podman، والـ agent كـ PID 1، وقناة التحكم، والـ seccomp، والـ escape والـ limits suites |
 | [0056](0056-sandbox-hardening-after-the-m3-6-review.md) | تقوية الـ sandbox بعد المراجعة الأمنية لـ M3.6: الخطوة بتخلص بكل الـ processes بتاعتها، وملفات الأسرار، وقفل وضع `directory`، والـ image بالـ ID، والـ vsock |
 | [0057](0057-egress-proxy-implementation.md) | تنفيذ الـ egress proxy في M3.7: القايمة ASCII وpunycode بس، وطبقة `Egress`، والـ forwarder في الـ agent، والـ helper `connect`، ونطاقات المشغّل |
+| [0058](0058-graded-kill-and-chaos-suite.md) | آخر مرحلة في القتل بالتدريج (`cgroup.kill`)، وsuite الفوضى على processes حقيقية بـ Podman وPostgres وregistry بـ TLS (M3.9) |
+| [0059](0059-ui-direction-control-room.md) | اتجاه التصميم «غرفة التشغيل»: صفحات كاملة بروابط، وقايمة جانبية بمجموعات، ورئيسية بحالة النظام، وخط Plex بمقاسات عربي صريحة. بيعدّل ADR-0034 وADR-0032 |

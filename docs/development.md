@@ -1,9 +1,85 @@
 # Develop Dhow on your machine
 
-This page gets you from a fresh clone to a running server, the web app with live reload, and the full test suite. It covers Linux, macOS and Windows (through WSL2), with or without Docker. To try the released image instead, see [Run Dhow locally](install/local.md#the-compose-stack).
+This page gets you from a fresh clone to a running server, the web app with live reload, and the full test suite. There are two ways in:
+
+- **[Docker only](#quickest-start-docker-only):** one command, and nothing to install but Git and Docker. Start here.
+- **[Native tools](#the-setup-script):** Go, Node.js, pnpm and PostgreSQL on your machine (through WSL2 on Windows), for `make check`, the runner sandbox and your editor's Go and TypeScript tooling.
+
+To try the released image instead, see [Run Dhow locally](install/local.md#the-compose-stack).
 
 > [!WARNING]
 > Everything here runs with `DHOW_DEV=true`: plain HTTP and a database connection without TLS. It is for your own machine only. Never set it on a server or anything other people can reach.
+
+## Quickest start: Docker only
+
+All you need is Git and Docker: [Docker Desktop](https://www.docker.com/products/docker-desktop/) on Windows and macOS, or Docker Engine with the Compose plugin on Linux. Go, Node.js, pnpm and PostgreSQL run in containers, so there is nothing else to install, and Windows needs no WSL setup of your own. In a terminal (PowerShell on Windows):
+
+```sh
+git clone https://github.com/Khaymah/dhow.git
+cd dhow
+docker compose -f deploy/dev/compose.yaml up
+```
+
+The first start downloads the images (about 600 MB) and the Go and web dependencies, so it takes a few minutes. Later starts take seconds. When everything is up, the log shows a box like this:
+
+```text
+==================================================================
+  Dhow is ready. Open this link within one hour to create the owner:
+  http://localhost:5173/setup#...
+==================================================================
+```
+
+Open that link in Chrome or Firefox to create the owner account. From then on, use `http://localhost:5173`.
+
+- **Go:** save any file under `apps/server`, `internal` or `packages/proto/gen/go`, and the server rebuilds and restarts within a few seconds. If the build fails, the error appears in the log, the old server keeps running, and the next save tries again.
+- **Web:** save any file under `apps/web` and the browser updates in place.
+
+| Service | What it does | On your machine |
+|---|---|---|
+| `db` | PostgreSQL 18 with the databases `dhow` and `dhow_test` | `127.0.0.1:5432` |
+| `init` | Writes `.env.dev` with a new secret key the first time, then exits | |
+| `server` | Builds and runs the server from your clone, and watches the Go files (it checks every second, which works on Windows and macOS too) | `http://localhost:8080` (the API only) |
+| `web` | Vite with live reload, forwarding `/api` to `server` | `http://localhost:5173` |
+
+Everyday commands, from the root of the clone:
+
+| Command | What it does |
+|---|---|
+| `docker compose -f deploy/dev/compose.yaml up -d` | Starts in the background |
+| `docker compose -f deploy/dev/compose.yaml logs -f server` | Follows the server log, including the setup link |
+| `docker compose -f deploy/dev/compose.yaml restart server` | Restarts the server, which prints a new setup link while there is no owner yet |
+| `docker compose -f deploy/dev/compose.yaml restart web` | Reinstalls the web dependencies after `package.json` or the lockfile changed (a `git pull`, for example) |
+| `docker compose -f deploy/dev/compose.yaml exec server go test ./apps/server/...` | Runs Go tests against `dhow_test` |
+| `docker compose -f deploy/dev/compose.yaml exec web pnpm test` | Runs the web tests |
+| `docker compose -f deploy/dev/compose.yaml down` | Stops and removes the containers, keeping the database |
+| `docker compose -f deploy/dev/compose.yaml down --volumes` | Also deletes the database and the dependency caches |
+
+`Ctrl+C` stops a stack started without `-d`.
+
+**`.env.dev`.** `init` writes it once with mode 600, in the same form as `make dev-env`, so the [native path](#quick-start) can use it too, and it never touches an existing one. The stack takes the secret key and any setting you add yourself (SMTP, for example) from it. The addresses, `DHOW_DEV=true` and the database URLs come from the stack itself. Keep the file: stored secrets need the same key at every start. Delete it only together with the database (`down --volumes`).
+
+**Settings.** Set these in your shell before `up`, or in `deploy/dev/.env` (Compose reads it from there, and Git ignores it):
+
+| Variable | Default | Use |
+|---|---|---|
+| `DHOW_DEV_WEB_PORT` | `5173` | The web app, and the address the setup link uses |
+| `DHOW_DEV_HTTP_PORT` | `8080` | The server, for `curl` and API clients |
+| `DHOW_DEV_DB_PORT` | `5432` | PostgreSQL, for `psql` or the native tools. `.env.dev` keeps the port of the first start |
+| `DHOW_DEV_POLL_SECONDS` | `1` | How often the server checks the Go files |
+| `DHOW_DEV_POSTGRES_IMAGE`, `DHOW_DEV_GO_IMAGE`, `DHOW_DEV_NODE_IMAGE` | `postgres:18`, `golang:1.27.3-bookworm`, `node:26-bookworm-slim` | Another registry or mirror, such as `mirror.gcr.io/library/postgres:18` |
+
+On Linux and macOS, `DHOW_DEV_DB_PORT=5433 docker compose -f deploy/dev/compose.yaml up`. In PowerShell, `$env:DHOW_DEV_DB_PORT = "5433"` first.
+
+### When something goes wrong
+
+| Symptom | Cause and fix |
+|---|---|
+| `port is already allocated` | Another program uses 5432, 5173 or 8080, often a local PostgreSQL. Pick another port with the variables above. |
+| No setup box in the log | The owner already exists, so there is nothing to set up: sign in on `http://localhost:5173`. Otherwise run `docker compose -f deploy/dev/compose.yaml logs server` and look for the box or for `setup_url`. |
+| `CSRF_FAILED` at setup or sign-in | Open the app on `http://localhost:5173` (or your `DHOW_DEV_WEB_PORT`), not on port 8080 and not on `127.0.0.1`. |
+| The web app reports a missing package after a `git pull` | Run `docker compose -f deploy/dev/compose.yaml restart web`. |
+| Builds and reloads are slow on Windows | Files under `C:\` reach the containers through a slower bridge. For more speed, clone inside WSL2 and run the same command from a WSL2 shell, with Docker Desktop's WSL integration turned on (Settings, then Resources, then WSL integration). |
+| On Linux, `apps/web/node_modules` is an empty folder owned by root | Docker created it as the mount point for the dependencies volume. Before you switch to the native path, remove it with `sudo rm -rf apps/web/node_modules`. |
 
 ## The setup script
 

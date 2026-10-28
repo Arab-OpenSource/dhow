@@ -1,0 +1,51 @@
+name: Chaos
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chaos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chaos:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (!github.event.pull_request.draft && contains(github.event.pull_request.labels.*.name, 'chaos'))
+    name: Runner chaos (server, runner, Podman, Postgres)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Install the sandbox tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q podman busybox-static crun uidmap passt
+      - name: Prepare a dedicated runner user
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo useradd --create-home --shell /usr/sbin/nologin dhowci
+          sudo sed -i '/^dhowci:/d' /etc/subuid /etc/subgid
+          sudo usermod --add-subuids 200000-1199999 --add-subgids 200000-1199999 dhowci
+          sudo loginctl enable-linger dhowci
+          echo "127.0.0.1 sink.dhow.test" | sudo tee -a /etc/hosts
+      - name: Chaos scenarios
+        run: |
+          uid="$(id -u dhowci)"
+          make runner-chaos CHAOS_DIR=/tmp/dhow-chaos \
+            CHAOS_RUN="sudo systemd-run --uid=dhowci --gid=dhowci --pipe --wait --collect --quiet -p Delegate=yes -p MemorySwapMax=0 --setenv=HOME=/home/dhowci --setenv=XDG_RUNTIME_DIR=/run/user/$uid --working-directory=/tmp --"
+      - name: Keep the logs
+        if: failure()
+        run: sudo find /tmp -maxdepth 2 -path '/tmp/dhow-chaos-*' -name '*.log' -exec tail -n 200 {} +

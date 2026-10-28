@@ -237,6 +237,20 @@ runner-isolation: ## Run the escape and limits suites on rootless Podman (Podman
 	$(ISOLATION_RUN) env DHOW_ISOLATION_BIN=$(ISOLATION_DIR) DHOW_ISOLATION_BUSYBOX=$(ISOLATION_BUSYBOX) \
 		$(ISOLATION_DIR)/isolation.test -test.v -test.count=1 -test.timeout 30m
 
+CHAOS_DIR     ?= $(abspath bin/chaos)
+CHAOS_BUSYBOX ?= /bin/busybox
+CHAOS_RUN     ?=
+
+.PHONY: runner-chaos
+runner-chaos: ## Run the chaos scenarios: the real server and runner on Podman, Postgres and a TLS registry (see docs/runner/chaos.md)
+	mkdir -p $(CHAOS_DIR)
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(CHAOS_DIR)/dhow-server ./apps/server/cmd/dhow-server
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(CHAOS_DIR)/dhow-runner ./apps/runner/cmd/dhow-runner
+	$(GO) test -c -tags chaos -o $(CHAOS_DIR)/chaos.test ./apps/runner/Test/Chaos
+	chmod 0755 $(CHAOS_DIR) $(CHAOS_DIR)/dhow-server $(CHAOS_DIR)/dhow-runner $(CHAOS_DIR)/chaos.test
+	$(CHAOS_RUN) env DHOW_CHAOS_BIN=$(CHAOS_DIR) DHOW_CHAOS_BUSYBOX=$(CHAOS_BUSYBOX) \
+		$(CHAOS_DIR)/chaos.test -test.v -test.count=1 -test.timeout 60m
+
 RUNNER_FUZZ := Masking:FuzzMasker Masking:FuzzMaskerKeepsCleanText Logs:FuzzChunker Logs:FuzzSpillRecords \
 	Journal:FuzzJournalOpen Executor:FuzzVerifyGrant Sandbox/Wire:FuzzDecode
 
