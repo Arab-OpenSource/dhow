@@ -21,18 +21,30 @@ const (
 	ipv6Prefix     = 48
 )
 
-func changes() map[string]string {
-	return map[string]string{
-		eventbus.AuthPasswordChanged:          "password_changed",
-		eventbus.AuthTotpEnabled:              "totp_enabled",
-		eventbus.AuthTotpDisabled:             "totp_disabled",
-		eventbus.AuthPasskeyAdded:             "passkey_added",
-		eventbus.AuthPasskeyRemoved:           "passkey_removed",
-		eventbus.AuthRecoveryCodesRegenerated: "recovery_codes_regenerated",
-		eventbus.AuthIdentityLinked:           "identity_linked",
-		eventbus.AuthIdentityUnlinked:         "identity_unlinked",
-		eventbus.AuthApiTokenCreated:          "api_token_created",
-		eventbus.IdentityMemberMfaReset:       "mfa_reset",
+func changeOf(event string) (string, bool) {
+	switch event {
+	case eventbus.AuthPasswordChanged:
+		return "password_changed", true
+	case eventbus.AuthTotpEnabled:
+		return "totp_enabled", true
+	case eventbus.AuthTotpDisabled:
+		return "totp_disabled", true
+	case eventbus.AuthPasskeyAdded:
+		return "passkey_added", true
+	case eventbus.AuthPasskeyRemoved:
+		return "passkey_removed", true
+	case eventbus.AuthRecoveryCodesRegenerated:
+		return "recovery_codes_regenerated", true
+	case eventbus.AuthIdentityLinked:
+		return "identity_linked", true
+	case eventbus.AuthIdentityUnlinked:
+		return "identity_unlinked", true
+	case eventbus.AuthApiTokenCreated:
+		return "api_token_created", true
+	case eventbus.IdentityMemberMfaReset:
+		return "mfa_reset", true
+	default:
+		return "", false
 	}
 }
 
@@ -52,10 +64,11 @@ func Events() []string {
 }
 
 func Changes() []string {
-	byEvent := changes()
-	out := make([]string, 0, len(byEvent))
+	out := make([]string, 0, len(Events()))
 	for _, name := range Events() {
-		out = append(out, byEvent[name])
+		if c, ok := changeOf(name); ok {
+			out = append(out, c)
+		}
 	}
 	return out
 }

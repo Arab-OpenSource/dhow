@@ -79,7 +79,8 @@ func TestOnlyAnOwnerWithTheCurrentFactorChangesTheRule(t *testing.T) {
 	assert.Equal(t, "INVALID_CURRENT_FACTOR", errorCode(wrong))
 
 	invalid := owner.ChangeSecondFactorRule(org, "sometimes", fresh())
-	assert.Equal(t, http.StatusBadRequest, invalid.Status, string(invalid.Raw))
+	assert.Equal(t, http.StatusUnprocessableEntity, invalid.Status, string(invalid.Raw))
+	assert.Equal(t, "VALIDATION_FAILED", errorCode(invalid))
 
 	ok := owner.ChangeSecondFactorRule(org, "admins", fresh())
 	require.Equal(t, http.StatusOK, ok.Status, string(ok.Raw))

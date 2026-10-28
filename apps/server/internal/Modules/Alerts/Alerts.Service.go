@@ -42,7 +42,7 @@ func NewService(o Options) *Service {
 }
 
 func (s *Service) Handle(ctx context.Context, ev eventbus.Event) error {
-	change, ok := changes()[ev.Name]
+	change, ok := changeOf(ev.Name)
 	if !ok || !s.mailer.Enabled() {
 		return nil
 	}
