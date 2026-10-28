@@ -6,6 +6,7 @@ import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Button } from '@/Core/Ui/Button';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Skeleton } from '@/Core/Ui/Skeleton';
+import { SlideContent, SlidePinned } from '@/Core/Ui/Slide';
 import { tabId, tabPanelId, Tabs, type ITab } from '@/Core/Ui/Tabs';
 import { useT } from '@/I18n/useT';
 import { InvitationsCard } from '@/Modules/Organization/Components/InvitationsCard';
@@ -59,13 +60,16 @@ const Loaded = ({ organizationId, role, ...actions }: IOrganizationSlideProps & 
   if (organization.data === undefined) return <Skeleton label={t('ui.loading')} lines={5} />;
 
   return (
-    <>
-      <Tabs base={base} label={t('organization.tabs')} tabs={tabs} value={Tab} onChange={SetTab} />
+    <SlideContent>
+      <SlidePinned>
+        <Tabs base={base} label={t('organization.tabs')} tabs={tabs} value={Tab} onChange={SetTab} />
+      </SlidePinned>
       <div role="tabpanel" id={tabPanelId(base, Tab)} aria-labelledby={tabId(base, Tab)} className="grid gap-4">
         {Tab === 'members' ? (
           <MembersCard
             organizationId={organizationId}
             role={role}
+            rule={organization.data.RequireSecondFactor}
             onOpenMember={canManageMembers(role) ? actions.onOpenMember : undefined}
           />
         ) : null}
@@ -83,7 +87,7 @@ const Loaded = ({ organizationId, role, ...actions }: IOrganizationSlideProps & 
           />
         ) : null}
       </div>
-    </>
+    </SlideContent>
   );
 };
 

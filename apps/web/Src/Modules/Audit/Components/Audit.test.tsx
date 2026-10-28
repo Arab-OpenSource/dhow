@@ -63,10 +63,27 @@ describe('the audit log slide', () => {
     expect(await screen.findByText(Ar['audit.empty'])).toBeInTheDocument();
   });
 
-  it('names an action it does not know in its raw form instead of hiding it', async () => {
+  it('names an action it does not know by its area in words, and keeps the raw name beside it', async () => {
     const [event] = auditFixture(1);
-    await mount({ audit: event ? [{ ...event, Action: 'billing.invoice.paid' }] : [] });
-    expect(await screen.findByText('billing.invoice.paid')).toBeInTheDocument();
+    if (!event) throw new Error('the audit fixture is missing');
+    const { dialog } = await mount({ audit: ['billing.invoice.paid', 'runner.labels_changed'].map((Action) => ({ ...event, Action })) });
+    const rows = within(await within(dialog).findByRole('list', { name: Ar['audit.list.title'] })).getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent(Ar['audit.group.other']);
+    expect(within(rows[0] ?? dialog).getByText('billing.invoice.paid')).toBeInTheDocument();
+    expect(rows[1]).toHaveTextContent(Ar['audit.group.runner']);
+    expect(within(rows[1] ?? dialog).getByText('runner.labels_changed')).toBeInTheDocument();
+  });
+
+  it('names runner and job events in words, not raw keys', async () => {
+    const [event] = auditFixture(1);
+    if (!event) throw new Error('the audit fixture is missing');
+    const actions = ['job.created', 'runner.registered', 'runner.registration_token_created'];
+    const { dialog } = await mount({ audit: actions.map((Action) => ({ ...event, Action })) });
+    const list = await within(dialog).findByRole('list', { name: Ar['audit.list.title'] });
+    expect(list).toHaveTextContent(Ar['audit.action.job.created']);
+    expect(list).toHaveTextContent(Ar['audit.action.runner.registered']);
+    expect(list).toHaveTextContent(Ar['audit.action.runner.registration_token_created']);
+    expect(within(list).queryByText('job.created')).not.toBeInTheDocument();
   });
 
   it('shows an error with a retry when the log cannot be loaded', async () => {
