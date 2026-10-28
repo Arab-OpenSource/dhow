@@ -22,7 +22,13 @@ The browser also sends the address in the bar as `Origin`, and Dhow compares it 
 
 ## From source
 
-The full guide for working on Dhow is [Develop Dhow on your machine](../development.md): PostgreSQL 18 with Docker, Podman or a native install on Linux, macOS and Windows (WSL2), the web app with live reload, the tests, and the runner. In short:
+The full guide for working on Dhow is [Develop Dhow on your machine](../development.md): the Docker-only stack, the native tools on Linux, macOS and Windows (WSL2), the web app with live reload, the tests, and the runner. With only Git and Docker:
+
+```sh
+docker compose -f deploy/dev/compose.yaml up
+```
+
+Then open the link in the box the log prints, on `http://localhost:5173`. With the native tools:
 
 ```sh
 make dev-env

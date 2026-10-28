@@ -8,6 +8,8 @@ on:
       - apps/server/internal/Config/**
       - apps/server/cmd/dhow-server/**
       - deploy/**
+      - apps/web/vite.config.ts
+      - apps/web/package.json
       - .github/workflows/installer.yml
       - .github/workflows/release.yml
       - Makefile
@@ -34,11 +36,12 @@ jobs:
           persist-credentials: false
       - name: Check the shell scripts
         run: |
-          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh deploy/dev/setup.sh deploy/dev/lib/*.sh
+          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh deploy/dev/setup.sh deploy/dev/lib/*.sh deploy/dev/stack/*.sh
           shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh
           shellcheck -x deploy/dev/setup.sh
           shellcheck deploy/dev/test/fresh.sh
           shellcheck -x deploy/dev/test/settings.sh
+          shellcheck deploy/dev/stack/*.sh
           bash deploy/dev/test/settings.sh
       - name: Check the setup script with the bash 3.2 of macOS
         run: docker run --rm -v "$PWD":/w:ro -w /w bash:3.2 bash deploy/dev/test/settings.sh
@@ -73,6 +76,55 @@ jobs:
           docker run --rm -v "$PWD":/repo:ro "$IMAGE" /repo/deploy/dev/test/fresh.sh --yes --db=url
           --db-url=postgres://dhow:unused@127.0.0.1:5432/dhow
           --test-db-url=postgres://dhow:unused@127.0.0.1:5432/dhow_test
+
+  dev-compose:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: Development stack with Docker only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      COMPOSE_FILE: deploy/dev/compose.yaml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Start the stack from a clean clone
+        run: |
+          test ! -e .env.dev
+          docker compose up --detach
+      - name: Wait for the server, the setup link and Vite
+        run: |
+          for _ in $(seq 1 180); do
+            docker compose logs --no-color server > server.log
+            if curl -sf http://127.0.0.1:8080/api/v1/health/ready >/dev/null && grep -q 'Dhow is ready' server.log; then
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:8080/api/v1/health/ready
+          grep -q '"setup_url":"http://localhost:5173/setup#' server.log
+          grep -q 'Dhow is ready' server.log
+          curl -sf -o index.html http://127.0.0.1:5173/
+          grep -q '<div id="root">' index.html
+          curl -sf http://127.0.0.1:5173/api/v1/health/ready
+          test "$(stat -c %a .env.dev)" = 600
+      - name: Restart the server when a Go file changes
+        run: |
+          before=$(docker compose logs server | grep -c '"msg":"listening"')
+          touch apps/server/cmd/dhow-server/main.go
+          for _ in $(seq 1 90); do
+            now=$(docker compose logs server | grep -c '"msg":"listening"')
+            [ "$now" -gt "$before" ] && break
+            sleep 2
+          done
+          [ "$(docker compose logs server | grep -c '"msg":"listening"')" -gt "$before" ]
+          curl -sf --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:8080/api/v1/health/ready
+      - name: Show the logs
+        if: failure()
+        run: docker compose logs
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes
 
   dev-setup:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
