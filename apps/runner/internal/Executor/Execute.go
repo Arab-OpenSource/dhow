@@ -59,7 +59,7 @@ type prepared struct {
 func (a *attempt) prepare(ctx context.Context) (result, bool) {
 	spec := a.grant.GetSpec()
 	a.pipe.Systemf(nil, "dhow: preparing the sandbox for %s", spec.GetImage())
-	pctx, cancel := context.WithTimeout(a.rpc, a.e.o.Timing.ImagePull)
+	pctx, cancel := context.WithTimeout(ctx, a.e.o.Timing.ImagePull)
 	defer cancel()
 	ch := make(chan prepared, 1)
 	go func() {
@@ -74,32 +74,32 @@ func (a *attempt) prepare(ctx context.Context) (result, bool) {
 	var why result
 	select {
 	case p := <-ch:
-		return a.prepared(pctx, p)
+		return a.prepared(ctx, pctx, p)
 	case <-a.fence.Lost():
 		why = a.lostResult()
 	case <-a.fence.Canceled():
 		why = canceledResult()
-	case <-ctx.Done():
+	case <-a.shutdown:
 		why = lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED)
 	}
 	cancel()
 	if p := <-ch; p.err == nil && p.box != nil {
-		a.setBox(p.box)
+		a.setBox(ctx, p.box)
 	}
 	return why, false
 }
 
-func (a *attempt) prepared(pctx context.Context, p prepared) (result, bool) {
+func (a *attempt) prepared(ctx, pctx context.Context, p prepared) (result, bool) {
 	if p.err != nil {
 		reason := runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED
 		if errors.Is(p.err, sandbox.ErrImagePull) || errors.Is(pctx.Err(), context.DeadlineExceeded) {
 			reason = runnerv1.FailureReason_FAILURE_REASON_IMAGE_PULL_FAILED
 		}
-		a.log.Error("could not prepare the sandbox", "error", p.err)
+		a.log.Error("could not prepare the sandbox", "error", a.masked(p.err))
 		a.pipe.Systemf(nil, "dhow: %s: the sandbox could not be prepared", reasonName(reason))
 		return failed(reason, 0), false
 	}
-	if !a.setBox(p.box) {
+	if !a.setBox(ctx, p.box) {
 		return a.lostResult(), false
 	}
 	return result{}, true
@@ -134,19 +134,19 @@ func (a *attempt) start(ctx context.Context) (result, bool) {
 		return gone(), false
 	case client.Is(err, client.CodeAlreadyStarted) && retried && len(spec.GetSecrets()) == 0:
 		a.log.Info("the attempt was already started by an earlier try whose answer was lost")
-	case ctx.Err() != nil:
+	case a.stopping():
 		return lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED), false
 	default:
 		a.log.Error("the server refused to start the attempt", "code", client.Code(err).String(), "reason", client.Reason(err))
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
 	}
 	if err := a.openSecrets(res.GetSecrets()); err != nil {
-		a.log.Error("could not open the job secrets", "error", err)
+		a.log.Error("could not open the job secrets", "error", a.masked(err))
 		a.pipe.Systemf(nil, "dhow: SANDBOX_FAILED: the job secrets could not be opened")
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
 	}
-	if err := a.currentBox().Start(a.rpc); err != nil {
-		a.log.Error("could not start the sandbox", "error", err)
+	if err := a.currentBox().Start(ctx); err != nil {
+		a.log.Error("could not start the sandbox", "error", a.masked(err))
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
 	}
 	return result{}, true
@@ -205,7 +205,7 @@ func (a *attempt) fatalResult() result {
 		a.fence.markLost(ErrLeaseLost)
 		return gone()
 	}
-	a.log.Error("the log pipeline failed, so the job stops", "error", err)
+	a.log.Error("the log pipeline failed, so the job stops", "error", a.masked(err))
 	if errors.Is(err, logs.ErrDiskFull) {
 		return failed(runnerv1.FailureReason_FAILURE_REASON_RUNNER_DISK_FULL, 0)
 	}

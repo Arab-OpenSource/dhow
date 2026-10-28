@@ -155,15 +155,6 @@ func (q *queue) close() {
 	q.cond.Broadcast()
 }
 
-func (q *queue) fail(err error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	if q.err == nil {
-		q.err = err
-	}
-	q.cond.Broadcast()
-}
-
 func (q *queue) release() error {
 	q.mu.Lock()
 	defer q.mu.Unlock()

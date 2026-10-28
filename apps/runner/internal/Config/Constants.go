@@ -8,7 +8,7 @@ const (
 	ProtocolVersion         = "1"
 	VersionHeader           = "Dhow-Runner-Version"
 	AccessTokenPrefix       = "dhow_rat_"
-	RegistrationTokenPrefix = "dhow_rrt_"
+	RegistrationTokenPrefix = "dhow_rrt_" //nolint:gosec // A token prefix, not a credential.
 	MaxRegistrationToken    = 256
 )
 

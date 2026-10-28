@@ -61,8 +61,7 @@ type attempt struct {
 	masker     *masking.Masker
 	pipe       *logs.Pipeline
 	fence      *fence
-	rpc        context.Context
-	stopRPC    context.CancelFunc
+	shutdown   <-chan struct{}
 	secrets    map[string][]byte
 
 	mu       sync.Mutex
@@ -83,20 +82,21 @@ func (a *attempt) entry() journal.Entry {
 	return journal.Entry{LeaseID: a.ref.GetLeaseId(), AttemptID: a.grant.GetAttemptId(), JobID: a.grant.GetJobId(), FencingToken: a.ref.GetFencingToken()}
 }
 
-func (a *attempt) run(ctx context.Context) Outcome {
-	a.rpc, a.stopRPC = context.WithCancel(context.WithoutCancel(ctx))
-	defer a.stopRPC()
-	defer a.masker.Clear()
+func (a *attempt) run(parent context.Context) Outcome {
+	a.shutdown = parent.Done()
+	ctx, stop := context.WithCancel(context.WithoutCancel(parent))
+	defer stop()
+	defer a.forgetSecrets()
 	ttl := time.Duration(a.grant.GetLeaseTtlSeconds()) * time.Second
-	a.fence = newFence(a.e.o.API, a.ref, a.e.o.Timing, a.leasedAt, ttl, a.log, a.onLost)
-	go a.fence.run(a.rpc)
+	a.fence = newFence(a.e.o.API, a.ref, a.e.o.Timing, a.leasedAt, ttl, a.log, func(err error) { a.onLost(ctx, err) })
+	go a.fence.run(ctx)
 	defer a.fence.Stop()
 	if err := a.e.o.Journal.Add(a.entry()); err != nil {
-		a.log.Error("could not record the lease in the journal, so the job does not run", "error", err)
+		a.log.Error("could not record the lease in the journal, so the job does not run", "error", a.masked(err))
 		return a.report(ctx, failed(diskReason(err), 0))
 	}
 	if err := config.EnsurePrivateDir(a.dir); err != nil {
-		a.log.Error("could not create the attempt directory", "error", err)
+		a.log.Error("could not create the attempt directory", "error", a.masked(err))
 		return a.finish(ctx, failed(diskReason(err), 0))
 	}
 	defer func() { _ = os.RemoveAll(a.dir) }()
@@ -118,7 +118,31 @@ func diskReason(err error) runnerv1.FailureReason {
 	return runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED
 }
 
-func (a *attempt) onLost(reason error) {
+func (a *attempt) forgetSecrets() {
+	for _, v := range a.secrets {
+		clear(v)
+	}
+	a.secrets = nil
+	a.masker.Clear()
+}
+
+func (a *attempt) masked(err error) string {
+	if err == nil {
+		return ""
+	}
+	return a.masker.MaskString(err.Error())
+}
+
+func (a *attempt) stopping() bool {
+	select {
+	case <-a.shutdown:
+		return true
+	default:
+		return false
+	}
+}
+
+func (a *attempt) onLost(ctx context.Context, reason error) {
 	a.mu.Lock()
 	box := a.box
 	if box != nil && a.killedAt.IsZero() {
@@ -126,8 +150,8 @@ func (a *attempt) onLost(reason error) {
 	}
 	a.mu.Unlock()
 	if box != nil {
-		if err := box.Kill(context.WithoutCancel(a.rpc)); err != nil {
-			a.log.Error("could not kill the sandbox", "error", err)
+		if err := box.Kill(ctx); err != nil {
+			a.log.Error("could not kill the sandbox", "error", a.masked(err))
 		}
 	}
 	if errors.Is(reason, ErrSelfFenced) {
@@ -135,36 +159,36 @@ func (a *attempt) onLost(reason error) {
 	}
 }
 
-func (a *attempt) setBox(box sandbox.Sandbox) bool {
+func (a *attempt) setBox(ctx context.Context, box sandbox.Sandbox) bool {
 	a.mu.Lock()
 	a.box = box
 	a.mu.Unlock()
 	select {
 	case <-a.fence.Lost():
-		a.onLost(a.fence.LostErr())
+		a.onLost(ctx, a.fence.LostErr())
 		return false
 	default:
 		return true
 	}
 }
 
-func (a *attempt) destroy() {
+func (a *attempt) destroy(ctx context.Context) {
 	a.mu.Lock()
 	box := a.box
 	a.mu.Unlock()
 	if box == nil {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(a.rpc), teardownTimeout)
+	dctx, cancel := context.WithTimeout(ctx, teardownTimeout)
 	defer cancel()
-	if err := box.Destroy(ctx); err != nil {
-		a.log.Error("could not remove the sandbox", "error", err)
+	if err := box.Destroy(dctx); err != nil {
+		a.log.Error("could not remove the sandbox", "error", a.masked(err))
 	}
 }
 
 func (a *attempt) retry(ctx context.Context, fn func(context.Context) error) error {
 	for n := 0; ; n++ {
-		err := fn(a.rpc)
+		err := fn(ctx)
 		if err == nil || !client.Transient(err) {
 			return err
 		}
@@ -189,6 +213,8 @@ func (a *attempt) waitBackoff(ctx context.Context, n int, err error) error {
 		return nil
 	case <-a.fence.Lost():
 		return a.lostErr()
+	case <-a.shutdown:
+		return ErrShuttingDown
 	case <-ctx.Done():
 		return ctx.Err()
 	}

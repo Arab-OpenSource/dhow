@@ -124,7 +124,7 @@ func register(ctx context.Context, cfg config.Config, token, name string) (*iden
 }
 
 func readToken(path string, stdin io.Reader) (string, error) {
-	var r io.Reader = stdin
+	r := stdin
 	if path != stdinMarker {
 		f, err := os.Open(path) //nolint:gosec // The operator names the token file.
 		if err != nil {

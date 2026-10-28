@@ -22,7 +22,7 @@ func CompleteRequest(attemptID string, ref *runnerv1.LeaseRef, res runnerv1.Atte
 }
 
 func (a *attempt) finish(ctx context.Context, r result) Outcome {
-	a.destroy()
+	a.destroy(ctx)
 	out := Outcome{
 		LeaseID: a.ref.GetLeaseId(), Result: r.state, Reason: r.reason, ExitCode: r.exitCode,
 		SelfFenced: errors.Is(a.fence.LostErr(), ErrSelfFenced),
@@ -42,15 +42,15 @@ func (a *attempt) finish(ctx context.Context, r result) Outcome {
 }
 
 func (a *attempt) closeLogs(ctx context.Context, r result, selfFenced bool) {
-	if r.silent || selfFenced || ctx.Err() != nil {
+	if r.silent || selfFenced || a.stopping() {
 		_ = a.pipe.Abort()
 		return
 	}
 	limit := min(a.e.o.Timing.LogDrain, time.Until(a.fence.Deadline())-drainHeadroom)
-	dctx, cancel := context.WithTimeout(a.rpc, max(limit, 0))
+	dctx, cancel := context.WithTimeout(ctx, max(limit, 0))
 	defer cancel()
 	if err := a.pipe.Close(dctx); err != nil {
-		a.log.Warn("the job log did not reach the server before the attempt closed", "error", err)
+		a.log.Warn("the job log did not reach the server before the attempt closed", "error", a.masked(err))
 	}
 }
 
@@ -62,21 +62,21 @@ func (a *attempt) report(ctx context.Context, r result) Outcome {
 
 func (a *attempt) forget() {
 	if err := a.e.o.Journal.Remove(a.ref.GetLeaseId()); err != nil {
-		a.log.Error("could not remove the lease from the journal", "error", err)
+		a.log.Error("could not remove the lease from the journal", "error", a.masked(err))
 	}
 }
 
 func (a *attempt) complete(ctx context.Context, r result) bool {
 	window := a.e.o.Timing.CompleteWindow
-	if ctx.Err() != nil {
+	if a.stopping() {
 		window = a.e.o.Timing.ShutdownGrace
 	}
-	cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), window)
+	cctx, cancel := context.WithTimeout(ctx, window)
 	defer cancel()
 	if err := a.e.o.Journal.SetCompletion(a.ref.GetLeaseId(), journal.Completion{
 		Result: int32(r.state), ExitCode: r.exitCode, FailureReason: int32(r.reason),
 	}); err != nil {
-		a.log.Error("could not record the result in the journal", "error", err)
+		a.log.Error("could not record the result in the journal", "error", a.masked(err))
 	}
 	req := CompleteRequest(a.grant.GetAttemptId(), a.ref, r.state, r.exitCode, r.reason)
 	acked, definitive := sendComplete(cctx, a.e.o.API, a.e.o.Backoff, req, a.log)

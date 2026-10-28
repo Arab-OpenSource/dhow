@@ -61,7 +61,7 @@ func (c *Client) Authenticate(ctx context.Context) error {
 
 func (c *Client) Lease(ctx context.Context, freeSlots int32, wait time.Duration) (*runnerv1.SignedLeaseGrant, error) {
 	res, err := call(ctx, c, wait+config.LeasePollSlack, c.lease.Lease, &runnerv1.LeaseRequest{
-		FreeSlots: freeSlots, WaitSeconds: int32(wait / time.Second),
+		FreeSlots: freeSlots, WaitSeconds: int32(wait / time.Second), //nolint:gosec // The wait is at most 25 seconds.
 	})
 	if err != nil {
 		return nil, err

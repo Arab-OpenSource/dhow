@@ -108,7 +108,7 @@ func (s *Server) claim() (*runnerv1.SignedLeaseGrant, error) {
 	}
 	grant, err := proto.Marshal(&runnerv1.LeaseGrant{
 		LeaseId: l.ID, AttemptId: l.AttemptID, JobId: j.ID, OrganizationId: s.runner.org, RunnerId: s.runner.id,
-		FencingToken: l.Fencing, LeaseTtlSeconds: int32(l.TTL / time.Second), IssuedAt: timestamppb.Now(), Spec: j.Spec,
+		FencingToken: l.Fencing, LeaseTtlSeconds: ttlSeconds(l.TTL), IssuedAt: timestamppb.Now(), Spec: j.Spec,
 	})
 	if err != nil {
 		return nil, err
@@ -123,6 +123,8 @@ func (s *Server) claim() (*runnerv1.SignedLeaseGrant, error) {
 	return &runnerv1.SignedLeaseGrant{GrantBytes: grant, Signature: ed25519.Sign(key, runnersig.GrantMessage(grant)), KeyVersion: 1}, nil
 }
 
+func ttlSeconds(d time.Duration) int32 { return int32(min(d/time.Second, time.Hour/time.Second)) } //nolint:gosec // Capped at an hour.
+
 func (s *Server) active(ref *runnerv1.LeaseRef) (*Lease, error) {
 	l := s.leases[ref.GetLeaseId()]
 	if l == nil || l.Fencing != ref.GetFencingToken() || l.Closed || time.Now().After(l.ExpiresAt) {
@@ -132,7 +134,7 @@ func (s *Server) active(ref *runnerv1.LeaseRef) (*Lease, error) {
 }
 
 func (s *Server) control(l *Lease) *runnerv1.LeaseControl {
-	return &runnerv1.LeaseControl{CancelRequested: l.Cancel, LeaseTtlSeconds: int32(l.TTL / time.Second)}
+	return &runnerv1.LeaseControl{CancelRequested: l.Cancel, LeaseTtlSeconds: ttlSeconds(l.TTL)}
 }
 
 func (h handlers) Start(_ context.Context, req *connect.Request[runnerv1.StartRequest]) (*connect.Response[runnerv1.StartResponse], error) {

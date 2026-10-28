@@ -45,7 +45,7 @@ func (a *automaton) insert(p []byte) {
 	for _, b := range p {
 		next := a.child(node, b)
 		if next < 0 {
-			next = int32(len(a.edges))
+			next = int32(len(a.edges)) //nolint:gosec // Patterns come from at most 50 secrets, far below 2^31 nodes.
 			a.edges = append(a.edges, nil)
 			a.fail = append(a.fail, 0)
 			a.out = append(a.out, 0)
@@ -59,7 +59,7 @@ func (a *automaton) insert(p []byte) {
 		}
 		node = next
 	}
-	a.out[node] = int32(len(p))
+	a.out[node] = int32(len(p)) //nolint:gosec // A pattern is a secret variant, far below 2^31 bytes.
 	a.maxLen = max(a.maxLen, len(p))
 }
 

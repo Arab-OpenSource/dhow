@@ -79,5 +79,5 @@ type Inspection struct {
 
 func ExitCodeForSignal(sig syscall.Signal) int32 {
 	const signalExitBase = 128
-	return signalExitBase + int32(sig)
+	return signalExitBase + int32(sig) //nolint:gosec // Signal numbers are below 65.
 }

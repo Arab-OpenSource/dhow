@@ -29,11 +29,11 @@ type stepEnd struct {
 
 func (a *attempt) steps(ctx context.Context) result {
 	spec := a.grant.GetSpec()
-	jobCtx, cancel := context.WithTimeout(a.rpc, time.Duration(spec.GetTimeoutSeconds())*time.Second)
+	jobCtx, cancel := context.WithTimeout(ctx, time.Duration(spec.GetTimeoutSeconds())*time.Second)
 	defer cancel()
 	for i, step := range spec.GetSteps() {
-		idx := int32(i) //nolint:gosec // A spec has at most 100 steps.
-		if r, stop := a.interrupted(ctx, jobCtx); stop {
+		idx := int32(i)
+		if r, stop := a.interrupted(jobCtx); stop {
 			return r
 		}
 		if r, ok := a.beginStep(ctx, idx, step.GetMutating()); !ok {
@@ -46,7 +46,7 @@ func (a *attempt) steps(ctx context.Context) result {
 	return succeeded()
 }
 
-func (a *attempt) interrupted(ctx, jobCtx context.Context) (result, bool) {
+func (a *attempt) interrupted(jobCtx context.Context) (result, bool) {
 	select {
 	case <-a.fence.Lost():
 		return a.lostResult(), true
@@ -54,7 +54,7 @@ func (a *attempt) interrupted(ctx, jobCtx context.Context) (result, bool) {
 		return canceledResult(), true
 	case <-a.pipe.Fatal():
 		return a.fatalResult(), true
-	case <-ctx.Done():
+	case <-a.shutdown:
 		return lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED), true
 	default:
 	}
@@ -80,7 +80,7 @@ func (a *attempt) beginStep(ctx context.Context, idx int32, mutating bool) (resu
 	case client.IsLeaseLost(err), errors.Is(err, ErrLeaseLost):
 		a.fence.markLost(ErrLeaseLost)
 		return gone(), false
-	case ctx.Err() != nil:
+	case a.stopping():
 		return lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED), false
 	default:
 		a.log.Error("the server refused to begin a step", "step", idx, "code", client.Code(err).String(), "reason", client.Reason(err))
@@ -98,7 +98,7 @@ func (a *attempt) runStep(ctx, jobCtx context.Context, idx int32, step *runnerv1
 		stepCtx, cancel = context.WithTimeout(jobCtx, time.Duration(t)*time.Second)
 		defer cancel()
 	}
-	execCtx, stopExec := context.WithCancel(a.rpc)
+	execCtx, stopExec := context.WithCancel(ctx)
 	defer stopExec()
 	env, files := a.stepEnv(idx)
 	done := make(chan stepEnd, 1)
@@ -112,8 +112,10 @@ func (a *attempt) runStep(ctx, jobCtx context.Context, idx int32, step *runnerv1
 	end, why, stopped := a.waitStep(ctx, jobCtx, stepCtx, done, stopExec)
 	_ = stdout.Close()
 	_ = stderr.Close()
-	clear(env)
-	clear(files)
+	if end.ok {
+		clear(env)
+		clear(files)
+	}
 	stepReason := stepReasonOf(end, why, stopped)
 	if !stopped || (why.state != runnerv1.AttemptResult_ATTEMPT_RESULT_LOST && !why.silent) {
 		a.endStep(ctx, idx, end.res.ExitCode, stepReason)
@@ -135,18 +137,18 @@ func (a *attempt) waitStep(ctx, jobCtx, stepCtx context.Context, done <-chan ste
 	case <-a.fence.Lost():
 		return a.awaitExit(done, stopExec), a.lostResult(), true
 	case <-a.fence.Canceled():
-		return a.terminate(done, stopExec), canceledResult(), true
+		return a.terminate(ctx, done, stopExec), canceledResult(), true
 	case <-stepCtx.Done():
-		end := a.terminate(done, stopExec)
+		end := a.terminate(ctx, done, stopExec)
 		if jobCtx.Err() != nil {
 			return end, timedOut(), true
 		}
 		return end, failed(runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED, end.res.ExitCode), true
 	case <-a.pipe.Fatal():
-		a.killBox()
+		a.killBox(ctx)
 		return a.awaitExit(done, stopExec), a.fatalResult(), true
-	case <-ctx.Done():
-		a.killBox()
+	case <-a.shutdown:
+		a.killBox(ctx)
 		return a.awaitExit(done, stopExec), lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED), true
 	}
 }
@@ -174,7 +176,7 @@ func (a *attempt) stepOutcome(idx int32, end stepEnd) (result, bool) {
 		a.pipe.Systemf(&idx, "dhow: SHELL_NOT_FOUND: the job image has no /bin/sh")
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SHELL_NOT_FOUND, 0), false
 	case end.err != nil:
-		a.log.Error("a step could not run", "step", idx, "error", end.err)
+		a.log.Error("a step could not run", "step", idx, "error", a.masked(end.err))
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
 	case end.res.ExitCode != 0:
 		reason := end.res.Reason
@@ -203,15 +205,15 @@ func (a *attempt) endStep(ctx context.Context, idx, exitCode int32, reason runne
 	}
 }
 
-func (a *attempt) killBox() {
+func (a *attempt) killBox(ctx context.Context) {
 	if box := a.currentBox(); box != nil {
 		a.mu.Lock()
 		if a.killedAt.IsZero() {
 			a.killedAt = time.Now()
 		}
 		a.mu.Unlock()
-		if err := box.Kill(a.rpc); err != nil {
-			a.log.Error("could not kill the sandbox", "error", err)
+		if err := box.Kill(ctx); err != nil {
+			a.log.Error("could not kill the sandbox", "error", a.masked(err))
 		}
 	}
 }
@@ -227,17 +229,17 @@ func waitFor(done <-chan stepEnd, d time.Duration) (stepEnd, bool) {
 	}
 }
 
-func (a *attempt) terminate(done <-chan stepEnd, stopExec func()) stepEnd {
+func (a *attempt) terminate(ctx context.Context, done <-chan stepEnd, stopExec func()) stepEnd {
 	box := a.currentBox()
-	_ = box.Signal(a.rpc, syscall.SIGTERM)
+	_ = box.Signal(ctx, syscall.SIGTERM)
 	if end, ok := waitFor(done, a.e.o.Config.CancelGrace); ok {
 		return end
 	}
-	_ = box.Signal(a.rpc, syscall.SIGKILL)
+	_ = box.Signal(ctx, syscall.SIGKILL)
 	if end, ok := waitFor(done, a.e.o.Timing.CancelKillWait); ok {
 		return end
 	}
-	a.killBox()
+	a.killBox(ctx)
 	return a.awaitExit(done, stopExec)
 }
 

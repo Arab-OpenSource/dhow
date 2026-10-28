@@ -15,8 +15,9 @@ import (
 const heartbeatRetry = time.Second
 
 var (
-	ErrSelfFenced = errors.New("no heartbeat succeeded in time, so the runner stopped the job before the server could give the lease away")
-	ErrLeaseLost  = errors.New("the server says this lease is lost")
+	ErrSelfFenced   = errors.New("no heartbeat succeeded in time, so the runner stopped the job before the server could give the lease away")
+	ErrLeaseLost    = errors.New("the server says this lease is lost")
+	ErrShuttingDown = errors.New("the runner is shutting down")
 )
 
 type fence struct {

@@ -3,6 +3,7 @@
 package runnertest
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -26,7 +27,7 @@ type Proxy struct {
 
 func NewProxy(t testing.TB, target string) *Proxy {
 	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +67,7 @@ func (p *Proxy) serve(client net.Conn) {
 		_, _ = io.Copy(io.Discard, client)
 		return
 	}
-	upstream, err := net.Dial("tcp", p.target)
+	upstream, err := (&net.Dialer{}).DialContext(context.Background(), "tcp", p.target)
 	if err != nil {
 		_ = client.Close()
 		return

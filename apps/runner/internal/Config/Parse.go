@@ -30,8 +30,15 @@ var sizeUnits = []struct {
 	suffix string
 	factor int64
 }{
-	{"TiB", 1 << 40}, {"GiB", 1 << 30}, {"MiB", 1 << 20}, {"KiB", 1 << 10},
-	{"T", 1 << 40}, {"G", 1 << 30}, {"M", 1 << 20}, {"K", 1 << 10}, {"B", 1},
+	{"TiB", 1 << 40},
+	{"GiB", 1 << 30},
+	{"MiB", 1 << 20},
+	{"KiB", 1 << 10},
+	{"T", 1 << 40},
+	{"G", 1 << 30},
+	{"M", 1 << 20},
+	{"K", 1 << 10},
+	{"B", 1},
 }
 
 func ParseServerURL(raw string, dev bool) (*url.URL, error) {
@@ -88,7 +95,7 @@ func loadOrigin(raw string, u *url.URL, dev bool) (string, error) {
 		(parsed.Path != "" && parsed.Path != "/") {
 		return "", ErrURLShape
 	}
-	if parsed.Scheme != "https" && !(dev && parsed.Scheme == "http") {
+	if parsed.Scheme != "https" && (!dev || parsed.Scheme != "http") {
 		return "", ErrNotHTTPS
 	}
 	return OriginOf(parsed), nil

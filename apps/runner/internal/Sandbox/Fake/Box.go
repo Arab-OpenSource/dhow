@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"io"
 	"net/url"
 	"slices"
 	"sync"
@@ -124,7 +123,7 @@ func (b *box) finish(i int32, r sandbox.StepResult) sandbox.StepResult {
 }
 
 func writeOutput(spec sandbox.StepSpec, o Output) {
-	var w io.Writer = spec.Stdout
+	w := spec.Stdout
 	if o.Stream == "stderr" {
 		w = spec.Stderr
 	}
