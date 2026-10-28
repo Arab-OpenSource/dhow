@@ -6,7 +6,7 @@ import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { useT } from '@/I18n/useT';
 import { LoginForm } from '@/Modules/Session/Components/LoginForm';
 import { MfaStep } from '@/Modules/Session/Components/MfaStep';
-import { PasskeySignIn } from '@/Modules/Session/Components/PasskeySignIn';
+import { SignInChoices } from '@/Modules/Session/Components/SignInChoices';
 
 export interface ILoginPageProps {
   onSignedIn: () => void;
@@ -33,7 +33,7 @@ export const LoginPage = ({ onSignedIn }: ILoginPageProps) => {
   return (
     <AuthPage title={t('login.title')} lead={t('login.lead')} footer={t('login.footer')}>
       {Expired ? <InlineAlert accent="awaiting" title={t('mfa.step.expired')} /> : null}
-      <PasskeySignIn onSignedIn={onSignedIn} />
+      <SignInChoices onSignedIn={onSignedIn} />
       <LoginForm
         onSignedIn={onSignedIn}
         onMfa={(pending) => {

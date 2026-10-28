@@ -31,6 +31,7 @@ type Rule struct {
 	Action   Action
 	OrgParam string
 	Runner   RunnerAccess
+	Tokens   bool
 }
 
 func Public(method, path string) Rule {
@@ -53,9 +54,17 @@ func Runner(procedure string, access RunnerAccess) Rule {
 	return Rule{Method: http.MethodPost, Path: procedure, Scope: ScopeRunner, Runner: access}
 }
 
+func (r Rule) AllowTokens() Rule {
+	r.Tokens = true
+	return r
+}
+
 func (r Rule) Key() string { return r.Method + " " + r.Path }
 
 func (r Rule) Valid() bool {
+	if r.Tokens && (r.Scope != ScopeOrganization || !IsTokenAction(r.Action)) {
+		return false
+	}
 	switch r.Scope {
 	case ScopePublic:
 		return r.Action == "" && r.Runner == 0

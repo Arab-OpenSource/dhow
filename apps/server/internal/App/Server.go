@@ -68,6 +68,8 @@ func Run(ctx context.Context) error {
 		return err
 	}
 	defer stopJobs()
+	stopMaintenance := StartMaintenance(ctx, wired.Options.Session, config.OidcFlowPurgeEvery)
+	defer stopMaintenance()
 	servers := []served{{srv: NewHTTPServer(cfg, wired.Handler, log), attrs: []any{"public_url", cfg.PublicURL.String()}}}
 	if wired.RunnerHandler != nil {
 		runner := NewHTTPServer(cfg, wired.RunnerHandler, log)

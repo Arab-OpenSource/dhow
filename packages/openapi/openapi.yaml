@@ -28,6 +28,16 @@ tags:
     description: >-
       The second sign-in step, TOTP, recovery codes and passkeys (WebAuthn). Served by the Session module, because the
       second step is part of signing in.
+  - name: oidc
+    description: >-
+      Sign-in with external identity providers (OpenID Connect, and GitHub over OAuth 2.0) and the identities linked to
+      an account. Served by the Session module, because signing in opens a session.
+  - name: tokens
+    description: >-
+      Personal API tokens (`dhow_pat_...`) for the CLI, CI and integrations, scoped to one organization. Served by the
+      Tokens module. Routes marked with `ApiToken` also accept `Authorization: Bearer <token>` instead of a session.
+  - name: preferences
+    description: The signed-in user's language, themes and chosen organization. Served by the Preferences module.
   - name: audit
     description: The tamper-evident audit log. Served by the Audit module.
   - name: runners
@@ -612,6 +622,51 @@ paths:
                 $ref: "#/components/schemas/MeResponse"
         default:
           $ref: "#/components/responses/Error"
+  /me/preferences:
+    get:
+      operationId: getPreferences
+      tags: [preferences]
+      summary: The signed-in user's display preferences
+      description: >-
+        The language, the active theme, the custom themes and the chosen organization. `Saved` is false until the user
+        saves preferences for the first time, so the web app can move what it kept in the browser to the server. An
+        organization the user is no longer a member of comes back as null.
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: savePreferences
+      tags: [preferences]
+      summary: Replace the signed-in user's display preferences
+      description: >-
+        Replaces every field. `ThemeId` must name a system theme or one of `CustomThemes`. A custom theme sets every
+        theme color as lower-case `#rrggbb`. `OrganizationId` must be an organization the user belongs to, or null.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavePreferencesRequest"
+      responses:
+        "200":
+          description: The saved preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
+        default:
+          $ref: "#/components/responses/Error"
   /me/password:
     put:
       operationId: changePassword
@@ -633,6 +688,206 @@ paths:
       responses:
         "200":
           description: The password was changed and the other sessions were revoked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokedCountResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /oidc/providers:
+    get:
+      operationId: listOidcProviders
+      tags: [oidc]
+      summary: The external sign-in providers this instance offers
+      description: Lists the providers from `DHOW_OIDC_PROVIDERS` in their configured order. Never contains a secret.
+      security: []
+      responses:
+        "200":
+          description: The configured providers, possibly none.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /oidc/authorize:
+    post:
+      operationId: beginOidcLogin
+      tags: [oidc]
+      summary: Start signing in with an external provider
+      description: >-
+        Returns the provider's authorization URL with PKCE (S256), a state and, for OpenID Connect, a nonce. Sets the
+        `__Host-dhow_oidc` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`, 10 minutes) that binds the flow to this
+        browser. The browser then opens the URL, and the provider sends it back to `/oidc/callback/<provider>`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcAuthorizeRequest"
+      responses:
+        "200":
+          description: Where to send the browser.
+          headers:
+            Set-Cookie:
+              description: The `__Host-dhow_oidc` flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcAuthorizationResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /oidc/callback:
+    post:
+      operationId: completeOidcLogin
+      tags: [oidc]
+      summary: Finish signing in with an external provider
+      description: >-
+        Needs the `__Host-dhow_oidc` cookie of the flow and the `Code` and `State` the provider returned. The flow works
+        once, whatever the outcome. The identity is matched by issuer and subject only, never by email; an identity that
+        is not linked to an account answers `OIDC_NOT_LINKED`. An account with a second factor answers 202 with the same
+        `mfa_pending` challenge as the password step. Success sets the session cookie and replaces any session the
+        request carried.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcCallbackRequest"
+      responses:
+        "200":
+          description: Signed in.
+          headers:
+            Set-Cookie:
+              description: The session cookie, and an expired flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "202":
+          description: The identity is right and the second step is required.
+          headers:
+            Set-Cookie:
+              description: The `__Host-dhow_mfa` challenge cookie, and an expired flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaPendingResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/identities:
+    get:
+      operationId: listLinkedIdentities
+      tags: [oidc]
+      summary: The external identities linked to the signed-in user
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The linked identities, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkedIdentityListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/identities/authorize:
+    post:
+      operationId: beginOidcLink
+      tags: [oidc]
+      summary: Start linking an external identity
+      description: >-
+        Needs a current factor, like adding a passkey. The flow is bound to this session and this browser, and an account
+        links at most one identity per provider.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcLinkRequest"
+      responses:
+        "200":
+          description: Where to send the browser.
+          headers:
+            Set-Cookie:
+              description: The `__Host-dhow_oidc` flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcAuthorizationResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/identities/callback:
+    post:
+      operationId: completeOidcLink
+      tags: [oidc]
+      summary: Finish linking an external identity
+      description: >-
+        Needs the flow cookie from the same session. An identity already linked to any account answers
+        `OIDC_IDENTITY_IN_USE`. Revokes every other session of the user.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcCallbackRequest"
+      responses:
+        "200":
+          description: The identity was linked.
+          headers:
+            Set-Cookie:
+              description: An expired flow cookie.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkedIdentityChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/identities/{id}/remove:
+    post:
+      operationId: removeLinkedIdentity
+      tags: [oidc]
+      summary: Unlink an external identity
+      description: >-
+        Needs a current factor. Refused with `LAST_SIGN_IN_METHOD` when the account would have no way left to sign in.
+        Revokes every other session. Another user's identity id answers 404.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurrentFactorRequest"
+      responses:
+        "200":
+          description: The identity was unlinked.
           content:
             application/json:
               schema:
@@ -673,6 +928,7 @@ paths:
       description: Needs `org.read`. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -692,6 +948,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -717,6 +974,7 @@ paths:
       description: Needs `member.read`. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -792,6 +1050,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/UserId"
@@ -821,6 +1080,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/UserId"
@@ -872,6 +1132,7 @@ paths:
       description: Needs `member.read`.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -893,6 +1154,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -918,6 +1180,7 @@ paths:
       description: Needs `member.read`. A team of another organization is 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -938,6 +1201,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -966,6 +1230,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -989,6 +1254,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1018,6 +1284,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1043,6 +1310,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1072,6 +1340,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1101,6 +1370,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1124,6 +1394,7 @@ paths:
         can be resent. Newest first.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -1148,6 +1419,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1174,6 +1446,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/InvitationId"
@@ -1197,6 +1470,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/InvitationId"
@@ -1207,6 +1481,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvitationIssuedResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/api-tokens:
+    get:
+      operationId: listOrganizationApiTokens
+      tags: [tokens]
+      summary: Every API token of the organization
+      description: Needs `token.manage` (Owner or Admin). Never contains a token value.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The tokens, newest first, at most 200.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createApiToken
+      tags: [tokens]
+      summary: Create an API token for this organization
+      description: >-
+        Needs a browser session and a current factor. Every scope must be allowed by the caller's effective role now,
+        and on every later request the token can do only what both its scopes and its creator's role at that moment
+        allow. The value (`dhow_pat_...`) is in this response only; the server keeps an HMAC of it. A user has at most
+        50 active tokens.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiTokenRequest"
+      responses:
+        "200":
+          description: The token and, this once, its value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedApiTokenResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/api-tokens/{tokenId}/revoke:
+    post:
+      operationId: revokeOrganizationApiToken
+      tags: [tokens]
+      summary: Revoke any API token of the organization
+      description: Needs `token.manage`. Idempotent.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TokenId"
+      responses:
+        "200":
+          description: The revoked token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/api-tokens:
+    get:
+      operationId: listMyApiTokens
+      tags: [tokens]
+      summary: The signed-in user's API tokens in every organization
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The tokens, newest first, at most 200.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/api-tokens/{id}/revoke:
+    post:
+      operationId: revokeMyApiToken
+      tags: [tokens]
+      summary: Revoke one of the signed-in user's API tokens
+      description: Idempotent. Another user's token id answers 404.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The revoked token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenResponse"
         default:
           $ref: "#/components/responses/Error"
   /invitations/preview:
@@ -1294,6 +1673,7 @@ paths:
       description: Needs `audit.read`. Newest first. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -1317,6 +1697,7 @@ paths:
         wrong.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -1338,6 +1719,7 @@ paths:
         minutes. Never contains a key or a token. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -1359,6 +1741,7 @@ paths:
       description: Needs `runner.read`. Never contains a key or a token. A runner of another organization gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/RunnerId"
@@ -1381,6 +1764,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/RunnerId"
@@ -1410,6 +1794,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/RunnerId"
@@ -1430,6 +1815,7 @@ paths:
       description: Needs `runner.manage`. Metadata only, the token itself is never shown again.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -1453,6 +1839,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1479,6 +1866,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TokenId"
@@ -1500,6 +1888,7 @@ paths:
         Needs `job.read`. Newest first, optionally filtered by state. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -1521,7 +1910,7 @@ paths:
       description: >-
         Needs `job.create`. The spec is validated and normalized (defaults filled in) and the job is queued. The image
         must be pinned by digest. A spec that references secrets is refused with 422 `SECRETS_UNAVAILABLE` while no
-        secret store is configured, and an organization with 1000 queued jobs gets 429 `JOB_QUEUE_FULL`.
+        secret store is configured, and an organization with 1000 queued jobs gets 429 `JOB_QUEUE_FULL`. API tokens cannot create jobs.
       security:
         - SessionCookie: []
           CsrfToken: []
@@ -1552,6 +1941,7 @@ paths:
         `NO_MATCHING_RUNNER`. A job of another organization gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/JobId"
@@ -1576,6 +1966,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/JobId"
@@ -1659,6 +2050,12 @@ components:
       type: apiKey
       in: header
       name: X-CSRF-Token
+    ApiToken:
+      type: http
+      scheme: bearer
+      description: >-
+        A personal API token. Accepted only on the routes that list it, never together with a session cookie, and
+        without the CSRF token or the Origin check because a browser never sends it on its own.
   parameters:
     Id:
       name: id
@@ -3106,6 +3503,320 @@ components:
           properties:
             Data:
               $ref: "#/components/schemas/InvitationAccepted"
+    OidcProviderId:
+      type: string
+      pattern: "^[a-z][a-z0-9]{0,31}$"
+      maxLength: 32
+    OidcProviderKind:
+      type: string
+      enum: [oidc, github]
+    OidcProvider:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Kind]
+      properties:
+        Id:
+          $ref: "#/components/schemas/OidcProviderId"
+        Name:
+          type: string
+        Kind:
+          $ref: "#/components/schemas/OidcProviderKind"
+    OidcProviderListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/OidcProvider"
+    OidcAuthorizeRequest:
+      type: object
+      additionalProperties: false
+      required: [Provider]
+      properties:
+        Provider:
+          $ref: "#/components/schemas/OidcProviderId"
+    OidcLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [Provider, CurrentFactor]
+      properties:
+        Provider:
+          $ref: "#/components/schemas/OidcProviderId"
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    OidcAuthorization:
+      type: object
+      additionalProperties: false
+      required: [AuthorizationUrl, ExpiresAt]
+      properties:
+        AuthorizationUrl:
+          type: string
+          description: The provider's authorization endpoint with the flow parameters.
+        ExpiresAt:
+          type: string
+          format: date-time
+    OidcAuthorizationResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/OidcAuthorization"
+    OidcCallbackRequest:
+      type: object
+      additionalProperties: false
+      required: [Provider, Code, State]
+      properties:
+        Provider:
+          $ref: "#/components/schemas/OidcProviderId"
+        Code:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: The authorization code. Works once and is never logged.
+        State:
+          type: string
+          minLength: 1
+          maxLength: 256
+    LinkedIdentity:
+      type: object
+      additionalProperties: false
+      required: [Id, Provider, ProviderName, Email, CreatedAt]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Provider:
+          $ref: "#/components/schemas/OidcProviderId"
+        ProviderName:
+          type: string
+          description: The provider's label, or its id when the provider is no longer configured.
+        Email:
+          type: string
+          description: The verified email the provider reported at the last sign-in, or empty.
+        CreatedAt:
+          type: string
+          format: date-time
+        LastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+    LinkedIdentityListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/LinkedIdentity"
+    LinkedIdentityChange:
+      type: object
+      additionalProperties: false
+      required: [Identity, Revoked]
+      properties:
+        Identity:
+          $ref: "#/components/schemas/LinkedIdentity"
+        Revoked:
+          type: integer
+          minimum: 0
+          description: How many other sessions were revoked.
+    LinkedIdentityChangeResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/LinkedIdentityChange"
+    ApiTokenScope:
+      type: string
+      enum: [org.read, org.update, member.read, member.manage, audit.read, runner.read, runner.manage, job.read, job.cancel]
+    ApiTokenStatus:
+      type: string
+      enum: [active, expired, revoked, inactive]
+      description: >-
+        `inactive` means the creator is no longer a member of the organization, so the token does nothing until it
+        expires or is revoked.
+    ApiTokenOwner:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Email]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        Email:
+          type: string
+    ApiToken:
+      type: object
+      additionalProperties: false
+      required: [Id, OrganizationId, OrganizationName, Name, Scopes, Status, Owner, CreatedAt, ExpiresAt, LastUsedIp]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        OrganizationId:
+          type: string
+          format: uuid
+        OrganizationName:
+          type: string
+        Name:
+          type: string
+        Scopes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiTokenScope"
+        Status:
+          $ref: "#/components/schemas/ApiTokenStatus"
+        Owner:
+          $ref: "#/components/schemas/ApiTokenOwner"
+        CreatedAt:
+          type: string
+          format: date-time
+        ExpiresAt:
+          type: string
+          format: date-time
+        LastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Updated at most once a minute.
+        LastUsedIp:
+          type: string
+        RevokedAt:
+          type: string
+          format: date-time
+          nullable: true
+    ApiTokenResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/ApiToken"
+    ApiTokenListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ApiToken"
+    CreateApiTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [Name, Scopes, ExpiresInDays, CurrentFactor]
+      properties:
+        Name:
+          type: string
+          maxLength: 400
+        Scopes:
+          type: array
+          minItems: 1
+          maxItems: 16
+          items:
+            $ref: "#/components/schemas/ApiTokenScope"
+        ExpiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 366
+          description: Every token expires. The longest is 366 days.
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    CreatedApiToken:
+      type: object
+      additionalProperties: false
+      required: [Token, Value]
+      properties:
+        Token:
+          $ref: "#/components/schemas/ApiToken"
+        Value:
+          type: string
+          description: >-
+            The token, `dhow_pat_` followed by 43 base64url characters. Send it as `Authorization: Bearer <value>`.
+            Shown only in this response.
+    CreatedApiTokenResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/CreatedApiToken"
+    ThemeColors:
+      type: object
+      maxProperties: 64
+      additionalProperties:
+        type: string
+        maxLength: 7
+      description: One `#rrggbb` color for every theme token, keyed by the token name (`canvas`, `t1`, `a1`, ...).
+    CustomTheme:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Colors]
+      properties:
+        Id:
+          type: string
+          maxLength: 40
+        Name:
+          type: string
+          maxLength: 160
+        Colors:
+          $ref: "#/components/schemas/ThemeColors"
+    SavePreferencesRequest:
+      type: object
+      additionalProperties: false
+      required: [Locale, ThemeId, CustomThemes, OrganizationId]
+      properties:
+        Locale:
+          $ref: "#/components/schemas/Locale"
+        ThemeId:
+          type: string
+          maxLength: 40
+        CustomThemes:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/CustomTheme"
+        OrganizationId:
+          type: string
+          format: uuid
+          nullable: true
+    Preferences:
+      type: object
+      additionalProperties: false
+      required: [Locale, ThemeId, CustomThemes, OrganizationId, Saved]
+      properties:
+        Locale:
+          $ref: "#/components/schemas/Locale"
+        ThemeId:
+          type: string
+        CustomThemes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomTheme"
+        OrganizationId:
+          type: string
+          format: uuid
+          nullable: true
+        Saved:
+          type: boolean
+          description: False until the first save.
+        UpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    PreferencesResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Preferences"
     JobState:
       type: string
       enum: [queued, leased, running, succeeded, failed, canceled, timed_out, lost]

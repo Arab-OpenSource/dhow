@@ -10,6 +10,9 @@ export type TLoginResult = components['schemas']['LoginResult'];
 export type TMfaPending = components['schemas']['MfaPending'];
 export type TMfaMethod = components['schemas']['MfaMethod'];
 export type TMfaLoginRequest = components['schemas']['MfaLoginRequest'];
+export type TOidcProvider = components['schemas']['OidcProvider'];
+export type TOidcCallback = components['schemas']['OidcCallbackRequest'];
+export type TOidcAuthorization = components['schemas']['OidcAuthorization'];
 
 export interface ICredentials {
   Email: string;
@@ -29,17 +32,30 @@ const established = (client: QueryClient, result: TLoginResult): TLoginResult =>
 const asApiError = (error: unknown): ApiError =>
   isApiError(error) ? error : new ApiError({ Code: API_ERROR_NETWORK, Message: '' }, 0);
 
-export const signIn = async (client: QueryClient, credentials: ICredentials): Promise<TSignInOutcome> => {
+const outcome = async (
+  client: QueryClient,
+  call: () => Promise<IFetchResult<TLoginResult | TMfaPending>>,
+): Promise<TSignInOutcome> => {
   let data: TLoginResult | TMfaPending;
   try {
-    const result: IFetchResult<TLoginResult | TMfaPending> = await ApiClient.POST('/sessions', { body: credentials });
-    data = unwrap(result);
+    data = unwrap(await call());
   } catch (error) {
     throw asApiError(error);
   }
   if (isPending(data)) return { Kind: 'mfa', Pending: data };
   return { Kind: 'session', Result: established(client, data) };
 };
+
+export const signIn = (client: QueryClient, credentials: ICredentials): Promise<TSignInOutcome> =>
+  outcome(client, () => ApiClient.POST('/sessions', { body: credentials }));
+
+export const listOidcProviders = (): Promise<TOidcProvider[]> => request(() => ApiClient.GET('/oidc/providers'));
+
+export const beginOidcLogin = (provider: string): Promise<TOidcAuthorization> =>
+  request(() => ApiClient.POST('/oidc/authorize', { body: { Provider: provider } }));
+
+export const completeOidcLogin = (client: QueryClient, body: TOidcCallback): Promise<TSignInOutcome> =>
+  outcome(client, () => ApiClient.POST('/oidc/callback', { body }));
 
 export const completeMfa = async (client: QueryClient, body: TMfaLoginRequest): Promise<TLoginResult> =>
   established(client, await request(() => ApiClient.POST('/sessions/mfa', { body })));

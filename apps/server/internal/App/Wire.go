@@ -17,16 +17,19 @@ import (
 	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
+	oidcauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
 	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
+	preferences "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Preferences"
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
 	systemmodels "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Models"
+	tokens "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Tokens"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
 
@@ -45,6 +48,7 @@ type Infra struct {
 
 	LogStreamWriteWait time.Duration
 	LogReadWait        time.Duration
+	OidcTransport      http.RoundTripper
 }
 
 type Wired struct {
@@ -96,6 +100,10 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	if err != nil {
 		return nil, err
 	}
+	external, err := externalAuth(in)
+	if err != nil {
+		return nil, err
+	}
 	bus := eventbus.New(in.Log)
 	instance := policy.InstanceSettings{AnyUserCreatesOrganizations: in.Config.AnyUserCreatesOrganizations}
 
@@ -104,6 +112,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	sessionService := session.NewService(session.Options{
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, CSRF: csrf, Sealer: sealer, Recovery: recovery, WebAuthn: passkeys,
 		Bus: bus, Instance: instance, Log: in.Log, Now: in.Now,
+		Oidc: external.providers, OidcKey: external.oidcKey, CallbackBase: in.Config.PublicURL.String() + config.OidcCallbackPath,
 	})
 	mail := in.Mailer
 	if mail == nil {
@@ -118,21 +127,14 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		DB: in.Pool, Keys: runnerKeys, Bus: bus, Origin: auth.OriginOf(in.Config.PublicURL), PublicURL: in.Config.PublicURL.String(),
 		Log: in.Log, Now: in.Now,
 	})
+	tokensService := tokens.NewService(tokens.Options{
+		DB: in.Pool, Tokens: external.apiTokens, Factors: sessionService, Bus: bus, Log: in.Log, Now: in.Now,
+	})
 	gate := runnerauth.NewGate(runnerauth.GateOptions{Verifier: runnersService, Log: in.Log, Now: in.Now})
-	logPool, err := logReadPool(ctx, in.Pool, in.Config.Logs)
+	jobsService, logPool, err := buildJobs(ctx, in, runnerKeys, bus)
 	if err != nil {
 		return nil, err
 	}
-	jobsOptions := jobs.Options{
-		DB: in.Pool, Keys: runnerKeys, Secrets: in.Secrets, Bus: bus, Listen: listener(in.Pool),
-		MaxPolls: in.Config.RunnerMaxPolls, Logs: in.Config.Logs, StreamWriteWait: in.LogStreamWriteWait,
-		ReadWait: in.LogReadWait, Log: in.Log,
-	}
-	if logPool != nil {
-		jobsOptions.Reads = logPool
-	}
-	jobsService := jobs.NewService(jobsOptions)
-	jobs.Subscribe(bus, jobsService)
 
 	opts := Options{
 		Config: in.Config,
@@ -141,21 +143,42 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 			DB: in.Pool, Migrations: in.Migrations, Queries: sqlc.New(in.Pool), Build: in.Build, Log: in.Log,
 			Checks: []system.ReadinessCheck{{Name: systemmodels.CheckLogPartitions, Run: jobsService.CheckLogPartition}},
 		},
-		Identity: identityService,
-		Session:  sessionService,
-		Audit:    auditService,
-		Runners:  runnersService,
-		Jobs:     jobsService,
-		Gate:     gate,
-		CSRF:     csrf,
-		Now:      in.Now,
-		Web:      in.Web,
+		Identity:  identityService,
+		Session:   sessionService,
+		Audit:     auditService,
+		Runners:   runnersService,
+		Jobs:      jobsService,
+		Tokens:    tokensService,
+		Prefs:     preferences.NewService(in.Pool, in.Log, in.Now),
+		Gate:      gate,
+		CSRF:      csrf,
+		APITokens: external.apiTokens,
+		Now:       in.Now,
+		Web:       in.Web,
 	}
 	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool}
 	if in.Config.RunnerPlaneSeparate() {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
 	}
 	return wired, nil
+}
+
+func buildJobs(ctx context.Context, in Infra, keys *runnerauth.Keys, bus *eventbus.Bus) (*jobs.Service, *pgxpool.Pool, error) {
+	logPool, err := logReadPool(ctx, in.Pool, in.Config.Logs)
+	if err != nil {
+		return nil, nil, err
+	}
+	opts := jobs.Options{
+		DB: in.Pool, Keys: keys, Secrets: in.Secrets, Bus: bus, Listen: listener(in.Pool),
+		MaxPolls: in.Config.RunnerMaxPolls, Logs: in.Config.Logs, StreamWriteWait: in.LogStreamWriteWait,
+		ReadWait: in.LogReadWait, Log: in.Log,
+	}
+	if logPool != nil {
+		opts.Reads = logPool
+	}
+	service := jobs.NewService(opts)
+	jobs.Subscribe(bus, service)
+	return service, logPool, nil
 }
 
 func logReadPool(ctx context.Context, pool *pgxpool.Pool, logs config.Logs) (*pgxpool.Pool, error) {
@@ -176,6 +199,28 @@ func logReadPool(ctx context.Context, pool *pgxpool.Pool, logs config.Logs) (*pg
 		return nil, fmt.Errorf("open the job log read pool: %w", err)
 	}
 	return logPool, nil
+}
+
+type externalDeps struct {
+	providers *oidcauth.Registry
+	oidcKey   []byte
+	apiTokens *auth.APITokens
+}
+
+func externalAuth(in Infra) (externalDeps, error) {
+	providers, err := oidcauth.NewRegistry(in.Config.OIDCProviders, oidcauth.Options{Transport: in.OidcTransport, Now: in.Now, AllowHTTP: in.Config.Dev})
+	if err != nil {
+		return externalDeps{}, err
+	}
+	oidcKey, err := appcrypto.DeriveKey(in.Config.SecretKey, config.OidcFlowKeyLabel)
+	if err != nil {
+		return externalDeps{}, err
+	}
+	apiTokens, err := auth.NewAPITokens(in.Config.SecretKey)
+	if err != nil {
+		return externalDeps{}, err
+	}
+	return externalDeps{providers: providers, oidcKey: oidcKey, apiTokens: apiTokens}, nil
 }
 
 func listener(pool *pgxpool.Pool) jobs.Listener {

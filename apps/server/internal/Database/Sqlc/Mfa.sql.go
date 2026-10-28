@@ -123,7 +123,7 @@ func (q *Queries) FailMfaChallenge(ctx context.Context, arg FailMfaChallengePara
 }
 
 const findMfaChallenge = `-- name: FindMfaChallenge :one
-SELECT "Id", "UserId", "DeviceHash", "ExpiresAt"
+SELECT "Id", "UserId", "DeviceHash", "ExpiresAt", "FirstMethod"
 FROM "AuthChallenges"
 WHERE "TokenHash" = $1 AND "Kind" = 'mfa_pending' AND NOT "IsDeleted" AND "UsedAt" IS NULL
   AND "ExpiresAt" > $2
@@ -135,10 +135,11 @@ type FindMfaChallengeParams struct {
 }
 
 type FindMfaChallengeRow struct {
-	Id         uuid.UUID
-	UserId     *uuid.UUID
-	DeviceHash []byte
-	ExpiresAt  time.Time
+	Id          uuid.UUID
+	UserId      *uuid.UUID
+	DeviceHash  []byte
+	ExpiresAt   time.Time
+	FirstMethod string
 }
 
 func (q *Queries) FindMfaChallenge(ctx context.Context, arg FindMfaChallengeParams) (FindMfaChallengeRow, error) {
@@ -149,6 +150,7 @@ func (q *Queries) FindMfaChallenge(ctx context.Context, arg FindMfaChallengePara
 		&i.UserId,
 		&i.DeviceHash,
 		&i.ExpiresAt,
+		&i.FirstMethod,
 	)
 	return i, err
 }
@@ -230,10 +232,10 @@ func (q *Queries) GetUserForSession(ctx context.Context, id uuid.UUID) (GetUserF
 }
 
 const insertAuthChallenge = `-- name: InsertAuthChallenge :one
-INSERT INTO "AuthChallenges" ("Kind", "TokenHash", "UserId", "SessionId", "DeviceHash", "WebauthnSession", "ExpiresAt",
-                              "CreatedAt", "UpdatedAt")
+INSERT INTO "AuthChallenges" ("Kind", "TokenHash", "UserId", "SessionId", "DeviceHash", "WebauthnSession", "FirstMethod",
+                              "ExpiresAt", "CreatedAt", "UpdatedAt")
 VALUES ($1, $2, $3, $4, $5,
-        $6, $7, $8, $8)
+        $6, $7, $8, $9, $9)
 RETURNING "Id"
 `
 
@@ -244,6 +246,7 @@ type InsertAuthChallengeParams struct {
 	SessionID       *uuid.UUID
 	DeviceHash      []byte
 	WebauthnSession []byte
+	FirstMethod     string
 	ExpiresAt       time.Time
 	Now             time.Time
 }
@@ -256,6 +259,7 @@ func (q *Queries) InsertAuthChallenge(ctx context.Context, arg InsertAuthChallen
 		arg.SessionID,
 		arg.DeviceHash,
 		arg.WebauthnSession,
+		arg.FirstMethod,
 		arg.ExpiresAt,
 		arg.Now,
 	)

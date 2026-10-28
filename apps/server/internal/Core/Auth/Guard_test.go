@@ -230,3 +230,31 @@ func TestOriginOf(t *testing.T) {
 		assert.Equal(t, want, auth.OriginOf(u), in)
 	}
 }
+
+func TestAuthorizationOnlyCountsTheBearerScheme(t *testing.T) {
+	tests := []struct {
+		name    string
+		values  []string
+		token   string
+		present bool
+	}{
+		{"none", nil, "", false},
+		{"basic from a proxy", []string{"Basic dXNlcjpwYXNz"}, "", false},
+		{"bearer", []string{"Bearer dhow_pat_x"}, "dhow_pat_x", true},
+		{"lower-case scheme", []string{"bearer dhow_pat_x"}, "dhow_pat_x", true},
+		{"empty bearer", []string{"Bearer "}, "", true},
+		{"two bearers", []string{"Bearer a", "Bearer b"}, "", true},
+		{"basic and bearer", []string{"Basic dXNlcjpwYXNz", "Bearer a"}, "a", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			for _, v := range tt.values {
+				r.Header.Add("Authorization", v)
+			}
+			token, present := auth.Authorization(r)
+			assert.Equal(t, tt.token, token)
+			assert.Equal(t, tt.present, present)
+		})
+	}
+}

@@ -43,7 +43,7 @@ describe('the second sign-in step', () => {
     await user.type(screen.getByLabelText(Ar['mfa.step.code']), '12a');
     await user.click(screen.getByRole('button', { name: Ar['mfa.step.submit'] }));
     expect(await screen.findByText(Ar['mfa.step.error.code'])).toBeInTheDocument();
-    expect(calls).toHaveLength(1);
+    expect(calls.filter((call) => call.method === 'POST')).toHaveLength(1);
   });
 
   it('switches to a recovery code and sends it as written', async () => {

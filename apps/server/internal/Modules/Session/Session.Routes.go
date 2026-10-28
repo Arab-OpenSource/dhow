@@ -43,6 +43,13 @@ func Policies() []policy.Rule {
 		policy.Authenticated(http.MethodPost, "/me/passkeys/options", policy.SessionManageSelf),
 		policy.Authenticated(http.MethodPatch, "/me/passkeys/{id}", policy.SessionManageSelf),
 		policy.Authenticated(http.MethodPost, "/me/passkeys/{id}/remove", policy.SessionManageSelf),
+		policy.Public(http.MethodGet, "/oidc/providers"),
+		policy.Public(http.MethodPost, "/oidc/authorize"),
+		policy.Public(http.MethodPost, "/oidc/callback"),
+		policy.Authenticated(http.MethodGet, "/me/identities", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/identities/authorize", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/identities/callback", policy.SessionManageSelf),
+		policy.Authenticated(http.MethodPost, "/me/identities/{id}/remove", policy.SessionManageSelf),
 	}
 }
 

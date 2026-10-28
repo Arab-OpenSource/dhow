@@ -46,6 +46,8 @@ type Config struct {
 
 	SMTP                        SMTP
 	AnyUserCreatesOrganizations bool
+
+	OIDCProviders []OIDCProvider
 }
 
 func LoadFromEnv() (Config, error) { return Load(os.Getenv) }
@@ -100,6 +102,9 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.AnyUserCreatesOrganizations, err = parseOrgCreation(getenv(EnvOrgCreation)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvOrgCreation, err))
+	}
+	if cfg.OIDCProviders, err = loadOIDCProviders(getenv, dev); err != nil {
+		errs = append(errs, err)
 	}
 
 	if len(errs) > 0 {

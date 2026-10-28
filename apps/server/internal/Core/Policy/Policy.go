@@ -1,6 +1,10 @@
 package policy
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 type Role string
 
@@ -39,6 +43,8 @@ const (
 	OrgCreate         Action = "org.create"
 	RunnerRead        Action = "runner.read"
 	RunnerManage      Action = "runner.manage"
+	TokenCreate       Action = "token.create"
+	TokenManage       Action = "token.manage"
 	JobRead           Action = "job.read"
 	JobCreate         Action = "job.create"
 	JobCancel         Action = "job.cancel"
@@ -48,9 +54,15 @@ const (
 func Actions() []Action {
 	return []Action{
 		OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, OrgCreate,
-		RunnerRead, RunnerManage, JobRead, JobCreate, JobCancel, LogRead,
+		RunnerRead, RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
 	}
 }
+
+func TokenActions() []Action {
+	return []Action{OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, RunnerRead, RunnerManage, JobRead, JobCancel}
+}
+
+func IsTokenAction(a Action) bool { return slices.Contains(TokenActions(), a) }
 
 func InstanceActions() []Action { return []Action{OrgCreate} }
 
@@ -68,19 +80,19 @@ func Grants(role Role) []Action {
 	case RoleOwner:
 		return []Action{
 			OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
-			JobRead, JobCreate, JobCancel, LogRead,
+			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
 		}
 	case RoleAdmin:
 		return []Action{
 			OrgRead, OrgUpdate, OrgLeave, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
-			JobRead, JobCreate, JobCancel, LogRead,
+			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
 		}
 	case RoleMaintainer:
-		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, JobCancel, LogRead}
+		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, JobCancel, LogRead, TokenCreate}
 	case RoleDeveloper:
-		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, LogRead}
+		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, LogRead, TokenCreate}
 	case RoleViewer:
-		return []Action{OrgRead, OrgLeave, SessionManageSelf, JobRead}
+		return []Action{OrgRead, OrgLeave, SessionManageSelf, JobRead, TokenCreate}
 	default:
 		return nil
 	}
@@ -105,7 +117,11 @@ type Subject struct {
 	SessionID     uuid.UUID
 	InstanceOwner bool
 	Memberships   []Membership
+	TokenID       uuid.UUID
+	TokenScopes   []Action
 }
+
+func (s Subject) ViaToken() bool { return s.TokenID != uuid.Nil }
 
 func (s Subject) RoleIn(organizationID uuid.UUID) (Role, bool) {
 	for _, m := range s.Memberships {
@@ -124,6 +140,9 @@ func Can(s Subject, action Action, r Resource) bool {
 	if s.UserID == uuid.Nil || IsInstanceAction(action) {
 		return false
 	}
+	if s.ViaToken() && (!IsTokenAction(action) || !slices.Contains(s.TokenScopes, action)) {
+		return false
+	}
 	if action == SessionManageSelf {
 		return r.OrganizationID == uuid.Nil
 	}
@@ -139,7 +158,7 @@ type InstanceSettings struct {
 }
 
 func CanInstance(s Subject, action Action, inst InstanceSettings) bool {
-	if s.UserID == uuid.Nil || !IsInstanceAction(action) {
+	if s.UserID == uuid.Nil || s.ViaToken() || !IsInstanceAction(action) {
 		return false
 	}
 	switch action {

@@ -58,4 +58,5 @@ Go through this list before other people use the instance.
 ## More
 
 - [Configuration](configuration.md): every `DHOW_*` variable, its default and its validation.
+- [Sign in with OIDC](../guides/oidc.md): sign-in with Google, Keycloak, GitHub or any OIDC provider.
 - [Troubleshooting](troubleshooting.md): `CSRF_FAILED`, cookies that are not stored, the public URL and `sslmode` errors, the wrong client address, locked-out sign-ins, and the setup link.

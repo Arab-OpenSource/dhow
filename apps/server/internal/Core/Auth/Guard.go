@@ -20,7 +20,10 @@ import (
 	"github.com/Arab-OpenSource/dhow/internal/logging"
 )
 
-var ErrNoSession = errors.New("no active session")
+var (
+	ErrNoSession = errors.New("no active session")
+	ErrNoToken   = errors.New("no active api token")
+)
 
 type Resolved struct {
 	SessionID     uuid.UUID
@@ -39,8 +42,26 @@ type Resolver interface {
 	Peek(ctx context.Context, tokenHash []byte, now time.Time) (Resolved, error)
 }
 
+type ResolvedToken struct {
+	TokenID        uuid.UUID
+	UserID         uuid.UUID
+	OrganizationID uuid.UUID
+	Role           policy.Role
+	Scopes         []policy.Action
+	ExpiresAt      time.Time
+	Email          string
+	Name           string
+	Locale         string
+}
+
+type TokenResolver interface {
+	ResolveToken(ctx context.Context, tokenHash []byte, now time.Time) (ResolvedToken, error)
+}
+
 type GuardOptions struct {
 	Resolver  Resolver
+	Tokens    TokenResolver
+	APITokens *APITokens
 	CSRF      *CSRF
 	PublicURL *url.URL
 	Instance  policy.InstanceSettings
@@ -49,12 +70,14 @@ type GuardOptions struct {
 }
 
 type Guard struct {
-	resolver Resolver
-	csrf     *CSRF
-	origin   string
-	instance policy.InstanceSettings
-	log      *slog.Logger
-	now      func() time.Time
+	resolver  Resolver
+	tokens    TokenResolver
+	apiTokens *APITokens
+	csrf      *CSRF
+	origin    string
+	instance  policy.InstanceSettings
+	log       *slog.Logger
+	now       func() time.Time
 }
 
 func NewGuard(o GuardOptions) *Guard {
@@ -62,7 +85,10 @@ func NewGuard(o GuardOptions) *Guard {
 	if now == nil {
 		now = time.Now
 	}
-	return &Guard{resolver: o.Resolver, csrf: o.CSRF, origin: OriginOf(o.PublicURL), instance: o.Instance, log: o.Log, now: now}
+	return &Guard{
+		resolver: o.Resolver, tokens: o.Tokens, apiTokens: o.APITokens, csrf: o.CSRF, origin: OriginOf(o.PublicURL),
+		instance: o.Instance, log: o.Log, now: now,
+	}
 }
 
 func OriginOf(u *url.URL) string {
@@ -88,6 +114,18 @@ func (g *Guard) Middleware(table *policy.Table) func(http.Handler) http.Handler 
 			if !ok {
 				g.log.ErrorContext(ctx, "route has no valid policy declaration", "method", r.Method, "path", logging.UserValue(r.URL.Path))
 				response.Error(w, r, apperrors.Forbidden())
+				return
+			}
+			if bearer, present := Authorization(r); present {
+				var ae *apperrors.AppError
+				if ctx, ae = g.authorizeToken(ctx, r, rule, bearer); ae != nil {
+					if ae.Status >= http.StatusInternalServerError {
+						g.log.ErrorContext(ctx, "api token authorization failed", "request_id", middleware.RequestIDFrom(ctx), "error", ae)
+					}
+					response.Error(w, r, ae)
+					return
+				}
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 			if rule.Unsafe() && !g.originMatches(r) {
@@ -116,6 +154,9 @@ func (g *Guard) requestMeta(r *http.Request) RequestMeta {
 	}
 	if c, err := r.Cookie(config.MfaCookieName); err == nil {
 		meta.MfaToken = c.Value
+	}
+	if c, err := r.Cookie(config.OidcCookieName); err == nil {
+		meta.OidcToken = c.Value
 	}
 	return meta
 }
@@ -168,6 +209,56 @@ func (g *Guard) Reauthorize(ctx context.Context, action policy.Action, org uuid.
 		return apperrors.Forbidden()
 	}
 	return nil
+}
+
+func (g *Guard) organizationOf(r *http.Request, rule policy.Rule) (policy.Resource, *apperrors.AppError) {
+	if rule.Scope != policy.ScopeOrganization {
+		return policy.Resource{}, nil
+	}
+	id, err := uuid.Parse(chi.URLParam(r, rule.OrgParam))
+	if err != nil {
+		return policy.Resource{}, apperrors.NotFound()
+	}
+	return policy.Resource{OrganizationID: id}, nil
+}
+
+func (g *Guard) authorizeToken(ctx context.Context, r *http.Request, rule policy.Rule, bearer string) (context.Context, *apperrors.AppError) {
+	meta := RequestMetaFrom(ctx)
+	if meta.SessionToken != "" || meta.MfaToken != "" || meta.OidcToken != "" || g.apiTokens == nil || g.tokens == nil {
+		return ctx, apperrors.Unauthenticated()
+	}
+	hash, ok := g.apiTokens.Hash(bearer)
+	if !ok {
+		return ctx, apperrors.Unauthenticated()
+	}
+	if !rule.Tokens {
+		return ctx, apperrors.SessionRequired()
+	}
+	res, err := g.tokens.ResolveToken(ctx, hash, g.now())
+	switch {
+	case errors.Is(err, ErrNoToken):
+		return ctx, apperrors.Unauthenticated()
+	case err != nil:
+		return ctx, apperrors.Internal(err)
+	}
+	resource, ae := g.organizationOf(r, rule)
+	if ae != nil {
+		return ctx, ae
+	}
+	if resource.OrganizationID != res.OrganizationID {
+		return ctx, apperrors.NotFound()
+	}
+	principal := Principal{
+		Subject: policy.Subject{
+			UserID: res.UserID, TokenID: res.TokenID, TokenScopes: res.Scopes,
+			Memberships: []policy.Membership{{OrganizationID: res.OrganizationID, Role: res.Role}},
+		},
+		Email: res.Email, Name: res.Name, Locale: res.Locale, ExpiresAt: res.ExpiresAt,
+	}
+	if !policy.Can(principal.Subject, rule.Action, resource) {
+		return ctx, apperrors.Forbidden()
+	}
+	return WithPrincipal(ctx, principal), nil
 }
 
 func (g *Guard) authenticate(ctx context.Context) (Principal, []byte, *apperrors.AppError) {
