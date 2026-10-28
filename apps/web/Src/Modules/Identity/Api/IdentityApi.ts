@@ -1,5 +1,4 @@
 import { ApiClient, request } from '@/Core/Api/Client';
-import type { TOrganization } from '@/Core/Auth/AuthTypes';
 import type { components } from '@/Core/Api/Schema';
 
 export type TSetupRequest = components['schemas']['SetupRequest'];
@@ -8,8 +7,15 @@ export type TSetupResult = components['schemas']['SetupResult'];
 export const setupInstance = (body: TSetupRequest): Promise<TSetupResult> =>
   request(() => ApiClient.POST('/setup', { body }));
 
-export const getOrganization = (id: string): Promise<TOrganization> =>
-  request(() => ApiClient.GET('/organizations/{id}', { params: { path: { id } } }));
+export type TInvitationPreview = components['schemas']['InvitationPreview'];
+export type TInvitationAccepted = components['schemas']['InvitationAccepted'];
+export type TAcceptInvitationRequest = components['schemas']['AcceptInvitationRequest'];
 
-export const renameOrganization = (id: string, name: string): Promise<TOrganization> =>
-  request(() => ApiClient.PATCH('/organizations/{id}', { params: { path: { id } }, body: { Name: name } }));
+export const previewInvitation = (token: string): Promise<TInvitationPreview> =>
+  request(() => ApiClient.POST('/invitations/preview', { body: { Token: token } }));
+
+export const acceptInvitation = (body: TAcceptInvitationRequest): Promise<TInvitationAccepted> =>
+  request(() => ApiClient.POST('/invitations/accept', { body }));
+
+export const acceptInvitationSignedIn = (token: string): Promise<TInvitationAccepted> =>
+  request(() => ApiClient.POST('/me/invitations/accept', { body: { Token: token } }));

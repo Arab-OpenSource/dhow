@@ -51,6 +51,25 @@ type Instance struct {
 	SetupCompletedAt *time.Time
 }
 
+type Invitation struct {
+	Id               uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	IsDeleted        bool
+	OrganizationId   uuid.UUID
+	Email            string
+	Role             string
+	TokenHash        []byte
+	InvitedByUserId  uuid.UUID
+	ExpiresAt        time.Time
+	SentAt           time.Time
+	SendCount        int32
+	EmailStatus      string
+	AcceptedAt       *time.Time
+	AcceptedByUserId *uuid.UUID
+	RevokedAt        *time.Time
+}
+
 type LoginThrottle struct {
 	Id            uuid.UUID
 	CreatedAt     time.Time
@@ -79,6 +98,13 @@ type Organization struct {
 	IsDeleted bool
 	Name      string
 	Slug      string
+}
+
+type OrganizationTeamRole struct {
+	UserId         uuid.UUID
+	OrganizationId uuid.UUID
+	Role           string
+	TeamId         *uuid.UUID
 }
 
 type Passkey struct {
@@ -111,6 +137,20 @@ type RecoveryCode struct {
 	UserId    uuid.UUID
 	CodeHash  []byte
 	UsedAt    *time.Time
+}
+
+type RoleBinding struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	OrganizationId uuid.UUID
+	TeamId         *uuid.UUID
+	UserId         *uuid.UUID
+	Scope          string
+	ProjectId      *uuid.UUID
+	EnvironmentId  *uuid.UUID
+	Role           string
 }
 
 type Runner struct {
@@ -209,6 +249,26 @@ type SetupToken struct {
 	UsedAt    *time.Time
 }
 
+type Team struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	OrganizationId uuid.UUID
+	Name           string
+	Description    string
+}
+
+type TeamMember struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	OrganizationId uuid.UUID
+	TeamId         uuid.UUID
+	UserId         uuid.UUID
+}
+
 type TotpFactor struct {
 	Id           uuid.UUID
 	CreatedAt    time.Time
@@ -234,4 +294,6 @@ type User struct {
 	Locale            string
 	Disabled          bool
 	WebauthnHandle    []byte
+	IsInstanceOwner   bool
+	MfaResetAt        *time.Time
 }

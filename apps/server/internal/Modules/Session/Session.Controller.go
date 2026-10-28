@@ -73,7 +73,10 @@ func (c *Controller) GetMe(ctx context.Context, _ gen.GetMeRequestObject) (gen.G
 			OrganizationSlug: m.OrganizationSlug, Role: gen.Role(m.Role),
 		})
 	}
-	data := gen.Me{User: userToGen(me.User), Memberships: memberships, CsrfToken: me.CSRFToken, SessionId: me.SessionID, ExpiresAt: me.ExpiresAt}
+	data := gen.Me{
+		User: userToGen(me.User), Memberships: memberships, CsrfToken: me.CSRFToken, SessionId: me.SessionID, ExpiresAt: me.ExpiresAt,
+		CanCreateOrganizations: me.CanCreateOrganizations, MfaReenrollRequired: me.MfaReenrollRequired,
+	}
 	return gen.GetMe200JSONResponse{Success: true, Message: ptr(messageMe), Data: &data}, nil
 }
 

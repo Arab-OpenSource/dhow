@@ -11,6 +11,7 @@ const (
 	ScopePublic Scope = iota + 1
 	ScopeAuthenticated
 	ScopeOrganization
+	ScopeInstance
 	ScopeRunner
 )
 
@@ -44,6 +45,10 @@ func Organization(method, path string, action Action, orgParam string) Rule {
 	return Rule{Method: method, Path: path, Scope: ScopeOrganization, Action: action, OrgParam: orgParam}
 }
 
+func Instance(method, path string, action Action) Rule {
+	return Rule{Method: method, Path: path, Scope: ScopeInstance, Action: action}
+}
+
 func Runner(procedure string, access RunnerAccess) Rule {
 	return Rule{Method: http.MethodPost, Path: procedure, Scope: ScopeRunner, Runner: access}
 }
@@ -57,7 +62,9 @@ func (r Rule) Valid() bool {
 	case ScopeAuthenticated:
 		return r.Action == SessionManageSelf && r.Runner == 0
 	case ScopeOrganization:
-		return r.Action != "" && r.Action != SessionManageSelf && r.OrgParam != "" && r.Runner == 0
+		return r.Action != "" && r.Action != SessionManageSelf && !IsInstanceAction(r.Action) && r.OrgParam != "" && r.Runner == 0
+	case ScopeInstance:
+		return IsInstanceAction(r.Action) && r.OrgParam == "" && r.Runner == 0
 	case ScopeRunner:
 		return r.Method == http.MethodPost && r.Action == "" && r.OrgParam == "" &&
 			r.Runner >= RunnerRegistration && r.Runner <= RunnerSession && strings.HasPrefix(r.Path, "/")

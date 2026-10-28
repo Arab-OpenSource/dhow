@@ -2,14 +2,11 @@ import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-q
 import { useCallback } from 'react';
 
 import type { ApiError } from '@/Core/Api/ApiError';
-import { getMfaStatus, listPasskeys, type TMfaStatus, type TPasskey } from '@/Modules/Mfa/Api/MfaApi';
+import { MFA_QUERY_KEY } from '@/Core/Auth/Factor';
+import { listPasskeys, type TPasskey } from '@/Modules/Mfa/Api/MfaApi';
 
-export const MFA_QUERY_KEY = ['mfa'] as const;
 export const PASSKEYS_QUERY_KEY = ['passkeys'] as const;
 const SESSIONS_QUERY_KEY = ['sessions'] as const;
-
-export const useMfaStatus = (): UseQueryResult<TMfaStatus, ApiError> =>
-  useQuery<TMfaStatus, ApiError>({ queryKey: MFA_QUERY_KEY, queryFn: getMfaStatus, staleTime: 0 });
 
 export const usePasskeys = (): UseQueryResult<TPasskey[], ApiError> =>
   useQuery<TPasskey[], ApiError>({ queryKey: PASSKEYS_QUERY_KEY, queryFn: listPasskeys, staleTime: 0 });

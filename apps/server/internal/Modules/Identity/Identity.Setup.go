@@ -17,6 +17,7 @@ import (
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
+	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
@@ -39,6 +40,8 @@ type Options struct {
 	Hasher    *auth.Hasher
 	Passwords *auth.PasswordPolicy
 	Bus       Publisher
+	Factors   auth.FactorConfirmer
+	Mailer    mailer.Sender
 	PublicURL string
 	Log       *slog.Logger
 	Now       func() time.Time
@@ -49,6 +52,8 @@ type Service struct {
 	hasher    *auth.Hasher
 	passwords *auth.PasswordPolicy
 	bus       Publisher
+	factors   auth.FactorConfirmer
+	mailer    mailer.Sender
 	publicURL string
 	log       *slog.Logger
 	now       func() time.Time
@@ -59,7 +64,14 @@ func NewService(o Options) *Service {
 	if now == nil {
 		now = time.Now
 	}
-	return &Service{db: o.DB, hasher: o.Hasher, passwords: o.Passwords, bus: o.Bus, publicURL: o.PublicURL, log: o.Log, now: now}
+	mail := o.Mailer
+	if mail == nil {
+		mail = mailer.Disabled{}
+	}
+	return &Service{
+		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, bus: o.Bus, factors: o.Factors, mailer: mail,
+		publicURL: o.PublicURL, log: o.Log, now: now,
+	}
 }
 
 func (s *Service) queries() *sqlc.Queries { return sqlc.New(s.db) }
@@ -173,6 +185,9 @@ func (s *Service) create(ctx context.Context, in models.SetupInput, tokenHash []
 		}
 		err = q.InsertMembership(ctx, sqlc.InsertMembershipParams{UserID: user.Id, OrganizationID: org.Id, Role: string(policy.RoleOwner), Now: now})
 		if err != nil {
+			return err
+		}
+		if err := q.MarkInstanceOwner(ctx, sqlc.MarkInstanceOwnerParams{ID: user.Id, Now: now}); err != nil {
 			return err
 		}
 		if err := q.MarkSetupTokenUsed(ctx, sqlc.MarkSetupTokenUsedParams{ID: tokenID, Now: now}); err != nil {

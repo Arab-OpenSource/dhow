@@ -297,6 +297,60 @@ expect "the registration token never reaches the logs" bash -c '! grep -qF -- "$
 expect "the access token never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "${access#dhow_rat_}" "$dhow_logs"
 expect "runner calls are in the access log" grep -q '"path":"/runner-api/dhow.runner.v1.AuthService/Authenticate"' <<<"$dhow_logs"
 
+printf 'Invitations, roles and organizations\n'
+org_api="/api/v1/organizations/$org_id"
+status=$(api "$work/invite" POST "$org_api/invitations" '{"Email":"Dev@Smoke.Test","Role":"developer"}' "${origin[@]}" "${session[@]}")
+expect "inviting a developer answers 201" test "$status" = 201
+expect "without SMTP the invitation says email is disabled" grep -q '"EmailStatus":"disabled"' "$work/invite.body"
+invite_link=$(json_field "$work/invite.body" Link)
+invite_token=${invite_link#*#}
+expect "the invitation link carries the token in the fragment" test "$invite_link" = "$public_url/invite#$invite_token"
+expect "the invitation token has 43 characters" test "${#invite_token}" = 43
+status=$(api "$work/invite-owner" POST "$org_api/invitations" '{"Email":"boss@smoke.test","Role":"owner"}' "${origin[@]}" "${session[@]}")
+expect "an invitation can never grant owner" test "$status" = 422
+status=$(api "$work/preview" POST /api/v1/invitations/preview "{\"Token\":\"$invite_token\"}" "${origin[@]}")
+expect "the invitation preview answers 200" test "$status" = 200
+expect "the preview names the invited email" grep -q '"Email":"dev@smoke.test"' "$work/preview.body"
+dev_password='smoke developer passphrase 2026'
+accept_body=$(printf '{"Token":"%s","Name":"Smoke Developer","Password":"%s","Locale":"en"}' "$invite_token" "$dev_password")
+status=$(api "$work/accept" POST /api/v1/invitations/accept "$accept_body" "${origin[@]}")
+expect "accepting the invitation answers 200" test "$status" = 200
+dev_id=$(grep -o '"User":{[^}]*}' "$work/accept.body" | grep -o '"Id":"[^"]*"' | cut -d'"' -f4)
+expect "the new account is known" test -n "$dev_id"
+status=$(api "$work/accept-again" POST /api/v1/invitations/accept "${accept_body/Smoke Developer/Someone Else}" "${origin[@]}")
+expect "a used invitation answers 410 INVITATION_INVALID" test "$status:$(json_field "$work/accept-again.body" Code)" = 410:INVITATION_INVALID
+dev_login=$(printf '{"Email":"dev@smoke.test","Password":"%s"}' "$dev_password")
+status=$(api "$work/dev-login" POST /api/v1/sessions "$dev_login" "${origin[@]}")
+expect "the new member signs in" test "$status" = 200
+dev_cookie=$(set_cookie "$work/dev-login.head" __Host-dhow_session)
+curl --silent --max-time 5 --output "$work/dev-me.body" --header "Cookie: $dev_cookie" -- "http://127.0.0.1:$port/api/v1/me"
+expect "the new member is a developer" grep -q '"Role":"developer"' "$work/dev-me.body"
+status=$(api "$work/demote" PATCH "$org_api/members/$dev_id" '{"Role":"viewer"}' "${origin[@]}" "${session[@]}")
+expect "changing the member's role answers 200" test "$status" = 200
+status=$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' --header "Cookie: $dev_cookie" -- "http://127.0.0.1:$port/api/v1/me")
+expect "the role change revokes the member's session at once" test "$status" = 401
+status=$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port/api/v1/me")
+expect "the owner keeps the session that made the change" test "$status" = 200
+
+status=$(api "$work/org2" POST /api/v1/organizations '{"Name":"Smoke Two","Slug":"smoke-two"}' "${origin[@]}" "${session[@]}")
+expect "the instance owner creates a second organization" test "$status" = 201
+org2_id=$(json_field "$work/org2.body" Id)
+api "$work/dev-login2" POST /api/v1/sessions "$dev_login" "${origin[@]}" >/dev/null
+dev_cookie=$(set_cookie "$work/dev-login2.head" __Host-dhow_session)
+dev_csrf=$(json_field "$work/dev-login2.body" CsrfToken)
+status=$(api "$work/dev-org" POST /api/v1/organizations '{"Name":"Mine","Slug":"mine"}' "${origin[@]}" --header "Cookie: $dev_cookie" --header "X-CSRF-Token: $dev_csrf")
+expect "a member who is not the instance owner cannot create one" test "$status" = 403
+for path in "" /members /teams; do
+  status=$(curl --silent --max-time 5 --output "$work/cross.body" --write-out '%{http_code}' --header "Cookie: $dev_cookie" -- "http://127.0.0.1:$port/api/v1/organizations/$org2_id$path")
+  expect "another organization's ${path:-/} answers 404" test "$status" = 404
+done
+status=$(api "$work/cross-invite" POST "/api/v1/organizations/$org2_id/invitations" '{"Email":"x@smoke.test","Role":"viewer"}' "${origin[@]}" --header "Cookie: $dev_cookie" --header "X-CSRF-Token: $dev_csrf")
+expect "inviting into another organization answers 404" test "$status" = 404
+
+dhow_logs=$(compose logs --no-color dhow 2>&1)
+expect "the invitation token never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "$invite_token" "$dhow_logs"
+expect "the member's password never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "$dev_password" "$dhow_logs"
+
 printf 'Security headers\n'
 for page in web ready; do
   expect "$page: Content-Security-Policy is 'self'" has_header "$work/$page.head" Content-Security-Policy "default-src 'self'"

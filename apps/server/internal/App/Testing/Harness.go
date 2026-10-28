@@ -23,6 +23,7 @@ import (
 	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
 	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 	"github.com/Arab-OpenSource/dhow/internal/logging"
@@ -128,13 +129,33 @@ func NewWithPool(t *testing.T, pool *pgxpool.Pool) *Env {
 	return NewWithPoolAndParams(t, pool, TestParams())
 }
 
+type Options struct {
+	Pool    *pgxpool.Pool
+	Params  *auth.Params
+	Mailer  mailer.Sender
+	Profile func(*config.Config)
+}
+
 func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) *Env {
 	t.Helper()
-	return NewConfigured(t, pool, params, nil)
+	return NewWithOptions(t, Options{Pool: pool, Params: &params})
 }
 
 func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func(*config.Config)) *Env {
 	t.Helper()
+	return NewWithOptions(t, Options{Pool: pool, Params: &params, Profile: configure})
+}
+
+func NewWithOptions(t *testing.T, o Options) *Env {
+	t.Helper()
+	pool := o.Pool
+	if pool == nil {
+		pool = dbtest.NewPool(t)
+	}
+	params := TestParams()
+	if o.Params != nil {
+		params = *o.Params
+	}
 	secret := make([]byte, 32)
 	_, err := rand.Read(secret)
 	require.NoError(t, err)
@@ -143,8 +164,8 @@ func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configu
 	cfg := config.Config{
 		SecretKey: secret, PublicURL: publicURL, ListenAddr: config.DefaultListenAddr, BreachedPasswordCheck: true,
 	}
-	if configure != nil {
-		configure(&cfg)
+	if o.Profile != nil {
+		o.Profile(&cfg)
 	}
 	logs := &SyncBuffer{}
 	log := logging.New(logs, slog.LevelDebug)
@@ -152,7 +173,7 @@ func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configu
 	breach := &FakeBreach{}
 	wired, err := app.Build(t.Context(), app.Infra{
 		Config: cfg, Log: log, Pool: pool, Migrations: fakeMigrations{}, Build: buildinfo.Info{Version: "test", Commit: "test"},
-		Breach: breach, HashParams: &params, Now: clock.Now,
+		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer,
 	})
 	require.NoError(t, err)
 	hasher, err := auth.NewHasher(t.Context(), params, 4)

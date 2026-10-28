@@ -28,6 +28,24 @@ func (q *Queries) EnsureThrottle(ctx context.Context, arg EnsureThrottleParams) 
 	return err
 }
 
+const getUserAccountFlags = `-- name: GetUserAccountFlags :one
+SELECT "IsInstanceOwner", "MfaResetAt"
+FROM "Users"
+WHERE "Id" = $1 AND NOT "IsDeleted"
+`
+
+type GetUserAccountFlagsRow struct {
+	IsInstanceOwner bool
+	MfaResetAt      *time.Time
+}
+
+func (q *Queries) GetUserAccountFlags(ctx context.Context, id uuid.UUID) (GetUserAccountFlagsRow, error) {
+	row := q.db.QueryRow(ctx, getUserAccountFlags, id)
+	var i GetUserAccountFlagsRow
+	err := row.Scan(&i.IsInstanceOwner, &i.MfaResetAt)
+	return i, err
+}
+
 const getUserForLogin = `-- name: GetUserForLogin :one
 SELECT "Id", "Email", "Name", "Locale", "PasswordHash", "Disabled"
 FROM "Users"
@@ -158,7 +176,9 @@ func (q *Queries) ListActiveUserSessions(ctx context.Context, arg ListActiveUser
 }
 
 const listUserMemberships = `-- name: ListUserMemberships :many
-SELECT m."OrganizationId", o."Name" AS "OrganizationName", o."Slug" AS "OrganizationSlug", m."Role"
+SELECT m."OrganizationId", o."Name" AS "OrganizationName", o."Slug" AS "OrganizationSlug", m."Role",
+       ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
+             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles"
 FROM "Memberships" m
 JOIN "Organizations" o ON o."Id" = m."OrganizationId" AND NOT o."IsDeleted"
 WHERE m."UserId" = $1 AND NOT m."IsDeleted"
@@ -170,6 +190,7 @@ type ListUserMembershipsRow struct {
 	OrganizationName string
 	OrganizationSlug string
 	Role             string
+	TeamRoles        []string
 }
 
 func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]ListUserMembershipsRow, error) {
@@ -186,6 +207,7 @@ func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]
 			&i.OrganizationName,
 			&i.OrganizationSlug,
 			&i.Role,
+			&i.TeamRoles,
 		); err != nil {
 			return nil, err
 		}
@@ -277,7 +299,7 @@ func (q *Queries) ResetThrottle(ctx context.Context, arg ResetThrottleParams) er
 
 const resolveSession = `-- name: ResolveSession :one
 SELECT s."Id", s."UserId", s."CsrfHash", s."LastSeenAt", s."ExpiresAt", s."IdleExpiresAt",
-       u."Email", u."Name", u."Locale"
+       u."Email", u."Name", u."Locale", u."IsInstanceOwner"
 FROM "Sessions" s
 JOIN "Users" u ON u."Id" = s."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
 WHERE s."TokenHash" = $1 AND NOT s."IsDeleted" AND s."RevokedAt" IS NULL
@@ -290,15 +312,16 @@ type ResolveSessionParams struct {
 }
 
 type ResolveSessionRow struct {
-	Id            uuid.UUID
-	UserId        uuid.UUID
-	CsrfHash      []byte
-	LastSeenAt    time.Time
-	ExpiresAt     time.Time
-	IdleExpiresAt time.Time
-	Email         string
-	Name          string
-	Locale        string
+	Id              uuid.UUID
+	UserId          uuid.UUID
+	CsrfHash        []byte
+	LastSeenAt      time.Time
+	ExpiresAt       time.Time
+	IdleExpiresAt   time.Time
+	Email           string
+	Name            string
+	Locale          string
+	IsInstanceOwner bool
 }
 
 func (q *Queries) ResolveSession(ctx context.Context, arg ResolveSessionParams) (ResolveSessionRow, error) {
@@ -314,6 +337,7 @@ func (q *Queries) ResolveSession(ctx context.Context, arg ResolveSessionParams) 
 		&i.Email,
 		&i.Name,
 		&i.Locale,
+		&i.IsInstanceOwner,
 	)
 	return i, err
 }

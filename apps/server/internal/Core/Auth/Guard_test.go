@@ -58,12 +58,14 @@ func newGuardFixture(t *testing.T, resolverErr error) guardFixture {
 		"owner":    {{OrganizationID: orgA, Role: policy.RoleOwner}},
 		"viewer":   {{OrganizationID: orgA, Role: policy.RoleViewer}},
 		"outsider": {{OrganizationID: orgB, Role: policy.RoleOwner}},
+		"instance": nil,
 	} {
 		cookie, hash, err := auth.NewSessionToken(config.SessionTokenBytes)
 		require.NoError(t, err)
 		token := csrf.Token(cookie)
 		sessions[string(hash)] = auth.Resolved{
 			SessionID: uuid.New(), UserID: uuid.New(), CsrfHash: csrf.Hash(token), Email: name + "@example.com", Memberships: memberships,
+			InstanceOwner: name == "instance",
 		}
 		f.cookies[name], f.csrf[name] = cookie, token
 	}
@@ -80,6 +82,7 @@ func newGuardFixture(t *testing.T, resolverErr error) guardFixture {
 		policy.Authenticated(http.MethodDelete, "/sessions/current", policy.SessionManageSelf),
 		policy.Organization(http.MethodGet, "/organizations/{id}", policy.OrgRead, "id"),
 		policy.Organization(http.MethodPatch, "/organizations/{id}", policy.OrgUpdate, "id"),
+		policy.Instance(http.MethodPost, "/organizations", policy.OrgCreate),
 	)
 	reached := 0
 	f.reached = &reached
@@ -99,6 +102,7 @@ func newGuardFixture(t *testing.T, resolverErr error) guardFixture {
 		api.Delete("/sessions/current", ok)
 		api.Get("/organizations/{id}", ok)
 		api.Patch("/organizations/{id}", ok)
+		api.Post("/organizations", ok)
 		api.Get("/secret", ok)
 	})
 	f.handler = r
@@ -169,6 +173,11 @@ func TestGuardDecisions(t *testing.T) {
 		{"a malformed id is 404", call{method: "GET", path: "/organizations/not-a-uuid", cookie: f.cookies["owner"]}, 404, "NOT_FOUND"},
 		{"anonymous organization read", call{method: "GET", path: "/organizations/" + org}, 401, "UNAUTHENTICATED"},
 		{"CSRF is checked before authorization", call{method: "PATCH", path: "/organizations/" + org, cookie: f.cookies["outsider"], origin: origin}, 403, "CSRF_FAILED"},
+
+		{"the instance owner creates an organization", call{method: "POST", path: "/organizations", cookie: f.cookies["instance"], origin: origin, csrf: f.csrf["instance"]}, 204, ""},
+		{"an organization owner may not by default", call{method: "POST", path: "/organizations", cookie: f.cookies["owner"], origin: origin, csrf: f.csrf["owner"]}, 403, "FORBIDDEN"},
+		{"instance routes still need the CSRF token", call{method: "POST", path: "/organizations", cookie: f.cookies["instance"], origin: origin}, 403, "CSRF_FAILED"},
+		{"anonymous instance route", call{method: "POST", path: "/organizations", origin: origin}, 401, "UNAUTHENTICATED"},
 
 		{"a route without a declared policy is refused", call{method: "GET", path: "/secret", cookie: f.cookies["owner"]}, 403, "FORBIDDEN"},
 	}

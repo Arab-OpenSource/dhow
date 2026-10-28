@@ -1,9 +1,10 @@
 import { useState } from 'react';
 
+import type { TFactorMethod } from '@/Core/Auth/Factor';
+import { useFactorAction, type IFactorAction } from '@/Core/Hooks/useFactorAction';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { useT } from '@/I18n/useT';
-import { disableTotp, regenerateRecoveryCodes, type TFactorMethod, type TMfaChange } from '@/Modules/Mfa/Api/MfaApi';
-import { useFactorAction, type IFactorAction } from '@/Modules/Mfa/Hooks/useFactorAction';
+import { disableTotp, regenerateRecoveryCodes, type TMfaChange } from '@/Modules/Mfa/Api/MfaApi';
 import { useRefreshMfa } from '@/Modules/Mfa/Hooks/useMfa';
 
 export type TFactorsOpen = 'disable' | 'regenerate' | null;

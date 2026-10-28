@@ -107,6 +107,9 @@ func (s *Service) AddPasskey(ctx context.Context, in models.AddPasskeyInput) (mo
 			return err
 		}
 		result.Passkey = models.Passkey{ID: row.Id, Name: name, CreatedAt: row.CreatedAt, Transports: transportsOf(cred), Synced: cred.Flags.BackupEligible}
+		if err := q.ClearMfaReset(ctx, sqlc.ClearMfaResetParams{ID: p.UserID, Now: s.now()}); err != nil {
+			return err
+		}
 		result.Change, err = s.finishChange(ctx, q, p, !hasMfa(before))
 		return err
 	})

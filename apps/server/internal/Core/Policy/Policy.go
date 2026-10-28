@@ -30,26 +30,45 @@ type Action string
 const (
 	OrgRead           Action = "org.read"
 	OrgUpdate         Action = "org.update"
+	OrgLeave          Action = "org.leave"
+	OrgTransfer       Action = "org.transfer"
 	MemberRead        Action = "member.read"
 	MemberManage      Action = "member.manage"
 	AuditRead         Action = "audit.read"
 	SessionManageSelf Action = "session.manage_self"
+	OrgCreate         Action = "org.create"
 	RunnerRead        Action = "runner.read"
 	RunnerManage      Action = "runner.manage"
 )
 
 func Actions() []Action {
-	return []Action{OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage}
+	return []Action{
+		OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, OrgCreate,
+		RunnerRead, RunnerManage,
+	}
+}
+
+func InstanceActions() []Action { return []Action{OrgCreate} }
+
+func IsInstanceAction(a Action) bool {
+	for _, ia := range InstanceActions() {
+		if ia == a {
+			return true
+		}
+	}
+	return false
 }
 
 func Grants(role Role) []Action {
 	switch role {
-	case RoleOwner, RoleAdmin:
-		return []Action{OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage}
+	case RoleOwner:
+		return []Action{OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage}
+	case RoleAdmin:
+		return []Action{OrgRead, OrgUpdate, OrgLeave, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage}
 	case RoleMaintainer, RoleDeveloper:
-		return []Action{OrgRead, MemberRead, SessionManageSelf, RunnerRead}
+		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead}
 	case RoleViewer:
-		return []Action{OrgRead, SessionManageSelf}
+		return []Action{OrgRead, OrgLeave, SessionManageSelf}
 	default:
 		return nil
 	}
@@ -70,9 +89,10 @@ type Membership struct {
 }
 
 type Subject struct {
-	UserID      uuid.UUID
-	SessionID   uuid.UUID
-	Memberships []Membership
+	UserID        uuid.UUID
+	SessionID     uuid.UUID
+	InstanceOwner bool
+	Memberships   []Membership
 }
 
 func (s Subject) RoleIn(organizationID uuid.UUID) (Role, bool) {
@@ -89,7 +109,7 @@ type Resource struct {
 }
 
 func Can(s Subject, action Action, r Resource) bool {
-	if s.UserID == uuid.Nil {
+	if s.UserID == uuid.Nil || IsInstanceAction(action) {
 		return false
 	}
 	if action == SessionManageSelf {
@@ -100,4 +120,20 @@ func Can(s Subject, action Action, r Resource) bool {
 	}
 	role, ok := s.RoleIn(r.OrganizationID)
 	return ok && Allows(role, action)
+}
+
+type InstanceSettings struct {
+	AnyUserCreatesOrganizations bool
+}
+
+func CanInstance(s Subject, action Action, inst InstanceSettings) bool {
+	if s.UserID == uuid.Nil || !IsInstanceAction(action) {
+		return false
+	}
+	switch action {
+	case OrgCreate:
+		return s.InstanceOwner || inst.AnyUserCreatesOrganizations
+	default:
+		return false
+	}
 }

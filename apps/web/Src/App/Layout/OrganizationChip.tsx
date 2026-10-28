@@ -3,16 +3,18 @@ import { useShellNavigation } from '@/App/Layout/useShellNavigation';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { cx } from '@/Core/Ui/ClassNames';
 import { Icon } from '@/Core/Ui/Icon';
+import { useT } from '@/I18n/useT';
 
 export interface IOrganizationChipProps {
   className?: string;
 }
 
 const preloadOrganization = () => {
-  void preloadFrame('organization');
+  void preloadFrame('organizations');
 };
 
 export const OrganizationChip = ({ className }: IOrganizationChipProps) => {
+  const t = useT();
   const { openStack } = useShellNavigation();
   const membership = useCurrentMembership();
   if (membership === undefined) return null;
@@ -22,8 +24,9 @@ export const OrganizationChip = ({ className }: IOrganizationChipProps) => {
       type="button"
       onPointerEnter={preloadOrganization}
       onFocus={preloadOrganization}
+      aria-label={t('shell.organization.switch', { name: membership.OrganizationName })}
       onClick={() => {
-        openStack(['organization']);
+        openStack(['organizations']);
       }}
       className={cx(
         'flex min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-sm border border-line bg-transparent px-2.5 py-1.5',
@@ -33,6 +36,7 @@ export const OrganizationChip = ({ className }: IOrganizationChipProps) => {
     >
       <Icon name="building" size={16} />
       <span className="truncate">{membership.OrganizationName}</span>
+      <Icon name="swap" size={14} className="ms-auto flex-none text-tertiary" />
     </button>
   );
 };

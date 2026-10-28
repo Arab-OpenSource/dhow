@@ -1,5 +1,6 @@
 import type { IFrameContext } from '@/App/Layout/FrameContext';
 import { buildIdentitySlide } from '@/App/Layout/IdentitySlides';
+import { buildOrganizationSlide } from '@/App/Layout/OrganizationSlides';
 import {
   LazyAppearanceBody,
   LazyAppearanceFooter,
@@ -29,7 +30,7 @@ const themeEditSlide = (id: TFrameId, { t, navigation, draftName, customThemes }
 
 export const buildSlide = (id: TFrameId, context: IFrameContext): ISlide => {
   const { t, navigation } = context;
-  const identity = buildIdentitySlide(id, context);
+  const identity = buildIdentitySlide(id, context) ?? buildOrganizationSlide(id, context);
   if (identity) return identity;
   const check = checkOf(id);
   if (check) {

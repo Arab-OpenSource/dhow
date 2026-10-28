@@ -40,6 +40,9 @@ type Config struct {
 	RunnerListenAddr  string
 	RunnerTLSCertFile string
 	RunnerTLSKeyFile  string
+
+	SMTP                        SMTP
+	AnyUserCreatesOrganizations bool
 }
 
 func LoadFromEnv() (Config, error) { return Load(os.Getenv) }
@@ -81,6 +84,12 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.LogLevel, err = parseLogLevel(getenv(EnvLogLevel)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvLogLevel, err))
+	}
+	if cfg.SMTP, err = loadSMTP(getenv); err != nil {
+		errs = append(errs, err)
+	}
+	if cfg.AnyUserCreatesOrganizations, err = parseOrgCreation(getenv(EnvOrgCreation)); err != nil {
+		errs = append(errs, fmt.Errorf("%s: %w", EnvOrgCreation, err))
 	}
 
 	if len(errs) > 0 {

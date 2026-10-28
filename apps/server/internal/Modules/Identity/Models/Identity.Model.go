@@ -21,11 +21,14 @@ type Organization struct {
 }
 
 type Member struct {
-	UserID   uuid.UUID
-	Name     string
-	Email    string
-	Role     string
-	JoinedAt time.Time
+	UserID          uuid.UUID
+	Name            string
+	Email           string
+	Role            string
+	EffectiveRole   string
+	JoinedAt        time.Time
+	Mfa             string
+	MfaResetPending bool
 }
 
 type SetupInput struct {
@@ -41,4 +44,10 @@ type SetupInput struct {
 type SetupResult struct {
 	User         User
 	Organization Organization
+}
+
+type MemberChange struct {
+	UserID  uuid.UUID
+	Role    string
+	Revoked int64
 }

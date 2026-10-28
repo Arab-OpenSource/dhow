@@ -77,7 +77,14 @@ func (c *Controller) ListMembers(ctx context.Context, req gen.ListMembersRequest
 	}
 	items := make([]gen.Member, 0, len(members))
 	for _, m := range members {
-		items = append(items, gen.Member{UserId: m.UserID, Name: m.Name, Email: m.Email, Role: gen.Role(m.Role), JoinedAt: m.JoinedAt})
+		item := gen.Member{
+			UserId: m.UserID, Name: m.Name, Email: m.Email, Role: gen.Role(m.Role), EffectiveRole: gen.Role(m.EffectiveRole), JoinedAt: m.JoinedAt,
+		}
+		if m.Mfa != "" {
+			item.Mfa = ptr(gen.MfaState(m.Mfa))
+			item.MfaResetPending = ptr(m.MfaResetPending)
+		}
+		items = append(items, item)
 	}
 	return gen.ListMembers200JSONResponse{
 		Success: true, Message: ptr(messageMembers), Data: &items,

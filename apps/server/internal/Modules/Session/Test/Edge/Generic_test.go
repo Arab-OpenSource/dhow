@@ -156,7 +156,8 @@ func TestMethodsAndPathsOutsideTheSpec(t *testing.T) {
 		{"GET on login", http.MethodGet, "/sessions/revoke-others", http.StatusMethodNotAllowed},
 		{"PUT on setup", http.MethodPut, "/setup", http.StatusMethodNotAllowed},
 		{"unknown route", http.MethodGet, "/users", http.StatusNotFound},
-		{"unknown nested route", http.MethodGet, "/organizations", http.StatusNotFound},
+		{"GET on the organization collection", http.MethodGet, "/organizations", http.StatusMethodNotAllowed},
+		{"unknown nested route", http.MethodGet, "/organizations/00000000-0000-7000-8000-000000000001/unknown", http.StatusNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -76,6 +76,13 @@ func TestCatalogsCoverTheSameKeys(t *testing.T) {
 	}
 }
 
+func TestArabicAndEnglishHaveExactlyTheSameKeys(t *testing.T) {
+	assert.Equal(t, i18n.Keys(i18n.En), i18n.Keys(i18n.Ar))
+	for _, k := range i18n.Keys(i18n.Ar) {
+		assert.NotEmpty(t, i18n.Translate(i18n.Ar, k), k)
+	}
+}
+
 func TestLocaleContext(t *testing.T) {
 	assert.Equal(t, i18n.Ar, i18n.LocaleFrom(context.Background()))
 	assert.Equal(t, i18n.En, i18n.LocaleFrom(i18n.WithLocale(context.Background(), i18n.En)))

@@ -24,7 +24,7 @@ ROUTES_FILE = re.compile(r"(^|/)Modules/[^/]+/[^/]+\.Routes\.go$")
 GO_RAW_ROUTE = re.compile(
     r"\b\w+\.(Get|Post|Put|Patch|Delete|Head|Options|Connect|Trace|Handle|HandleFunc|Method|MethodFunc|Mount)\(\s*[\"`]")
 GO_GENERATED_ROUTES = re.compile(r"\bgen\.(HandlerWithOptions|HandlerFromMux\w*|Handler)\(")
-GO_POLICY_RULE = re.compile(r"\bpolicy\.(Public|Authenticated|Organization|Runner)\(")
+GO_POLICY_RULE = re.compile(r"\bpolicy\.(Public|Authenticated|Organization|Instance|Runner)\(")
 GO_RUNNER_RULE = re.compile(r"\bpolicy\.Runner\(")
 GO_CONNECT_HANDLER = re.compile(r"\b\w+connect\.New\w+Handler\(")
 GO_RUNNER_GATE = re.compile(r"\.RequestGate\(")
@@ -271,12 +271,12 @@ def check_route_policies(rel, added, old, final_content, **_):
     if m:
         return (f"{rel}: do not register routes by hand (`{m.group(0).strip()}`). Add the operation to "
                 "packages/openapi/openapi.yaml, run `make gen`, and declare its policy in Policies() with "
-                "policy.Public, policy.Authenticated or policy.Organization.")
+                "policy.Public, policy.Authenticated, policy.Organization or policy.Instance.")
     text = final_content if final_content is not None else added
     if GO_GENERATED_ROUTES.search(text) and not (
             GO_POLICY_RULE.search(text) and GO_POLICY_TABLE.search(text) and GO_ROUTE_MIDDLEWARES.search(text)):
         return (f"{rel}: every route needs a declared policy. Declare each route in Policies() with policy.Public, "
-                "policy.Authenticated or policy.Organization, build policy.NewTable(Policies()...) and pass "
+                "policy.Authenticated, policy.Organization or policy.Instance, build policy.NewTable(Policies()...) and pass "
                 "guard.Middleware(table) in the generated ChiServerOptions.Middlewares.")
     return None
 

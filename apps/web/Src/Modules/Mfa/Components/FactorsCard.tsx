@@ -1,10 +1,10 @@
+import type { TFactorMethod, TMfaStatus } from '@/Core/Auth/Factor';
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Button } from '@/Core/Ui/Button';
 import { Card } from '@/Core/Ui/Card';
+import { ConfirmPanel } from '@/Core/Ui/ConfirmPanel';
 import { Row, Rows } from '@/Core/Ui/Row';
 import { useT } from '@/I18n/useT';
-import type { TFactorMethod, TMfaStatus } from '@/Modules/Mfa/Api/MfaApi';
-import { ConfirmPanel } from '@/Modules/Mfa/Components/ConfirmPanel';
 import { RecoveryCodes } from '@/Modules/Mfa/Components/RecoveryCodes';
 import { useFactorsCard } from '@/Modules/Mfa/Hooks/useFactorsCard';
 

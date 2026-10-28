@@ -1,3 +1,5 @@
+import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
+
 export const WorkspaceAr = {
   'palette.label': 'الأوامر',
   'palette.placeholder': 'اكتب اسم صفحة أو أمر',
@@ -151,11 +153,6 @@ export const WorkspaceAr = {
   'pager.next': 'الصفحة اللي بعدها',
   'pager.status': 'صفحة {page} من {pages}',
 
-  'role.owner': 'صاحب المؤسسة',
-  'role.admin': 'مدير',
-  'role.maintainer': 'مسؤول مشاريع',
-  'role.developer': 'مطوّر',
-  'role.viewer': 'مشاهد',
 
   'palette.command.account': 'افتح حسابي',
   'palette.command.password': 'غيّر كلمة السر',
@@ -229,7 +226,7 @@ export const WorkspaceAr = {
 
   'palette.command.organization': 'افتح بيانات المؤسسة والأعضاء',
   'organization.title': 'المؤسسة',
-  'organization.subtitle': 'اسم المؤسسة وأعضاؤها.',
+  'organization.subtitle': 'الأعضاء والفرق والدعوات والإعدادات.',
   'organization.card.title': 'بيانات المؤسسة',
   'organization.name': 'اسم المؤسسة',
   'organization.slug': 'الرابط المختصر',
@@ -324,4 +321,5 @@ export const WorkspaceAr = {
   'audit.action.auth.passkey_renamed': 'تغيير اسم مفتاح مرور',
   'audit.action.auth.passkey_removed': 'شيل مفتاح مرور',
   'audit.action.auth.passkey_sign_count_regressed': 'عدّاد مفتاح مرور رجع لورا',
+  ...OrganizationAr,
 } as const;

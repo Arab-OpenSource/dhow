@@ -37,7 +37,7 @@ const CASES: ISlideCase[] = [
   {
     stack: 'organization',
     title: Ar['organization.title'],
-    body: (dialog) => within(dialog).findByLabelText(Ar['organization.name']),
+    body: (dialog) => within(dialog).findByRole('list', { name: Ar['members.title'] }),
   },
   { stack: 'notifications', title: Ar['notifications.title'], body: (dialog) => within(dialog).findByText(Ar['notifications.empty']) },
 ];
