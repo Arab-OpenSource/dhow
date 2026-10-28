@@ -44,6 +44,7 @@ const (
 	GrantMaxSkew        = 15 * time.Minute
 	MaxSecretBytes      = 64 << 10
 	MaxSecretsBytes     = 1 << 20
+	RecoverTries        = 5
 )
 
 const (

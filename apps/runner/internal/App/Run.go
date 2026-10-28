@@ -131,8 +131,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err := r.cleanup(ctx); err != nil {
 		return err
 	}
-	if err := r.exec.Recover(ctx); err != nil {
+	left, err := r.exec.Recover(ctx)
+	if err != nil {
 		return err
+	}
+	if len(left) > 0 {
+		r.log.Warn("some attempts from the last run could not be reported yet; the runner keeps trying while it works", "count", len(left))
+		go r.exec.RecoverLater(ctx, left)
 	}
 	r.log.Info("the runner is ready", "capacity", r.cfg.Capacity, "driver", r.driver.Name())
 	return r.loop(ctx)

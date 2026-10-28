@@ -259,3 +259,24 @@ func TestAReplayedGrantIsRefusedBeforeAnyCall(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), fmt.Sprintf(`"HighWater":%d`, leases[1].Fencing))
 }
+
+func TestAnUnreportableOldAttemptDoesNotStopTheRunnerFromWorking(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	srv.Enqueue(runnertest.Spec(), nil)
+	first := r.Start(fake.Recording{Steps: []fake.Step{{HangMillis: 120_000}}}, runnertest.StartOptions{})
+	runnertest.WaitEvent(t, first.Driver, fake.EventExec, finishWithin)
+	old := srv.Leases()[0]
+	srv.Configure(func(k *runnertest.Knobs) { k.CompleteFailLease = old.ID })
+	require.NoError(t, first.Stop())
+
+	srv.Enqueue(runnertest.Spec(), nil)
+	second := r.Start(fake.Recording{}, runnertest.StartOptions{})
+	out := second.Next(t, finishWithin)
+	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, out.Result, "a new job runs although the old attempt cannot be reported")
+	srv.Configure(func(k *runnertest.Knobs) { k.CompleteFailLease = "" })
+	runnertest.Eventually(t, finishWithin, func() bool {
+		got, _ := srv.Lease(old.ID)
+		return len(got.Completes) > 0
+	}, "the old attempt to be reported in the background")
+}

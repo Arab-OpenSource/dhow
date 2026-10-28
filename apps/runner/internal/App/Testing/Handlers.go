@@ -267,6 +267,9 @@ func (h handlers) Complete(_ context.Context, req *connect.Request[runnerv1.Comp
 		s.knobs.CompleteUnavailable--
 		return nil, rpcError(connect.CodeUnavailable, "UNAVAILABLE")
 	}
+	if s.knobs.CompleteFailLease != "" && s.knobs.CompleteFailLease == m.GetLease().GetLeaseId() {
+		return nil, rpcError(connect.CodeUnavailable, "UNAVAILABLE")
+	}
 	l := s.leases[m.GetLease().GetLeaseId()]
 	if l == nil || l.Fencing != m.GetLease().GetFencingToken() {
 		return nil, rpcError(connect.CodeFailedPrecondition, "LEASE_LOST")

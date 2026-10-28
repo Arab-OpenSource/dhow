@@ -7,6 +7,7 @@ import (
 	"time"
 
 	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
+	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
 	journal "github.com/Arab-OpenSource/dhow/apps/runner/internal/Journal"
 	"github.com/Arab-OpenSource/dhow/internal/runnersig"
 	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
@@ -79,15 +80,15 @@ func (a *attempt) complete(ctx context.Context, r result) bool {
 		a.log.Error("could not record the result in the journal", "error", a.masked(err))
 	}
 	req := CompleteRequest(a.grant.GetAttemptId(), a.ref, r.state, r.exitCode, r.reason)
-	acked, definitive := sendComplete(cctx, a.e.o.API, a.e.o.Backoff, req, a.log)
+	acked, definitive := sendComplete(cctx, a.e.o.API, a.e.o.Backoff, req, a.log, 0)
 	if definitive {
 		a.forget()
 	}
 	return acked
 }
 
-func sendComplete(ctx context.Context, api API, b client.Backoff, req *runnerv1.CompleteRequest, log *slog.Logger) (bool, bool) {
-	for n := 0; ; n++ {
+func sendComplete(ctx context.Context, api API, b client.Backoff, req *runnerv1.CompleteRequest, log *slog.Logger, tries int) (bool, bool) {
+	for n := 0; tries == 0 || n < tries; n++ {
 		err := api.Complete(ctx, req)
 		switch {
 		case err == nil:
@@ -108,10 +109,30 @@ func sendComplete(ctx context.Context, api API, b client.Backoff, req *runnerv1.
 			return false, false
 		}
 	}
+	return false, false
 }
 
-func (e *Executor) Recover(ctx context.Context) error {
-	for _, entry := range e.o.Journal.Entries() {
+func (e *Executor) Recover(ctx context.Context) ([]journal.Entry, error) {
+	return e.recover(ctx, e.o.Journal.Entries(), config.RecoverTries)
+}
+
+func (e *Executor) RecoverLater(ctx context.Context, entries []journal.Entry) {
+	for len(entries) > 0 && ctx.Err() == nil {
+		left, err := e.recover(ctx, entries, config.RecoverTries)
+		if err != nil {
+			e.o.Log.Error("could not update the journal while reporting old attempts", "error", err)
+			return
+		}
+		entries = left
+		if len(entries) > 0 && e.o.Backoff.Sleep(ctx, config.RecoverTries, nil) != nil {
+			return
+		}
+	}
+}
+
+func (e *Executor) recover(ctx context.Context, entries []journal.Entry, tries int) ([]journal.Entry, error) {
+	var left []journal.Entry
+	for _, entry := range entries {
 		ref := &runnerv1.LeaseRef{LeaseId: entry.LeaseID, FencingToken: entry.FencingToken}
 		res, exit, reason := runnerv1.AttemptResult_ATTEMPT_RESULT_LOST, int32(0), runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED
 		if c := entry.Completion; c != nil {
@@ -119,16 +140,17 @@ func (e *Executor) Recover(ctx context.Context) error {
 		}
 		log := e.o.Log.With("lease_id", entry.LeaseID, "attempt_id", entry.AttemptID, "job_id", entry.JobID)
 		log.Info("reporting an attempt that the last run of the runner left open", "result", res.String())
-		_, definitive := sendComplete(ctx, e.o.API, e.o.Backoff, CompleteRequest(entry.AttemptID, ref, res, exit, reason), log)
+		_, definitive := sendComplete(ctx, e.o.API, e.o.Backoff, CompleteRequest(entry.AttemptID, ref, res, exit, reason), log, tries)
 		if !definitive {
 			if err := ctx.Err(); err != nil {
-				return err
+				return nil, err
 			}
+			left = append(left, entry)
 			continue
 		}
 		if err := e.o.Journal.Remove(entry.LeaseID); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return left, nil
 }
