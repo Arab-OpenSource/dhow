@@ -193,3 +193,28 @@ func TestACrossSitePageCannotSpendTheLimitOfAnOffice(t *testing.T) {
 		})
 	}
 }
+
+var publicWritesWithoutALimit = map[string]string{
+	"POST /sessions/mfa/passkey-options": "needs the mfa_pending cookie, which only the limited and throttled password or OIDC step issues",
+}
+
+func TestEveryPublicWriteIsRateLimitedOrAnExplicitException(t *testing.T) {
+	limited := map[string]bool{}
+	for _, r := range app.RateLimited() {
+		limited[r.Key()] = true
+	}
+	for _, rule := range app.Policies() {
+		if rule.Scope != policy.ScopePublic || rule.Method == http.MethodGet || rule.Method == http.MethodHead {
+			continue
+		}
+		_, exempt := publicWritesWithoutALimit[rule.Key()]
+		assert.True(t, limited[rule.Key()] != exempt, "%s must be either in RateLimited() or in publicWritesWithoutALimit with a reason, not both or neither", rule.Key())
+	}
+	for key := range publicWritesWithoutALimit {
+		found := false
+		for _, rule := range app.Policies() {
+			found = found || (rule.Key() == key && rule.Scope == policy.ScopePublic)
+		}
+		assert.True(t, found, "the exception %s is not a public route any more", key)
+	}
+}
