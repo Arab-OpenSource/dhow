@@ -31,6 +31,10 @@ COMPOSE               := docker compose --project-directory $(COMPOSE_DIR) -f $(
 build: ## Build bin/dhow-server
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o bin/dhow-server ./apps/server/cmd/dhow-server
 
+.PHONY: build-runner
+build-runner: ## Build bin/dhow-runner (Linux only)
+	CGO_ENABLED=0 GOOS=linux $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o bin/dhow-runner ./apps/runner/cmd/dhow-runner
+
 .PHONY: web
 web: ## Build the web app and copy it into the server embed directory
 	pnpm -C apps/web install --frozen-lockfile
@@ -104,7 +108,7 @@ help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
 .PHONY: check
-check: lint lint-actions proto-lint test vuln hooks-test ## Everything CI checks
+check: lint lint-runner lint-actions proto-lint test test-runner vuln hooks-test ## Everything CI checks
 
 .PHONY: fmt
 fmt: ## Format Go code
@@ -113,6 +117,10 @@ fmt: ## Format Go code
 .PHONY: lint
 lint: ## Run golangci-lint
 	$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run
+
+.PHONY: lint-runner
+lint-runner: ## Run golangci-lint on the runner with the fake driver build tag
+	$(GO) run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run --build-tags dhowtest ./apps/runner/...
 
 .PHONY: lint-actions
 lint-actions: ## Lint GitHub Actions workflows
@@ -125,6 +133,20 @@ hooks-test: ## Test the Claude Code project hooks
 .PHONY: test
 test: ## Run Go tests with the race detector
 	$(GO) test -race -count=1 -coverprofile=coverage.out $(PKG)
+
+.PHONY: test-runner
+test-runner: ## Run the runner tests with the fake sandbox driver (dhowtest build tag)
+	$(GO) test -race -count=1 -tags dhowtest ./apps/runner/...
+
+FUZZTIME    ?= 60s
+RUNNER_FUZZ := Masking:FuzzMasker Masking:FuzzMaskerKeepsCleanText Logs:FuzzChunker Logs:FuzzSpillRecords \
+	Journal:FuzzJournalOpen Executor:FuzzVerifyGrant
+
+.PHONY: fuzz-runner
+fuzz-runner: ## Fuzz every runner target for FUZZTIME each (default 60s)
+	set -e; for t in $(RUNNER_FUZZ); do \
+		$(GO) test -run '^$$' -fuzz "^$${t##*:}$$" -fuzztime $(FUZZTIME) ./apps/runner/internal/$${t%%:*}; \
+	done
 
 .PHONY: vuln
 vuln: ## Scan Go dependencies for known vulnerabilities
