@@ -29,6 +29,9 @@ var (
 	oidcAuthorize     = limitedRoute{"/oidc/authorize", map[string]string{"Provider": "corp"}}
 	oidcCallback      = limitedRoute{"/oidc/callback", map[string]string{"Provider": "corp", "Code": "c", "State": "s"}}
 	passkeyOptions    = limitedRoute{"/sessions/passkey-options", nil}
+	passwordSignIn    = limitedRoute{"/sessions", map[string]string{"Email": "nobody@example.com", "Password": "a wrong password here"}}
+	mfaStep           = limitedRoute{"/sessions/mfa", map[string]string{"Method": "totp", "Code": "123456"}}
+	passkeySignIn     = limitedRoute{"/sessions/passkey", map[string]string{"ChallengeId": "0198a000-0000-7000-8000-000000000001"}}
 	setup             = limitedRoute{"/setup", map[string]string{"SetupToken": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "OwnerName": "O", "Email": "o@example.com", "Password": "correct horse battery staple", "OrganizationName": "O", "OrganizationSlug": "o"}}
 )
 
@@ -79,12 +82,12 @@ func TestTheRateLimitedRoutesArePublicAndMatchThePlan(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []string{
 		"POST /invitations/preview", "POST /invitations/accept", "POST /oidc/authorize", "POST /oidc/callback",
-		"POST /sessions/passkey-options", "POST /setup",
+		"POST /sessions/passkey-options", "POST /setup", "POST /sessions", "POST /sessions/mfa", "POST /sessions/passkey",
 	}, got)
 }
 
 func TestEveryLimitedRouteAnswers429AtTheLimit(t *testing.T) {
-	for _, r := range []limitedRoute{invitationPreview, invitationAccept, oidcAuthorize, oidcCallback, passkeyOptions, setup} {
+	for _, r := range []limitedRoute{invitationPreview, invitationAccept, oidcAuthorize, oidcCallback, passkeyOptions, setup, passwordSignIn, mfaStep, passkeySignIn} {
 		t.Run(r.path, func(t *testing.T) {
 			env := limitedEnv(t, nil)
 			for i := range testPublicLimit {
@@ -108,6 +111,7 @@ func TestRoutesOfOneGroupShareTheirCounter(t *testing.T) {
 	for name, pair := range map[string][2]limitedRoute{
 		"invitations": {invitationPreview, invitationAccept},
 		"oidc":        {oidcAuthorize, oidcCallback},
+		"passkey":     {passkeyOptions, passkeySignIn},
 	} {
 		t.Run(name, func(t *testing.T) {
 			env := limitedEnv(t, nil)
@@ -115,7 +119,7 @@ func TestRoutesOfOneGroupShareTheirCounter(t *testing.T) {
 				require.NotEqual(t, http.StatusTooManyRequests, hit(env, pair[0], "", nil).Status)
 			}
 			assertLimited(t, hit(env, pair[1], "", nil))
-			assert.NotEqual(t, http.StatusTooManyRequests, hit(env, passkeyOptions, "", nil).Status, "other groups count apart")
+			assert.NotEqual(t, http.StatusTooManyRequests, hit(env, setup, "", nil).Status, "other groups count apart")
 		})
 	}
 }

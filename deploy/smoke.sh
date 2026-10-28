@@ -60,8 +60,8 @@ http() {
 printf 'Preparing the install directory\n'
 cp -- "$root/deploy/compose/compose.yaml" "$root/deploy/compose/init.sh" "$root/deploy/compose/.env.example" "$work/"
 "$work/init.sh" "$public_url" >/dev/null
-printf 'DHOW_RATE_LIMIT_PUBLIC=10\nDHOW_RATE_LIMIT_INVITES_USER=3\n' >>"$work/.env"
-expect "the smoke stack runs with low rate limits" grep -q '^DHOW_RATE_LIMIT_PUBLIC=10$' "$work/.env"
+printf 'DHOW_RATE_LIMIT_PUBLIC=20\nDHOW_RATE_LIMIT_INVITES_USER=3\n' >>"$work/.env"
+expect "the smoke stack runs with low rate limits" grep -q '^DHOW_RATE_LIMIT_PUBLIC=20$' "$work/.env"
 expect ".env is mode 600" test "$(stat -c %a "$work/.env")" = 600
 expect "init.sh refuses to overwrite .env" bash -c '! "$1" >/dev/null 2>&1' _ "$work/init.sh"
 
@@ -411,14 +411,14 @@ expect "the API token never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2
 
 printf 'Rate limits\n'
 limited=0
-for attempt in $(seq 1 12); do
+for attempt in $(seq 1 25); do
   status=$(api "$work/rl" POST /api/v1/oidc/authorize '{"Provider":"google"}' "${origin[@]}" --header "X-Forwarded-For: 192.0.2.$attempt")
   if [[ $status = 429 ]]; then
     limited=$attempt
     break
   fi
 done
-expect "the OIDC routes answer 429 within the limit of 10 per 10 minutes" test "$limited" -ge 1 -a "$limited" -le 9
+expect "the OIDC routes answer 429 within the limit of 20 per 10 minutes" test "$limited" -ge 1 -a "$limited" -le 19
 expect "a forged X-Forwarded-For does not escape the limit" test "$limited" -ne 0
 expect "the 429 is RATE_LIMITED" grep -q '"Code":"RATE_LIMITED"' "$work/rl.body"
 expect "the 429 carries Retry-After" has_header "$work/rl.head" Retry-After '[0-9]'

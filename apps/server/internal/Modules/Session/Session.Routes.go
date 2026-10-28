@@ -22,12 +22,17 @@ type Deps struct {
 }
 
 const (
-	limitOidc    = "oidc"
-	limitPasskey = "passkey"
+	limitPassword = "password"
+	limitMfa      = "mfa"
+	limitOidc     = "oidc"
+	limitPasskey  = "passkey"
 )
 
 func RateLimited() []ratelimit.Route {
 	return []ratelimit.Route{
+		{Method: http.MethodPost, Path: "/sessions", Group: limitPassword},
+		{Method: http.MethodPost, Path: "/sessions/mfa", Group: limitMfa},
+		{Method: http.MethodPost, Path: "/sessions/passkey", Group: limitPasskey},
 		{Method: http.MethodPost, Path: "/oidc/authorize", Group: limitOidc},
 		{Method: http.MethodPost, Path: "/oidc/callback", Group: limitOidc},
 		{Method: http.MethodPost, Path: "/sessions/passkey-options", Group: limitPasskey},
