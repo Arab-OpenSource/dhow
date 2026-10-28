@@ -4,11 +4,12 @@ from .common import GENERATED_PATH, is_test, new_lines
 
 RUNNER_INTERNAL = "apps/runner/internal/"
 RUNNER_IMPORT_PREFIX = "github.com/Khaymah/dhow/apps/runner/internal/"
-RUNNER_LAYERS = ("App", "Agent", "Config", "Identity", "Client", "Executor", "Journal", "Masking", "Logs", "Sandbox")
+RUNNER_LAYERS = ("App", "Agent", "Config", "Identity", "Client", "Egress", "Executor", "Journal", "Masking", "Logs", "Sandbox")
 RUNNER_ALLOWED_IMPORTS = {
     "App": set(RUNNER_LAYERS),
     "Agent": {"Sandbox"},
-    "Executor": {"Client", "Identity", "Journal", "Logs", "Masking", "Sandbox", "Config"},
+    "Executor": {"Client", "Egress", "Identity", "Journal", "Logs", "Masking", "Sandbox", "Config"},
+    "Egress": set(),
     "Client": {"Identity", "Config"},
     "Logs": {"Masking", "Config"},
     "Identity": {"Config"},

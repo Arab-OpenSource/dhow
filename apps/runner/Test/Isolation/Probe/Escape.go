@@ -153,7 +153,7 @@ func capabilities() result {
 func allowedMount(point string) bool {
 	exact := []string{
 		"/", "/proc", "/dev", "/sys", "/workspace", "/tmp", "/run/.containerenv", "/etc/hostname", "/etc/resolv.conf",
-		"/etc/hosts", "/run/dhow/agent", "/run/dhow/control", "/run/dhow/secrets",
+		"/etc/hosts", "/run/dhow/agent", "/run/dhow/bin/connect", "/run/dhow/control", "/run/dhow/secrets",
 	}
 	for _, e := range exact {
 		if point == e {
@@ -184,7 +184,7 @@ func hostMounts() result {
 		if !allowedMount(point) {
 			return escaped("only the sandbox mounts", "unexpected mount %s", point)
 		}
-		if strings.Contains(","+opts+",", ",rw,") && (point == "/run/dhow/agent" || point == "/run/dhow/control") {
+		if strings.Contains(","+opts+",", ",rw,") && (point == "/run/dhow/agent" || point == "/run/dhow/bin/connect" || point == "/run/dhow/control") {
 			return escaped("only the sandbox mounts", "%s is writable", point)
 		}
 	}

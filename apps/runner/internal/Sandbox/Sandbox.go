@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"syscall"
 
 	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
@@ -70,6 +71,10 @@ type Sandbox interface {
 	Kill(ctx context.Context) error
 	Destroy(ctx context.Context) error
 	Inspect(ctx context.Context) (Inspection, error)
+}
+
+type Egress interface {
+	EgressListener() net.Listener
 }
 
 type Inspection struct {

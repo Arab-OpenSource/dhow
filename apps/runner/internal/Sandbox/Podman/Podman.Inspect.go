@@ -111,7 +111,7 @@ func verifyLimits(in *inspection, spec sandbox.PrepareSpec, add func(bool, strin
 const nanosPerMilliCPU = 1_000_000
 
 func verifyMounts(in *inspection, spec sandbox.PrepareSpec, l layout, add func(bool, string)) {
-	sources := map[string]string{agentMount: l.agentPath, controlMount: l.controlDir}
+	sources := map[string]string{agentMount: l.agentPath, connectMount: l.agentPath, controlMount: l.controlDir}
 	if spec.DiskMode == config.DiskModeDirectory {
 		sources[workspacePath] = l.workDir
 	}
@@ -124,7 +124,7 @@ func verifyMounts(in *inspection, spec sandbox.PrepareSpec, l layout, add func(b
 		if ok {
 			add(sameFile(m.Source, want), "the mount at "+m.Destination+" comes from an unexpected source")
 		}
-		if m.Destination == agentMount || m.Destination == controlMount {
+		if m.Destination == agentMount || m.Destination == connectMount || m.Destination == controlMount {
 			add(!m.RW, "a control mount is writable at "+m.Destination)
 		}
 	}

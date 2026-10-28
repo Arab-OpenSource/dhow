@@ -283,5 +283,8 @@ func (a *attempt) stepEnv(idx int32) (map[string]string, map[string][]byte) {
 			files[t.AsFile] = append([]byte(nil), v...)
 		}
 	}
+	if len(spec.GetNetwork().GetEgress()) > 0 {
+		maps.Copy(env, proxyEnv())
+	}
 	return env, files
 }

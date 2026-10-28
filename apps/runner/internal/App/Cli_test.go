@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	agent "github.com/Khaymah/dhow/apps/runner/internal/Agent"
 	app "github.com/Khaymah/dhow/apps/runner/internal/App"
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 )
@@ -71,4 +72,11 @@ func TestUsage(t *testing.T) {
 	out, err := cli(t, nil, "", "version")
 	require.NoError(t, err)
 	assert.Contains(t, out, "dhow-runner ")
+}
+
+func TestTheConnectHelperNeedsAHostAndPortAndAnEgressList(t *testing.T) {
+	_, err := cli(t, nil, "", app.CommandConnect, "only-host")
+	assert.ErrorIs(t, err, app.ErrConnectUsage)
+	_, err = cli(t, nil, "", app.CommandConnect, "git.example.com", "22")
+	assert.ErrorIs(t, err, agent.ErrNoEgress)
 }

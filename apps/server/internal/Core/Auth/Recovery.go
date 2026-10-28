@@ -20,7 +20,9 @@ const (
 	deviceLabel       = "dhow/mfa-device/v1\x00"
 )
 
-var recoveryEncoding = base32.NewEncoding("0123456789ABCDEFGHJKMNPQRSTVWXYZ").WithPadding(base32.NoPadding)
+const recoveryAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+var recoveryEncoding = base32.NewEncoding(recoveryAlphabet).WithPadding(base32.NoPadding)
 
 var recoveryAliases = strings.NewReplacer("O", "0", "I", "1", "L", "1", "-", "", " ", "")
 
@@ -46,7 +48,7 @@ func NormalizeRecoveryCode(code string) (string, bool) {
 		return "", false
 	}
 	normalized := recoveryAliases.Replace(strings.ToUpper(strings.TrimSpace(code)))
-	if len(normalized) != recoveryCodeChars {
+	if len(normalized) != recoveryCodeChars || strings.Trim(normalized, recoveryAlphabet) != "" {
 		return "", false
 	}
 	if _, err := recoveryEncoding.DecodeString(normalized); err != nil {

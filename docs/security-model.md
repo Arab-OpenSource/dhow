@@ -134,7 +134,7 @@ These are the only deletes in the code base, all in one query file that a projec
   - The default sandbox is rootless Podman with all capabilities dropped, `no-new-privileges`, a seccomp profile that also blocks nested user namespaces, `io_uring`, `bpf`, `ptrace` and `mount`, and a separate user-namespace range per job.
   - A runner refuses to start if cgroup v2 delegation for CPU, memory and PIDs is missing, and it fails the job if the created container does not match the policy.
   - An escape test suite (host files, runner credentials, other jobs, metadata endpoints, container sockets, privilege escalation, network) is a required CI check.
-- **Network egress (ADR-0044).** A sandbox has no network interface besides loopback. Allowed hosts are reached only through a per-job proxy in the runner. The proxy resolves names itself, connects to the address it resolved, and always denies private, loopback, link-local, CGNAT and cloud metadata ranges. Only the runner operator can open a private range.
+- **Network egress (ADR-0044).** A sandbox has no network interface besides loopback. Allowed hosts are reached only through a per-job proxy in the runner. The proxy resolves names itself, connects to the address it resolved, and always denies private, loopback, link-local, CGNAT and cloud metadata ranges. Only the runner operator can open a private range, and cloud metadata addresses stay denied even then. The proxy speaks `CONNECT` and plain `http://` only, never decrypts TLS, caps each job at 256 connections, and closes a connection after 5 minutes without traffic (ADR-0057).
 - **Runner plane (ADR-0041, ADR-0042).**
   - Runners authenticate with pinned Ed25519 keys and 15-minute access tokens.
   - Starting a job needs a fresh signature.

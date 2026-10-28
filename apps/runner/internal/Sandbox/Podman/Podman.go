@@ -22,6 +22,7 @@ const (
 	dockerTransport   = "docker://"
 	controlDirName    = "control"
 	controlSocketName = "control.sock"
+	egressSocketName  = "egress.sock"
 	workspaceDirName  = "workspace"
 )
 

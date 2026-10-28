@@ -11,7 +11,7 @@ A runner is the `dhow-runner` process that takes jobs from a Dhow server and run
 
 ## Status
 
-The runner registers, signs in, takes jobs, fences itself, masks secrets and ships logs, and runs each job in rootless Podman at the `container` isolation level (M3.6). Egress through the runner's proxy (M3.7), gVisor (M3.8) and the Kubernetes driver (M3.11) come next. Test builds (`-tags dhowtest`) carry a fake driver that replays recorded output and runs no process.
+The runner registers, signs in, takes jobs, fences itself, masks secrets and ships logs, and runs each job in rootless Podman at the `container` isolation level (M3.6), with network egress only through its own proxy (M3.7). gVisor (M3.8) and the Kubernetes driver (M3.11) come next. Test builds (`-tags dhowtest`) carry a fake driver that replays recorded output and runs no process.
 
 ## The sandbox
 
@@ -20,6 +20,7 @@ Each job gets a fresh container that the runner creates with its own Podman conf
 - **No privileges.** No capabilities, `no-new-privileges`, an embedded seccomp profile that also blocks `unshare` and `setns`, keyrings, BPF, `io_uring`, `perf_event_open`, `ptrace`, every mount call and every socket family but Unix, IPv4, IPv6 and netlink (so no vsock), and a user namespace of its own with 65536 sub-ids that never maps the runner's user or host root.
 - **Nothing from the host.** A read-only root filesystem, no network, private IPC, PID, UTS and cgroup namespaces, `/workspace` and `/tmp` on size-limited tmpfs, and only two read-only mounts: the runner binary as the agent and the control channel. The host's default mounts (such as `/run/secrets` on RHEL) are turned off.
 - **Nothing from the image but its files.** The image is pulled from its registry by its full name (short names are refused) and the container is created from the image ID, so no other transport can stand in. The image's environment never reaches the agent, and an image that sets a runtime annotation (`run.oci.*` and the like) is refused.
+- **Egress through the runner.** A job with a `network.egress` list gets a proxy on `127.0.0.1:3128` inside the container. The agent carries each connection over a per-attempt Unix socket to the runner. The runner matches the host against the list, resolves the name itself, refuses private, host and metadata addresses, and connects to the address it checked, so DNS rebinding cannot slip through. Each decision shows up once a minute as a `dhow: egress …` line in the job log. A job without a list has no proxy at all.
 - **Limits that fail closed.** CPU, memory without swap, processes and disk come from cgroup v2. After `podman create` the runner inspects the container and refuses to run anything if one setting differs from what it asked for.
 - **An agent as PID 1.** The runner binary runs inside as the agent: it turns off ptrace on itself, ignores the signals a job could send it, runs each step as `/bin/sh -e -s` with the script on stdin, keeps secret files on a `noexec` tmpfs only for the step, and exits when the runner's control channel closes, so the container dies with the runner. When a step's shell exits, the agent kills every process the step left behind before it reports the step, so nothing started in one step can read the secrets of a later one. `/workspace` is shared, though: a step can still change files a later step runs.
 

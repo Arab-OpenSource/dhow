@@ -51,6 +51,8 @@ func Main(ctx context.Context, args []string, env Env) error {
 	switch args[0] {
 	case CommandAgent:
 		return runAgent(ctx, env)
+	case CommandConnect:
+		return runConnect(ctx, args[1:], env)
 	case CommandRegister:
 		return runRegister(ctx, args[1:], env)
 	case CommandRun:

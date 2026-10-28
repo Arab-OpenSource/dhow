@@ -2,9 +2,7 @@ package jobspec
 
 import (
 	"fmt"
-	"net"
 	"regexp"
-	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -18,7 +16,6 @@ const (
 	imageDomain    = `(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)(?:\.(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?))*(?::[0-9]{1,5})?`
 	imageComponent = `[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*`
 	imageTag       = `[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}`
-	hostLabel      = `[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?`
 	maxPort        = 65535
 )
 
@@ -28,7 +25,6 @@ var (
 	envName      = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	secretName   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	secretFile   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	egressHost   = regexp.MustCompile(`^(?:\*\.)?` + hostLabel + `(?:\.` + hostLabel + `)*$`)
 	labelPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9._-]{0,62}[a-z0-9])?(=[A-Za-z0-9]([A-Za-z0-9._-]{0,62}[A-Za-z0-9])?)?$`)
 )
 
@@ -249,20 +245,8 @@ func (c *checker) egress(entries []string) {
 }
 
 func validEgress(e string) bool {
-	if e == "" || len(e) > MaxEgressEntryLength {
-		return false
-	}
-	host, port, hasPort := strings.Cut(e, ":")
-	if hasPort {
-		n, err := strconv.Atoi(port)
-		if err != nil || n < 1 || n > maxPort || strconv.Itoa(n) != port {
-			return false
-		}
-	}
-	if net.ParseIP(host) != nil {
-		return false
-	}
-	return len(host) <= 253 && egressHost.MatchString(host)
+	_, err := ParseEgress(e)
+	return err == nil
 }
 
 func (c *checker) labels(labels []string) {

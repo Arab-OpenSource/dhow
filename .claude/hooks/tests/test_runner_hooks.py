@@ -95,6 +95,14 @@ class RunnerImportRules(unittest.TestCase):
         for dst in ("Masking", "Logs", "Executor"):
             self.assertIn("forbidden import", edit(RUNNER + "Sandbox/Podman/Podman.go", imp(dst)), dst)
 
+    def test_the_egress_proxy_is_a_leaf_the_executor_drives(self):
+        self.assertIsNone(edit(RUNNER + "Egress/Egress.go", "package egress\n"))
+        self.assertIsNone(edit(RUNNER + "Executor/Executor.go", imp("Egress")))
+        for dst in ("Sandbox", "Logs", "Config", "Executor"):
+            self.assertIn("forbidden import", edit(RUNNER + "Egress/Egress.go", imp(dst)), dst)
+        for src in ("Sandbox/Podman/Podman.go", "Agent/Agent.go", "Logs/Logs.go"):
+            self.assertIn("forbidden import", edit(RUNNER + src, imp("Egress")), src)
+
     def test_unknown_runner_package_blocked(self):
         self.assertIn("not a runner layer", edit(RUNNER + "App/App.go", imp("Utils")))
 

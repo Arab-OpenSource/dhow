@@ -104,6 +104,11 @@ func (a *attempt) prepared(ctx, pctx context.Context, p prepared) (result, bool)
 	if !a.setBox(ctx, p.box) {
 		return a.lostResult(), false
 	}
+	if err := a.startEgress(ctx, p.box); err != nil {
+		a.log.Error("could not start the egress proxy", "error", a.masked(err))
+		a.pipe.Systemf(nil, "dhow: %s: the egress proxy could not start", reasonName(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED))
+		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
+	}
 	return result{}, true
 }
 
