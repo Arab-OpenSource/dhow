@@ -269,3 +269,20 @@ func TestAJobWithEgressGetsTheProxyVariablesItCannotOverride(t *testing.T) {
 	}
 	assert.Equal(t, executor.NoProxy, exec.Env["NO_PROXY"])
 }
+
+func TestProcessesThatSurviveTheKillFailTheAttempt(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	srv.Enqueue(runnertest.Spec(), nil)
+	running := r.Start(fake.Recording{
+		Steps:         []fake.Step{{HangMillis: 120_000, IgnoreTerm: true, IgnoreKill: true}},
+		KillSurvivors: true,
+	}, runnertest.StartOptions{})
+	runnertest.WaitEvent(t, running.Driver, fake.EventExec, finishWithin)
+	srv.RequestCancel(srv.Leases()[0].ID)
+	runnertest.WaitEvent(t, running.Driver, fake.EventKill, finishWithin)
+	out := running.Next(t, finishWithin)
+	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_FAILED, out.Result)
+	assert.Equal(t, runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, out.Reason, "a canceled job whose processes outlive the kill is a sandbox failure")
+	assert.Equal(t, []syscall.Signal{syscall.SIGTERM, syscall.SIGKILL}, signals(running.Driver.Events()), "the kill comes after SIGTERM and SIGKILL")
+}

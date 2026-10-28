@@ -2,14 +2,21 @@ package podman
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+)
+
+const (
+	killDrainWait = 5 * time.Second
+	drainPoll     = 50 * time.Millisecond
 )
 
 func (b *box) enforced(ctx context.Context) error {
@@ -104,4 +111,47 @@ func cpuMillis(dir string) (int64, error) {
 		return 0, fmt.Errorf("cpu.max is %q", raw)
 	}
 	return q * config.MillisPerCPU / p, nil
+}
+
+func populated(dir string) (bool, error) {
+	raw, err := os.ReadFile(filepath.Join(dir, "cgroup.events")) //nolint:gosec // The sandbox cgroup that Podman reports, under /sys/fs/cgroup.
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if k, v, ok := strings.Cut(line, " "); ok && k == "populated" {
+			return strings.TrimSpace(v) != "0", nil
+		}
+	}
+	return false, nil
+}
+
+func drained(ctx context.Context, dir string, wait time.Duration) bool {
+	deadline := time.Now().Add(wait)
+	for {
+		busy, err := populated(dir)
+		if err == nil && !busy {
+			return true
+		}
+		if time.Now().After(deadline) || ctx.Err() != nil {
+			return false
+		}
+		time.Sleep(drainPoll)
+	}
+}
+
+func killCgroup(ctx context.Context, dir string, wait time.Duration) error {
+	if dir == "" || drained(ctx, dir, wait) {
+		return nil
+	}
+	if err := os.WriteFile(filepath.Join(dir, "cgroup.kill"), []byte("1"), 0); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%w: write cgroup.kill: %w", sandbox.ErrSurvivors, err)
+	}
+	if drained(ctx, dir, wait) {
+		return nil
+	}
+	return sandbox.ErrSurvivors
 }

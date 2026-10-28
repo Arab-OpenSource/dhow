@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/url"
 	"slices"
 	"sync"
@@ -81,7 +82,7 @@ func (b *box) Exec(ctx context.Context, spec sandbox.StepSpec) (sandbox.StepResu
 	var once sync.Once
 	halt := func() { once.Do(func() { close(stop) }) }
 	result := make(chan sandbox.StepResult, 1)
-	go b.watch(ctx, signals, stop, halt, rec.IgnoreTerm, result)
+	go b.watch(ctx, signals, stop, halt, rec, result)
 	for _, o := range rec.Output {
 		if err := sleep(ctx, stop, o.DelayMillis); err != nil {
 			return b.finish(spec.Index, <-result), nil
@@ -98,7 +99,7 @@ func (b *box) Exec(ctx context.Context, spec sandbox.StepSpec) (sandbox.StepResu
 	return b.finish(spec.Index, sandbox.StepResult{ExitCode: rec.ExitCode, Reason: reasonOf(rec.Reason)}), nil
 }
 
-func (b *box) watch(ctx context.Context, signals chan syscall.Signal, stop <-chan struct{}, halt func(), ignoreTerm bool, result chan<- sandbox.StepResult) {
+func (b *box) watch(ctx context.Context, signals chan syscall.Signal, stop <-chan struct{}, halt func(), rec Step, result chan<- sandbox.StepResult) {
 	defer close(result)
 	for {
 		select {
@@ -113,7 +114,7 @@ func (b *box) watch(ctx context.Context, signals chan syscall.Signal, stop <-cha
 			halt()
 			return
 		case sig := <-signals:
-			if sig == syscall.SIGTERM && ignoreTerm {
+			if (sig == syscall.SIGTERM && rec.IgnoreTerm) || (sig == syscall.SIGKILL && rec.IgnoreKill) {
 				continue
 			}
 			result <- sandbox.StepResult{ExitCode: sandbox.ExitCodeForSignal(sig), Signal: sig}
@@ -193,11 +194,14 @@ func (b *box) Kill(_ context.Context) error {
 	close(b.killed)
 	b.running = false
 	b.d.record(Event{Kind: EventKill, AttemptID: b.attempt})
+	if b.d.rec.KillSurvivors {
+		return sandbox.ErrSurvivors
+	}
 	return nil
 }
 
 func (b *box) Destroy(ctx context.Context) error {
-	if err := b.Kill(ctx); err != nil {
+	if err := b.Kill(ctx); err != nil && !errors.Is(err, sandbox.ErrSurvivors) {
 		return err
 	}
 	b.mu.Lock()

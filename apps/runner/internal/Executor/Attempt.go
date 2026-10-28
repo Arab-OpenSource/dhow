@@ -64,9 +64,10 @@ type attempt struct {
 	shutdown   <-chan struct{}
 	secrets    map[string][]byte
 
-	mu       sync.Mutex
-	box      sandbox.Sandbox
-	killedAt time.Time
+	mu        sync.Mutex
+	box       sandbox.Sandbox
+	killedAt  time.Time
+	survivors bool
 }
 
 func newAttempt(e *Executor, g *runnerv1.LeaseGrant, grantBytes []byte, leasedAt time.Time) *attempt {

@@ -240,9 +240,9 @@ func (b *box) Kill(ctx context.Context) error {
 		_ = conn.Close()
 	}
 	if err != nil && !isGone(err) {
-		return err
+		return errors.Join(err, killCgroup(ctx, b.cgroupDir(), killDrainWait))
 	}
-	return nil
+	return killCgroup(ctx, b.cgroupDir(), killDrainWait)
 }
 
 func (b *box) Destroy(ctx context.Context) error {
