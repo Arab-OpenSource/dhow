@@ -28,8 +28,11 @@ func TestAReleaseBuildRefusesToRunWithoutARealDriver(t *testing.T) {
 		Keys: keys, RunnerID: uuid.NewString(), OrganizationID: uuid.NewString(), ServerURL: "https://d.example.com",
 		ServerOrigin: "https://d.example.com", ServerSigningKey: server, ServerKeyVersion: 1,
 	}))
-	_, err = cli(t, map[string]string{config.EnvStateDir: dir}, "", "run")
+	_, err = cli(t, map[string]string{config.EnvStateDir: dir, config.EnvDriver: config.DriverKubernetes}, "", "run")
 	assert.ErrorIs(t, err, app.ErrDriverMissing)
+	t.Setenv("PATH", t.TempDir())
+	_, err = cli(t, map[string]string{config.EnvStateDir: dir}, "", "run")
+	assert.ErrorContains(t, err, "podman", "the default Podman driver refuses to start without Podman")
 	_, err = cli(t, map[string]string{config.EnvStateDir: dir, config.EnvDriver: config.DriverFake}, "", "run")
 	assert.ErrorIs(t, err, config.ErrFakeDriver, "the fake driver is not in release builds")
 }
