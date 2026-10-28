@@ -48,7 +48,17 @@ type jobSpec struct {
 	Env            map[string]string `json:"Env,omitempty"`
 	TimeoutSeconds int               `json:"TimeoutSeconds,omitempty"`
 	Network        *jobNetwork       `json:"Network,omitempty"`
+	Resources      *jobResources     `json:"Resources,omitempty"`
 }
+
+type jobResources struct {
+	CpuMillis   int64 `json:"CpuMillis"`
+	MemoryBytes int64 `json:"MemoryBytes"`
+	Pids        int64 `json:"Pids"`
+	DiskBytes   int64 `json:"DiskBytes"`
+}
+
+var smallJob = &jobResources{CpuMillis: 500, MemoryBytes: 128 << 20, Pids: 256, DiskBytes: 64 << 20}
 
 type jobNetwork struct {
 	Egress []string `json:"Egress"`

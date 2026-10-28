@@ -29,7 +29,7 @@ func newJob(t *testing.T, name string, steps ...jobStep) string {
 	t.Helper()
 	ensureUp(t)
 	return shared.api.createJob(t, name, jobSpec{
-		Image: shared.image, Steps: steps, TimeoutSeconds: 900,
+		Image: shared.image, Steps: steps, TimeoutSeconds: 900, Resources: smallJob,
 		Network: &jobNetwork{Egress: []string{sinkHost + ":" + shared.sink.port}},
 	})
 }
@@ -53,12 +53,17 @@ func ensureUp(t *testing.T) {
 	}
 }
 
-func waitTicks(t *testing.T, job string, n int, within time.Duration) {
+func waitTicks(t *testing.T, id, job string, n int, within time.Duration) {
 	t.Helper()
 	deadline := time.Now().Add(within)
-	for time.Now().Before(deadline) {
+	for i := 0; time.Now().Before(deadline); i++ {
 		if len(shared.sink.of(job)) >= n {
 			return
+		}
+		if i%10 == 0 {
+			if d, err := shared.api.job(id); err == nil && finished(d) {
+				t.Fatalf("job %s ended %s (%s) after %d of %d sink calls", job, d.Job.State, d.Job.FailureReason, len(shared.sink.of(job)), n)
+			}
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
@@ -104,7 +109,7 @@ func jobProcesses() []string {
 func TestAJobThatIgnoresTermIsKilledAfterTheGrace(t *testing.T) {
 	name := uniqueName("ignore-term")
 	id := newJob(t, name, jobStep{Name: "stubborn", Run: tickScript(name, 1) + "trap '' TERM\nwhile :; do busybox sleep 1; done\n"})
-	waitTicks(t, name, 1, 3*time.Minute)
+	waitTicks(t, id, name, 1, 3*time.Minute)
 	asked := time.Now()
 	shared.api.cancel(t, id)
 	d := shared.api.waitJob(t, id, time.Minute, finished)
@@ -117,7 +122,7 @@ func TestAForkThatLeftTheGroupDiesWithTheSandbox(t *testing.T) {
 	name := uniqueName("escape-group")
 	escape := "busybox setsid busybox sh -c \"trap '' TERM; while :; do busybox sleep 1; done\" &\n"
 	id := newJob(t, name, jobStep{Name: "escape", Run: tickScript(name, 1) + escape + "trap '' TERM\nwhile :; do busybox sleep 1; done\n"})
-	waitTicks(t, name, 1, 3*time.Minute)
+	waitTicks(t, id, name, 1, 3*time.Minute)
 	shared.api.cancel(t, id)
 	d := shared.api.waitJob(t, id, time.Minute, finished)
 	assert.Equal(t, "canceled", d.Job.State)
@@ -128,7 +133,7 @@ func TestAForkThatLeftTheGroupDiesWithTheSandbox(t *testing.T) {
 func TestKillingTheRunnerMidStepRetriesTheJobOnce(t *testing.T) {
 	name := uniqueName("runner-kill")
 	id := newJob(t, name, jobStep{Name: "ticks", Run: tickScript(name, 20)})
-	waitTicks(t, name, 2, 3*time.Minute)
+	waitTicks(t, id, name, 2, 3*time.Minute)
 	shared.stack.killRunner()
 	gone := waitNoSandboxes(t, 3*time.Second)
 	t.Logf("the sandbox went away %s after the runner died", gone)
@@ -143,7 +148,7 @@ func TestKillingTheRunnerMidStepRetriesTheJobOnce(t *testing.T) {
 func TestKillingTheRunnerAfterAMutatingStepBeganLosesTheJob(t *testing.T) {
 	name := uniqueName("mutating-kill")
 	id := newJob(t, name, jobStep{Name: "deploy", Mutating: true, Run: tickScript(name, 30)})
-	waitTicks(t, name, 2, 3*time.Minute)
+	waitTicks(t, id, name, 2, 3*time.Minute)
 	shared.stack.killRunner()
 	waitNoSandboxes(t, 3*time.Second)
 	require.NoError(t, shared.stack.startRunner())
@@ -157,7 +162,7 @@ func TestKillingTheRunnerAfterAMutatingStepBeganLosesTheJob(t *testing.T) {
 func TestAShortServerOutageDoesNotRestartTheJob(t *testing.T) {
 	name := uniqueName("server-20s")
 	id := newJob(t, name, jobStep{Name: "ticks", Run: tickScript(name, 45)})
-	waitTicks(t, name, 2, 3*time.Minute)
+	waitTicks(t, id, name, 2, 3*time.Minute)
 	shared.stack.killServer()
 	time.Sleep(20 * time.Second)
 	_, err := shared.stack.startServer()
@@ -171,7 +176,7 @@ func TestAShortServerOutageDoesNotRestartTheJob(t *testing.T) {
 func TestALongServerOutageFencesTheRunnerAndRetriesWithoutOverlap(t *testing.T) {
 	name := uniqueName("server-90s")
 	id := newJob(t, name, jobStep{Name: "ticks", Run: tickScript(name, 20)})
-	waitTicks(t, name, 2, 3*time.Minute)
+	waitTicks(t, id, name, 2, 3*time.Minute)
 	shared.stack.killServer()
 	time.Sleep(40 * time.Second)
 	assert.Empty(t, shared.stack.sandboxes(), "the runner fenced itself and killed the sandbox within 35 seconds")
@@ -187,7 +192,7 @@ func TestALongServerOutageFencesTheRunnerAndRetriesWithoutOverlap(t *testing.T) 
 func TestANetworkBlackholeFencesTheRunnerAndRetriesWithoutOverlap(t *testing.T) {
 	name := uniqueName("blackhole-60s")
 	id := newJob(t, name, jobStep{Name: "ticks", Run: tickScript(name, 20)})
-	waitTicks(t, name, 2, 3*time.Minute)
+	waitTicks(t, id, name, 2, 3*time.Minute)
 	shared.stack.runnerProxy.Blackhole(true)
 	time.Sleep(40 * time.Second)
 	assert.Empty(t, shared.stack.sandboxes(), "the runner fenced itself within 35 seconds without the server")
@@ -202,7 +207,7 @@ func TestANetworkBlackholeFencesTheRunnerAndRetriesWithoutOverlap(t *testing.T) 
 func TestAPostgresRestartMidJobDoesNotLoseIt(t *testing.T) {
 	name := uniqueName("postgres-restart")
 	id := newJob(t, name, jobStep{Name: "ticks", Run: tickScript(name, 30)})
-	waitTicks(t, name, 2, 3*time.Minute)
+	waitTicks(t, id, name, 2, 3*time.Minute)
 	require.NoError(t, restartPostgres(shared.stack.dbURL))
 	d := shared.api.waitJob(t, id, 4*time.Minute, finished)
 	assert.Equal(t, "succeeded", d.Job.State)
@@ -213,7 +218,7 @@ func TestCancelingDuringTheImagePullStartsNoSandbox(t *testing.T) {
 	ensureUp(t)
 	shared.slowPull.Throttle(100 << 10)
 	name := uniqueName("cancel-pull")
-	id := shared.api.createJob(t, name, jobSpec{Image: shared.slowImage, Steps: []jobStep{{Name: "never", Run: tickScript(name, 1)}}})
+	id := shared.api.createJob(t, name, jobSpec{Image: shared.slowImage, Resources: smallJob, Steps: []jobStep{{Name: "never", Run: tickScript(name, 1)}}})
 	shared.api.waitJob(t, id, 2*time.Minute, func(d jobDetail) bool { return d.Job.State == "leased" || d.Job.State == "running" })
 	time.Sleep(3 * time.Second)
 	shared.api.cancel(t, id)
