@@ -141,3 +141,31 @@ func TestInstancesWithoutAClockShareTheDatabaseWindow(t *testing.T) {
 	time.Sleep(1100 * time.Millisecond)
 	assert.True(t, take(t, second, l, "x").Allowed, "both instances read one clock, so the next window starts for everybody")
 }
+
+func TestAKeyKnownToBeOverTheLimitIsRefusedWithoutTheDatabase(t *testing.T) {
+	pool := dbtest.NewPool(t)
+	c := newClock()
+	p := ratelimit.NewPostgres(pool, c.Now)
+	l := ratelimit.Limit{Name: "ip-oidc", Max: 2, Window: 10 * time.Minute}
+	for range 2 {
+		require.True(t, take(t, p, l, "x").Allowed)
+	}
+	first := take(t, p, l, "x")
+	require.False(t, first.Allowed)
+	assert.Equal(t, 1, p.Blocked())
+	_, err := pool.Exec(context.Background(), `DELETE FROM "RateLimits"`)
+	require.NoError(t, err)
+
+	c.Advance(time.Minute)
+	d := take(t, p, l, "x")
+	assert.False(t, d.Allowed, "the refusal comes from memory: the row is gone")
+	assert.Equal(t, first.RetryAfter-time.Minute, d.RetryAfter)
+	var rows int
+	require.NoError(t, pool.QueryRow(context.Background(), `SELECT count(*) FROM "RateLimits"`).Scan(&rows))
+	assert.Zero(t, rows, "nothing was written")
+	assert.True(t, take(t, p, l, "y").Allowed, "other keys still go to the database")
+
+	c.Advance(first.RetryAfter)
+	assert.True(t, take(t, p, l, "x").Allowed, "after the window the database decides again")
+	assert.Zero(t, p.Blocked())
+}
