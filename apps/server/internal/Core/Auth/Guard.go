@@ -43,15 +43,16 @@ type Resolver interface {
 }
 
 type ResolvedToken struct {
-	TokenID        uuid.UUID
-	UserID         uuid.UUID
-	OrganizationID uuid.UUID
-	Role           policy.Role
-	Scopes         []policy.Action
-	ExpiresAt      time.Time
-	Email          string
-	Name           string
-	Locale         string
+	TokenID         uuid.UUID
+	UserID          uuid.UUID
+	OrganizationID  uuid.UUID
+	Role            policy.Role
+	Scopes          []policy.Action
+	ExpiresAt       time.Time
+	SecondFactorDue time.Time
+	Email           string
+	Name            string
+	Locale          string
 }
 
 type TokenResolver interface {
@@ -191,10 +192,20 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 		}
 		resource.OrganizationID = id
 	}
-	if !policy.Can(principal.Subject, rule.Action, resource) {
-		return ctx, apperrors.Forbidden()
+	if ae := g.permit(principal.Subject, rule.Action, resource); ae != nil {
+		return ctx, ae
 	}
 	return WithPrincipal(ctx, principal), nil
+}
+
+func (g *Guard) permit(s policy.Subject, action policy.Action, resource policy.Resource) *apperrors.AppError {
+	if !policy.Can(s, action, resource) {
+		return apperrors.Forbidden()
+	}
+	if policy.SecondFactorBlocks(s, action, resource, g.now()) {
+		return apperrors.SecondFactorRequired()
+	}
+	return nil
 }
 
 func (g *Guard) Reauthorize(ctx context.Context, action policy.Action, org uuid.UUID) error {
@@ -205,8 +216,8 @@ func (g *Guard) Reauthorize(ctx context.Context, action policy.Action, org uuid.
 	if _, member := principal.RoleIn(org); !member {
 		return apperrors.NotFound()
 	}
-	if !policy.Can(principal.Subject, action, policy.Resource{OrganizationID: org}) {
-		return apperrors.Forbidden()
+	if ae := g.permit(principal.Subject, action, policy.Resource{OrganizationID: org}); ae != nil {
+		return ae
 	}
 	return nil
 }
@@ -251,12 +262,12 @@ func (g *Guard) authorizeToken(ctx context.Context, r *http.Request, rule policy
 	principal := Principal{
 		Subject: policy.Subject{
 			UserID: res.UserID, TokenID: res.TokenID, TokenScopes: res.Scopes,
-			Memberships: []policy.Membership{{OrganizationID: res.OrganizationID, Role: res.Role}},
+			Memberships: []policy.Membership{{OrganizationID: res.OrganizationID, Role: res.Role, SecondFactorDue: res.SecondFactorDue}},
 		},
 		Email: res.Email, Name: res.Name, Locale: res.Locale, ExpiresAt: res.ExpiresAt,
 	}
-	if !policy.Can(principal.Subject, rule.Action, resource) {
-		return ctx, apperrors.Forbidden()
+	if ae := g.permit(principal.Subject, rule.Action, resource); ae != nil {
+		return ctx, ae
 	}
 	return WithPrincipal(ctx, principal), nil
 }

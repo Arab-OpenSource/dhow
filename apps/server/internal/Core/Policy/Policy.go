@@ -2,6 +2,7 @@ package policy
 
 import (
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -36,6 +37,7 @@ const (
 	OrgUpdate         Action = "org.update"
 	OrgLeave          Action = "org.leave"
 	OrgTransfer       Action = "org.transfer"
+	OrgSecurity       Action = "org.security"
 	MemberRead        Action = "member.read"
 	MemberManage      Action = "member.manage"
 	AuditRead         Action = "audit.read"
@@ -53,7 +55,7 @@ const (
 
 func Actions() []Action {
 	return []Action{
-		OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, OrgCreate,
+		OrgRead, OrgUpdate, OrgLeave, OrgTransfer, OrgSecurity, MemberRead, MemberManage, AuditRead, SessionManageSelf, OrgCreate,
 		RunnerRead, RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
 	}
 }
@@ -79,8 +81,8 @@ func Grants(role Role) []Action {
 	switch role {
 	case RoleOwner:
 		return []Action{
-			OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
-			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
+			OrgRead, OrgUpdate, OrgLeave, OrgTransfer, OrgSecurity, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead,
+			RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
 		}
 	case RoleAdmin:
 		return []Action{
@@ -108,8 +110,9 @@ func Allows(role Role, action Action) bool {
 }
 
 type Membership struct {
-	OrganizationID uuid.UUID
-	Role           Role
+	OrganizationID  uuid.UUID
+	Role            Role
+	SecondFactorDue time.Time
 }
 
 type Subject struct {

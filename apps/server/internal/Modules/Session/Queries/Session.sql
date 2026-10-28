@@ -6,7 +6,8 @@ WHERE "Email" = @email AND NOT "IsDeleted";
 -- name: ListUserMemberships :many
 SELECT m."OrganizationId", o."Name" AS "OrganizationName", o."Slug" AS "OrganizationSlug", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
-             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles"
+             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
+       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt"
 FROM "Memberships" m
 JOIN "Organizations" o ON o."Id" = m."OrganizationId" AND NOT o."IsDeleted"
 WHERE m."UserId" = @user_id AND NOT m."IsDeleted"
@@ -19,12 +20,15 @@ VALUES (@user_id, @token_hash, @csrf_hash, @now, @expires_at, @idle_expires_at, 
 RETURNING "Id", "ExpiresAt";
 
 -- name: ResolveSession :one
-SELECT s."Id", s."UserId", s."CsrfHash", s."LastSeenAt", s."ExpiresAt", s."IdleExpiresAt",
-       u."Email", u."Name", u."Locale", u."IsInstanceOwner"
+SELECT s."Id", s."UserId", s."CsrfHash", s."CreatedAt", s."LastSeenAt", s."ExpiresAt", s."IdleExpiresAt",
+       u."Email", u."Name", u."Locale", u."IsInstanceOwner",
+       (EXISTS (SELECT 1 FROM "TotpFactors" t
+                WHERE t."UserId" = s."UserId" AND t."ConfirmedAt" IS NOT NULL AND NOT t."IsDeleted")
+        OR EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = s."UserId" AND NOT p."IsDeleted"))::boolean AS "HasSecondFactor"
 FROM "Sessions" s
 JOIN "Users" u ON u."Id" = s."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
 WHERE s."TokenHash" = @token_hash AND NOT s."IsDeleted" AND s."RevokedAt" IS NULL
-  AND s."ExpiresAt" > @now AND s."IdleExpiresAt" > @now;
+  AND s."ExpiresAt" > @now AND s."IdleExpiresAt" > @now AND s."CreatedAt" > @created_after;
 
 -- name: TouchSession :exec
 UPDATE "Sessions"
@@ -50,6 +54,7 @@ WHERE "UserId" = @user_id AND "Id" <> @except_id AND "RevokedAt" IS NULL;
 SELECT "Id", "CreatedAt", "LastSeenAt", "ExpiresAt", "UserAgent", "IpAddress"
 FROM "Sessions"
 WHERE "UserId" = @user_id AND NOT "IsDeleted" AND "RevokedAt" IS NULL AND "ExpiresAt" > @now AND "IdleExpiresAt" > @now
+  AND "CreatedAt" > @created_after
 ORDER BY "CreatedAt" DESC, "Id" DESC;
 
 -- name: GetUserPasswordHash :one

@@ -13,6 +13,7 @@ import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { useT } from '@/I18n/useT';
 import { leaveOrganization } from '@/Modules/Organization/Api/OrganizationApi';
 import { OrganizationCard } from '@/Modules/Organization/Components/OrganizationCard';
+import { SecondFactorCard } from '@/Modules/Organization/Components/SecondFactorCard';
 
 export interface ISettingsSectionProps {
   organization: TOrganization;
@@ -94,6 +95,7 @@ export const SettingsSection = ({ organization, role, onTransfer, onLeft }: ISet
   return (
     <>
       <OrganizationCard organization={organization} editable={canEditOrganization(role)} />
+      {role === 'owner' ? <SecondFactorCard organization={organization} /> : null}
       {role === 'owner' ? (
         <Card title={t('organization.transfer.title')} icon="swap" padded>
           <div className="grid justify-items-start gap-3">

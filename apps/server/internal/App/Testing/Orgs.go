@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -37,6 +38,11 @@ func (f *FakeMailer) FailNext(fail bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.fail = fail
+}
+
+func (e *Env) SentMail(f *FakeMailer) []mailer.Message {
+	e.Wired.Alerts.Wait()
+	return f.Messages()
 }
 
 func (f *FakeMailer) Messages() []mailer.Message {
@@ -109,8 +115,11 @@ func (c *Client) ChangeRole(org uuid.UUID, user, role string, factor map[string]
 }
 
 type MeView struct {
-	User                   struct{ Id, Email string }
-	Memberships            []struct{ OrganizationId, Role string }
+	User        struct{ Id, Email string }
+	Memberships []struct {
+		OrganizationId, Role string
+		SecondFactorDue      *time.Time
+	}
 	CanCreateOrganizations bool
 	MfaReenrollRequired    bool
 }

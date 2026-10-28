@@ -974,6 +974,38 @@ paths:
                 $ref: "#/components/schemas/OrganizationResponse"
         default:
           $ref: "#/components/responses/Error"
+  /organizations/{id}/second-factor-rule:
+    put:
+      operationId: updateSecondFactorRule
+      tags: [identity]
+      summary: Choose who must use two-step verification
+      description: >-
+        Needs `org.security` (owners only), a current factor of the caller, and a second factor on the caller's own
+        account (`SECOND_FACTOR_REQUIRED` otherwise). `admins` covers owners and admins, `everyone` covers every role.
+        A covered member without TOTP or a passkey has seven days from the moment the rule reached them or from
+        joining, whichever is later; after that `org.update`, `org.transfer`, `org.security`, `member.manage`,
+        `runner.manage`, `job.create` and `token.create` answer `403 SECOND_FACTOR_REQUIRED`, for sessions and API
+        tokens alike, until the member sets one up. Reading stays allowed.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSecondFactorRuleRequest"
+      responses:
+        "200":
+          description: The organization with the new rule.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        default:
+          $ref: "#/components/responses/Error"
   /organizations/{id}/members:
     get:
       operationId: listMembers
@@ -2258,8 +2290,8 @@ components:
             `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`,
             `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`,
             `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`,
-            `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH` or
-            `INVITATION_ACCOUNT_EXISTS`.
+            `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`,
+            `INVITATION_ACCOUNT_EXISTS` or `SECOND_FACTOR_REQUIRED`.
           example: INTERNAL
         Message:
           type: string
@@ -2383,7 +2415,7 @@ components:
     Organization:
       type: object
       additionalProperties: false
-      required: [Id, Name, Slug, CreatedAt]
+      required: [Id, Name, Slug, CreatedAt, RequireSecondFactor]
       properties:
         Id:
           type: string
@@ -2395,6 +2427,25 @@ components:
         CreatedAt:
           type: string
           format: date-time
+        RequireSecondFactor:
+          $ref: "#/components/schemas/SecondFactorRule"
+        RequireSecondFactorSince:
+          type: string
+          format: date-time
+          description: When the rule last reached more roles. Absent while the rule is `off`.
+    SecondFactorRule:
+      type: string
+      enum: [off, admins, everyone]
+      description: Who must use two-step verification in the organization.
+    UpdateSecondFactorRuleRequest:
+      type: object
+      additionalProperties: false
+      required: [RequireSecondFactor, CurrentFactor]
+      properties:
+        RequireSecondFactor:
+          $ref: "#/components/schemas/SecondFactorRule"
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
     OrganizationResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"
@@ -2496,6 +2547,12 @@ components:
           type: string
         Role:
           $ref: "#/components/schemas/Role"
+        SecondFactorDue:
+          type: string
+          format: date-time
+          description: >-
+            Present when the organization requires two-step verification for this role and the user has neither TOTP
+            nor a passkey. Sensitive actions there answer `SECOND_FACTOR_REQUIRED` from this moment on.
     MeResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"

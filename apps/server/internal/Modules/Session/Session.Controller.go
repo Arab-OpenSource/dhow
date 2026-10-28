@@ -70,7 +70,7 @@ func (c *Controller) GetMe(ctx context.Context, _ gen.GetMeRequestObject) (gen.G
 	for _, m := range me.Memberships {
 		memberships = append(memberships, gen.MembershipView{
 			OrganizationId: m.OrganizationID, OrganizationName: m.OrganizationName,
-			OrganizationSlug: m.OrganizationSlug, Role: gen.Role(m.Role),
+			OrganizationSlug: m.OrganizationSlug, Role: gen.Role(m.Role), SecondFactorDue: m.SecondFactorDue,
 		})
 	}
 	data := gen.Me{

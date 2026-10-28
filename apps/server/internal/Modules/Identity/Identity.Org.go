@@ -27,7 +27,7 @@ func (s *Service) GetOrganization(ctx context.Context, id uuid.UUID) (models.Org
 	if err != nil {
 		return models.Organization{}, err
 	}
-	return models.Organization{ID: row.Id, Name: row.Name, Slug: row.Slug, CreatedAt: row.CreatedAt}, nil
+	return organizationOf(row.Id, row.Name, row.Slug, row.CreatedAt, row.RequireSecondFactor, row.RequireSecondFactorSince), nil
 }
 
 func (s *Service) UpdateOrganization(ctx context.Context, id uuid.UUID, name string) (models.Organization, error) {
@@ -53,7 +53,7 @@ func (s *Service) UpdateOrganization(ctx context.Context, id uuid.UUID, name str
 	if err != nil {
 		return models.Organization{}, err
 	}
-	return models.Organization{ID: row.Id, Name: row.Name, Slug: row.Slug, CreatedAt: row.CreatedAt}, nil
+	return organizationOf(row.Id, row.Name, row.Slug, row.CreatedAt, row.RequireSecondFactor, row.RequireSecondFactorSince), nil
 }
 
 func mfaOf(totp, passkey bool) string {

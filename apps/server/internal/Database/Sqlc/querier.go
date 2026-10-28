@@ -53,6 +53,7 @@ type Querier interface {
 	FinishAttempt(ctx context.Context, arg FinishAttemptParams) (JobAttempt, error)
 	FinishJob(ctx context.Context, arg FinishJobParams) (Job, error)
 	GetActiveRunnerSession(ctx context.Context, runnerID uuid.UUID) (GetActiveRunnerSessionRow, error)
+	GetAlertRecipient(ctx context.Context, id uuid.UUID) (GetAlertRecipientRow, error)
 	GetAttemptStepState(ctx context.Context, arg GetAttemptStepStateParams) (string, error)
 	GetConfirmedTotp(ctx context.Context, userID uuid.UUID) (GetConfirmedTotpRow, error)
 	GetInstance(ctx context.Context) (Instance, error)
@@ -229,6 +230,7 @@ type Querier interface {
 	SetLocalLockTimeout(ctx context.Context, timeout string) error
 	SetMemberRole(ctx context.Context, arg SetMemberRoleParams) (int64, error)
 	SetMfaChallengeWebauthn(ctx context.Context, arg SetMfaChallengeWebauthnParams) (int64, error)
+	SetOrganizationSecondFactor(ctx context.Context, arg SetOrganizationSecondFactorParams) (SetOrganizationSecondFactorRow, error)
 	SetTeamBindingRole(ctx context.Context, arg SetTeamBindingRoleParams) (int64, error)
 	SetUserLocale(ctx context.Context, arg SetUserLocaleParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error

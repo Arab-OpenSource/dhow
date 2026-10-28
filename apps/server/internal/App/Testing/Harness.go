@@ -447,7 +447,7 @@ func (e *Env) SeedSession(userID uuid.UUID) *Client {
 	csrf := e.Wired.Options.CSRF.Token(cookie)
 	now := e.Clock.Now()
 	_, err = e.Pool.Exec(context.Background(),
-		`INSERT INTO "Sessions" ("UserId", "TokenHash", "CsrfHash", "LastSeenAt", "ExpiresAt", "IdleExpiresAt") VALUES ($1, $2, $3, $4, $5, $6)`,
+		`INSERT INTO "Sessions" ("UserId", "TokenHash", "CsrfHash", "LastSeenAt", "ExpiresAt", "IdleExpiresAt", "CreatedAt") VALUES ($1, $2, $3, $4, $5, $6, $4)`,
 		userID, tokenHash, e.Wired.Options.CSRF.Hash(csrf), now, now.Add(config.SessionAbsoluteTimeout), now.Add(config.SessionIdleTimeout))
 	require.NoError(e.T, err)
 	return &Client{Env: e, Cookie: cookie, CSRFToken: csrf, UserID: userID.String()}
