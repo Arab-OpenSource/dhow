@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/url"
 	"os"
@@ -224,3 +225,37 @@ func TestACrashLeavesAJournalEntryThatTheNextStartReports(t *testing.T) {
 }
 
 var _ executor.Outcome
+
+func TestAReplayedGrantIsRefusedBeforeAnyCall(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	srv.Enqueue(runnertest.Spec(), nil)
+	srv.Enqueue(runnertest.Spec(), map[string][]byte{})
+	running := r.Start(fake.Recording{}, runnertest.StartOptions{})
+	require.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, running.Next(t, finishWithin).Result)
+	require.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, running.Next(t, finishWithin).Result)
+	leases := srv.Leases()
+	require.Len(t, leases, 2)
+	before := map[string]int{}
+	procedures := []string{
+		runnerv1connect.LeaseServiceStartProcedure, runnerv1connect.LeaseServiceHeartbeatProcedure,
+		runnerv1connect.LeaseServiceCompleteProcedure, runnerv1connect.LogServiceAppendProcedure,
+	}
+	for _, p := range procedures {
+		before[p] = srv.Calls(p)
+	}
+	prepared := len(running.Driver.Events())
+
+	srv.Replay(leases[1].ID)
+	assert.True(t, running.Next(t, finishWithin).Refused, "the same grant a second time")
+	srv.Replay(leases[0].ID)
+	assert.True(t, running.Next(t, finishWithin).Refused, "an older grant after a newer one")
+
+	for _, p := range procedures {
+		assert.Equal(t, before[p], srv.Calls(p), p)
+	}
+	assert.Len(t, running.Driver.Events(), prepared, "no sandbox for a replay")
+	raw, err := os.ReadFile(filepath.Join(r.StateDir, "journal"))
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), fmt.Sprintf(`"HighWater":%d`, leases[1].Fencing))
+}

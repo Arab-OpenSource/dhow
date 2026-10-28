@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -82,11 +83,17 @@ func New(o Options) *Executor {
 }
 
 func (e *Executor) Run(ctx context.Context, signed *runnerv1.SignedLeaseGrant, leasedAt time.Time) Outcome {
-	grant, err := VerifyGrant(e.o.Identity, signed)
+	grant, err := VerifyGrant(e.o.Identity, signed, time.Now())
 	if err != nil {
 		e.o.Log.Error("refused a lease grant and did not run it", "error", err)
 		return Outcome{Refused: true}
 	}
 	a := newAttempt(e, grant, signed.GetGrantBytes(), leasedAt)
-	return a.run(ctx)
+	err = e.o.Journal.Add(a.entry())
+	if errors.Is(err, journal.ErrReplay) || errors.Is(err, journal.ErrExists) {
+		e.o.Log.Error("refused a lease grant that replays an earlier one and did not run it", "error", err,
+			"fencing_token", grant.GetFencingToken(), "high_water", e.o.Journal.HighWater())
+		return Outcome{Refused: true}
+	}
+	return a.run(ctx, err)
 }

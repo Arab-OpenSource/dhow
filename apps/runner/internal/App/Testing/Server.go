@@ -55,6 +55,7 @@ type Lease struct {
 	Truncated            bool
 	Job                  *Job
 	GrantBytes           []byte
+	Signed               *runnerv1.SignedLeaseGrant
 }
 
 type Knobs struct {
@@ -92,6 +93,7 @@ type Server struct {
 	order    []*Lease
 	fencing  int64
 	calls    map[string]int
+	replays  []*runnerv1.SignedLeaseGrant
 }
 
 func NewServer(t testing.TB) *Server {
@@ -212,6 +214,14 @@ func (s *Server) gate() connect.Interceptor {
 			return next(ctx, req)
 		}
 	})
+}
+
+func (s *Server) Replay(leaseID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if l := s.leases[leaseID]; l != nil {
+		s.replays = append(s.replays, l.Signed)
+	}
 }
 
 func (s *Server) ExpireLease(leaseID string) {

@@ -41,6 +41,7 @@ const (
 	CompleteRetryWindow = 10 * time.Minute
 	ImagePullTimeout    = 10 * time.Minute
 	LogDrainTimeout     = 30 * time.Second
+	GrantMaxSkew        = 15 * time.Minute
 )
 
 const (

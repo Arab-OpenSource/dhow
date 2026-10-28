@@ -23,9 +23,10 @@ var (
 	ErrGrantOrganization = errors.New("the grant names another organization")
 	ErrGrantFields       = errors.New("the grant has invalid lease, attempt or job ids, or a non-positive fencing token")
 	ErrGrantTTL          = errors.New("the grant has a lease TTL outside what the runner can fence safely")
+	ErrGrantStale        = errors.New("the grant was issued too far from now, so it may be a replay")
 )
 
-func VerifyGrant(id *identity.Identity, signed *runnerv1.SignedLeaseGrant) (*runnerv1.LeaseGrant, error) {
+func VerifyGrant(id *identity.Identity, signed *runnerv1.SignedLeaseGrant, now time.Time) (*runnerv1.LeaseGrant, error) {
 	if signed == nil || len(signed.GetGrantBytes()) == 0 {
 		return nil, ErrGrantMissing
 	}
@@ -55,6 +56,12 @@ func VerifyGrant(id *identity.Identity, signed *runnerv1.SignedLeaseGrant) (*run
 	}
 	if ttl := time.Duration(g.GetLeaseTtlSeconds()) * time.Second; ttl < config.MinLeaseTTL || ttl > config.MaxLeaseTTL {
 		return nil, ErrGrantTTL
+	}
+	if g.GetIssuedAt() == nil || g.GetIssuedAt().CheckValid() != nil {
+		return nil, ErrGrantStale
+	}
+	if age := now.Sub(g.GetIssuedAt().AsTime()); age > config.GrantMaxSkew || age < -config.GrantMaxSkew {
+		return nil, ErrGrantStale
 	}
 	return &g, nil
 }

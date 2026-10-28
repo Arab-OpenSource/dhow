@@ -20,6 +20,8 @@ const fileVersion = 1
 var (
 	ErrCorrupt = errors.New("the lease journal is damaged; it lists only lease and attempt IDs, so inspect it and remove it to start over")
 	ErrInvalid = errors.New("a journal entry needs a lease id, an attempt id, a job id and a positive fencing token")
+	ErrReplay  = errors.New("the fencing token is not above the highest one this runner has seen, so the grant is a replay")
+	ErrExists  = errors.New("the lease is already in the journal")
 )
 
 type Completion struct {
@@ -37,14 +39,16 @@ type Entry struct {
 }
 
 type fileFormat struct {
-	Version int     `json:"Version"`
-	Leases  []Entry `json:"Leases"`
+	Version   int     `json:"Version"`
+	HighWater int64   `json:"HighWater"`
+	Leases    []Entry `json:"Leases"`
 }
 
 type Journal struct {
-	path    string
-	mu      sync.Mutex
-	entries map[string]Entry
+	path      string
+	mu        sync.Mutex
+	entries   map[string]Entry
+	highWater int64
 }
 
 func Open(path string) (*Journal, error) {
@@ -60,11 +64,16 @@ func Open(path string) (*Journal, error) {
 	if err := json.Unmarshal(raw, &f); err != nil || f.Version != fileVersion {
 		return nil, ErrCorrupt
 	}
+	if f.HighWater < 0 {
+		return nil, ErrCorrupt
+	}
+	j.highWater = f.HighWater
 	for _, e := range f.Leases {
 		if e.validate() != nil {
 			return nil, ErrCorrupt
 		}
 		j.entries[e.LeaseID] = e
+		j.highWater = max(j.highWater, e.FencingToken)
 	}
 	return j, nil
 }
@@ -88,9 +97,21 @@ func (j *Journal) Add(e Entry) error {
 	e.Completion = nil
 	j.mu.Lock()
 	defer j.mu.Unlock()
+	if _, ok := j.entries[e.LeaseID]; ok {
+		return ErrExists
+	}
+	if e.FencingToken <= j.highWater {
+		return ErrReplay
+	}
 	next := j.copyEntries()
 	next[e.LeaseID] = e
-	return j.write(next)
+	return j.writeWith(next, e.FencingToken)
+}
+
+func (j *Journal) HighWater() int64 {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return j.highWater
 }
 
 func (j *Journal) SetCompletion(leaseID string, c Completion) error {
@@ -136,8 +157,10 @@ func (j *Journal) copyEntries() map[string]Entry {
 	return out
 }
 
-func (j *Journal) write(next map[string]Entry) error {
-	f := fileFormat{Version: fileVersion, Leases: make([]Entry, 0, len(next))}
+func (j *Journal) write(next map[string]Entry) error { return j.writeWith(next, j.highWater) }
+
+func (j *Journal) writeWith(next map[string]Entry, highWater int64) error {
+	f := fileFormat{Version: fileVersion, HighWater: highWater, Leases: make([]Entry, 0, len(next))}
 	for _, e := range next {
 		f.Leases = append(f.Leases, e)
 	}
@@ -149,6 +172,6 @@ func (j *Journal) write(next map[string]Entry) error {
 	if err := config.WriteFileAtomic(j.path, raw); err != nil {
 		return err
 	}
-	j.entries = next
+	j.entries, j.highWater = next, highWater
 	return nil
 }

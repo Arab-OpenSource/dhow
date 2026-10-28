@@ -96,6 +96,11 @@ func (h handlers) Lease(ctx context.Context, req *connect.Request[runnerv1.Lease
 func (s *Server) claim() (*runnerv1.SignedLeaseGrant, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if len(s.replays) > 0 {
+		replay := s.replays[0]
+		s.replays = s.replays[1:]
+		return replay, nil
+	}
 	if len(s.queue) == 0 || s.runner == nil {
 		return nil, nil
 	}
@@ -118,9 +123,10 @@ func (s *Server) claim() (*runnerv1.SignedLeaseGrant, error) {
 		key = s.wrongKey
 	}
 	l.GrantBytes = grant
+	l.Signed = &runnerv1.SignedLeaseGrant{GrantBytes: grant, Signature: ed25519.Sign(key, runnersig.GrantMessage(grant)), KeyVersion: 1}
 	s.leases[l.ID] = l
 	s.order = append(s.order, l)
-	return &runnerv1.SignedLeaseGrant{GrantBytes: grant, Signature: ed25519.Sign(key, runnersig.GrantMessage(grant)), KeyVersion: 1}, nil
+	return l.Signed, nil
 }
 
 func ttlSeconds(d time.Duration) int32 { return int32(min(d/time.Second, time.Hour/time.Second)) } //nolint:gosec // Capped at an hour.

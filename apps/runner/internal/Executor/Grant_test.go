@@ -4,11 +4,13 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	executor "github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"
 	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
@@ -37,6 +39,7 @@ func (f fixture) grant(edit func(*runnerv1.LeaseGrant)) *runnerv1.LeaseGrant {
 	g := &runnerv1.LeaseGrant{
 		LeaseId: uuid.NewString(), AttemptId: uuid.NewString(), JobId: uuid.NewString(), OrganizationId: f.id.OrganizationID,
 		RunnerId: f.id.RunnerID, FencingToken: 7, LeaseTtlSeconds: 45, Spec: &runnerv1.JobSpec{Image: "x"},
+		IssuedAt: timestamppb.Now(),
 	}
 	if edit != nil {
 		edit(g)
@@ -53,7 +56,7 @@ func (f fixture) sign(t *testing.T, g *runnerv1.LeaseGrant, key ed25519.PrivateK
 
 func TestAProperGrantVerifies(t *testing.T) {
 	f := newFixture(t)
-	g, err := executor.VerifyGrant(f.id, f.sign(t, f.grant(nil), f.server, 1))
+	g, err := executor.VerifyGrant(f.id, f.sign(t, f.grant(nil), f.server, 1), time.Now())
 	require.NoError(t, err)
 	assert.EqualValues(t, 7, g.GetFencingToken())
 }
@@ -80,11 +83,14 @@ func TestForgedOrMisaddressedGrantsAreRefused(t *testing.T) {
 		{"zero fencing", f.sign(t, f.grant(func(g *runnerv1.LeaseGrant) { g.FencingToken = 0 }), f.server, 1), executor.ErrGrantFields},
 		{"no spec", f.sign(t, f.grant(func(g *runnerv1.LeaseGrant) { g.Spec = nil }), f.server, 1), executor.ErrGrantFields},
 		{"ttl too short to fence", f.sign(t, f.grant(func(g *runnerv1.LeaseGrant) { g.LeaseTtlSeconds = 15 }), f.server, 1), executor.ErrGrantTTL},
+		{"no issue time", f.sign(t, f.grant(func(g *runnerv1.LeaseGrant) { g.IssuedAt = nil }), f.server, 1), executor.ErrGrantStale},
+		{"issued an hour ago", f.sign(t, f.grant(func(g *runnerv1.LeaseGrant) { g.IssuedAt = timestamppb.New(time.Now().Add(-time.Hour)) }), f.server, 1), executor.ErrGrantStale},
+		{"issued in the future", f.sign(t, f.grant(func(g *runnerv1.LeaseGrant) { g.IssuedAt = timestamppb.New(time.Now().Add(time.Hour)) }), f.server, 1), executor.ErrGrantStale},
 		{"ttl too long", f.sign(t, f.grant(func(g *runnerv1.LeaseGrant) { g.LeaseTtlSeconds = 3600 }), f.server, 1), executor.ErrGrantTTL},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := executor.VerifyGrant(f.id, c.signed)
+			_, err := executor.VerifyGrant(f.id, c.signed, time.Now())
 			assert.ErrorIs(t, err, c.want)
 		})
 	}
@@ -99,7 +105,7 @@ func FuzzVerifyGrant(f *testing.F) {
 		}
 		pub, _, _ := ed25519.GenerateKey(rand.Reader)
 		id := &identity.Identity{Keys: keys, RunnerID: uuid.NewString(), ServerSigningKey: pub, ServerKeyVersion: 1}
-		if _, err := executor.VerifyGrant(id, &runnerv1.SignedLeaseGrant{GrantBytes: grant, Signature: sig, KeyVersion: version}); err == nil {
+		if _, err := executor.VerifyGrant(id, &runnerv1.SignedLeaseGrant{GrantBytes: grant, Signature: sig, KeyVersion: version}, time.Now()); err == nil {
 			t.Fatal("an unsigned grant verified")
 		}
 	})

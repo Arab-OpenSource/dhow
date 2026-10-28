@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/uuid"
@@ -14,8 +15,10 @@ import (
 	journal "github.com/Arab-OpenSource/dhow/apps/runner/internal/Journal"
 )
 
+var fencing atomic.Int64
+
 func entry() journal.Entry {
-	return journal.Entry{LeaseID: uuid.NewString(), AttemptID: uuid.NewString(), JobID: uuid.NewString(), FencingToken: 42}
+	return journal.Entry{LeaseID: uuid.NewString(), AttemptID: uuid.NewString(), JobID: uuid.NewString(), FencingToken: 41 + fencing.Add(1)}
 }
 
 func TestEntriesSurviveAReopen(t *testing.T) {
@@ -52,20 +55,46 @@ func TestTheJournalHoldsOnlyIDsAndFencing(t *testing.T) {
 	j, err := journal.Open(path)
 	require.NoError(t, err)
 	e := entry()
+	e.FencingToken = 1 << 40
 	require.NoError(t, j.Add(e))
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
-	for _, key := range []string{"Version", "Leases", "LeaseId", "AttemptId", "JobId", "FencingToken"} {
+	for _, key := range []string{"Version", "HighWater", "Leases", "LeaseId", "AttemptId", "JobId", "FencingToken"} {
 		assert.Contains(t, string(raw), key)
 	}
 	stripped := string(raw)
-	for _, v := range []string{e.LeaseID, e.AttemptID, e.JobID, "42"} {
+	for _, v := range []string{e.LeaseID, e.AttemptID, e.JobID, "1099511627776"} {
 		stripped = strings.ReplaceAll(stripped, v, "")
 	}
-	for _, key := range []string{"Version", "Leases", "LeaseId", "AttemptId", "JobId", "FencingToken", "1"} {
+	for _, key := range []string{"Version", "HighWater", "Leases", "LeaseId", "AttemptId", "JobId", "FencingToken", "1"} {
 		stripped = strings.ReplaceAll(stripped, key, "")
 	}
-	assert.Equal(t, `{"":,"":[{"":"","":"","":"","":}]}`, stripped)
+	assert.Equal(t, `{"":,"":,"":[{"":"","":"","":"","":}]}`, stripped)
+}
+
+func TestReplayedOrOlderFencingTokensAreRefused(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "journal")
+	j, err := journal.Open(path)
+	require.NoError(t, err)
+	newer := entry()
+	newer.FencingToken = 100
+	require.NoError(t, j.Add(newer))
+	assert.ErrorIs(t, j.Add(newer), journal.ErrExists, "the same lease twice")
+	older := entry()
+	older.FencingToken = 99
+	assert.ErrorIs(t, j.Add(older), journal.ErrReplay)
+	same := entry()
+	same.FencingToken = 100
+	assert.ErrorIs(t, j.Add(same), journal.ErrReplay)
+
+	require.NoError(t, j.Remove(newer.LeaseID))
+	again, err := journal.Open(path)
+	require.NoError(t, err)
+	assert.EqualValues(t, 100, again.HighWater(), "the mark survives removal and a reopen")
+	assert.ErrorIs(t, again.Add(older), journal.ErrReplay)
+	next := entry()
+	next.FencingToken = 101
+	assert.NoError(t, again.Add(next))
 }
 
 func TestInvalidEntriesAndDamageAreRefused(t *testing.T) {

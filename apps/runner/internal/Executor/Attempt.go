@@ -82,19 +82,19 @@ func (a *attempt) entry() journal.Entry {
 	return journal.Entry{LeaseID: a.ref.GetLeaseId(), AttemptID: a.grant.GetAttemptId(), JobID: a.grant.GetJobId(), FencingToken: a.ref.GetFencingToken()}
 }
 
-func (a *attempt) run(parent context.Context) Outcome {
+func (a *attempt) run(parent context.Context, journalErr error) Outcome {
 	a.shutdown = parent.Done()
 	ctx, stop := context.WithCancel(context.WithoutCancel(parent))
 	defer stop()
 	defer a.forgetSecrets()
+	if journalErr != nil {
+		a.log.Error("could not record the lease in the journal, so the job does not run", "error", a.masked(journalErr))
+		return a.report(ctx, failed(diskReason(journalErr), 0))
+	}
 	ttl := time.Duration(a.grant.GetLeaseTtlSeconds()) * time.Second
 	a.fence = newFence(a.e.o.API, a.ref, a.e.o.Timing, a.leasedAt, ttl, a.log, func(err error) { a.onLost(ctx, err) })
 	go a.fence.run(ctx)
 	defer a.fence.Stop()
-	if err := a.e.o.Journal.Add(a.entry()); err != nil {
-		a.log.Error("could not record the lease in the journal, so the job does not run", "error", a.masked(err))
-		return a.report(ctx, failed(diskReason(err), 0))
-	}
 	if err := config.EnsurePrivateDir(a.dir); err != nil {
 		a.log.Error("could not create the attempt directory", "error", a.masked(err))
 		return a.finish(ctx, failed(diskReason(err), 0))
