@@ -59,3 +59,8 @@ UPDATE "UserIdentities"
 SET "IsDeleted" = true, "UpdatedAt" = @now
 WHERE "Id" = @id AND "UserId" = @user_id AND NOT "IsDeleted"
 RETURNING "Provider";
+
+-- name: PurgeOidcFlows :execrows
+UPDATE "OidcFlows"
+SET "IsDeleted" = true, "UpdatedAt" = @now
+WHERE NOT "IsDeleted" AND ("ExpiresAt" <= @now OR "UsedAt" IS NOT NULL);

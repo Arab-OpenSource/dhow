@@ -33,6 +33,7 @@ CREATE TABLE "OidcFlows" (
 );
 
 CREATE UNIQUE INDEX "UX_OidcFlows_TokenHash" ON "OidcFlows" ("TokenHash");
+CREATE INDEX "IX_OidcFlows_Live" ON "OidcFlows" ("ExpiresAt") WHERE NOT "IsDeleted";
 
 CREATE TABLE "ApiTokens" (
     "Id"              uuid PRIMARY KEY DEFAULT uuidv7(),

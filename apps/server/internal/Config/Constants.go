@@ -57,10 +57,11 @@ const (
 )
 
 const (
-	OidcCookieName   = "__Host-dhow_oidc"
-	OidcFlowTTL      = 10 * time.Minute
-	OidcFlowKeyLabel = "dhow/oidc-flow/v1"
-	OidcCallbackPath = "/oidc/callback/"
+	OidcCookieName     = "__Host-dhow_oidc"
+	OidcFlowTTL        = 10 * time.Minute
+	OidcFlowPurgeEvery = 10 * time.Minute
+	OidcFlowKeyLabel   = "dhow/oidc-flow/v1"
+	OidcCallbackPath   = "/oidc/callback/"
 )
 
 const (
