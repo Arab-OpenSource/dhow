@@ -40,6 +40,7 @@ type Config struct {
 	RunnerListenAddr  string
 	RunnerTLSCertFile string
 	RunnerTLSKeyFile  string
+	RunnerMaxPolls    int
 }
 
 func LoadFromEnv() (Config, error) { return Load(os.Getenv) }
@@ -75,6 +76,9 @@ func Load(getenv func(string) string) (Config, error) {
 			errs = append(errs, runnerErr)
 		}
 		cfg.RunnerListenAddr, cfg.RunnerTLSCertFile, cfg.RunnerTLSKeyFile = runner.addr, runner.cert, runner.key
+	}
+	if cfg.RunnerMaxPolls, err = parseMaxPolls(getenv(EnvRunnerMaxPolls)); err != nil {
+		errs = append(errs, fmt.Errorf("%s: %w", EnvRunnerMaxPolls, err))
 	}
 	if cfg.TrustedProxies, err = parseTrustedProxies(getenv(EnvTrustedProxies)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvTrustedProxies, err))
