@@ -54,7 +54,6 @@ func (s *Service) Handle(ctx context.Context, ev eventbus.Event) error {
 	if !ok {
 		return fmt.Errorf("audit event %s carries an unexpected payload", ev.Name)
 	}
-	a.Data = withCredential(ctx, a.Data)
 	chains := make([]*uuid.UUID, 0, max(len(a.OrganizationIDs), 1))
 	ids := append([]uuid.UUID(nil), a.OrganizationIDs...)
 	sort.Slice(ids, func(i, j int) bool { return bytes.Compare(ids[i][:], ids[j][:]) < 0 })
@@ -77,12 +76,8 @@ func withCredential(ctx context.Context, data map[string]string) map[string]stri
 	if !ok || !p.ViaToken() {
 		return data
 	}
-	out := make(map[string]string, len(data)+2)
-	for k, v := range data {
-		out[k] = v
-	}
-	out[viaKey], out[viaIDKey] = viaAPIToken, p.TokenID.String()
-	return out
+	data[viaKey], data[viaIDKey] = viaAPIToken, p.TokenID.String()
+	return data
 }
 
 func chainKey(org *uuid.UUID) string {
@@ -117,7 +112,7 @@ func (s *Service) append(ctx context.Context, org *uuid.UUID, action string, a e
 			TargetType:     a.TargetType,
 			TargetID:       a.TargetID,
 			IP:             a.IP,
-			Data:           sanitizeData(a.Data),
+			Data:           withCredential(ctx, sanitizeData(a.Data)),
 			PrevHash:       prev,
 		}
 		if ev.Hash, err = models.ComputeHash(prev, ev); err != nil {
@@ -145,7 +140,7 @@ func sanitizeData(in map[string]string) map[string]string {
 		if len(out) >= maxDataEntries {
 			break
 		}
-		if logging.IsSensitiveKey(k) {
+		if logging.IsSensitiveKey(k) || k == viaKey || k == viaIDKey {
 			continue
 		}
 		v := in[k]
