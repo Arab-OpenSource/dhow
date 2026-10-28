@@ -95,7 +95,12 @@ func loadOrigin(raw string, u *url.URL, dev bool) (string, error) {
 		(parsed.Path != "" && parsed.Path != "/") {
 		return "", ErrURLShape
 	}
-	if parsed.Scheme != "https" && (!dev || parsed.Scheme != "http") {
+	switch {
+	case parsed.Scheme == "https":
+	case parsed.Scheme == "http" && dev && isLoopbackHost(parsed.Hostname()):
+	case parsed.Scheme == "http" && dev:
+		return "", ErrDevLocalOnly
+	default:
 		return "", ErrNotHTTPS
 	}
 	return OriginOf(parsed), nil

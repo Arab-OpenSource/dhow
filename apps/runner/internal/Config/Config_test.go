@@ -88,6 +88,11 @@ func TestOriginOverride(t *testing.T) {
 	e[config.EnvServerOrigin] = "http://dhow.example.com"
 	_, err = load(t, e, false, big8())
 	assert.ErrorIs(t, err, config.ErrNotHTTPS)
+	_, err = load(t, e, true, big8())
+	assert.ErrorIs(t, err, config.ErrDevLocalOnly, "--dev allows a plain http origin on loopback only")
+	e[config.EnvServerOrigin] = "http://127.0.0.1:8080"
+	_, err = load(t, e, true, big8())
+	assert.NoError(t, err)
 }
 
 func TestLimitsAboveTheMachineFailClosed(t *testing.T) {
