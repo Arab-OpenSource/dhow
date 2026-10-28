@@ -143,6 +143,10 @@ fuzz: ## Fuzz the auth inputs, FUZZTIME per target (default 10s; the M2.5 bar is
 		$(GO) test -run '^$$' -fuzz "^$${t#*:}$$" -fuzztime $(FUZZTIME) ./apps/server/internal/$${t%%:*}; \
 	done
 
+.PHONY: timing
+timing: ## Run the statistical timing tests against DHOW_TEST_DATABASE_URL (slow, separate CI job)
+	$(GO) test -tags timing -count=1 -run '^TestTiming' -timeout 30m -v ./apps/server/internal/App/Timing/...
+
 .PHONY: vuln
 vuln: ## Scan Go dependencies for known vulnerabilities
 	$(GO) run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) $(PKG)

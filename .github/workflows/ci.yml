@@ -69,6 +69,35 @@ jobs:
       - name: Test Claude Code hooks
         run: make hooks-test
 
+  timing:
+    name: Go (timing side channels)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: dhow
+          POSTGRES_PASSWORD: dhow-ci-only
+          POSTGRES_DB: dhow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dhow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DHOW_TEST_DATABASE_URL: postgres://dhow:dhow-ci-only@localhost:5432/dhow_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Statistical timing tests
+        run: make timing
+
   web:
     name: Web (lint, typecheck, test, build, size)
     runs-on: ubuntu-24.04
