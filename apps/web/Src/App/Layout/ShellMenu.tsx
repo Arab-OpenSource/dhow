@@ -2,7 +2,7 @@ import { preloadFrame } from '@/App/Layout/LazyFrames';
 import { OrganizationChip } from '@/App/Layout/OrganizationChip';
 import type { TFrameId } from '@/App/Panels';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
-import { canReadAudit } from '@/Core/Auth/AuthTypes';
+import { canReadAudit, canReadRunners } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { useSignOut } from '@/Core/Auth/useSignOut';
 import { Mark } from '@/Core/Ui/Mark';
@@ -24,7 +24,6 @@ export const ShellMenu = () => {
   const items: TMenuEntry[] = [
     { id: 'home', icon: 'home', label: t('shell.nav.home'), href: '/', current: stack.length === 0, onSelect: goWorkspace },
     { id: 'projects', icon: 'layers', label: t('shell.nav.projects'), hint: t('shell.soon') },
-    { id: 'runners', icon: 'server', label: t('shell.nav.runners'), hint: t('shell.soon') },
     {
       id: 'team',
       icon: 'users',
@@ -37,6 +36,19 @@ export const ShellMenu = () => {
       onIntent: intentFor('organization'),
     },
   ];
+  if (canReadRunners(role)) {
+    items.splice(2, 0, {
+      id: 'runners',
+      icon: 'server',
+      label: t('shell.nav.runners'),
+      href: '/?stack=runners',
+      current: stack.includes('runners'),
+      onSelect: () => {
+        openStack(['runners']);
+      },
+      onIntent: intentFor('runners'),
+    });
+  }
   if (canReadAudit(role)) {
     items.push({
       id: 'audit',
