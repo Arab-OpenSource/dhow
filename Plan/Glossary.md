@@ -21,6 +21,7 @@
 | Developer | مطوّر |
 | Viewer | مشاهد |
 | Audit log | سجل الأحداث |
+| Job log | سجل التشغيل |
 | Deployment | نشر |
 | Environment | بيئة |
 | Pipeline | خطوات النشر (pipeline) |
