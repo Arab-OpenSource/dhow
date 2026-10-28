@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: dhow-dev-only
       POSTGRES_DB: dhow
     ports:
-      - "127.0.0.1:${DHOW_DEV_DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DHOW_DEV_DB_PORT:-55432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql
       - ./stack/databases.sql:/docker-entrypoint-initdb.d/10-databases.sql:ro
@@ -29,7 +29,7 @@ services:
     working_dir: /src
     entrypoint: ["bash", "/src/deploy/dev/stack/init.sh"]
     environment:
-      DHOW_DEV_DB_PORT: ${DHOW_DEV_DB_PORT:-5432}
+      DHOW_DEV_DB_PORT: ${DHOW_DEV_DB_PORT:-55432}
     volumes:
       - *repo
 

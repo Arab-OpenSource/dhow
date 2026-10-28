@@ -8,7 +8,7 @@ if [[ -e $file ]]; then
   exit 0
 fi
 
-url="postgres://dhow:dhow-dev-only@127.0.0.1:${DHOW_DEV_DB_PORT:-5432}"
+url="postgres://dhow:dhow-dev-only@127.0.0.1:${DHOW_DEV_DB_PORT:-55432}"
 tmp=$(mktemp /src/.env.dev.XXXXXX)
 {
   printf 'DHOW_DEV=true\n'
