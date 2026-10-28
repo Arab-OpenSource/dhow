@@ -203,7 +203,7 @@ func (s *Service) create(ctx context.Context, in models.SetupInput, tokenHash []
 		}
 		res = models.SetupResult{
 			User:         models.User{ID: user.Id, Email: user.Email, Name: user.Name, Locale: user.Locale},
-			Organization: models.Organization{ID: org.Id, Name: org.Name, Slug: org.Slug, CreatedAt: org.CreatedAt},
+			Organization: organizationOf(org.Id, org.Name, org.Slug, org.CreatedAt, org.RequireSecondFactor, org.RequireSecondFactorSince),
 		}
 		return nil
 	})

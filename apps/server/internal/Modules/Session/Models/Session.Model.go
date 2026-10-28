@@ -18,6 +18,7 @@ type Membership struct {
 	OrganizationName string
 	OrganizationSlug string
 	Role             string
+	SecondFactorDue  *time.Time
 }
 
 type LoginInput struct {

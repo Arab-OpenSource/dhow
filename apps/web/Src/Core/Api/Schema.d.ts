@@ -679,6 +679,26 @@ export interface paths {
         patch: operations["updateOrganization"];
         trace?: never;
     };
+    "/organizations/{id}/second-factor-rule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose who must use two-step verification
+         * @description Needs `org.security` (owners only), a current factor of the caller, and a second factor on the caller's own account (`SECOND_FACTOR_REQUIRED` otherwise). `admins` covers owners and admins, `everyone` covers every role. A covered member without TOTP or a passkey has seven days from the moment the rule reached them or from joining, whichever is later; after that `org.update`, `org.transfer`, `org.security`, `member.manage`, `runner.manage`, `job.create` and `token.create` answer `403 SECOND_FACTOR_REQUIRED`, for sessions and API tokens alike, until the member sets one up. Reading stays allowed.
+         */
+        put: operations["updateSecondFactorRule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/members": {
         parameters: {
             query?: never;
@@ -1404,7 +1424,7 @@ export interface components {
         };
         ErrorDetail: {
             /**
-             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH` or `INVITATION_ACCOUNT_EXISTS`.
+             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS` or `SECOND_FACTOR_REQUIRED`.
              * @example INTERNAL
              */
             Code: string;
@@ -1473,6 +1493,21 @@ export interface components {
             Slug: string;
             /** Format: date-time */
             CreatedAt: string;
+            RequireSecondFactor: components["schemas"]["SecondFactorRule"];
+            /**
+             * Format: date-time
+             * @description When the rule last reached more roles. Absent while the rule is `off`.
+             */
+            RequireSecondFactorSince?: string;
+        };
+        /**
+         * @description Who must use two-step verification in the organization.
+         * @enum {string}
+         */
+        SecondFactorRule: "off" | "admins" | "everyone";
+        UpdateSecondFactorRuleRequest: {
+            RequireSecondFactor: components["schemas"]["SecondFactorRule"];
+            CurrentFactor: components["schemas"]["CurrentFactor"];
         };
         OrganizationResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Organization"];
@@ -1523,6 +1558,11 @@ export interface components {
             OrganizationName: string;
             OrganizationSlug: string;
             Role: components["schemas"]["Role"];
+            /**
+             * Format: date-time
+             * @description Present when the organization requires two-step verification for this role and the user has neither TOTP nor a passkey. Sensitive actions there answer `SECOND_FACTOR_REQUIRED` from this moment on.
+             */
+            SecondFactorDue?: string;
         };
         MeResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Me"];
@@ -3309,6 +3349,33 @@ export interface operations {
         };
         responses: {
             /** @description The updated organization. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateSecondFactorRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSecondFactorRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description The organization with the new rule. */
             200: {
                 headers: {
                     [name: string]: unknown;

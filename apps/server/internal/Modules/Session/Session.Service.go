@@ -96,38 +96,37 @@ func (s *Service) Peek(ctx context.Context, tokenHash []byte, now time.Time) (au
 
 func (s *Service) resolve(ctx context.Context, tokenHash []byte, now time.Time, touch bool) (auth.Resolved, error) {
 	q := s.queries()
-	row, err := q.ResolveSession(ctx, sqlc.ResolveSessionParams{TokenHash: tokenHash, Now: now})
+	row, err := q.ResolveSession(ctx, sqlc.ResolveSessionParams{
+		TokenHash: tokenHash, Now: now, CreatedAfter: now.Add(-config.SessionAbsoluteTimeout),
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return auth.Resolved{}, auth.ErrNoSession
 	}
 	if err != nil {
 		return auth.Resolved{}, err
 	}
-	memberships, err := q.ListUserMemberships(ctx, row.UserId)
+	rows, err := q.ListUserMemberships(ctx, row.UserId)
 	if err != nil {
 		return auth.Resolved{}, err
 	}
+	memberships := policyMemberships(membershipsOf(rows, row.HasSecondFactor))
+	idle := idleTimeout(row.IsInstanceOwner, memberships)
+	if idleExpired(row.LastSeenAt, idle, now) {
+		return auth.Resolved{}, auth.ErrNoSession
+	}
 	if touch && now.Sub(row.LastSeenAt) >= config.SessionTouchInterval {
 		touchErr := q.TouchSession(ctx, sqlc.TouchSessionParams{
-			ID: row.Id, Now: now, IdleExpiresAt: now.Add(config.SessionIdleTimeout), TouchBefore: now.Add(-config.SessionTouchInterval),
+			ID: row.Id, Now: now, IdleExpiresAt: now.Add(idle), TouchBefore: now.Add(-config.SessionTouchInterval),
 		})
 		if touchErr != nil {
 			s.log.WarnContext(ctx, "touch session failed", "error", touchErr)
 		}
 	}
-	resolved := auth.Resolved{
-		SessionID: row.Id, UserID: row.UserId, InstanceOwner: row.IsInstanceOwner, CsrfHash: row.CsrfHash, ExpiresAt: row.ExpiresAt,
-		Email: row.Email, Name: row.Name, Locale: row.Locale,
-		Memberships: make([]policy.Membership, 0, len(memberships)),
-	}
-	for _, m := range memberships {
-		role, ok := policy.EffectiveOf(m.Role, m.TeamRoles)
-		if !ok {
-			continue
-		}
-		resolved.Memberships = append(resolved.Memberships, policy.Membership{OrganizationID: m.OrganizationId, Role: role})
-	}
-	return resolved, nil
+	return auth.Resolved{
+		SessionID: row.Id, UserID: row.UserId, InstanceOwner: row.IsInstanceOwner, CsrfHash: row.CsrfHash,
+		ExpiresAt: absoluteExpiry(row.CreatedAt, row.ExpiresAt),
+		Email:     row.Email, Name: row.Name, Locale: row.Locale, Memberships: memberships,
+	}, nil
 }
 
 func (s *Service) ConfirmFactor(ctx context.Context, p auth.Principal, f auth.Factor) error {
@@ -163,16 +162,18 @@ func (s *Service) Me(ctx context.Context) (models.Me, error) {
 	if err != nil {
 		return models.Me{}, err
 	}
-	memberships := make([]models.Membership, 0, len(rows))
-	for _, r := range rows {
-		role, ok := policy.EffectiveOf(r.Role, r.TeamRoles)
-		if !ok {
-			continue
+	resolved := membershipsOf(rows, hasMfa(factors))
+	memberships := make([]models.Membership, 0, len(resolved))
+	for _, m := range resolved {
+		view := models.Membership{
+			OrganizationID: m.OrganizationID, OrganizationName: m.row.OrganizationName,
+			OrganizationSlug: m.row.OrganizationSlug, Role: string(m.Role),
 		}
-		memberships = append(memberships, models.Membership{
-			OrganizationID: r.OrganizationId, OrganizationName: r.OrganizationName,
-			OrganizationSlug: r.OrganizationSlug, Role: string(role),
-		})
+		if !m.SecondFactorDue.IsZero() {
+			due := m.SecondFactorDue
+			view.SecondFactorDue = &due
+		}
+		memberships = append(memberships, view)
 	}
 	return models.Me{
 		User:        models.User{ID: p.UserID, Email: p.Email, Name: p.Name, Locale: p.Locale},
@@ -187,14 +188,21 @@ func (s *Service) List(ctx context.Context) ([]models.SessionInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.queries().ListActiveUserSessions(ctx, sqlc.ListActiveUserSessionsParams{UserID: p.UserID, Now: s.now()})
+	now := s.now()
+	rows, err := s.queries().ListActiveUserSessions(ctx, sqlc.ListActiveUserSessionsParams{
+		UserID: p.UserID, Now: now, CreatedAfter: now.Add(-config.SessionAbsoluteTimeout),
+	})
 	if err != nil {
 		return nil, err
 	}
+	idle := idleTimeout(p.InstanceOwner, p.Memberships)
 	out := make([]models.SessionInfo, 0, len(rows))
 	for _, r := range rows {
+		if idleExpired(r.LastSeenAt, idle, now) {
+			continue
+		}
 		out = append(out, models.SessionInfo{
-			ID: r.Id, CreatedAt: r.CreatedAt, LastSeenAt: r.LastSeenAt, ExpiresAt: r.ExpiresAt,
+			ID: r.Id, CreatedAt: r.CreatedAt, LastSeenAt: r.LastSeenAt, ExpiresAt: absoluteExpiry(r.CreatedAt, r.ExpiresAt),
 			UserAgent: r.UserAgent, IPAddress: r.IpAddress, Current: r.Id == p.SessionID,
 		})
 	}

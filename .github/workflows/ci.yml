@@ -109,6 +109,59 @@ jobs:
       - name: Statistical timing tests
         run: make timing
 
+  isolation:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: Runner isolation (rootless Podman)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Decide whether the runner changed
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ] || ! git diff --quiet HEAD^1 HEAD -- apps/runner packages/proto internal/jobspec Makefile .github/workflows/ci.yml; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: steps.scope.outputs.run == 'true'
+        with:
+          go-version-file: go.mod
+      - name: Install the sandbox tools
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q podman busybox-static crun uidmap
+      - name: Require Podman 5.4 or newer
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          podman --version
+          have="$(podman version --format '{{.Client.Version}}')"
+          if [ "$(printf '%s\n' 5.4.0 "$have" | sort -V | head -n1)" != 5.4.0 ]; then
+            echo "::error::Podman $have is older than 5.4, which the rootless sandbox needs (ADR-0043)"
+            exit 1
+          fi
+      - name: Prepare a dedicated runner user
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo useradd --create-home --shell /usr/sbin/nologin dhowci
+          sudo sed -i '/^dhowci:/d' /etc/subuid /etc/subgid
+          sudo usermod --add-subuids 200000-1199999 --add-subgids 200000-1199999 dhowci
+          stat -fc %T /sys/fs/cgroup
+      - name: Escape and limits suites
+        if: steps.scope.outputs.run == 'true'
+        run: >-
+          make runner-isolation ISOLATION_DIR=/tmp/dhow-isolation
+          ISOLATION_RUN="sudo systemd-run --uid=dhowci --gid=dhowci --pipe --wait --collect --quiet
+          -p Delegate=yes -p MemorySwapMax=0 --working-directory=/tmp --"
+
   web:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Web (lint, typecheck, test, build, size)

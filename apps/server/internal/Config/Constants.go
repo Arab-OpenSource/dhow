@@ -33,12 +33,15 @@ const (
 const (
 	APIPrefix = "/api/v1"
 
-	SessionCookieName      = "__Host-dhow_session"
-	CSRFHeaderName         = "X-CSRF-Token"
-	SessionIdleTimeout     = 12 * time.Hour
-	SessionAbsoluteTimeout = 14 * 24 * time.Hour
-	SessionTouchInterval   = time.Minute
-	SessionTokenBytes      = 32
+	SessionCookieName            = "__Host-dhow_session"
+	CSRFHeaderName               = "X-CSRF-Token"
+	SessionIdleTimeout           = 12 * time.Hour
+	SessionPrivilegedIdleTimeout = 4 * time.Hour
+	SessionAbsoluteTimeout       = 7 * 24 * time.Hour
+	SessionTouchInterval         = time.Minute
+	SessionTokenBytes            = 32
+	AccountSecurityPath          = "/?stack=account"
+	SecondFactorGrace            = 7 * 24 * time.Hour
 )
 
 const (
@@ -92,6 +95,7 @@ const (
 	InvitationTokenBytes = 32
 	InvitationListLimit  = 200
 	MailTimeout          = 10 * time.Second
+	AlertMaxPending      = 32
 	TeamDescriptionMax   = 500
 )
 

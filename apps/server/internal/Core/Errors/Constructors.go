@@ -181,6 +181,10 @@ func ScopeNotAllowed() *AppError {
 	return New(http.StatusForbidden, CodeScopeNotAllowed, KeyScopeNotAllowed)
 }
 
+func SecondFactorRequired() *AppError {
+	return New(http.StatusForbidden, CodeSecondFactorRequired, KeySecondFactorRequired)
+}
+
 func SecretsUnavailable() *AppError {
 	return New(http.StatusUnprocessableEntity, CodeSecretsUnavailable, KeySecretsUnavailable)
 }

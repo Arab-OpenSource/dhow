@@ -9,6 +9,7 @@ const (
 
 	IdentityOrganizationCreated  = "identity.organization.created"
 	IdentityOwnershipTransferred = "identity.organization.ownership_transferred"
+	IdentitySecondFactorChanged  = "identity.organization.second_factor_changed"
 	IdentityMemberLeft           = "identity.member.left"
 	IdentityMemberRoleChanged    = "identity.member.role_changed"
 	IdentityMemberRemoved        = "identity.member.removed"
@@ -68,6 +69,7 @@ func AuditedEvents() []string {
 		IdentityOrganizationUpdated,
 		IdentityOrganizationCreated,
 		IdentityOwnershipTransferred,
+		IdentitySecondFactorChanged,
 		IdentityMemberLeft,
 		IdentityMemberRoleChanged,
 		IdentityMemberRemoved,

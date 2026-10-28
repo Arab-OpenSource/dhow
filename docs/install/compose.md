@@ -60,7 +60,7 @@ curl -sS -X POST https://dhow.example.com/api/v1/setup \
 
 If the hour runs out, or you lose the link, restart Dhow with `docker compose restart dhow` to get a new one. The older link stops working at once. After setup the link is gone and `GET /api/v1/meta` reports `SetupRequired: false`.
 
-Sign-in uses a cookie that lives for at most 14 days and ends after 12 hours without activity, so keep your reverse proxy forwarding cookies and the `Origin` header unchanged.
+Sign-in uses a cookie that lives for at most 7 days and ends after 12 hours without activity (4 hours for owners and admins), so keep your reverse proxy forwarding cookies and the `Origin` header unchanged.
 
 ## Configuration
 

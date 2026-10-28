@@ -3,15 +3,23 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
 	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	podman "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox/Podman"
 )
 
-var ErrDriverMissing = errors.New("is not built into this dhow-runner yet; the Podman driver arrives with M3.6 and the Kubernetes driver with M3.11")
+var ErrDriverMissing = errors.New("is not built into this dhow-runner yet; the Kubernetes driver arrives with M3.11")
 
-func newDriver(cfg config.Config) (sandbox.Driver, error) {
-	return nil, fmt.Errorf("%s=%s %w", config.EnvDriver, cfg.Driver, ErrDriverMissing)
+func newDriver(ctx context.Context, cfg config.Config, log *slog.Logger) (sandbox.Driver, error) {
+	switch cfg.Driver {
+	case config.DriverPodman:
+		return podman.New(ctx, podman.Options{Config: cfg, Log: log, Levels: driverIsolation(cfg)})
+	default:
+		return nil, fmt.Errorf("%s=%s %w", config.EnvDriver, cfg.Driver, ErrDriverMissing)
+	}
 }

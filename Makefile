@@ -210,8 +210,22 @@ timing: ## Run the statistical timing tests against DHOW_TEST_DATABASE_URL (slow
 test-runner: ## Run the runner tests with the fake sandbox driver (dhowtest build tag)
 	$(GO) test -race -count=1 -tags dhowtest ./apps/runner/...
 
+ISOLATION_DIR     ?= $(abspath bin/isolation)
+ISOLATION_BUSYBOX ?= /bin/busybox
+ISOLATION_RUN     ?=
+
+.PHONY: runner-isolation
+runner-isolation: ## Run the escape and limits suites on rootless Podman (Podman 5.4+, cgroup v2 delegation, subuids, busybox-static)
+	mkdir -p $(ISOLATION_DIR)
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(ISOLATION_DIR)/dhow-runner ./apps/runner/cmd/dhow-runner
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(ISOLATION_DIR)/escape-probe ./apps/runner/Test/Isolation/Probe
+	$(GO) test -c -tags isolation -o $(ISOLATION_DIR)/isolation.test ./apps/runner/Test/Isolation
+	chmod 0755 $(ISOLATION_DIR) $(ISOLATION_DIR)/dhow-runner $(ISOLATION_DIR)/escape-probe $(ISOLATION_DIR)/isolation.test
+	$(ISOLATION_RUN) env DHOW_ISOLATION_BIN=$(ISOLATION_DIR) DHOW_ISOLATION_BUSYBOX=$(ISOLATION_BUSYBOX) \
+		$(ISOLATION_DIR)/isolation.test -test.v -test.count=1 -test.timeout 30m
+
 RUNNER_FUZZ := Masking:FuzzMasker Masking:FuzzMaskerKeepsCleanText Logs:FuzzChunker Logs:FuzzSpillRecords \
-	Journal:FuzzJournalOpen Executor:FuzzVerifyGrant
+	Journal:FuzzJournalOpen Executor:FuzzVerifyGrant Sandbox/Wire:FuzzDecode
 
 .PHONY: fuzz-runner
 fuzz-runner: ## Fuzz every runner target for FUZZTIME each (default 10s; the M3.5 bar is 60s)

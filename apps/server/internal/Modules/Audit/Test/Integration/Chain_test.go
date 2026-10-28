@@ -351,3 +351,14 @@ func TestVerifyWalksPastTheBatchSize(t *testing.T) {
 	assert.Equal(t, ids[505], *res.FirstBrokenID, "a break in the second batch is found")
 	assert.Equal(t, 506, res.Checked)
 }
+
+func TestAnEventIsRecordedEvenWhenTheRequestIsGone(t *testing.T) {
+	f := newFixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := f.service.Handle(ctx, eventbus.Event{Name: "auth.password_changed", Payload: eventbus.Audited{
+		OrganizationIDs: []uuid.UUID{f.org}, TargetType: "user", TargetID: f.org.String(),
+	}})
+	require.NoError(t, err, "a client that drops the connection after the commit cannot skip the audit")
+	assert.Len(t, f.ids(t, f.org), 1)
+}

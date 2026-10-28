@@ -15,6 +15,7 @@ const (
 	messageOrg     = "identity.organization.loaded"
 	messageOrgSave = "identity.organization.updated"
 	messageMembers = "identity.members.listed"
+	messageRule    = "identity.secondFactor.saved"
 )
 
 type Controller struct {
@@ -69,6 +70,18 @@ func (c *Controller) UpdateOrganization(ctx context.Context, req gen.UpdateOrgan
 	return gen.UpdateOrganization200JSONResponse{Success: true, Message: ptr(messageOrgSave), Data: &data}, nil
 }
 
+func (c *Controller) UpdateSecondFactorRule(ctx context.Context, req gen.UpdateSecondFactorRuleRequestObject) (gen.UpdateSecondFactorRuleResponseObject, error) {
+	if req.Body == nil {
+		return nil, apperrors.BadRequest()
+	}
+	org, err := c.service.UpdateSecondFactorRule(ctx, req.Id, string(req.Body.RequireSecondFactor), factorOf(req.Body.CurrentFactor))
+	if err != nil {
+		return nil, err
+	}
+	data := orgToGen(org)
+	return gen.UpdateSecondFactorRule200JSONResponse{Success: true, Message: ptr(messageRule), Data: &data}, nil
+}
+
 func (c *Controller) ListMembers(ctx context.Context, req gen.ListMembersRequestObject) (gen.ListMembersResponseObject, error) {
 	page, limit := response.PageParams(req.Params.Page, req.Params.Limit)
 	members, total, err := c.service.ListMembers(ctx, req.Id, page, limit)
@@ -93,7 +106,10 @@ func (c *Controller) ListMembers(ctx context.Context, req gen.ListMembersRequest
 }
 
 func orgToGen(o models.Organization) gen.Organization {
-	return gen.Organization{Id: o.ID, Name: o.Name, Slug: o.Slug, CreatedAt: o.CreatedAt}
+	return gen.Organization{
+		Id: o.ID, Name: o.Name, Slug: o.Slug, CreatedAt: o.CreatedAt,
+		RequireSecondFactor: gen.SecondFactorRule(o.RequireSecondFactor), RequireSecondFactorSince: o.RequireSecondFactorSince,
+	}
 }
 
 func ptr[T any](v T) *T { return &v }
