@@ -146,8 +146,10 @@ func TestVariantsIncludeTheDocumentedForms(t *testing.T) {
 		got[string(v)] = true
 		assert.GreaterOrEqual(t, len(v), masking.MinLength)
 	}
-	for _, want := range []string{"hunter2-é", "hunter2-%C3%A9", hex.EncodeToString([]byte("hunter2-é")), `hunter2-é`,
-		base64.StdEncoding.EncodeToString([]byte("hunter2-é"))} {
+	for _, want := range []string{
+		"hunter2-é", "hunter2-%C3%A9", hex.EncodeToString([]byte("hunter2-é")), `hunter2-é`,
+		base64.StdEncoding.EncodeToString([]byte("hunter2-é")),
+	} {
 		assert.True(t, got[want], want)
 	}
 }
