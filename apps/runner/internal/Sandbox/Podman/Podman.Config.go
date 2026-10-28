@@ -13,6 +13,7 @@ const (
 	storageDirName  = "storage"
 	runrootDirName  = "run"
 	seccompFileName = "seccomp.json"
+	traverseDirMode = 0o711
 )
 
 const containersConfTemplate = `[containers]
@@ -92,6 +93,11 @@ func writeConfig(stateDir string) (paths, error) {
 	for _, d := range []string{p.storageDir, p.runrootDir} {
 		if err := config.EnsurePrivateDir(d); err != nil {
 			return paths{}, err
+		}
+	}
+	for _, d := range []string{stateDir, p.runrootDir} {
+		if err := os.Chmod(d, traverseDirMode); err != nil {
+			return paths{}, fmt.Errorf("let the job user namespace traverse %s: %w", d, err)
 		}
 	}
 	files := map[string][]byte{

@@ -65,7 +65,7 @@ func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile string) []string
 		"--memory-swap=" + strconv.FormatInt(mem, 10),
 		"--pids-limit=" + strconv.FormatInt(r.Pids, 10),
 		"--mount", fmt.Sprintf("type=bind,src=%s,dst=%s,ro=true", l.agentPath, agentMount),
-		"--mount", fmt.Sprintf("type=bind,src=%s,dst=%s,ro=true", l.controlDir, controlMount),
+		"--mount", fmt.Sprintf("type=bind,src=%s,dst=%s,ro=true,U=true", l.controlDir, controlMount),
 		"--mount", diskMount,
 		"--mount", tmpfsMount(tmpPath, r.DiskBytes, "tmpfs-mode=1777,nosuid,nodev"),
 		"--mount", tmpfsMount(secretsMount, secretsTmpfs, "tmpfs-mode=0700,noexec,nosuid,nodev,U"),

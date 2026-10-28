@@ -2,6 +2,7 @@ package podman
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -21,12 +22,13 @@ const (
 )
 
 type Driver struct {
-	binary    string
-	agentPath string
-	paths     paths
-	levels    []runnerv1.Isolation
-	skipPull  bool
-	log       *slog.Logger
+	binary      string
+	attemptsDir string
+	agentPath   string
+	paths       paths
+	levels      []runnerv1.Isolation
+	skipPull    bool
+	log         *slog.Logger
 }
 
 type Options struct {
@@ -72,7 +74,7 @@ func New(ctx context.Context, o Options) (*Driver, error) {
 	if len(levels) == 0 {
 		levels = []runnerv1.Isolation{runnerv1.Isolation_ISOLATION_CONTAINER}
 	}
-	return &Driver{binary: binary, agentPath: agentPath, paths: p, levels: levels, skipPull: o.SkipPull, log: o.Log}, nil
+	return &Driver{binary: binary, attemptsDir: o.Config.AttemptsDir(), agentPath: agentPath, paths: p, levels: levels, skipPull: o.SkipPull, log: o.Log}, nil
 }
 
 func (d *Driver) Name() string { return "podman" }
@@ -95,6 +97,16 @@ func (d *Driver) Cleanup(ctx context.Context, runnerID string) error {
 		if _, err := r.run(ctx, "rm", "--force", "--volumes", "--", id); err != nil {
 			d.log.Warn("could not remove a sandbox left by an earlier run", "error", err.Error())
 		}
+	}
+	return d.removeOwned(ctx, d.attemptsDir)
+}
+
+func (d *Driver) removeOwned(ctx context.Context, dir string) error {
+	if _, err := os.Lstat(dir); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if _, err := d.runner().run(ctx, "unshare", "rm", "-rf", "--", dir); err != nil {
+		return fmt.Errorf("remove %s, which job user namespaces own parts of: %w", dir, err)
 	}
 	return nil
 }

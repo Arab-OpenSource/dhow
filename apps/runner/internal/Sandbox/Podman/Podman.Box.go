@@ -26,6 +26,7 @@ type box struct {
 	name     string
 	spec     sandbox.PrepareSpec
 	socket   string
+	owned    []string
 	listener net.Listener
 
 	mu        sync.Mutex
@@ -45,7 +46,7 @@ func newBox(ctx context.Context, d *Driver, l layout, spec sandbox.PrepareSpec) 
 		_ = ln.Close()
 		return nil, fmt.Errorf("lock down the control channel: %w", err)
 	}
-	return &box{d: d, name: l.name, spec: spec, socket: socket, listener: ln}, nil
+	return &box{d: d, name: l.name, spec: spec, socket: socket, owned: []string{l.controlDir, l.workDir}, listener: ln}, nil
 }
 
 func (b *box) Start(ctx context.Context) error {
@@ -221,9 +222,13 @@ func (b *box) Destroy(ctx context.Context) error {
 		_ = ln.Close()
 	}
 	_, err := b.d.runner().run(ctx, "rm", "--force", "--volumes", "--", b.name)
-	_ = os.Remove(b.socket)
 	if err != nil && !isGone(err) {
 		return err
+	}
+	for _, dir := range b.owned {
+		if err := b.d.removeOwned(ctx, dir); err != nil {
+			return err
+		}
 	}
 	return nil
 }

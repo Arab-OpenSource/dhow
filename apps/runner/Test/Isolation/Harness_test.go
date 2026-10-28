@@ -142,7 +142,7 @@ func start(t *testing.T, r sandbox.Resources) (sandbox.Sandbox, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), stepTimeout)
 	defer cancel()
 	id := token()
-	dir := filepath.Join(shared.stateDir, "jobs", id)
+	dir := filepath.Join(config.Config{StateDir: shared.stateDir}.AttemptsDir(), id)
 	require.NoError(t, config.EnsurePrivateDir(dir))
 	box, err := shared.driver.Prepare(ctx, sandbox.PrepareSpec{
 		RunnerID: runnerID, AttemptID: id, Image: image, Isolation: runnerv1.Isolation_ISOLATION_CONTAINER,
