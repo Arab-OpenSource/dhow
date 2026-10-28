@@ -17,7 +17,32 @@ func (b *box) enforced(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return verifyCgroup(cgroupRoot, in.State.CgroupPath, b.spec)
+	if err := verifyCgroup(cgroupRoot, in.State.CgroupPath, b.spec); err != nil {
+		return err
+	}
+	b.mu.Lock()
+	b.cgroup = filepath.Join(cgroupRoot, in.State.CgroupPath)
+	b.mu.Unlock()
+	return nil
+}
+
+func oomKills(dir string) int64 {
+	if dir == "" {
+		return 0
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "memory.events")) //nolint:gosec // The sandbox cgroup that Podman reports, under /sys/fs/cgroup.
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if k, v, ok := strings.Cut(line, " "); ok && k == "oom_kill" {
+			n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+			if err == nil {
+				return n
+			}
+		}
+	}
+	return 0
 }
 
 func verifyCgroup(root, path string, spec sandbox.PrepareSpec) error {

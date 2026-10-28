@@ -33,8 +33,10 @@ func TestMemoryAboveTheLimitIsOOMKilled(t *testing.T) {
 	r.MemoryBytes, r.DiskBytes = 128<<20, 16<<20
 	box, _ := start(t, r)
 	out := run(t, box, probe+" oom\n", nil)
-	assert.Equal(t, syscall.SIGKILL, out.result.Signal)
-	assert.Equal(t, runnerv1.FailureReason_FAILURE_REASON_OOM_KILLED, out.result.Reason)
+	assert.NotZero(t, out.result.ExitCode, "the step fails")
+	assert.Equal(t, runnerv1.FailureReason_FAILURE_REASON_OOM_KILLED, out.result.Reason, "even when the kernel kills a child, not the shell")
+	alive := run(t, box, busybox+" true\n", nil)
+	assert.Zero(t, alive.result.ExitCode, "the sandbox and its agent survive the OOM kill")
 }
 
 func TestCPUIsThrottledToTheLimit(t *testing.T) {
@@ -67,7 +69,7 @@ func TestAStepEndsOnTermAndOneThatIgnoresItOnKill(t *testing.T) {
 	polite := signalled(t, box, probe+" sleep 600\n", syscall.SIGTERM)
 	assert.Equal(t, syscall.SIGTERM, polite.Signal)
 
-	stubborn := signalled(t, box, probe+" ignoreterm 600\n", syscall.SIGTERM, syscall.SIGKILL)
+	stubborn := signalled(t, box, "trap '' TERM\n"+probe+" ignoreterm 600\n", syscall.SIGTERM, syscall.SIGKILL)
 	assert.Equal(t, syscall.SIGKILL, stubborn.Signal)
 }
 

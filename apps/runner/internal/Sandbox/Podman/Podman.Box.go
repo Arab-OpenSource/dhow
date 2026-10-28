@@ -26,6 +26,7 @@ type box struct {
 	name     string
 	spec     sandbox.PrepareSpec
 	socket   string
+	cgroup   string
 	owned    []string
 	listener net.Listener
 
@@ -104,16 +105,17 @@ func (b *box) Exec(ctx context.Context, step sandbox.StepSpec) (sandbox.StepResu
 	if conn == nil {
 		return sandbox.StepResult{}, sandbox.ErrDestroyed
 	}
+	before := oomKills(b.cgroupDir())
 	if err := conn.Write(runStepFrame(step)); err != nil {
 		return sandbox.StepResult{}, fmt.Errorf("send a step to the agent: %w", err)
 	}
 	if step.Started != nil {
 		step.Started()
 	}
-	return b.readStep(ctx, conn, step)
+	return b.readStep(ctx, conn, step, before)
 }
 
-func (b *box) readStep(ctx context.Context, conn *wire.Conn, step sandbox.StepSpec) (sandbox.StepResult, error) {
+func (b *box) readStep(ctx context.Context, conn *wire.Conn, step sandbox.StepSpec, oomBefore int64) (sandbox.StepResult, error) {
 	for {
 		frame, err := conn.Read()
 		if err != nil {
@@ -126,7 +128,7 @@ func (b *box) readStep(ctx context.Context, conn *wire.Conn, step sandbox.StepSp
 		case *agentv1.Frame_Output:
 			writeOutput(step, body.Output)
 		case *agentv1.Frame_StepExit:
-			return b.stepResult(ctx, body.StepExit)
+			return b.stepResult(body.StepExit, oomBefore)
 		}
 	}
 }
@@ -141,20 +143,21 @@ func writeOutput(step sandbox.StepSpec, o *agentv1.Output) {
 	}
 }
 
-func (b *box) stepResult(ctx context.Context, exit *agentv1.StepExit) (sandbox.StepResult, error) {
+func (b *box) stepResult(exit *agentv1.StepExit, oomBefore int64) (sandbox.StepResult, error) {
 	if exit.GetFailure() == agentv1.StepFailure_STEP_FAILURE_SHELL_NOT_FOUND {
 		return sandbox.StepResult{}, sandbox.ErrShellMissing
 	}
 	res := sandbox.StepResult{ExitCode: exit.GetExitCode(), Signal: syscall.Signal(exit.GetSignal())}
-	if exit.GetSignal() == int32(syscall.SIGKILL) && b.oomKilled(ctx) {
+	if res.ExitCode != 0 && oomKills(b.cgroupDir()) > oomBefore {
 		res.Reason = runnerv1.FailureReason_FAILURE_REASON_OOM_KILLED
 	}
 	return res, nil
 }
 
-func (b *box) oomKilled(ctx context.Context) bool {
-	in, err := inspect(ctx, b.d.runner(), b.name)
-	return err == nil && in.State.OOMKilled
+func (b *box) cgroupDir() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.cgroup
 }
 
 func runStepFrame(step sandbox.StepSpec) *agentv1.Frame {

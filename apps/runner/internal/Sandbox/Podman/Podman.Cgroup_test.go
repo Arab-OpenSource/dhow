@@ -81,3 +81,13 @@ func TestVerifyCgroup(t *testing.T) {
 		})
 	}
 }
+
+func TestOomKillsReadsTheCounter(t *testing.T) {
+	root, rel := writeCgroup(t, map[string]string{"memory.events": "low 0\nhigh 0\nmax 4\noom 2\noom_kill 2\noom_group_kill 0"})
+	if got := oomKills(filepath.Join(root, rel)); got != 2 {
+		t.Fatalf("want 2 OOM kills, got %d", got)
+	}
+	if got := oomKills(""); got != 0 {
+		t.Fatalf("no cgroup means no OOM kills, got %d", got)
+	}
+}
