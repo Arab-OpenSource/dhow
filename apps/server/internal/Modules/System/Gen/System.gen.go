@@ -15,14 +15,17 @@ import (
 
 // Defines values for HealthCheckName.
 const (
-	Database   HealthCheckName = "database"
-	Migrations HealthCheckName = "migrations"
+	Database      HealthCheckName = "database"
+	LogPartitions HealthCheckName = "log_partitions"
+	Migrations    HealthCheckName = "migrations"
 )
 
 // Valid indicates whether the value is a known member of the HealthCheckName enum.
 func (e HealthCheckName) Valid() bool {
 	switch e {
 	case Database:
+		return true
+	case LogPartitions:
 		return true
 	case Migrations:
 		return true

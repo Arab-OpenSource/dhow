@@ -15,6 +15,7 @@ import (
 	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
+	oidcauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
@@ -42,6 +43,10 @@ type Options struct {
 	Instance  policy.InstanceSettings
 	Log       *slog.Logger
 	Now       func() time.Time
+
+	Oidc         *oidcauth.Registry
+	OidcKey      []byte
+	CallbackBase string
 }
 
 type Service struct {
@@ -56,6 +61,10 @@ type Service struct {
 	instance  policy.InstanceSettings
 	log       *slog.Logger
 	now       func() time.Time
+
+	oidc         *oidcauth.Registry
+	oidcKey      []byte
+	callbackBase string
 }
 
 var (
@@ -71,12 +80,21 @@ func NewService(o Options) *Service {
 	return &Service{
 		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, csrf: o.CSRF, sealer: o.Sealer, recovery: o.Recovery,
 		webauthn: o.WebAuthn, bus: o.Bus, instance: o.Instance, log: o.Log, now: now,
+		oidc: o.Oidc, oidcKey: o.OidcKey, callbackBase: o.CallbackBase,
 	}
 }
 
 func (s *Service) queries() *sqlc.Queries { return sqlc.New(s.db) }
 
 func (s *Service) Resolve(ctx context.Context, tokenHash []byte, now time.Time) (auth.Resolved, error) {
+	return s.resolve(ctx, tokenHash, now, true)
+}
+
+func (s *Service) Peek(ctx context.Context, tokenHash []byte, now time.Time) (auth.Resolved, error) {
+	return s.resolve(ctx, tokenHash, now, false)
+}
+
+func (s *Service) resolve(ctx context.Context, tokenHash []byte, now time.Time, touch bool) (auth.Resolved, error) {
 	q := s.queries()
 	row, err := q.ResolveSession(ctx, sqlc.ResolveSessionParams{TokenHash: tokenHash, Now: now})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -89,7 +107,7 @@ func (s *Service) Resolve(ctx context.Context, tokenHash []byte, now time.Time) 
 	if err != nil {
 		return auth.Resolved{}, err
 	}
-	if now.Sub(row.LastSeenAt) >= config.SessionTouchInterval {
+	if touch && now.Sub(row.LastSeenAt) >= config.SessionTouchInterval {
 		touchErr := q.TouchSession(ctx, sqlc.TouchSessionParams{
 			ID: row.Id, Now: now, IdleExpiresAt: now.Add(config.SessionIdleTimeout), TouchBefore: now.Add(-config.SessionTouchInterval),
 		})
@@ -113,6 +131,9 @@ func (s *Service) Resolve(ctx context.Context, tokenHash []byte, now time.Time) 
 }
 
 func (s *Service) ConfirmFactor(ctx context.Context, p auth.Principal, f auth.Factor) error {
+	if p.ViaToken() || p.SessionID == uuid.Nil {
+		return apperrors.SessionRequired()
+	}
 	return s.confirmFactor(ctx, p, models.Factor(f))
 }
 

@@ -28,6 +28,10 @@ There is no configuration file and no fallback value for a secret. A missing or 
 | `DHOW_RUNNER_TLS_CERT_FILE` | With `DHOW_RUNNER_LISTEN_ADDR` | none | `/etc/dhow/runner-tls.crt` | The PEM certificate chain of the separate runner listener. It is refused without `DHOW_RUNNER_LISTEN_ADDR`, without `DHOW_RUNNER_TLS_KEY_FILE`, or when the pair does not load. |
 | `DHOW_RUNNER_TLS_KEY_FILE` | With `DHOW_RUNNER_LISTEN_ADDR` | none | `/etc/dhow/runner-tls.key` | The PEM private key of that certificate. Like a secret file, other users must not be able to read or write it (`chmod 600`). |
 | `DHOW_RUNNER_MAX_POLLS` | No | `500` | `200` | How many `Lease` long-polls one server instance keeps open at once. A waiting poll holds no database connection, but every wake-up runs one short claim transaction, so the default is 25 polls for each of the 20 pooled database connections. Above the limit a runner gets `RESOURCE_EXHAUSTED` with `Retry-After` and backs off. A whole number from 1 to 10000. |
+| `DHOW_JOB_LOG_MAX_BYTES` | No | `67108864` (64 MiB) | `268435456` | The most log output one job attempt may store, in bytes. The chunk that crosses it is cut at the limit, one `system` line says the log was truncated, and later output is dropped while the job keeps running. A whole number from 1048576 (1 MiB) to 1073741824 (1 GiB), without a unit. Logs live in PostgreSQL until log segments move to object storage, so the limit and the retention below decide how much they add to the database and its backups. |
+| `DHOW_LOG_RETENTION_DAYS` | No | `30` | `7` | How many days of job logs to keep. Logs are stored in one PostgreSQL partition per UTC day, and every hour each instance drops the partitions older than this, under an advisory lock so instances never race. A whole number from 1 to 3650. |
+| `DHOW_SSE_MAX_STREAMS` | No | `2000` | `500` | How many live log streams (server-sent events) one server instance serves at once. One user may hold 10 of them on an instance, and one organization a tenth of this value (at least 20). Above either limit the browser gets `429 TOO_MANY_STREAMS` with `Retry-After`. A whole number from 1 to 100000. |
+| `DHOW_LOG_READ_CONNS` | No | `4` | `8` | Database connections set aside for reading job logs: history pages and live streams. They are a pool of their own, next to the 20 connections of the API and the runner plane, so many open streams can slow each other down but never the rest of Dhow. Each statement on them stops after 5 seconds. A whole number from 1 to 20. |
 | `DHOW_ORG_CREATION` | No | `instance-owner` | `any-user` | Who may create more organizations. `instance-owner` allows only the instance owner, the account made by the first-owner setup. `any-user` allows every signed-in user. Any other value stops the server. |
 | `DHOW_SMTP_HOST` | No | empty | `smtp.example.com` | The mail server for invitation emails. Empty turns email off: an admin still gets the invitation link and sends it themselves. A host name or an IP address, without a port. See [Email](#email). |
 | `DHOW_SMTP_PORT` | No | `587`, or `465` with `DHOW_SMTP_TLS=tls` | `2525` | The mail server's port, from 1 to 65535. |
@@ -36,6 +40,7 @@ There is no configuration file and no fallback value for a secret. A missing or 
 | `DHOW_SMTP_PASSWORD` | No | empty | none | The SMTP password. It is sent only over TLS (`AUTH PLAIN`) and never logged. |
 | `DHOW_SMTP_PASSWORD_FILE` | No | none | `/run/secrets/dhow-smtp-password` | A file that holds `DHOW_SMTP_PASSWORD`, see [Secrets in files](#secrets-in-files). |
 | `DHOW_SMTP_FROM` | With `DHOW_SMTP_HOST` | none | `Dhow <dhow@example.com>` | The sender of invitation emails, as one RFC 5322 address with an optional display name. |
+| `DHOW_OIDC_PROVIDERS` | No | empty | `google,github` | Turns on sign-in with external identity providers. A comma-separated list of provider ids (lowercase letters and digits, starting with a letter, at most 32, at most 10 providers). Each id needs its own `DHOW_OIDC_<ID>_*` variables, see [Sign-in providers](#sign-in-providers). Empty turns external sign-in off. |
 
 `DHOW_DEV=true` never turns off the `Secure` flag of the session cookie, the `Origin` check or the secret key checks.
 
@@ -45,6 +50,7 @@ There is no configuration file and no fallback value for a secret. A missing or 
 
 - `DHOW_SECRET_KEY_FILE`, `DHOW_DATABASE_URL_FILE` and `DHOW_SMTP_PASSWORD_FILE` name the file.
 - Under systemd, `LoadCredential=dhow-secret-key:...`, `LoadCredential=dhow-database-url:...` and `LoadCredential=dhow-smtp-password:...` work without any variable: Dhow reads `$CREDENTIALS_DIRECTORY/dhow-secret-key`, `$CREDENTIALS_DIRECTORY/dhow-database-url` and `$CREDENTIALS_DIRECTORY/dhow-smtp-password`. The [unit file](binary-systemd.md) does this for the first two.
+- Each sign-in provider's client secret works the same way: `DHOW_OIDC_<ID>_CLIENT_SECRET_FILE`, or the systemd credential `dhow-oidc-<id>-client-secret` (see [Sign-in providers](#sign-in-providers)).
 
 The rules are the same for all of them:
 
@@ -62,6 +68,21 @@ With SMTP set up, Dhow also emails the link to the invited address in the invite
 - The link is the only secret in the email. It works once and expires after 7 days, and resending an invitation makes a new link and voids the old one.
 - `DHOW_SMTP_FROM`, the organization name and the inviter's name are the only values that reach the headers, and a value that contains a line break never does.
 - Test the settings by inviting your own address.
+
+## Sign-in providers
+
+Each id in `DHOW_OIDC_PROVIDERS` reads the variables below, with the id in upper case (`google` reads `DHOW_OIDC_GOOGLE_ISSUER`). Any problem with any provider stops the server. The full guide, with Google, Keycloak and GitHub examples, is [Sign in with OIDC](../guides/oidc.md).
+
+| Variable | Required | Default | Purpose and validation |
+|---|---|---|---|
+| `DHOW_OIDC_<ID>_TYPE` | No | `oidc` | `oidc` for any OpenID Connect provider (Google, Keycloak, Entra ID, Authentik, ...). `github` for GitHub, which speaks OAuth 2.0 without OpenID Connect. |
+| `DHOW_OIDC_<ID>_ISSUER` | With `oidc` | `https://github.com` for `github` | The issuer URL, exactly as the provider's `/.well-known/openid-configuration` reports it. `https://` only, or `http://` with `DHOW_DEV=true`, without credentials, a query or a fragment. For GitHub Enterprise Server, the server's URL. Two providers cannot share an issuer (compared without case in the host and without a trailing `/`), because linked identities are keyed by issuer. |
+| `DHOW_OIDC_<ID>_CLIENT_ID` | Yes | none | The client id registered at the provider. |
+| `DHOW_OIDC_<ID>_CLIENT_SECRET` | Yes | none | The client secret. Like other secrets it may come from `DHOW_OIDC_<ID>_CLIENT_SECRET_FILE` or the systemd credential `dhow-oidc-<id>-client-secret`, see [Secrets in files](#secrets-in-files), and placeholder values are refused. It is never logged or returned. |
+| `DHOW_OIDC_<ID>_NAME` | No | the id, or `GitHub` | The button label on the sign-in page, at most 40 characters. |
+| `DHOW_OIDC_<ID>_ALLOWED_DOMAINS` | No | empty | Comma-separated email domains. When set, an identity is accepted only if the provider reports a verified email address in one of them. Empty accepts any identity the provider signs. |
+
+The redirect URI to register at the provider is `<DHOW_PUBLIC_URL>/oidc/callback/<id>`.
 
 ## Development and tests
 

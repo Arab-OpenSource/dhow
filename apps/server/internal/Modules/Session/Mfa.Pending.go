@@ -48,7 +48,7 @@ func mfaKey(userID uuid.UUID) throttleKey {
 	return throttleKey{key: auth.MfaThrottleKey(userID.String()), free: config.MfaFreeAttempts}
 }
 
-func (s *Service) issuePending(ctx context.Context, now time.Time, user sessionUser, factors sqlc.GetMfaFactorsRow, meta auth.RequestMeta) (models.LoginResult, error) {
+func (s *Service) issuePending(ctx context.Context, now time.Time, user sessionUser, factors sqlc.GetMfaFactorsRow, meta auth.RequestMeta, first string) (models.LoginResult, error) {
 	token, tokenHash, err := auth.NewSessionToken(config.SessionTokenBytes)
 	if err != nil {
 		return models.LoginResult{}, err
@@ -57,7 +57,7 @@ func (s *Service) issuePending(ctx context.Context, now time.Time, user sessionU
 	id := user.ID
 	if _, err := s.queries().InsertAuthChallenge(ctx, sqlc.InsertAuthChallengeParams{
 		Kind: kindMfaPending, TokenHash: tokenHash, UserID: &id, DeviceHash: auth.DeviceHash(meta.UserAgent),
-		ExpiresAt: expires, Now: now,
+		FirstMethod: first, ExpiresAt: expires, Now: now,
 	}); err != nil {
 		return models.LoginResult{}, err
 	}
@@ -144,7 +144,7 @@ func (s *Service) CompleteMfa(ctx context.Context, in models.MfaLoginInput) (mod
 		return models.LoginResult{}, err
 	}
 	who := sessionUser{ID: user.Id, Email: user.Email, Name: user.Name, Locale: user.Locale}
-	return s.openSession(ctx, now, who, meta, outcome.method)
+	return s.openSession(ctx, now, who, meta, outcome.method, pending.FirstMethod)
 }
 
 func (s *Service) BeginMfaPasskey(ctx context.Context) (models.PasskeyChallenge, error) {

@@ -102,3 +102,26 @@ func TestAnAdminCannotResetAnOwner(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, res.Status, string(res.Raw))
 	assert.Equal(t, http.StatusAccepted, env.PasswordStep(d.Email, d.Password, nil).Status)
 }
+
+func TestMfaResetRevokesTheMemberAPITokens(t *testing.T) {
+	env := apptest.New(t)
+	owner, d := env.SetupAndLogin()
+	org := env.OrganizationID(d.OrgSlug)
+	ownerToken := owner.MustCreateAPIToken(org, []string{"member.read"}, d.Password)
+
+	const devPassword = "a long password for dev@example.com"
+	dev, devID := env.SignedIn(org, "dev@example.com", "developer")
+	devToken := dev.MustCreateAPIToken(org, []string{"member.read"}, devPassword)
+	dev.EnableTotp(apptest.PasswordFactor(devPassword))
+	members := apptest.Request{Method: http.MethodGet, Path: apptest.OrgPath(org, "/members")}
+	require.Equal(t, http.StatusOK, env.Bearer(devToken.Value, members).Status)
+
+	res := resetMfa(owner, org, devID.String(), apptest.PasswordFactor(d.Password))
+	require.Equal(t, http.StatusOK, res.Status, string(res.Raw))
+	assert.Equal(t, http.StatusUnauthorized, env.Bearer(devToken.Value, members).Status, "a reset is a compromise recovery, so the member's tokens stop")
+	assert.Equal(t, http.StatusOK, env.Bearer(ownerToken.Value, members).Status, "other members' tokens keep working")
+	var revoked string
+	require.NoError(t, env.Pool.QueryRow(t.Context(),
+		`SELECT "Data"->>'RevokedPats' FROM "AuditEvents" WHERE "Action" = 'identity.member.mfa_reset'`).Scan(&revoked))
+	assert.Equal(t, "1", revoked)
+}

@@ -1,4 +1,5 @@
 import { useToastStore } from '@/Core/Store/useToastStore';
+import { copyText } from '@/Core/Ui/Clipboard';
 import { Button } from '@/Core/Ui/Button';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { useT } from '@/I18n/useT';
@@ -8,15 +9,6 @@ export interface IInviteLinkProps {
   issued: TInvitationIssued;
   copy?: boolean;
 }
-
-export const copyText = async (text: string): Promise<boolean> => {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-};
 
 export const InviteLink = ({ issued, copy = true }: IInviteLinkProps) => {
   const t = useT();

@@ -6,9 +6,11 @@ import { ShellMenu } from '@/App/Layout/ShellMenu';
 import { ShellTopBar } from '@/App/Layout/ShellTopBar';
 import { useCommandItems } from '@/App/Layout/useCommandItems';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
+import { useMe } from '@/Core/Auth/useMe';
 import { useHotkey } from '@/Core/Hooks/useHotkey';
 import { useIdleCallback } from '@/Core/Hooks/useIdleCallback';
 import { useLatch } from '@/Core/Hooks/useLatch';
+import { usePreferencesSync } from '@/Core/Preferences/usePreferencesSync';
 import { usePaletteStore } from '@/Core/Store/usePaletteStore';
 import { TooltipProvider } from '@/Core/Ui/Tooltip';
 import { useT } from '@/I18n/useT';
@@ -21,6 +23,8 @@ export const AppShell = () => {
   const SetPaletteOpen = usePaletteStore((state) => state.SetOpen);
   const TogglePalette = usePaletteStore((state) => state.Toggle);
 
+  const me = useMe();
+  usePreferencesSync(me.data?.Memberships.map((membership) => membership.OrganizationId) ?? []);
   const { stack, invalidStack } = useShellNavigation();
   const slidesWanted = useLatch(stack.length > 0 || invalidStack);
   const paletteWanted = useLatch(PaletteOpen);

@@ -1,7 +1,7 @@
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { Button } from '@/Core/Ui/Button';
 import { useT } from '@/I18n/useT';
-import { copyText } from '@/Modules/Organization/Components/InviteLink';
+import { copyText } from '@/Core/Ui/Clipboard';
 import { useInviteStore } from '@/Modules/Organization/Store/useInviteStore';
 import { INVITE_FORM_ID } from '@/Modules/Organization/Types/Forms';
 

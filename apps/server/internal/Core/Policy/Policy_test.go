@@ -16,19 +16,23 @@ func TestMatrix(t *testing.T) {
 		policy.RoleOwner: {
 			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.OrgTransfer: true,
 			policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true,
-			policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true,
+			policy.TokenCreate: true, policy.TokenManage: true, policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true,
+			policy.LogRead: true,
 		},
 		policy.RoleAdmin: {
 			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.MemberRead: true, policy.MemberManage: true,
-			policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true,
-			policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true,
+			policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true, policy.TokenCreate: true, policy.TokenManage: true,
+			policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true, policy.LogRead: true,
 		},
 		policy.RoleMaintainer: {
 			policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true, policy.JobRead: true,
-			policy.JobCancel: true,
+			policy.JobCancel: true, policy.LogRead: true, policy.TokenCreate: true,
 		},
-		policy.RoleDeveloper: {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true, policy.JobRead: true},
-		policy.RoleViewer:    {policy.OrgRead: true, policy.OrgLeave: true, policy.JobRead: true},
+		policy.RoleDeveloper: {
+			policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true, policy.JobRead: true,
+			policy.LogRead: true, policy.TokenCreate: true,
+		},
+		policy.RoleViewer: {policy.OrgRead: true, policy.OrgLeave: true, policy.JobRead: true, policy.TokenCreate: true},
 	}
 	for _, role := range policy.Roles() {
 		subject := policy.Subject{UserID: uuid.New(), Memberships: []policy.Membership{{OrganizationID: org, Role: role}}}
@@ -199,4 +203,59 @@ func TestRunnerActionsNeedAMembership(t *testing.T) {
 	assert.False(t, policy.Can(developer, policy.RunnerManage, policy.Resource{OrganizationID: org}))
 	assert.False(t, policy.Can(developer, policy.RunnerRead, policy.Resource{OrganizationID: uuid.New()}))
 	assert.False(t, policy.Can(policy.Subject{}, policy.RunnerRead, policy.Resource{OrganizationID: org}))
+}
+
+func TestTokenSubjectIsTheIntersectionOfRoleAndScopes(t *testing.T) {
+	org := uuid.New()
+	token := func(role policy.Role, scopes ...policy.Action) policy.Subject {
+		return policy.Subject{
+			UserID: uuid.New(), TokenID: uuid.New(), TokenScopes: scopes,
+			Memberships: []policy.Membership{{OrganizationID: org, Role: role}},
+		}
+	}
+	tests := []struct {
+		name    string
+		subject policy.Subject
+		action  policy.Action
+		want    bool
+	}{
+		{"scope and role allow", token(policy.RoleAdmin, policy.MemberManage), policy.MemberManage, true},
+		{"role allows but the scope is missing", token(policy.RoleAdmin, policy.MemberRead), policy.MemberManage, false},
+		{"scope present but the role no longer allows it", token(policy.RoleDeveloper, policy.MemberManage), policy.MemberManage, false},
+		{"a token never manages its own session", token(policy.RoleOwner, policy.TokenActions()...), policy.SessionManageSelf, false},
+		{"a token never leaves the organization", token(policy.RoleOwner, policy.TokenActions()...), policy.OrgLeave, false},
+		{"a token never transfers ownership", token(policy.RoleOwner, policy.TokenActions()...), policy.OrgTransfer, false},
+		{"a token never makes tokens", token(policy.RoleOwner, policy.TokenActions()...), policy.TokenCreate, false},
+		{"a token never manages tokens", token(policy.RoleOwner, policy.TokenActions()...), policy.TokenManage, false},
+		{"a forged scope outside the token actions", token(policy.RoleOwner, policy.TokenCreate), policy.TokenCreate, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resource := policy.Resource{OrganizationID: org}
+			if tt.action == policy.SessionManageSelf {
+				resource = policy.Resource{}
+			}
+			assert.Equal(t, tt.want, policy.Can(tt.subject, tt.action, resource))
+		})
+	}
+	other := token(policy.RoleOwner, policy.OrgRead)
+	assert.False(t, policy.Can(other, policy.OrgRead, policy.Resource{OrganizationID: uuid.New()}), "another organization")
+	owner := token(policy.RoleOwner, policy.OrgRead)
+	owner.InstanceOwner = true
+	assert.False(t, policy.CanInstance(owner, policy.OrgCreate, policy.InstanceSettings{AnyUserCreatesOrganizations: true}))
+}
+
+func TestTokenRules(t *testing.T) {
+	ok := policy.Organization(http.MethodGet, "/organizations/{id}/members", policy.MemberRead, "id").AllowTokens()
+	assert.True(t, ok.Valid())
+	assert.True(t, ok.Tokens)
+	assert.False(t, policy.Organization(http.MethodGet, "/organizations/{id}", policy.OrgRead, "id").Tokens, "tokens are opt-in")
+	assert.False(t, policy.Organization(http.MethodPost, "/organizations/{id}/leave", policy.OrgLeave, "id").AllowTokens().Valid())
+	assert.False(t, policy.Organization(http.MethodPost, "/organizations/{id}/api-tokens", policy.TokenCreate, "id").AllowTokens().Valid())
+	assert.False(t, policy.Authenticated(http.MethodGet, "/me", policy.SessionManageSelf).AllowTokens().Valid())
+	assert.False(t, policy.Public(http.MethodGet, "/meta").AllowTokens().Valid())
+	for _, a := range policy.TokenActions() {
+		assert.False(t, policy.IsInstanceAction(a))
+		assert.NotEqual(t, policy.SessionManageSelf, a)
+	}
 }

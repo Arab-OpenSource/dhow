@@ -8,3 +8,4 @@ output-options:
   include-tags:
     - session
     - mfa
+    - oidc

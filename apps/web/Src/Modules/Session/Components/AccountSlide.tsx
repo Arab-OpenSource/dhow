@@ -26,9 +26,10 @@ export const AccountSubtitle = () => {
 
 export interface IAccountSlideProps {
   security?: ReactNode;
+  tokens?: ReactNode;
 }
 
-export const AccountSlide = ({ security }: IAccountSlideProps) => {
+export const AccountSlide = ({ security, tokens }: IAccountSlideProps) => {
   const t = useT();
   const errorText = useApiErrorText();
   const me = useMe();
@@ -51,5 +52,5 @@ export const AccountSlide = ({ security }: IAccountSlideProps) => {
     );
   }
   if (me.data === undefined) return <Skeleton label={t('ui.loading')} lines={5} />;
-  return <AccountBody me={me.data} security={security} />;
+  return <AccountBody me={me.data} security={security} tokens={tokens} />;
 };

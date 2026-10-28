@@ -42,8 +42,12 @@ type Config struct {
 	RunnerTLSKeyFile  string
 	RunnerMaxPolls    int
 
+	Logs Logs
+
 	SMTP                        SMTP
 	AnyUserCreatesOrganizations bool
+
+	OIDCProviders []OIDCProvider
 }
 
 func LoadFromEnv() (Config, error) { return Load(os.Getenv) }
@@ -83,6 +87,10 @@ func Load(getenv func(string) string) (Config, error) {
 	if cfg.RunnerMaxPolls, err = parseMaxPolls(getenv(EnvRunnerMaxPolls)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvRunnerMaxPolls, err))
 	}
+	var logErrs []error
+	if cfg.Logs, logErrs = loadLogs(getenv); len(logErrs) > 0 {
+		errs = append(errs, logErrs...)
+	}
 	if cfg.TrustedProxies, err = parseTrustedProxies(getenv(EnvTrustedProxies)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvTrustedProxies, err))
 	}
@@ -94,6 +102,9 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.AnyUserCreatesOrganizations, err = parseOrgCreation(getenv(EnvOrgCreation)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvOrgCreation, err))
+	}
+	if cfg.OIDCProviders, err = loadOIDCProviders(getenv, dev); err != nil {
+		errs = append(errs, err)
 	}
 
 	if len(errs) > 0 {

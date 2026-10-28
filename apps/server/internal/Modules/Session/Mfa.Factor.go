@@ -62,6 +62,9 @@ func (s *Service) factors(ctx context.Context, userID uuid.UUID) (sqlc.GetMfaFac
 }
 
 func (s *Service) confirmFactor(ctx context.Context, p auth.Principal, f models.Factor) error {
+	if p.ViaToken() || p.SessionID == uuid.Nil {
+		return apperrors.SessionRequired()
+	}
 	factors, err := s.factors(ctx, p.UserID)
 	if err != nil {
 		return err

@@ -131,11 +131,16 @@ func NewWithPool(t *testing.T, pool *pgxpool.Pool) *Env {
 }
 
 type Options struct {
-	Pool    *pgxpool.Pool
-	Params  *auth.Params
-	Mailer  mailer.Sender
-	Profile func(*config.Config)
-	Secrets *FakeSecrets
+	Pool          *pgxpool.Pool
+	Params        *auth.Params
+	Mailer        mailer.Sender
+	Profile       func(*config.Config)
+	Clock         *Clock
+	OidcTransport http.RoundTripper
+	Secrets       *FakeSecrets
+
+	LogStreamWriteWait time.Duration
+	LogReadWait        time.Duration
 }
 
 func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) *Env {
@@ -176,17 +181,22 @@ func NewWithOptions(t *testing.T, o Options) *Env {
 	}
 	logs := &SyncBuffer{}
 	log := logging.New(logs, slog.LevelDebug)
-	clock := NewClock(time.Now().UTC().Truncate(time.Second))
+	clock := o.Clock
+	if clock == nil {
+		clock = NewClock(time.Now().UTC().Truncate(time.Second))
+	}
 	breach := &FakeBreach{}
 	infra := app.Infra{
 		Config: cfg, Log: log, Pool: pool, Migrations: fakeMigrations{}, Build: buildinfo.Info{Version: "test", Commit: "test"},
-		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer,
+		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer, OidcTransport: o.OidcTransport,
+		LogStreamWriteWait: o.LogStreamWriteWait, LogReadWait: o.LogReadWait,
 	}
 	if o.Secrets != nil {
 		infra.Secrets = o.Secrets
 	}
 	wired, err := app.Build(t.Context(), infra)
 	require.NoError(t, err)
+	t.Cleanup(wired.Close)
 	startListener(t, wired)
 	hasher, err := auth.NewHasher(t.Context(), params, 4)
 	require.NoError(t, err)

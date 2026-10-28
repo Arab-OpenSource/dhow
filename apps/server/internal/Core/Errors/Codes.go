@@ -29,6 +29,9 @@ const (
 	CodeSecretsUnavailable     = "SECRETS_UNAVAILABLE"
 	CodeJobFinished            = "JOB_FINISHED"
 	CodeJobQueueFull           = "JOB_QUEUE_FULL"
+	CodeAttemptNotFound        = "ATTEMPT_NOT_FOUND"
+	CodeTooManyStreams         = "TOO_MANY_STREAMS"
+	CodeRateLimited            = "RATE_LIMITED"
 )
 
 const (
@@ -39,6 +42,20 @@ const (
 	CodeInvitationInvalid       = "INVITATION_INVALID"
 	CodeInvitationEmailMismatch = "INVITATION_EMAIL_MISMATCH"
 	CodeInvitationAccountExists = "INVITATION_ACCOUNT_EXISTS"
+)
+
+const (
+	CodeOidcFlowInvalid         = "OIDC_FLOW_INVALID"
+	CodeOidcSignInFailed        = "OIDC_SIGN_IN_FAILED"
+	CodeOidcNotLinked           = "OIDC_NOT_LINKED"
+	CodeOidcDomainNotAllowed    = "OIDC_DOMAIN_NOT_ALLOWED"
+	CodeOidcProviderUnavailable = "OIDC_PROVIDER_UNAVAILABLE"
+	CodeOidcIdentityInUse       = "OIDC_IDENTITY_IN_USE"
+	CodeOidcAlreadyLinked       = "OIDC_ALREADY_LINKED"
+	CodeLastSignInMethod        = "LAST_SIGN_IN_METHOD"
+	CodeSessionRequired         = "SESSION_REQUIRED"
+	CodeApiTokenLimit           = "API_TOKEN_LIMIT" //nolint:gosec // A public error code, not a credential.
+	CodeScopeNotAllowed         = "SCOPE_NOT_ALLOWED"
 )
 
 const (
@@ -70,6 +87,9 @@ const (
 	KeySecretsUnavailable     = "errors.secretsUnavailable"
 	KeyJobFinished            = "errors.jobFinished"
 	KeyJobQueueFull           = "errors.jobQueueFull"
+	KeyAttemptNotFound        = "errors.attemptNotFound"
+	KeyTooManyStreams         = "errors.tooManyStreams"
+	KeyRateLimited            = "errors.rateLimited"
 )
 
 const (
@@ -80,4 +100,18 @@ const (
 	KeyInvitationInvalid       = "errors.invitationInvalid"
 	KeyInvitationEmailMismatch = "errors.invitationEmailMismatch"
 	KeyInvitationAccountExists = "errors.invitationAccountExists"
+)
+
+const (
+	KeyOidcFlowInvalid         = "errors.oidcFlowInvalid"
+	KeyOidcSignInFailed        = "errors.oidcSignInFailed"
+	KeyOidcNotLinked           = "errors.oidcNotLinked"
+	KeyOidcDomainNotAllowed    = "errors.oidcDomainNotAllowed"
+	KeyOidcProviderUnavailable = "errors.oidcProviderUnavailable"
+	KeyOidcIdentityInUse       = "errors.oidcIdentityInUse"
+	KeyOidcAlreadyLinked       = "errors.oidcAlreadyLinked"
+	KeyLastSignInMethod        = "errors.lastSignInMethod"
+	KeySessionRequired         = "errors.sessionRequired"
+	KeyApiTokenLimit           = "errors.apiTokenLimit"
+	KeyScopeNotAllowed         = "errors.scopeNotAllowed"
 )

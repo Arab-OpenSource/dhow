@@ -137,6 +137,50 @@ func RunnerRevoked() *AppError {
 	return New(http.StatusConflict, CodeRunnerRevoked, KeyRunnerRevoked)
 }
 
+func OidcFlowInvalid() *AppError {
+	return New(http.StatusBadRequest, CodeOidcFlowInvalid, KeyOidcFlowInvalid)
+}
+
+func OidcSignInFailed() *AppError {
+	return New(http.StatusUnauthorized, CodeOidcSignInFailed, KeyOidcSignInFailed)
+}
+
+func OidcNotLinked() *AppError {
+	return New(http.StatusUnauthorized, CodeOidcNotLinked, KeyOidcNotLinked)
+}
+
+func OidcDomainNotAllowed() *AppError {
+	return New(http.StatusForbidden, CodeOidcDomainNotAllowed, KeyOidcDomainNotAllowed)
+}
+
+func OidcProviderUnavailable() *AppError {
+	return New(http.StatusServiceUnavailable, CodeOidcProviderUnavailable, KeyOidcProviderUnavailable)
+}
+
+func OidcIdentityInUse() *AppError {
+	return New(http.StatusConflict, CodeOidcIdentityInUse, KeyOidcIdentityInUse)
+}
+
+func OidcAlreadyLinked() *AppError {
+	return New(http.StatusConflict, CodeOidcAlreadyLinked, KeyOidcAlreadyLinked)
+}
+
+func LastSignInMethod() *AppError {
+	return New(http.StatusConflict, CodeLastSignInMethod, KeyLastSignInMethod)
+}
+
+func SessionRequired() *AppError {
+	return New(http.StatusForbidden, CodeSessionRequired, KeySessionRequired)
+}
+
+func ApiTokenLimit() *AppError {
+	return New(http.StatusConflict, CodeApiTokenLimit, KeyApiTokenLimit)
+}
+
+func ScopeNotAllowed() *AppError {
+	return New(http.StatusForbidden, CodeScopeNotAllowed, KeyScopeNotAllowed)
+}
+
 func SecretsUnavailable() *AppError {
 	return New(http.StatusUnprocessableEntity, CodeSecretsUnavailable, KeySecretsUnavailable)
 }
@@ -147,4 +191,20 @@ func JobFinished() *AppError {
 
 func JobQueueFull() *AppError {
 	return New(http.StatusTooManyRequests, CodeJobQueueFull, KeyJobQueueFull)
+}
+
+func AttemptNotFound() *AppError {
+	return New(http.StatusNotFound, CodeAttemptNotFound, KeyAttemptNotFound)
+}
+
+func TooManyStreams(retryAfter time.Duration) *AppError {
+	e := New(http.StatusTooManyRequests, CodeTooManyStreams, KeyTooManyStreams)
+	e.RetryAfter = retryAfter
+	return e
+}
+
+func RateLimited(retryAfter time.Duration) *AppError {
+	e := New(http.StatusTooManyRequests, CodeRateLimited, KeyRateLimited)
+	e.RetryAfter = retryAfter
+	return e
 }

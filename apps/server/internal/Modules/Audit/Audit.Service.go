@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
@@ -23,6 +24,9 @@ import (
 const (
 	walkBatch        = 500
 	maxDataEntries   = 24
+	viaKey           = "Via"
+	viaIDKey         = "ViaId"
+	viaAPIToken      = "api_token"
 	maxDataValueLen  = 256
 	instanceChainKey = "instance"
 )
@@ -67,6 +71,15 @@ func (s *Service) Handle(ctx context.Context, ev eventbus.Event) error {
 	return nil
 }
 
+func withCredential(ctx context.Context, data map[string]string) map[string]string {
+	p, ok := auth.PrincipalFrom(ctx)
+	if !ok || !p.ViaToken() {
+		return data
+	}
+	data[viaKey], data[viaIDKey] = viaAPIToken, p.TokenID.String()
+	return data
+}
+
 func chainKey(org *uuid.UUID) string {
 	if org == nil {
 		return instanceChainKey
@@ -99,7 +112,7 @@ func (s *Service) append(ctx context.Context, org *uuid.UUID, action string, a e
 			TargetType:     a.TargetType,
 			TargetID:       a.TargetID,
 			IP:             a.IP,
-			Data:           sanitizeData(a.Data),
+			Data:           withCredential(ctx, sanitizeData(a.Data)),
 			PrevHash:       prev,
 		}
 		if ev.Hash, err = models.ComputeHash(prev, ev); err != nil {
@@ -127,7 +140,7 @@ func sanitizeData(in map[string]string) map[string]string {
 		if len(out) >= maxDataEntries {
 			break
 		}
-		if logging.IsSensitiveKey(k) {
+		if logging.IsSensitiveKey(k) || k == viaKey || k == viaIDKey {
 			continue
 		}
 		v := in[k]

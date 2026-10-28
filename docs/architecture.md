@@ -161,9 +161,10 @@ trigger (push / tag / PR / manual / API / external-CI artifact / schedule)
 
 - The runner sends **sequenced chunks** of the form `(attempt_id, seq, ts, stream, bytes)`. `seq` starts at 1 and has no gaps, so appends are idempotent and gaps are detected (ADR-0046).
 - From M3, chunks are stored in a Postgres table partitioned by day. Retention drops whole partitions. With M4's blob store, finished attempts are compacted into object-storage segments with an offset index.
-- The UI reads history with `GET .../jobs/{jobId}/logs?FromSeq=`, then follows over SSE. Clients resume with `Last-Event-ID` from the last `seq` they saw, so there are no gaps and no duplicates. Instances fan out new chunks through `LISTEN/NOTIFY`.
+- The runner masks secrets before a chunk leaves it, in memory and in its spill file (ADR-0045). The server stores the chunks as it receives them and never masks again, and it never writes the content of a log into its own log.
+- The UI reads history with `GET .../jobs/{jobId}/logs?FromSeq=`, then follows over SSE. Clients resume with `Last-Event-ID` from the last `seq` they saw, so there are no gaps and no duplicates. Instances fan out new chunks through `LISTEN/NOTIFY`, and every stream reads its own rows after the last `seq` it sent, so a slow client never holds the others back.
 - Steps are collapsible groups, and the UI parses ANSI into styled spans. Raw output is never injected as HTML.
-- Logs have a size cap per job (configurable) and a retention policy per organization.
+- Logs have a size cap per attempt (`DHOW_JOB_LOG_MAX_BYTES`) and a retention per instance (`DHOW_LOG_RETENTION_DAYS`). Retention per organization comes with the segments in M4.
 
 ## 6. Secrets
 

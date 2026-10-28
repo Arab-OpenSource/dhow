@@ -277,7 +277,7 @@ UPDATE "JobAttempts"
 SET "State" = $1, "FailureReason" = $2, "ExitCode" = $3::integer,
     "CompletionDigest" = $4::bytea, "FinishedAt" = now(), "UpdatedAt" = now()
 WHERE "Id" = $5 AND "State" IN ('leased', 'running')
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt"
 `
 
 type FinishAttemptParams struct {
@@ -317,6 +317,8 @@ func (q *Queries) FinishAttempt(ctx context.Context, arg FinishAttemptParams) (J
 		&i.CompletionDigest,
 		&i.LastSeq,
 		&i.LogBytes,
+		&i.LogTruncatedAt,
+		&i.LateResultLoggedAt,
 	)
 	return i, err
 }
@@ -462,7 +464,7 @@ func (q *Queries) GetLeaseAttempt(ctx context.Context, id uuid.UUID) (GetLeaseAt
 const insertAttempt = `-- name: InsertAttempt :one
 INSERT INTO "JobAttempts" ("Id", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken")
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt"
 `
 
 type InsertAttemptParams struct {
@@ -504,6 +506,8 @@ func (q *Queries) InsertAttempt(ctx context.Context, arg InsertAttemptParams) (J
 		&i.CompletionDigest,
 		&i.LastSeq,
 		&i.LogBytes,
+		&i.LogTruncatedAt,
+		&i.LateResultLoggedAt,
 	)
 	return i, err
 }
@@ -675,7 +679,7 @@ func (q *Queries) JobCancelRequestedAt(ctx context.Context, id uuid.UUID) (*time
 }
 
 const listJobAttempts = `-- name: ListJobAttempts :many
-SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes"
+SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt"
 FROM "JobAttempts"
 WHERE "JobId" = $1 AND "OrganizationId" = $2 AND NOT "IsDeleted"
 ORDER BY "Number"
@@ -715,6 +719,8 @@ func (q *Queries) ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams
 			&i.CompletionDigest,
 			&i.LastSeq,
 			&i.LogBytes,
+			&i.LogTruncatedAt,
+			&i.LateResultLoggedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1369,7 +1375,7 @@ const startAttempt = `-- name: StartAttempt :one
 UPDATE "JobAttempts"
 SET "State" = 'running', "StartedAt" = now(), "UpdatedAt" = now()
 WHERE "Id" = $1 AND "State" = 'leased'
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt"
 `
 
 func (q *Queries) StartAttempt(ctx context.Context, id uuid.UUID) (JobAttempt, error) {
@@ -1395,6 +1401,8 @@ func (q *Queries) StartAttempt(ctx context.Context, id uuid.UUID) (JobAttempt, e
 		&i.CompletionDigest,
 		&i.LastSeq,
 		&i.LogBytes,
+		&i.LogTruncatedAt,
+		&i.LateResultLoggedAt,
 	)
 	return i, err
 }

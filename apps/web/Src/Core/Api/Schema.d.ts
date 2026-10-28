@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * Readiness probe
-         * @description Returns 200 when the database is reachable and fully migrated, otherwise 503.
+         * @description Returns 200 when the database is reachable and fully migrated and today's job log partition exists, otherwise 503.
          */
         get: operations["getReadiness"];
         put?: never;
@@ -454,6 +454,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signed-in user's display preferences
+         * @description The language, the active theme, the custom themes and the chosen organization. `Saved` is false until the user saves preferences for the first time, so the web app can move what it kept in the browser to the server. An organization the user is no longer a member of comes back as null.
+         */
+        get: operations["getPreferences"];
+        /**
+         * Replace the signed-in user's display preferences
+         * @description Replaces every field. `ThemeId` must name a system theme or one of `CustomThemes`. A custom theme sets every theme color as lower-case `#rrggbb`. `OrganizationId` must be an organization the user belongs to, or null.
+         */
+        put: operations["savePreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/password": {
         parameters: {
             query?: never;
@@ -468,6 +492,143 @@ export interface paths {
          */
         put: operations["changePassword"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The external sign-in providers this instance offers
+         * @description Lists the providers from `DHOW_OIDC_PROVIDERS` in their configured order. Never contains a secret.
+         */
+        get: operations["listOidcProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start signing in with an external provider
+         * @description Returns the provider's authorization URL with PKCE (S256), a state and, for OpenID Connect, a nonce. Sets the `__Host-dhow_oidc` cookie (`HttpOnly; Secure; SameSite=Strict; Path=/`, 10 minutes) that binds the flow to this browser. The browser then opens the URL, and the provider sends it back to `/oidc/callback/<provider>`.
+         */
+        post: operations["beginOidcLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish signing in with an external provider
+         * @description Needs the `__Host-dhow_oidc` cookie of the flow and the `Code` and `State` the provider returned. The flow works once, whatever the outcome. The identity is matched by issuer and subject only, never by email; an identity that is not linked to an account answers `OIDC_NOT_LINKED`. An account with a second factor answers 202 with the same `mfa_pending` challenge as the password step. Success sets the session cookie and replaces any session the request carried.
+         */
+        post: operations["completeOidcLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The external identities linked to the signed-in user */
+        get: operations["listLinkedIdentities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/identities/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start linking an external identity
+         * @description Needs a current factor, like adding a passkey. The flow is bound to this session and this browser, and an account links at most one identity per provider.
+         */
+        post: operations["beginOidcLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/identities/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish linking an external identity
+         * @description Needs the flow cookie from the same session. An identity already linked to any account answers `OIDC_IDENTITY_IN_USE`. Revokes every other session of the user.
+         */
+        post: operations["completeOidcLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/identities/{id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unlink an external identity
+         * @description Needs a current factor. Refused with `LAST_SIGN_IN_METHOD` when the account would have no way left to sign in. Revokes every other session. Another user's identity id answers 404.
+         */
+        post: operations["removeLinkedIdentity"];
         delete?: never;
         options?: never;
         head?: never;
@@ -822,6 +983,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/api-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every API token of the organization
+         * @description Needs `token.manage` (Owner or Admin). Never contains a token value.
+         */
+        get: operations["listOrganizationApiTokens"];
+        put?: never;
+        /**
+         * Create an API token for this organization
+         * @description Needs a browser session and a current factor. Every scope must be allowed by the caller's effective role now, and on every later request the token can do only what both its scopes and its creator's role at that moment allow. The value (`dhow_pat_...`) is in this response only; the server keeps an HMAC of it. A user has at most 50 active tokens.
+         */
+        post: operations["createApiToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/api-tokens/{tokenId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke any API token of the organization
+         * @description Needs `token.manage`. Idempotent.
+         */
+        post: operations["revokeOrganizationApiToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/api-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in user's API tokens in every organization */
+        get: operations["listMyApiTokens"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/api-tokens/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke one of the signed-in user's API tokens
+         * @description Idempotent. Another user's token id answers 404.
+         */
+        post: operations["revokeMyApiToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invitations/preview": {
         parameters: {
             query?: never;
@@ -1045,7 +1287,7 @@ export interface paths {
         put?: never;
         /**
          * Create a job from a job spec
-         * @description Needs `job.create`. The spec is validated and normalized (defaults filled in) and the job is queued. The image must be pinned by digest. A spec that references secrets is refused with 422 `SECRETS_UNAVAILABLE` while no secret store is configured, and an organization with 1000 queued jobs gets 429 `JOB_QUEUE_FULL`.
+         * @description Needs `job.create`. The spec is validated and normalized (defaults filled in) and the job is queued. The image must be pinned by digest. A spec that references secrets is refused with 422 `SECRETS_UNAVAILABLE` while no secret store is configured, and an organization with 1000 queued jobs gets 429 `JOB_QUEUE_FULL`. API tokens cannot create jobs.
          */
         post: operations["createJob"];
         delete?: never;
@@ -1088,6 +1330,46 @@ export interface paths {
          * @description Needs `job.cancel`. Idempotent. A queued job is canceled at once. A leased or running job is marked, its runner sees the request on its next heartbeat and no step may begin after it. A job that already finished in another state answers 409 `JOB_FINISHED`.
          */
         post: operations["cancelJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/jobs/{jobId}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a page of the log of a job attempt
+         * @description Needs `log.read`, which a viewer does not have. Reads the chunks of one attempt (the latest without `Attempt`) from `FromSeq` on, in order. A page holds at most `Limit` chunks and about 1 MiB of text, and `NextSeq` is set while more chunks follow. `Text` is the stored bytes as UTF-8, with every invalid byte replaced by U+FFFD. A job without that attempt answers 404 `ATTEMPT_NOT_FOUND`, and a job of another organization 404 `NOT_FOUND`. More than about 5 pages a second from one user answers 429 `RATE_LIMITED` with `Retry-After`.
+         */
+        get: operations["getJobLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/jobs/{jobId}/logs/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Follow the log of a job attempt as server-sent events
+         * @description Needs `log.read`. Streams the chunks of one attempt (the latest without `Attempt`) after `Last-Event-ID`, or from `FromSeq`, or from the start. Events: `chunk` (its `id` is `<attempt>:<seq>` and its data a `JobLogChunk`), `status` (data `JobLogStatus`, sent first and on every change of the attempt) and `end` (data `JobLogStatus`, after the last chunk of a finished attempt; the stream then closes). A comment arrives every 15 seconds, and the session is checked again each time, so a signed-out or revoked session ends the stream within 15 seconds; the check never extends the session. One user may hold 10 streams, one organization a tenth of `DHOW_SSE_MAX_STREAMS` (at least 20) and one server instance `DHOW_SSE_MAX_STREAMS`; more answer 429 `TOO_MANY_STREAMS` with `Retry-After`. Opening streams quickly one after another answers 429 `RATE_LIMITED`. A client that cannot keep up is disconnected and resumes with `Last-Event-ID`.
+         */
+        get: operations["streamJobLogs"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1144,7 +1426,7 @@ export interface components {
         };
         HealthCheck: {
             /** @enum {string} */
-            Name: "database" | "migrations";
+            Name: "database" | "migrations" | "log_partitions";
             Ok: boolean;
         };
         Meta: {
@@ -1723,6 +2005,150 @@ export interface components {
         InvitationAcceptedResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["InvitationAccepted"];
         };
+        OidcProviderId: string;
+        /** @enum {string} */
+        OidcProviderKind: "oidc" | "github";
+        OidcProvider: {
+            Id: components["schemas"]["OidcProviderId"];
+            Name: string;
+            Kind: components["schemas"]["OidcProviderKind"];
+        };
+        OidcProviderListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["OidcProvider"][];
+        };
+        OidcAuthorizeRequest: {
+            Provider: components["schemas"]["OidcProviderId"];
+        };
+        OidcLinkRequest: {
+            Provider: components["schemas"]["OidcProviderId"];
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        OidcAuthorization: {
+            /** @description The provider's authorization endpoint with the flow parameters. */
+            AuthorizationUrl: string;
+            /** Format: date-time */
+            ExpiresAt: string;
+        };
+        OidcAuthorizationResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["OidcAuthorization"];
+        };
+        OidcCallbackRequest: {
+            Provider: components["schemas"]["OidcProviderId"];
+            /** @description The authorization code. Works once and is never logged. */
+            Code: string;
+            State: string;
+        };
+        LinkedIdentity: {
+            /** Format: uuid */
+            Id: string;
+            Provider: components["schemas"]["OidcProviderId"];
+            /** @description The provider's label, or its id when the provider is no longer configured. */
+            ProviderName: string;
+            /** @description The verified email the provider reported at the last sign-in, or empty. */
+            Email: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            LastUsedAt?: string | null;
+        };
+        LinkedIdentityListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["LinkedIdentity"][];
+        };
+        LinkedIdentityChange: {
+            Identity: components["schemas"]["LinkedIdentity"];
+            /** @description How many other sessions were revoked. */
+            Revoked: number;
+        };
+        LinkedIdentityChangeResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["LinkedIdentityChange"];
+        };
+        /** @enum {string} */
+        ApiTokenScope: "org.read" | "org.update" | "member.read" | "member.manage" | "audit.read" | "runner.read" | "runner.manage" | "job.read" | "job.cancel";
+        /**
+         * @description `inactive` means the creator is no longer a member of the organization, so the token does nothing until it expires or is revoked.
+         * @enum {string}
+         */
+        ApiTokenStatus: "active" | "expired" | "revoked" | "inactive";
+        ApiTokenOwner: {
+            /** Format: uuid */
+            Id: string;
+            Name: string;
+            Email: string;
+        };
+        ApiToken: {
+            /** Format: uuid */
+            Id: string;
+            /** Format: uuid */
+            OrganizationId: string;
+            OrganizationName: string;
+            Name: string;
+            Scopes: components["schemas"]["ApiTokenScope"][];
+            Status: components["schemas"]["ApiTokenStatus"];
+            Owner: components["schemas"]["ApiTokenOwner"];
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            ExpiresAt: string;
+            /**
+             * Format: date-time
+             * @description Updated at most once a minute.
+             */
+            LastUsedAt?: string | null;
+            LastUsedIp: string;
+            /** Format: date-time */
+            RevokedAt?: string | null;
+        };
+        ApiTokenResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["ApiToken"];
+        };
+        ApiTokenListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["ApiToken"][];
+        };
+        CreateApiTokenRequest: {
+            Name: string;
+            Scopes: components["schemas"]["ApiTokenScope"][];
+            /** @description Every token expires. The longest is 366 days. */
+            ExpiresInDays: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        CreatedApiToken: {
+            Token: components["schemas"]["ApiToken"];
+            /** @description The token, `dhow_pat_` followed by 43 base64url characters. Send it as `Authorization: Bearer <value>`. Shown only in this response. */
+            Value: string;
+        };
+        CreatedApiTokenResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["CreatedApiToken"];
+        };
+        /** @description One `#rrggbb` color for every theme token, keyed by the token name (`canvas`, `t1`, `a1`, ...). */
+        ThemeColors: {
+            [key: string]: string;
+        };
+        CustomTheme: {
+            Id: string;
+            Name: string;
+            Colors: components["schemas"]["ThemeColors"];
+        };
+        SavePreferencesRequest: {
+            Locale: components["schemas"]["Locale"];
+            ThemeId: string;
+            CustomThemes: components["schemas"]["CustomTheme"][];
+            /** Format: uuid */
+            OrganizationId: string | null;
+        };
+        Preferences: {
+            Locale: components["schemas"]["Locale"];
+            ThemeId: string;
+            CustomThemes: components["schemas"]["CustomTheme"][];
+            /** Format: uuid */
+            OrganizationId: string | null;
+            /** @description False until the first save. */
+            Saved: boolean;
+            /** Format: date-time */
+            UpdatedAt?: string | null;
+        };
+        PreferencesResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Preferences"];
+        };
         /** @enum {string} */
         JobState: "queued" | "leased" | "running" | "succeeded" | "failed" | "canceled" | "timed_out" | "lost";
         /** @enum {string} */
@@ -1876,6 +2302,50 @@ export interface components {
         JobDetailResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["JobDetail"];
         };
+        /** @enum {string} */
+        JobLogStream: "stdout" | "stderr" | "system";
+        JobLogChunk: {
+            /** Format: int64 */
+            Seq: number;
+            Stream: components["schemas"]["JobLogStream"];
+            StepIndex?: number;
+            /**
+             * Format: date-time
+             * @description The runner's clock, for display only.
+             */
+            EmittedAt?: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** @description The bytes as UTF-8 with invalid bytes replaced by U+FFFD. Render it as text, never as HTML, each line with `dir="auto"`. */
+            Text: string;
+        };
+        JobLogStatus: {
+            Attempt: number;
+            State: components["schemas"]["JobAttemptState"];
+            Truncated: boolean;
+        };
+        JobLogPage: {
+            Attempt: number;
+            /** Format: uuid */
+            AttemptId: string;
+            State: components["schemas"]["JobAttemptState"];
+            /**
+             * Format: int64
+             * @description The highest sequence number the attempt has reached so far.
+             */
+            LastSeq: number;
+            /** @description The log reached `DHOW_JOB_LOG_MAX_BYTES` and later output was dropped. */
+            Truncated: boolean;
+            /**
+             * Format: int64
+             * @description Pass it as `FromSeq` to read on. Absent when this page reached the end so far.
+             */
+            NextSeq?: number;
+            Chunks: components["schemas"]["JobLogChunk"][];
+        };
+        JobLogPageResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["JobLogPage"];
+        };
         JobListResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Job"][];
         };
@@ -1896,6 +2366,13 @@ export interface components {
         RunnerId: string;
         TokenId: string;
         JobId: string;
+        /** @description The attempt number. Without it, the latest attempt. */
+        LogAttempt: number;
+        /** @description The first chunk to return. */
+        LogFromSeq: number;
+        LogLimit: number;
+        /** @description The `id` of the last chunk event the client received, `<attempt>:<seq>`. When it names the attempt the stream follows, the stream resumes after that seq and ignores `FromSeq`. An id of another attempt (the job was retried while the client was away) is ignored, so the new attempt starts from `FromSeq` or the beginning. */
+        LastEventId: string;
         JobStateFilter: components["schemas"]["JobState"];
         UserId: string;
         TeamId: string;
@@ -2509,6 +2986,52 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    getPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The preferences. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencesResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    savePreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePreferencesRequest"];
+            };
+        };
+        responses: {
+            /** @description The saved preferences. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencesResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     changePassword: {
         parameters: {
             query?: never;
@@ -2523,6 +3046,194 @@ export interface operations {
         };
         responses: {
             /** @description The password was changed and the other sessions were revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokedCountResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listOidcProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The configured providers, possibly none. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcProviderListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    beginOidcLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcAuthorizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Where to send the browser. */
+            200: {
+                headers: {
+                    /** @description The `__Host-dhow_oidc` flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcAuthorizationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    completeOidcLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed in. */
+            200: {
+                headers: {
+                    /** @description The session cookie, and an expired flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            /** @description The identity is right and the second step is required. */
+            202: {
+                headers: {
+                    /** @description The `__Host-dhow_mfa` challenge cookie, and an expired flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaPendingResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listLinkedIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The linked identities, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkedIdentityListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    beginOidcLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Where to send the browser. */
+            200: {
+                headers: {
+                    /** @description The `__Host-dhow_oidc` flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcAuthorizationResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    completeOidcLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description The identity was linked. */
+            200: {
+                headers: {
+                    /** @description An expired flow cookie. */
+                    "Set-Cookie": string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkedIdentityChangeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    removeLinkedIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CurrentFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description The identity was unlinked. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3124,6 +3835,124 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    listOrganizationApiTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tokens, newest first, at most 200. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateApiTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description The token and, this once, its value. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedApiTokenResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeOrganizationApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                tokenId: components["parameters"]["TokenId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The revoked token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listMyApiTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tokens, newest first, at most 200. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeMyApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The revoked token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     previewInvitation: {
         parameters: {
             query?: never;
@@ -3524,6 +4353,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getJobLogs: {
+        parameters: {
+            query?: {
+                /** @description The attempt number. Without it, the latest attempt. */
+                Attempt?: components["parameters"]["LogAttempt"];
+                /** @description The first chunk to return. */
+                FromSeq?: components["parameters"]["LogFromSeq"];
+                Limit?: components["parameters"]["LogLimit"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                jobId: components["parameters"]["JobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of the log. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobLogPageResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    streamJobLogs: {
+        parameters: {
+            query?: {
+                /** @description The attempt number. Without it, the latest attempt. */
+                Attempt?: components["parameters"]["LogAttempt"];
+                /** @description The first chunk to return. */
+                FromSeq?: components["parameters"]["LogFromSeq"];
+            };
+            header?: {
+                /** @description The `id` of the last chunk event the client received, `<attempt>:<seq>`. When it names the attempt the stream follows, the stream resumes after that seq and ignores `FromSeq`. An id of another attempt (the job was retried while the client was away) is ignored, so the new attempt starts from `FromSeq` or the beginning. */
+                "Last-Event-ID"?: components["parameters"]["LastEventId"];
+            };
+            path: {
+                id: components["parameters"]["Id"];
+                jobId: components["parameters"]["JobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An event stream. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
                 };
             };
             default: components["responses"]["Error"];
