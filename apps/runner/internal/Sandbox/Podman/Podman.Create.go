@@ -30,7 +30,7 @@ type layout struct {
 func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile string) []string {
 	r := spec.Resources
 	mem := r.MemoryBytes
-	diskMount := tmpfsMount(workspacePath, r.DiskBytes, "mode=0755,nosuid,nodev,U")
+	diskMount := tmpfsMount(workspacePath, r.DiskBytes, "tmpfs-mode=0755,nosuid,nodev,U")
 	if spec.DiskMode == config.DiskModeTmpfs {
 		mem += r.DiskBytes
 	} else {
@@ -67,8 +67,8 @@ func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile string) []string
 		"--mount", fmt.Sprintf("type=bind,src=%s,dst=%s,ro=true", l.agentPath, agentMount),
 		"--mount", fmt.Sprintf("type=bind,src=%s,dst=%s,ro=true", l.controlDir, controlMount),
 		"--mount", diskMount,
-		"--mount", tmpfsMount(tmpPath, r.DiskBytes, "mode=1777,nosuid,nodev"),
-		"--mount", tmpfsMount(secretsMount, secretsTmpfs, "mode=0700,noexec,nosuid,nodev,U"),
+		"--mount", tmpfsMount(tmpPath, r.DiskBytes, "tmpfs-mode=1777,nosuid,nodev"),
+		"--mount", tmpfsMount(secretsMount, secretsTmpfs, "tmpfs-mode=0700,noexec,nosuid,nodev,U"),
 		"--workdir=" + workspacePath,
 		"--entrypoint=" + entrypoint,
 		"--", spec.Image,
