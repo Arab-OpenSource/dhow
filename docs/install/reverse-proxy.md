@@ -13,7 +13,8 @@ Every configuration on this page is the exact file that `make proxy-check` runs 
 | `Host` and `Origin` passed through unchanged | Every request that is not `GET`, `HEAD` or `OPTIONS` must carry an `Origin` equal to `DHOW_PUBLIC_URL`, or Dhow answers `403 CSRF_FAILED`. A proxy that drops or rewrites `Origin` breaks setup, sign-in and every change. |
 | `X-Forwarded-For` with the client address appended, and `X-Forwarded-Proto` | Dhow records the client address in the access log and the audit log, and throttles sign-in attempts per address. It reads `X-Forwarded-For` only from the proxies listed in `DHOW_TRUSTED_PROXIES`. |
 | A request body limit a little above 1 MiB | Dhow rejects bodies over 1 MiB with `413 PAYLOAD_TOO_LARGE`. The configurations below stop anything over 2 MB at the proxy and leave the exact error to Dhow. |
-| No response buffering and long read timeouts under `/api/v1/` | Job logs will stream from `/api/v1/` as server-sent events. A buffering proxy holds events back until its buffer fills, so logs arrive late and in bursts, and a 60-second read timeout cuts a stream while a quiet build step prints nothing. Setting this now means the proxy needs no change when log streaming ships. |
+| No response buffering and a long read timeout on the log stream | Live job logs stream from `/api/v1/organizations/<id>/jobs/<jobId>/logs/stream` as server-sent events. A buffering proxy holds events back until its buffer fills, so logs arrive late and in bursts. Dhow sends a comment every 15 seconds, but a quiet build step can still outlast a short read timeout, so the stream path gets one hour. Dhow also sends `X-Accel-Buffering: no` on the stream, which nginx honors on its own. |
+| A read timeout above 25 seconds on `/runner-api/` | Runners wait for work with long polls that hold a request open for up to 25 seconds, and send log batches of up to 1 MiB. The configurations below give the runner plane 90 seconds. |
 | HSTS | Dhow sends `Strict-Transport-Security` itself. The proxies below also set it, so it is present on responses the proxy makes on its own, such as redirects and errors while Dhow restarts, and they replace Dhow's copy so the header appears exactly once. |
 
 Dhow listens on `127.0.0.1:8080` by default (`DHOW_LISTEN_ADDR`), and the [Compose stack](compose.md) publishes it on `127.0.0.1:8080` of the host. The nginx and Caddy configurations below proxy to that address, so they work for both.
@@ -85,12 +86,18 @@ server {
         proxy_pass http://127.0.0.1:8080;
     }
 
-    location /api/v1/ {
+    location ~ ^/api/v1/organizations/[^/]+/jobs/[^/]+/logs/stream$ {
         proxy_pass http://127.0.0.1:8080;
         proxy_buffering off;
         proxy_cache off;
         proxy_read_timeout 1h;
         proxy_send_timeout 1h;
+    }
+
+    location /runner-api/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
     }
 }
 ```
@@ -118,7 +125,8 @@ What the configuration does:
 - nginx forwards `Origin`, cookies and every other request header unchanged by default. Do not add `proxy_set_header Origin` or `proxy_hide_header` for request headers.
 - `$proxy_add_x_forwarded_for` appends the client address to any `X-Forwarded-For` the client sent. Dhow reads the list from the right, so a forged entry on the left changes nothing. `X-Forwarded-Proto` carries `https`.
 - `client_max_body_size 2m` stops oversized bodies before they reach Dhow.
-- The `/api/v1/` location turns off `proxy_buffering` and raises the read and send timeouts to one hour for streamed logs. The `map` and the `Upgrade` and `Connection` headers let WebSocket upgrades through as well.
+- The regular-expression location matches only the log stream. It turns off `proxy_buffering` and raises the read and send timeouts to one hour, so every event reaches the browser at once and a quiet build step does not cut the stream. Every other response keeps nginx's buffering.
+- The `/runner-api/` location gives runner long polls (up to 25 seconds) and log uploads 90 seconds. The `map` and the `Upgrade` and `Connection` headers let WebSocket upgrades through as well.
 - `proxy_hide_header` and `add_header ... always` replace Dhow's `Strict-Transport-Security` with one copy that is also sent on nginx's own responses.
 - To accept IPv6 clients, add `listen [::]:80;` and `listen [::]:443 ssl;` next to the IPv4 `listen` lines. The proxy check runs without IPv6, so those two lines are not part of the tested file.
 
@@ -138,10 +146,17 @@ dhow.example.com {
 		max_size 2MB
 	}
 
-	reverse_proxy 127.0.0.1:8080 {
+	@logstream path_regexp ^/api/v1/organizations/[^/]+/jobs/[^/]+/logs/stream$
+	reverse_proxy @logstream 127.0.0.1:8080 {
 		flush_interval -1
 		transport http {
 			read_timeout 1h
+		}
+	}
+
+	reverse_proxy 127.0.0.1:8080 {
+		transport http {
+			read_timeout 90s
 		}
 	}
 }
@@ -154,7 +169,8 @@ What the configuration does:
 
 - `reverse_proxy` forwards `Host`, `Origin` and cookies unchanged and sets `X-Forwarded-For` and `X-Forwarded-Proto` itself. It replaces any `X-Forwarded-For` that a client sends, unless you list that client in Caddy's own `trusted_proxies` option.
 - `request_body` stops bodies over 2 MB.
-- `flush_interval -1` writes every chunk from Dhow to the browser at once, and `read_timeout 1h` keeps a quiet stream open.
+- The `@logstream` matcher sends the log stream through its own `reverse_proxy` with `flush_interval -1`, which writes every event to the browser at once, and `read_timeout 1h`, which keeps a quiet stream open.
+- Every other request goes through the second `reverse_proxy`, whose `read_timeout 90s` covers runner long polls of up to 25 seconds on `/runner-api/`.
 - `header >Strict-Transport-Security` sets HSTS after the response comes back from Dhow, so it replaces Dhow's copy instead of adding a second one.
 
 ## Traefik in the Compose stack
@@ -238,7 +254,7 @@ What the configuration does:
 
 - Traefik passes `Host`, `Origin` and cookies through unchanged. It sets `X-Forwarded-For` and `X-Forwarded-Proto` itself and drops the `X-Forwarded-*` headers that clients send.
 - Traefik has a fixed address, `172.30.250.2`, on its own `dhow_proxy` network, and the file sets `DHOW_TRUSTED_PROXIES` to it. If `172.30.250.0/24` is already used on the host, change the subnet, `ipv4_address` and `DHOW_TRUSTED_PROXIES` together.
-- Traefik streams responses without buffering by default. `writeTimeout=0s` makes sure a long stream is never cut, and `readTimeout=60s` limits how long a client may take to send its request.
+- Traefik streams responses without buffering by default, so the log stream needs no rule of its own. `writeTimeout=0s` makes sure a long stream is never cut, and `readTimeout=60s` limits how long a client may take to send its request, a 1 MiB log batch from a runner included. Traefik sets no timeout on the response from Dhow, so runner long polls on `/runner-api/` need nothing either.
 - Traefik has no body limit of its own that leaves responses alone: its buffering middleware would also buffer responses and break log streams. Dhow's own 1 MiB limit applies instead.
 - The `dhow-hsts` middleware sets HSTS, and the response carries it once.
 - `ACME_CA_SERVER` defaults to Let's Encrypt production. To try the setup first, set `ACME_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory` in `.env`. When it works, remove that line, run `docker compose down`, delete the `dhow_letsencrypt` volume so the staging certificate is gone, and start again.
@@ -318,5 +334,6 @@ Caddy and Traefik replace the `X-Forwarded-For` they receive from untrusted send
 - The `Host`, `Origin`, `X-Forwarded-For` and `X-Forwarded-Proto` headers as they reach Dhow's socket, captured with `tcpdump` next to Dhow.
 - The client address in Dhow's access log and in the audit event of a sign-in, with a forged `X-Forwarded-For` in the request.
 - The `__Host-dhow_session` cookie attributes, the cookie reaching Dhow, and a 3 MiB body refused with `413`.
+- The runner plane answering through the proxy on `/runner-api/`, and the log stream path reaching Dhow with the session cookie.
 
 A Go test in `deploy/proxy-check` fails if a configuration on this page differs from the file the script runs. The check does not run certbot, Let's Encrypt or Cloudflare, and it runs without IPv6.

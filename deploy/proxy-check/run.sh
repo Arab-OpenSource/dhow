@@ -279,6 +279,16 @@ check_scenario() {
     login_recorded_from "$out/audit.events" "$expected_ip"
   expect "the audit log never records the spoofed $spoofed_ip" absent "$spoofed_ip" "$out/audit.body"
 
+  printf 'Runner plane and log stream through %s\n' "$name"
+  status=$(request runner POST /runner-api/dhow.runner.v1.AuthService/Challenge \
+    --header 'Content-Type: application/json' --header 'Dhow-Protocol: 1' --data '{}')
+  expect "/runner-api/ reaches Dhow's runner plane (400, got $status)" test "$status" = 400
+  expect "the runner plane answer comes from Dhow" grep -q 'VALIDATION_FAILED: Runner' "$out/runner.body"
+  status=$(request stream GET "/api/v1/organizations/$org_id/jobs/00000000-0000-7000-8000-000000000000/logs/stream" \
+    --header "Cookie: $cookie" --header 'Accept: text/event-stream')
+  expect "the log stream path reaches Dhow with the session (404 for a missing job, got $status)" test "$status" = 404
+  expect "the log stream answer comes from Dhow" grep -q '"Code":"NOT_FOUND"' "$out/stream.body"
+
   printf 'Request size through %s\n' "$name"
   head -c $((3 << 20)) /dev/zero | tr '\0' a >"$out/big.body.in"
   status=$(request big POST /api/v1/sessions --header 'Content-Type: application/json' \

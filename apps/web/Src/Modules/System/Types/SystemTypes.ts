@@ -6,8 +6,12 @@ export type THealthStatus = components['schemas']['HealthStatus'];
 export type THealthCheck = components['schemas']['HealthCheck'];
 export type TCheckName = THealthCheck['Name'];
 
-export const CHECK_NAMES = ['database', 'migrations'] as const satisfies readonly TCheckName[];
+export const CHECK_NAMES = ['database', 'migrations', 'log_partitions'] as const satisfies readonly TCheckName[];
 
-export const CHECK_ICONS: Record<TCheckName, TIconName> = { database: 'server', migrations: 'layers' };
+export const CHECK_ICONS: Record<TCheckName, TIconName> = {
+  database: 'server',
+  migrations: 'layers',
+  log_partitions: 'file',
+};
 
 export const isCheckName = (value: unknown): value is TCheckName => CHECK_NAMES.some((name) => name === value);

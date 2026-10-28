@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"math/rand/v2"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,51 +14,69 @@ import (
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 )
 
+type waiters map[uuid.UUID]map[chan struct{}]struct{}
+
 type hub struct {
 	listen Listener
 	log    *slog.Logger
 
 	mu   sync.Mutex
-	subs map[uuid.UUID]map[chan struct{}]struct{}
+	subs waiters
+	logs waiters
 }
 
 func newHub(listen Listener, log *slog.Logger) *hub {
-	return &hub{listen: listen, log: log, subs: map[uuid.UUID]map[chan struct{}]struct{}{}}
+	return &hub{listen: listen, log: log, subs: waiters{}, logs: waiters{}}
 }
 
-func (h *hub) subscribe(org uuid.UUID) (<-chan struct{}, func()) {
+func (h *hub) add(set waiters, key uuid.UUID) (<-chan struct{}, func()) {
 	ch := make(chan struct{}, 1)
 	h.mu.Lock()
-	if h.subs[org] == nil {
-		h.subs[org] = map[chan struct{}]struct{}{}
+	if set[key] == nil {
+		set[key] = map[chan struct{}]struct{}{}
 	}
-	h.subs[org][ch] = struct{}{}
+	set[key][ch] = struct{}{}
 	h.mu.Unlock()
 	return ch, func() {
 		h.mu.Lock()
 		defer h.mu.Unlock()
-		delete(h.subs[org], ch)
-		if len(h.subs[org]) == 0 {
-			delete(h.subs, org)
+		delete(set[key], ch)
+		if len(set[key]) == 0 {
+			delete(set, key)
 		}
 	}
 }
 
-func (h *hub) wake(org uuid.UUID, all bool) {
+func (h *hub) subscribe(org uuid.UUID) (<-chan struct{}, func()) { return h.add(h.subs, org) }
+
+func (h *hub) subscribeLog(attempt uuid.UUID) (<-chan struct{}, func()) {
+	return h.add(h.logs, attempt)
+}
+
+func (h *hub) signal(set waiters, key uuid.UUID, all bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for key, chans := range h.subs {
-		if !all && key != org {
-			continue
-		}
-		for ch := range chans {
-			select {
-			case ch <- struct{}{}:
-			default:
-			}
+	if !all {
+		poke(set[key])
+		return
+	}
+	for _, chans := range set {
+		poke(chans)
+	}
+}
+
+func poke(chans map[chan struct{}]struct{}) {
+	for ch := range chans {
+		select {
+		case ch <- struct{}{}:
+		default:
 		}
 	}
 }
+
+func (h *hub) wake(org uuid.UUID, all bool) { h.signal(h.subs, org, all) }
+
+func (h *hub) wakeLog(attempt uuid.UUID, all bool) { h.signal(h.logs, attempt, all) }
 
 func (h *hub) run(ctx context.Context) {
 	if h.listen == nil {
@@ -69,7 +88,7 @@ func (h *hub) run(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		h.log.WarnContext(ctx, "job queue listener stopped, retrying", "error", err, "retry_in", backoff.String())
+		h.log.WarnContext(ctx, "job listener stopped, retrying", "error", err, "retry_in", backoff.String())
 		timer := time.NewTimer(backoff/2 + rand.N(backoff/2+1)) //nolint:gosec // Retry jitter needs no cryptographic randomness.
 		select {
 		case <-ctx.Done():
@@ -91,14 +110,23 @@ func (h *hub) serve(ctx context.Context) error {
 			h.log.WarnContext(ctx, "close job queue listener", "error", cerr)
 		}
 	}()
-	if err := sqlc.New(conn).ListenJobsQueued(ctx); err != nil {
+	q := sqlc.New(conn)
+	if err := q.ListenJobsQueued(ctx); err != nil {
+		return err
+	}
+	if err := q.ListenLogAppended(ctx); err != nil {
 		return err
 	}
 	h.wake(uuid.Nil, true)
+	h.wakeLog(uuid.Nil, true)
 	for {
 		n, err := conn.WaitForNotification(ctx)
 		if err != nil {
 			return err
+		}
+		if n.Channel == config.LogAppendedChannel {
+			h.logAppended(ctx, n.Payload)
+			continue
 		}
 		org, perr := uuid.Parse(n.Payload)
 		if perr != nil {
@@ -107,4 +135,14 @@ func (h *hub) serve(ctx context.Context) error {
 		}
 		h.wake(org, false)
 	}
+}
+
+func (h *hub) logAppended(ctx context.Context, payload string) {
+	id, _, _ := strings.Cut(payload, ":")
+	attempt, err := uuid.Parse(id)
+	if err != nil {
+		h.log.WarnContext(ctx, "log notification without an attempt", "error", err)
+		return
+	}
+	h.wakeLog(attempt, false)
 }

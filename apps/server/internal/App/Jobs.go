@@ -10,6 +10,11 @@ import (
 )
 
 func StartJobs(ctx context.Context, j *jobs.Service, log *slog.Logger) (func(), error) {
+	parts, err := j.MaintainLogPartitions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("prepare job log partitions before serving: %w", err)
+	}
+	log.Info("job log partitions ready", "created", parts.Created, "dropped", parts.Dropped, "skipped", parts.Skipped)
 	res, err := j.Reconcile(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("reconcile jobs before serving: %w", err)
@@ -21,6 +26,7 @@ func StartJobs(ctx context.Context, j *jobs.Service, log *slog.Logger) (func(), 
 	var background sync.WaitGroup
 	background.Go(func() { j.RunListener(bgCtx) })
 	background.Go(func() { j.RunReconciler(bgCtx) })
+	background.Go(func() { j.RunLogMaintenance(bgCtx) })
 	return func() {
 		cancel()
 		background.Wait()

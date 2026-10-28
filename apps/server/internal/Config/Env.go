@@ -42,6 +42,8 @@ type Config struct {
 	RunnerTLSKeyFile  string
 	RunnerMaxPolls    int
 
+	Logs Logs
+
 	SMTP                        SMTP
 	AnyUserCreatesOrganizations bool
 
@@ -84,6 +86,10 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.RunnerMaxPolls, err = parseMaxPolls(getenv(EnvRunnerMaxPolls)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvRunnerMaxPolls, err))
+	}
+	var logErrs []error
+	if cfg.Logs, logErrs = loadLogs(getenv); len(logErrs) > 0 {
+		errs = append(errs, logErrs...)
 	}
 	if cfg.TrustedProxies, err = parseTrustedProxies(getenv(EnvTrustedProxies)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvTrustedProxies, err))

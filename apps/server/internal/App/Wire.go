@@ -2,9 +2,11 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -26,6 +28,7 @@ import (
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
+	systemmodels "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Models"
 	tokens "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Tokens"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
@@ -43,7 +46,9 @@ type Infra struct {
 	Web        http.Handler
 	Mailer     mailer.Sender
 
-	OidcTransport http.RoundTripper
+	LogStreamWriteWait time.Duration
+	LogReadWait        time.Duration
+	OidcTransport      http.RoundTripper
 }
 
 type Wired struct {
@@ -52,6 +57,13 @@ type Wired struct {
 	RunnerHandler http.Handler
 	Identity      *identity.Service
 	Jobs          *jobs.Service
+	LogPool       *pgxpool.Pool
+}
+
+func (w *Wired) Close() {
+	if w.LogPool != nil {
+		w.LogPool.Close()
+	}
 }
 
 func Build(ctx context.Context, in Infra) (*Wired, error) {
@@ -119,17 +131,17 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		DB: in.Pool, Tokens: external.apiTokens, Factors: sessionService, Bus: bus, Log: in.Log, Now: in.Now,
 	})
 	gate := runnerauth.NewGate(runnerauth.GateOptions{Verifier: runnersService, Log: in.Log, Now: in.Now})
-	jobsService := jobs.NewService(jobs.Options{
-		DB: in.Pool, Keys: runnerKeys, Secrets: in.Secrets, Bus: bus, Listen: listener(in.Pool),
-		MaxPolls: in.Config.RunnerMaxPolls, Log: in.Log,
-	})
-	jobs.Subscribe(bus, jobsService)
+	jobsService, logPool, err := buildJobs(ctx, in, runnerKeys, bus)
+	if err != nil {
+		return nil, err
+	}
 
 	opts := Options{
 		Config: in.Config,
 		Log:    in.Log,
 		System: system.Deps{
 			DB: in.Pool, Migrations: in.Migrations, Queries: sqlc.New(in.Pool), Build: in.Build, Log: in.Log,
+			Checks: []system.ReadinessCheck{{Name: systemmodels.CheckLogPartitions, Run: jobsService.CheckLogPartition}},
 		},
 		Identity:  identityService,
 		Session:   sessionService,
@@ -144,11 +156,49 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Now:       in.Now,
 		Web:       in.Web,
 	}
-	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService}
+	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool}
 	if in.Config.RunnerPlaneSeparate() {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
 	}
 	return wired, nil
+}
+
+func buildJobs(ctx context.Context, in Infra, keys *runnerauth.Keys, bus *eventbus.Bus) (*jobs.Service, *pgxpool.Pool, error) {
+	logPool, err := logReadPool(ctx, in.Pool, in.Config.Logs)
+	if err != nil {
+		return nil, nil, err
+	}
+	opts := jobs.Options{
+		DB: in.Pool, Keys: keys, Secrets: in.Secrets, Bus: bus, Listen: listener(in.Pool),
+		MaxPolls: in.Config.RunnerMaxPolls, Logs: in.Config.Logs, StreamWriteWait: in.LogStreamWriteWait,
+		ReadWait: in.LogReadWait, Log: in.Log,
+	}
+	if logPool != nil {
+		opts.Reads = logPool
+	}
+	service := jobs.NewService(opts)
+	jobs.Subscribe(bus, service)
+	return service, logPool, nil
+}
+
+func logReadPool(ctx context.Context, pool *pgxpool.Pool, logs config.Logs) (*pgxpool.Pool, error) {
+	if pool == nil {
+		return nil, nil
+	}
+	conns := logs.ReadConns
+	if conns <= 0 {
+		conns = config.LogReadConnsDefault
+	}
+	cfg := pool.Config().Copy()
+	cfg.MaxConns = int32(conns)
+	cfg.MinConns = 0
+	cfg.ConnConfig.RuntimeParams["statement_timeout"] = strconv.FormatInt(config.LogReadStatementWait.Milliseconds(), 10)
+	cfg.ConnConfig.RuntimeParams["application_name"] = config.DatabaseAppName + "-logs"
+	logPool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("open the job log read pool: %w", err)
+	}
+	return logPool, nil
 }
 
 type externalDeps struct {

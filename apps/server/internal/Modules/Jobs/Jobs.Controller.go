@@ -4,7 +4,10 @@ import (
 	"context"
 	"slices"
 
+	"github.com/google/uuid"
+
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
+	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
 	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Gen"
 	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
@@ -19,11 +22,18 @@ const (
 
 type Controller struct {
 	service *Service
+	guard   Reauthorizer
+}
+
+type Reauthorizer interface {
+	Reauthorize(ctx context.Context, action policy.Action, org uuid.UUID) error
 }
 
 var _ gen.StrictServerInterface = (*Controller)(nil)
 
-func NewController(service *Service) *Controller { return &Controller{service: service} }
+func NewController(service *Service, guard Reauthorizer) *Controller {
+	return &Controller{service: service, guard: guard}
+}
 
 func (c *Controller) ListJobs(ctx context.Context, req gen.ListJobsRequestObject) (gen.ListJobsResponseObject, error) {
 	page, limit := response.PageParams(req.Params.Page, req.Params.Limit)

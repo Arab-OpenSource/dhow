@@ -5,10 +5,17 @@ dhow.example.com {
 		max_size 2MB
 	}
 
-	reverse_proxy 127.0.0.1:8080 {
+	@logstream path_regexp ^/api/v1/organizations/[^/]+/jobs/[^/]+/logs/stream$
+	reverse_proxy @logstream 127.0.0.1:8080 {
 		flush_interval -1
 		transport http {
 			read_timeout 1h
+		}
+	}
+
+	reverse_proxy 127.0.0.1:8080 {
+		transport http {
+			read_timeout 90s
 		}
 	}
 }

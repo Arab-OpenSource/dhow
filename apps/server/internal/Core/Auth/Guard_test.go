@@ -38,6 +38,10 @@ func (f fakeResolver) Resolve(_ context.Context, hash []byte, _ time.Time) (auth
 	return auth.Resolved{}, auth.ErrNoSession
 }
 
+func (f fakeResolver) Peek(ctx context.Context, hash []byte, now time.Time) (auth.Resolved, error) {
+	return f.Resolve(ctx, hash, now)
+}
+
 type guardFixture struct {
 	handler http.Handler
 	cookies map[string]string
