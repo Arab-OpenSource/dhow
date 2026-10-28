@@ -76,7 +76,7 @@ func Routes(r chi.Router, d Deps) {
 	guard := d.Guard.Middleware(policy.NewTable(Policies()...))
 	gen.HandlerWithOptions(strict, gen.ChiServerOptions{
 		BaseRouter:       r,
-		Middlewares:      []gen.MiddlewareFunc{middleware.BodyLimit(config.AuthBodyMaxBytes), guard, d.Limits.Middleware(RateLimited()...)},
+		Middlewares:      []gen.MiddlewareFunc{middleware.BodyLimit(config.AuthBodyMaxBytes), d.Limits.Middleware(RateLimited()...), guard},
 		ErrorHandlerFunc: middleware.StrictRequestError,
 	})
 }

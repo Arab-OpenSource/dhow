@@ -170,3 +170,22 @@ func TestASecondInstanceOnTheSameDatabaseSeesTheSameCounter(t *testing.T) {
 	assertLimited(t, hit(first, invitationPreview, "", nil))
 	assertLimited(t, hit(second, invitationPreview, "", nil))
 }
+
+func TestACrossSitePageCannotSpendTheLimitOfAnOffice(t *testing.T) {
+	for _, r := range []limitedRoute{invitationPreview, oidcAuthorize, passkeyOptions, setup} {
+		t.Run(r.path, func(t *testing.T) {
+			env := limitedEnv(t, nil)
+			for _, origin := range []string{"https://evil.example", "null", ""} {
+				for range testPublicLimit + 2 {
+					res := hit(env, r, "", map[string]string{"Origin": origin})
+					require.Equal(t, http.StatusForbidden, res.Status, "origin %q: %s", origin, res.Raw)
+					require.Equal(t, apperrors.CodeCSRFFailed, res.Error.Code)
+				}
+			}
+			for i := range testPublicLimit {
+				assert.NotEqual(t, http.StatusTooManyRequests, hit(env, r, "", nil).Status, "same-origin request %d still has the whole limit", i+1)
+			}
+			assertLimited(t, hit(env, r, "", nil))
+		})
+	}
+}
