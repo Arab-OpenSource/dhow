@@ -64,7 +64,7 @@ CREATE UNIQUE INDEX "UX_RoleBindings_Team_Target" ON "RoleBindings"
      COALESCE("EnvironmentId", '00000000-0000-0000-0000-000000000000'::uuid))
     WHERE "TeamId" IS NOT NULL AND NOT "IsDeleted";
 CREATE UNIQUE INDEX "UX_RoleBindings_User_Target" ON "RoleBindings"
-    ("UserId", "Scope", COALESCE("ProjectId", '00000000-0000-0000-0000-000000000000'::uuid),
+    ("OrganizationId", "UserId", "Scope", COALESCE("ProjectId", '00000000-0000-0000-0000-000000000000'::uuid),
      COALESCE("EnvironmentId", '00000000-0000-0000-0000-000000000000'::uuid))
     WHERE "UserId" IS NOT NULL AND NOT "IsDeleted";
 CREATE INDEX "IX_RoleBindings_Organization" ON "RoleBindings" ("OrganizationId") WHERE NOT "IsDeleted";
