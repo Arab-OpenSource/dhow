@@ -1,0 +1,153 @@
+package masking_test
+
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/hex"
+	"net/url"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
+)
+
+const secret = `p@ss/w0rd+"quoted"&<tag> ok`
+
+func encodedForms(v string) map[string]string {
+	b := []byte(v)
+	return map[string]string{
+		"raw":            v,
+		"base64":         base64.StdEncoding.EncodeToString(b),
+		"base64 raw":     base64.RawStdEncoding.EncodeToString(b),
+		"base64 url":     base64.URLEncoding.EncodeToString(b),
+		"base64 shift 1": base64.StdEncoding.EncodeToString(append([]byte("x"), b...)),
+		"base64 shift 2": base64.StdEncoding.EncodeToString(append([]byte("xy"), b...)),
+		"base64 url s1":  base64.RawURLEncoding.EncodeToString(append([]byte("Q"), b...)),
+		"query":          url.QueryEscape(v),
+		"path":           url.PathEscape(v),
+		"hex":            hex.EncodeToString(b),
+		"HEX":            strings.ToUpper(hex.EncodeToString(b)),
+		"json":           `p@ss/w0rd+\"quoted\"&<tag> ok`,
+		"json plain":     `p@ss/w0rd+\"quoted\"&<tag> ok`,
+		"json slashes":   `p@ss\/w0rd+\"quoted\"&<tag> ok`,
+	}
+}
+
+func TestEveryEncodingIsMasked(t *testing.T) {
+	m := masking.New()
+	require.True(t, m.Add([]byte(secret)))
+	for name, form := range encodedForms(secret) {
+		t.Run(name, func(t *testing.T) {
+			out := m.MaskString("before " + form + " after\n")
+			assert.NotContains(t, out, form)
+			assert.Contains(t, out, masking.Replacement)
+			assert.True(t, strings.HasPrefix(out, "before "), out)
+			assert.True(t, strings.HasSuffix(out, " after\n") || strings.HasSuffix(out, "after\n"), out)
+		})
+	}
+}
+
+func TestBase64InsideALongerStreamIsMaskedAtEveryOffset(t *testing.T) {
+	m := masking.New()
+	require.True(t, m.Add([]byte(secret)))
+	for prefix := range 3 {
+		for suffix := range 3 {
+			data := append(bytes.Repeat([]byte("A"), prefix), secret...)
+			data = append(data, bytes.Repeat([]byte("B"), suffix)...)
+			encoded := base64.StdEncoding.EncodeToString(data)
+			out := m.MaskString(encoded)
+			decoded, _ := base64.StdEncoding.DecodeString(strings.ReplaceAll(out, masking.Replacement, ""))
+			assert.NotContains(t, string(decoded), "w0rd", "prefix %d suffix %d: %s", prefix, suffix, out)
+			assert.Contains(t, out, masking.Replacement)
+		}
+	}
+}
+
+func TestMultiLineSecretsAreMaskedLineByLine(t *testing.T) {
+	pem := "-----BEGIN TEST KEY-----\nMIIBVQIBADANBgkqhkiG9w0BAQEFAASC\nAT8wggE7AgEAAkEAq7BFUpkGp3+LQmlQ\n-----END TEST KEY-----"
+	m := masking.New()
+	require.True(t, m.Add([]byte(pem)))
+	out := m.MaskString("key line: MIIBVQIBADANBgkqhkiG9w0BAQEFAASC\nAT8wggE7AgEAAkEAq7BFUpkGp3+LQmlQ\n")
+	assert.NotContains(t, out, "MIIBVQIBADANBgkqhkiG9w0BAQEFAASC")
+	assert.NotContains(t, out, "AT8wggE7AgEAAkEAq7BFUpkGp3+LQmlQ")
+	assert.Contains(t, out, "key line: ")
+}
+
+func TestShortSecretsAreNotMasked(t *testing.T) {
+	m := masking.New()
+	assert.False(t, m.Add([]byte("abc")))
+	assert.Equal(t, "abc abc", m.MaskString("abc abc"))
+}
+
+func TestOverlappingAndAdjacentMatchesAreAllCovered(t *testing.T) {
+	m := masking.New()
+	m.Add([]byte("abcdef"))
+	m.Add([]byte("defghi"))
+	assert.Equal(t, "x***y", m.MaskString("xabcdefghiy"))
+	assert.Equal(t, "***-***", m.MaskString("abcdef-defghi"))
+	assert.Equal(t, "***", m.MaskString("abcdefabcdef"))
+}
+
+func TestStreamHoldsBackOnlyAPossibleSecretPrefix(t *testing.T) {
+	m := masking.New()
+	m.Add([]byte("topsecret"))
+	s := m.Stream()
+	assert.Equal(t, "hello ", string(s.Write([]byte("hello top"))))
+	assert.Equal(t, 3, s.Pending())
+	assert.Equal(t, "***", string(s.Write([]byte("secret"))))
+	assert.Equal(t, " tip", string(s.Write([]byte(" tip"))))
+	assert.Empty(t, string(s.Write([]byte("tops"))))
+	assert.Equal(t, "tops", string(s.Flush()))
+}
+
+func TestASecretSplitAcrossEveryBoundaryIsMasked(t *testing.T) {
+	m := masking.New()
+	m.Add([]byte(secret))
+	data := "start " + secret + " middle " + base64.StdEncoding.EncodeToString([]byte(secret)) + " end"
+	for cut := 1; cut < len(data); cut++ {
+		s := m.Stream()
+		out := string(s.Write([]byte(data[:cut]))) + string(s.Write([]byte(data[cut:]))) + string(s.Flush())
+		assert.Equal(t, "start *** middle *** end", out, "cut %d", cut)
+	}
+}
+
+func TestAddingASecretAppliesToBufferedOutput(t *testing.T) {
+	m := masking.New()
+	m.Add([]byte("first-secret"))
+	s := m.Stream()
+	assert.Equal(t, "line ", string(s.Write([]byte("line first-"))))
+	m.Add([]byte("late-value"))
+	out := string(s.Write([]byte("secret late-value\n"))) + string(s.Flush())
+	assert.Equal(t, "*** ***\n", out)
+}
+
+func TestClearForgetsEverySecret(t *testing.T) {
+	m := masking.New()
+	m.Add([]byte(secret))
+	m.Clear()
+	assert.Equal(t, secret, m.MaskString(secret))
+	assert.Zero(t, m.MaxPatternLength())
+}
+
+func TestTextWithoutSecretsPassesThroughUnchanged(t *testing.T) {
+	m := masking.New()
+	in := []byte("plain \x00\xff binary \xe2\x82 text\n")
+	assert.Equal(t, in, m.Mask(in))
+	m.Add([]byte("unrelated"))
+	assert.Equal(t, in, m.Mask(in))
+}
+
+func TestVariantsIncludeTheDocumentedForms(t *testing.T) {
+	got := map[string]bool{}
+	for _, v := range masking.Variants([]byte("hunter2-é")) {
+		got[string(v)] = true
+		assert.GreaterOrEqual(t, len(v), masking.MinLength)
+	}
+	for _, want := range []string{"hunter2-é", "hunter2-%C3%A9", hex.EncodeToString([]byte("hunter2-é")), `hunter2-é`,
+		base64.StdEncoding.EncodeToString([]byte("hunter2-é"))} {
+		assert.True(t, got[want], want)
+	}
+}

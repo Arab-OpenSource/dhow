@@ -1,0 +1,213 @@
+package executor
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"google.golang.org/protobuf/proto"
+
+	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
+	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
+	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
+	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	"github.com/Arab-OpenSource/dhow/internal/runnersig"
+	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+)
+
+var (
+	ErrSecretsMissing = errors.New("the server sent no secrets for a job that references some")
+	ErrSecretsKEM     = errors.New("the sealed secrets use an unknown KEM")
+	ErrSecretsBundle  = errors.New("the sealed secrets do not decode")
+)
+
+func reasonName(r runnerv1.FailureReason) string {
+	const prefix = len("FAILURE_REASON_")
+	if name := r.String(); len(name) > prefix {
+		return name[prefix:]
+	}
+	return r.String()
+}
+
+func (a *attempt) execute(ctx context.Context) result {
+	spec := a.grant.GetSpec()
+	if reason, why := preflight(spec, a.e.o.Config, a.e.o.Driver.Isolation()); reason != runnerv1.FailureReason_FAILURE_REASON_UNSPECIFIED {
+		a.pipe.Systemf(nil, "dhow: %s: %s", reasonName(reason), why)
+		return failed(reason, 0)
+	}
+	if r, ok := a.prepare(ctx); !ok {
+		return r
+	}
+	if r, ok := a.start(ctx); !ok {
+		return r
+	}
+	return a.steps(ctx)
+}
+
+func (a *attempt) lostResult() result {
+	if errors.Is(a.fence.LostErr(), ErrSelfFenced) {
+		return lost(runnerv1.FailureReason_FAILURE_REASON_LEASE_LOST)
+	}
+	return gone()
+}
+
+type prepared struct {
+	box sandbox.Sandbox
+	err error
+}
+
+func (a *attempt) prepare(ctx context.Context) (result, bool) {
+	spec := a.grant.GetSpec()
+	a.pipe.Systemf(nil, "dhow: preparing the sandbox for %s", spec.GetImage())
+	pctx, cancel := context.WithTimeout(a.rpc, a.e.o.Timing.ImagePull)
+	defer cancel()
+	ch := make(chan prepared, 1)
+	go func() {
+		r := spec.GetResources()
+		box, err := a.e.o.Driver.Prepare(pctx, sandbox.PrepareSpec{
+			RunnerID: a.e.o.Identity.RunnerID, AttemptID: a.grant.GetAttemptId(), Image: spec.GetImage(), Isolation: spec.GetIsolation(),
+			Resources: sandbox.Resources{CPUMillis: r.GetCpuMillis(), MemoryBytes: r.GetMemoryBytes(), Pids: r.GetPids(), DiskBytes: r.GetDiskBytes()},
+			Dir:       a.dir, DiskMode: a.e.o.Config.DiskMode, Egress: spec.GetNetwork().GetEgress(),
+		})
+		ch <- prepared{box: box, err: err}
+	}()
+	var why result
+	select {
+	case p := <-ch:
+		return a.prepared(pctx, p)
+	case <-a.fence.Lost():
+		why = a.lostResult()
+	case <-a.fence.Canceled():
+		why = canceledResult()
+	case <-ctx.Done():
+		why = lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED)
+	}
+	cancel()
+	if p := <-ch; p.err == nil && p.box != nil {
+		a.setBox(p.box)
+	}
+	return why, false
+}
+
+func (a *attempt) prepared(pctx context.Context, p prepared) (result, bool) {
+	if p.err != nil {
+		reason := runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED
+		if errors.Is(p.err, sandbox.ErrImagePull) || errors.Is(pctx.Err(), context.DeadlineExceeded) {
+			reason = runnerv1.FailureReason_FAILURE_REASON_IMAGE_PULL_FAILED
+		}
+		a.log.Error("could not prepare the sandbox", "error", p.err)
+		a.pipe.Systemf(nil, "dhow: %s: the sandbox could not be prepared", reasonName(reason))
+		return failed(reason, 0), false
+	}
+	if !a.setBox(p.box) {
+		return a.lostResult(), false
+	}
+	return result{}, true
+}
+
+func (a *attempt) start(ctx context.Context) (result, bool) {
+	spec := a.grant.GetSpec()
+	proof := a.e.o.Identity.Sign(runnersig.StartMessage(a.ref.GetLeaseId(), a.ref.GetFencingToken(), runnersig.GrantDigest(a.grantBytes)))
+	var res *runnerv1.StartResponse
+	retried := false
+	err := a.retry(ctx, func(rctx context.Context) error {
+		sent := time.Now()
+		r, err := a.e.o.API.Start(rctx, a.ref, proof)
+		if err == nil {
+			a.fence.extend(sent, r.GetControl())
+			res = r
+		} else if client.Transient(err) {
+			retried = true
+		}
+		return err
+	})
+	switch {
+	case err == nil:
+	case client.Is(err, client.CodeCancelRequested):
+		return canceledResult(), false
+	case errors.Is(err, ErrSelfFenced):
+		return lost(runnerv1.FailureReason_FAILURE_REASON_LEASE_LOST), false
+	case client.IsLeaseLost(err), errors.Is(err, ErrLeaseLost):
+		return gone(), false
+	case client.Is(err, client.CodeSecretsUnavailable):
+		a.log.Warn("the server could not provide the job secrets and closed the attempt")
+		return gone(), false
+	case client.Is(err, client.CodeAlreadyStarted) && retried && len(spec.GetSecrets()) == 0:
+		a.log.Info("the attempt was already started by an earlier try whose answer was lost")
+	case ctx.Err() != nil:
+		return lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED), false
+	default:
+		a.log.Error("the server refused to start the attempt", "code", client.Code(err).String(), "reason", client.Reason(err))
+		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
+	}
+	if err := a.openSecrets(res.GetSecrets()); err != nil {
+		a.log.Error("could not open the job secrets", "error", err)
+		a.pipe.Systemf(nil, "dhow: SANDBOX_FAILED: the job secrets could not be opened")
+		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
+	}
+	if err := a.currentBox().Start(a.rpc); err != nil {
+		a.log.Error("could not start the sandbox", "error", err)
+		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
+	}
+	return result{}, true
+}
+
+func (a *attempt) currentBox() sandbox.Sandbox {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.box
+}
+
+func (a *attempt) openSecrets(sealed *runnerv1.SealedSecrets) error {
+	refs := a.grant.GetSpec().GetSecrets()
+	if len(refs) == 0 {
+		return nil
+	}
+	if sealed == nil {
+		return ErrSecretsMissing
+	}
+	if sealed.GetKem() != runnerv1.HpkeKem_HPKE_KEM_MLKEM768_X25519 {
+		return ErrSecretsKEM
+	}
+	aad := runnersig.SecretsAAD(a.ref.GetLeaseId(), a.ref.GetFencingToken(), a.grant.GetAttemptId(), a.e.o.Identity.RunnerID)
+	plain, err := runnersig.OpenSecrets(a.e.o.Identity.Encryption, sealed.GetEnc(), aad, sealed.GetCiphertext())
+	if err != nil {
+		return err
+	}
+	defer clear(plain)
+	var bundle runnerv1.SecretBundle
+	if err := proto.Unmarshal(plain, &bundle); err != nil {
+		return ErrSecretsBundle
+	}
+	values := make(map[string][]byte, len(bundle.GetSecrets()))
+	for _, s := range bundle.GetSecrets() {
+		values[s.GetName()] = append([]byte(nil), s.GetValue()...)
+		clear(s.Value)
+	}
+	for _, ref := range refs {
+		if _, ok := values[ref.GetName()]; !ok {
+			return ErrSecretsMissing
+		}
+	}
+	for _, ref := range refs {
+		if !a.masker.Add(values[ref.GetName()]) {
+			a.pipe.Systemf(nil, "dhow: warning: the secret %s is shorter than %d characters, so the log does not hide it",
+				ref.GetName(), masking.MinLength)
+		}
+	}
+	a.secrets = values
+	return nil
+}
+
+func (a *attempt) fatalResult() result {
+	err := a.pipe.Err()
+	if errors.Is(err, logs.ErrLeaseLost) {
+		a.fence.markLost(ErrLeaseLost)
+		return gone()
+	}
+	a.log.Error("the log pipeline failed, so the job stops", "error", err)
+	if errors.Is(err, logs.ErrDiskFull) {
+		return failed(runnerv1.FailureReason_FAILURE_REASON_RUNNER_DISK_FULL, 0)
+	}
+	return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0)
+}

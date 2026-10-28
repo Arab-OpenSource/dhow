@@ -1,0 +1,276 @@
+package executor
+
+import (
+	"context"
+	"errors"
+	"maps"
+	"slices"
+	"strconv"
+	"syscall"
+	"time"
+
+	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
+	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+)
+
+const (
+	EnvFencingToken = "DHOW_FENCING_TOKEN"
+	EnvJobID        = "DHOW_JOB_ID"
+	EnvAttemptID    = "DHOW_ATTEMPT_ID"
+	EnvStepIndex    = "DHOW_STEP_INDEX"
+)
+
+type stepEnd struct {
+	res sandbox.StepResult
+	err error
+	ok  bool
+}
+
+func (a *attempt) steps(ctx context.Context) result {
+	spec := a.grant.GetSpec()
+	jobCtx, cancel := context.WithTimeout(a.rpc, time.Duration(spec.GetTimeoutSeconds())*time.Second)
+	defer cancel()
+	for i, step := range spec.GetSteps() {
+		idx := int32(i) //nolint:gosec // A spec has at most 100 steps.
+		if r, stop := a.interrupted(ctx, jobCtx); stop {
+			return r
+		}
+		if r, ok := a.beginStep(ctx, idx, step.GetMutating()); !ok {
+			return r
+		}
+		if r, ok := a.runStep(ctx, jobCtx, idx, step); !ok {
+			return r
+		}
+	}
+	return succeeded()
+}
+
+func (a *attempt) interrupted(ctx, jobCtx context.Context) (result, bool) {
+	select {
+	case <-a.fence.Lost():
+		return a.lostResult(), true
+	case <-a.fence.Canceled():
+		return canceledResult(), true
+	case <-a.pipe.Fatal():
+		return a.fatalResult(), true
+	case <-ctx.Done():
+		return lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED), true
+	default:
+	}
+	if jobCtx.Err() != nil {
+		return timedOut(), true
+	}
+	return result{}, false
+}
+
+func (a *attempt) beginStep(ctx context.Context, idx int32, mutating bool) (result, bool) {
+	err := a.retry(ctx, func(rctx context.Context) error {
+		ctrl, err := a.e.o.API.BeginStep(rctx, a.ref, idx, mutating)
+		a.fence.observe(ctrl)
+		return err
+	})
+	switch {
+	case err == nil:
+		return result{}, true
+	case client.Is(err, client.CodeCancelRequested):
+		return canceledResult(), false
+	case errors.Is(err, ErrSelfFenced):
+		return lost(runnerv1.FailureReason_FAILURE_REASON_LEASE_LOST), false
+	case client.IsLeaseLost(err), errors.Is(err, ErrLeaseLost):
+		a.fence.markLost(ErrLeaseLost)
+		return gone(), false
+	case ctx.Err() != nil:
+		return lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED), false
+	default:
+		a.log.Error("the server refused to begin a step", "step", idx, "code", client.Code(err).String(), "reason", client.Reason(err))
+		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
+	}
+}
+
+func (a *attempt) runStep(ctx, jobCtx context.Context, idx int32, step *runnerv1.Step) (result, bool) {
+	a.pipe.Systemf(&idx, "dhow: step %d: %s", idx+1, step.GetName())
+	stdout := a.pipe.Writer(runnerv1.LogStream_LOG_STREAM_STDOUT, &idx)
+	stderr := a.pipe.Writer(runnerv1.LogStream_LOG_STREAM_STDERR, &idx)
+	stepCtx := jobCtx
+	if t := step.GetTimeoutSeconds(); t > 0 {
+		var cancel context.CancelFunc
+		stepCtx, cancel = context.WithTimeout(jobCtx, time.Duration(t)*time.Second)
+		defer cancel()
+	}
+	execCtx, stopExec := context.WithCancel(a.rpc)
+	defer stopExec()
+	env, files := a.stepEnv(idx)
+	done := make(chan stepEnd, 1)
+	box := a.currentBox()
+	go func() {
+		res, err := box.Exec(execCtx, sandbox.StepSpec{
+			Index: idx, Name: step.GetName(), Script: step.GetRun(), Env: env, Files: files, Stdout: stdout, Stderr: stderr,
+		})
+		done <- stepEnd{res: res, err: err, ok: true}
+	}()
+	end, why, stopped := a.waitStep(ctx, jobCtx, stepCtx, done, stopExec)
+	_ = stdout.Close()
+	_ = stderr.Close()
+	clear(env)
+	clear(files)
+	stepReason := stepReasonOf(end, why, stopped)
+	if !stopped || (why.state != runnerv1.AttemptResult_ATTEMPT_RESULT_LOST && !why.silent) {
+		a.endStep(ctx, idx, end.res.ExitCode, stepReason)
+	}
+	if stopped {
+		if why.state == runnerv1.AttemptResult_ATTEMPT_RESULT_FAILED && why.reason == runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED {
+			why.exitCode = end.res.ExitCode
+			a.pipe.Systemf(&idx, "dhow: step %d ran past its timeout and was stopped", idx+1)
+		}
+		return why, false
+	}
+	return a.stepOutcome(idx, end)
+}
+
+func (a *attempt) waitStep(ctx, jobCtx, stepCtx context.Context, done <-chan stepEnd, stopExec func()) (stepEnd, result, bool) {
+	select {
+	case end := <-done:
+		return end, result{}, false
+	case <-a.fence.Lost():
+		return a.awaitExit(done, stopExec), a.lostResult(), true
+	case <-a.fence.Canceled():
+		return a.terminate(done, stopExec), canceledResult(), true
+	case <-stepCtx.Done():
+		end := a.terminate(done, stopExec)
+		if jobCtx.Err() != nil {
+			return end, timedOut(), true
+		}
+		return end, failed(runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED, end.res.ExitCode), true
+	case <-a.pipe.Fatal():
+		a.killBox()
+		return a.awaitExit(done, stopExec), a.fatalResult(), true
+	case <-ctx.Done():
+		a.killBox()
+		return a.awaitExit(done, stopExec), lost(runnerv1.FailureReason_FAILURE_REASON_RUNNER_RESTARTED), true
+	}
+}
+
+func stepReasonOf(end stepEnd, why result, stopped bool) runnerv1.FailureReason {
+	switch {
+	case stopped && why.state == runnerv1.AttemptResult_ATTEMPT_RESULT_CANCELED:
+		return runnerv1.FailureReason_FAILURE_REASON_CANCELED
+	case stopped && (why.state == runnerv1.AttemptResult_ATTEMPT_RESULT_TIMED_OUT || why.reason == runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED):
+		return runnerv1.FailureReason_FAILURE_REASON_TIMED_OUT
+	case end.err != nil && errors.Is(end.err, sandbox.ErrShellMissing):
+		return runnerv1.FailureReason_FAILURE_REASON_SHELL_NOT_FOUND
+	case end.res.ExitCode == 0 && end.err == nil:
+		return runnerv1.FailureReason_FAILURE_REASON_UNSPECIFIED
+	case end.res.Reason != runnerv1.FailureReason_FAILURE_REASON_UNSPECIFIED:
+		return end.res.Reason
+	default:
+		return runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED
+	}
+}
+
+func (a *attempt) stepOutcome(idx int32, end stepEnd) (result, bool) {
+	switch {
+	case end.err != nil && errors.Is(end.err, sandbox.ErrShellMissing):
+		a.pipe.Systemf(&idx, "dhow: SHELL_NOT_FOUND: the job image has no /bin/sh")
+		return failed(runnerv1.FailureReason_FAILURE_REASON_SHELL_NOT_FOUND, 0), false
+	case end.err != nil:
+		a.log.Error("a step could not run", "step", idx, "error", end.err)
+		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
+	case end.res.ExitCode != 0:
+		reason := end.res.Reason
+		if reason == runnerv1.FailureReason_FAILURE_REASON_UNSPECIFIED {
+			reason = runnerv1.FailureReason_FAILURE_REASON_STEP_FAILED
+		}
+		a.pipe.Systemf(&idx, "dhow: step %d exited with code %d", idx+1, end.res.ExitCode)
+		return failed(reason, end.res.ExitCode), false
+	default:
+		return result{}, true
+	}
+}
+
+func (a *attempt) endStep(ctx context.Context, idx, exitCode int32, reason runnerv1.FailureReason) {
+	err := a.retry(ctx, func(rctx context.Context) error {
+		ctrl, err := a.e.o.API.EndStep(rctx, a.ref, idx, exitCode, reason)
+		a.fence.observe(ctrl)
+		return err
+	})
+	switch {
+	case err == nil:
+	case client.IsLeaseLost(err):
+		a.fence.markLost(ErrLeaseLost)
+	default:
+		a.log.Warn("could not report the end of a step", "step", idx, "code", client.Code(err).String(), "reason", client.Reason(err))
+	}
+}
+
+func (a *attempt) killBox() {
+	if box := a.currentBox(); box != nil {
+		a.mu.Lock()
+		if a.killedAt.IsZero() {
+			a.killedAt = time.Now()
+		}
+		a.mu.Unlock()
+		if err := box.Kill(a.rpc); err != nil {
+			a.log.Error("could not kill the sandbox", "error", err)
+		}
+	}
+}
+
+func waitFor(done <-chan stepEnd, d time.Duration) (stepEnd, bool) {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case end := <-done:
+		return end, true
+	case <-t.C:
+		return stepEnd{}, false
+	}
+}
+
+func (a *attempt) terminate(done <-chan stepEnd, stopExec func()) stepEnd {
+	box := a.currentBox()
+	_ = box.Signal(a.rpc, syscall.SIGTERM)
+	if end, ok := waitFor(done, a.e.o.Config.CancelGrace); ok {
+		return end
+	}
+	_ = box.Signal(a.rpc, syscall.SIGKILL)
+	if end, ok := waitFor(done, a.e.o.Timing.CancelKillWait); ok {
+		return end
+	}
+	a.killBox()
+	return a.awaitExit(done, stopExec)
+}
+
+func (a *attempt) awaitExit(done <-chan stepEnd, stopExec func()) stepEnd {
+	if end, ok := waitFor(done, a.e.o.Timing.CancelKillWait); ok {
+		return end
+	}
+	stopExec()
+	end, _ := waitFor(done, a.e.o.Timing.CancelKillWait)
+	return end
+}
+
+func (a *attempt) stepEnv(idx int32) (map[string]string, map[string][]byte) {
+	spec := a.grant.GetSpec()
+	env := map[string]string{}
+	maps.Copy(env, spec.GetEnv())
+	maps.Copy(env, spec.GetSteps()[idx].GetEnv())
+	env[EnvFencingToken] = strconv.FormatInt(a.ref.GetFencingToken(), 10)
+	env[EnvJobID] = a.grant.GetJobId()
+	env[EnvAttemptID] = a.grant.GetAttemptId()
+	env[EnvStepIndex] = strconv.Itoa(int(idx))
+	files := map[string][]byte{}
+	for _, ref := range spec.GetSecrets() {
+		if len(ref.GetStepIndexes()) > 0 && !slices.Contains(ref.GetStepIndexes(), idx) {
+			continue
+		}
+		v := a.secrets[ref.GetName()]
+		switch t := ref.GetTarget().(type) {
+		case *runnerv1.SecretRef_AsEnv:
+			env[t.AsEnv] = string(v)
+		case *runnerv1.SecretRef_AsFile:
+			files[t.AsFile] = append([]byte(nil), v...)
+		}
+	}
+	return env, files
+}
