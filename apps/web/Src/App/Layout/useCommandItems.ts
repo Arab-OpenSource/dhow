@@ -1,5 +1,5 @@
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
-import { canManageMembers, canReadAudit } from '@/Core/Auth/AuthTypes';
+import { canManageMembers, canReadAudit, canReadRunners } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useSignOut } from '@/Core/Auth/useSignOut';
 import type { ICommandItem } from '@/Core/Ui/CommandPalette';
@@ -30,6 +30,9 @@ export const useCommandItems = (): ICommands => {
     ...(canManageMembers(role)
       ? [{ id: 'invite', icon: 'plus' as const, label: t('palette.command.invite'), kind: t('palette.kind.panel') }]
       : []),
+    ...(canReadRunners(role)
+      ? [{ id: 'runners', icon: 'server' as const, label: t('palette.command.runners'), kind: t('palette.kind.panel') }]
+      : []),
     { id: 'password', icon: 'key', label: t('palette.command.password'), kind: t('palette.kind.panel') },
     ...(canReadAudit(role)
       ? [{ id: 'audit', icon: 'file' as const, label: t('palette.command.audit'), kind: t('palette.kind.panel') }]
@@ -53,6 +56,7 @@ export const useCommandItems = (): ICommands => {
     else if (item.id === 'organizations') openStack(['organizations']);
     else if (item.id === 'invite') openStack(['organization', 'organization-invite']);
     else if (item.id === 'audit') openStack(['audit']);
+    else if (item.id === 'runners') openStack(['runners']);
     else if (item.id === 'password') openStack(['account', 'account-password']);
     else if (item.id === 'sign-out') void SignOut();
     else if (item.id === 'language') SetLocale(target);

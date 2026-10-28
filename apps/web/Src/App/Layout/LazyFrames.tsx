@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { checkOf, isThemeEditFrame, memberOf, teamOf, type TFrameId } from '@/App/Panels';
+import { checkOf, isThemeEditFrame, memberOf, runnerOf, teamOf, type TFrameId } from '@/App/Panels';
 import { lazyComponent, type IPreloadable, type TLazyComponent } from '@/Core/Ui/LazyComponent';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
@@ -22,7 +22,10 @@ type TFramePart =
   | 'organization-transfer'
   | 'team-new'
   | 'team'
-  | 'member';
+  | 'member'
+  | 'runners'
+  | 'runner-new'
+  | 'runner';
 
 const SystemStatusBody = lazyComponent(() =>
   import('@/Modules/System/Components/SystemStatusBody').then((module) => module.SystemStatusBody),
@@ -100,6 +103,12 @@ const TeamNewBody = lazyComponent(() => import('@/Modules/Organization/Component
 const TeamBody = lazyComponent(() => import('@/Modules/Organization/Components/TeamBody').then((module) => module.TeamBody));
 const MemberBody = lazyComponent(() => import('@/Modules/Organization/Components/MemberBody').then((module) => module.MemberBody));
 
+const runnersBody = () => import('@/Modules/Runners/Components/RunnersBody');
+const RunnersBody = lazyComponent(() => runnersBody().then((module) => module.RunnersBody));
+const RunnersFooter = lazyComponent(() => runnersBody().then((module) => module.RunnersFooter));
+const RunnerNewBody = lazyComponent(() => import('@/Modules/Runners/Components/RunnerNewBody').then((module) => module.RunnerNewBody));
+const RunnerBody = lazyComponent(() => import('@/Modules/Runners/Components/RunnerBody').then((module) => module.RunnerBody));
+
 const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   'system-status': [SystemStatusBody, SystemStatusFooter],
   check: [CheckDetailBody, SystemStatusFooter],
@@ -118,6 +127,9 @@ const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   'team-new': [TeamNewBody],
   team: [TeamBody],
   member: [MemberBody],
+  runners: [RunnersBody, RunnersFooter],
+  'runner-new': [RunnerNewBody],
+  runner: [RunnerBody],
 };
 
 const isPart = (id: string): id is TFramePart => Object.hasOwn(PARTS, id);
@@ -127,6 +139,7 @@ const partOf = (id: TFrameId): TFramePart | null => {
   if (isThemeEditFrame(id)) return 'theme-edit';
   if (memberOf(id)) return 'member';
   if (teamOf(id)) return 'team';
+  if (runnerOf(id)) return 'runner';
   return isPart(id) ? id : null;
 };
 
@@ -200,3 +213,8 @@ export const LazyTransferBody = withSkeleton(TransferBody);
 export const LazyTeamNewBody = withSkeleton(TeamNewBody);
 export const LazyTeamBody = withSkeleton(TeamBody);
 export const LazyMemberBody = withSkeleton(MemberBody);
+
+export const LazyRunnersBody = withSkeleton(RunnersBody);
+export const LazyRunnersFooter = withNothing(RunnersFooter);
+export const LazyRunnerNewBody = withSkeleton(RunnerNewBody);
+export const LazyRunnerBody = withSkeleton(RunnerBody);
