@@ -11,6 +11,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ApiToken struct {
+	Id              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	IsDeleted       bool
+	UserId          uuid.UUID
+	OrganizationId  uuid.UUID
+	MembershipId    uuid.UUID
+	Name            string
+	TokenHash       []byte
+	Scopes          []string
+	ExpiresAt       time.Time
+	RevokedAt       *time.Time
+	RevokedByUserId *uuid.UUID
+	LastUsedAt      *time.Time
+	LastUsedIp      string
+}
+
 type AuditEvent struct {
 	Id             uuid.UUID
 	CreatedAt      time.Time
@@ -89,6 +107,22 @@ type Membership struct {
 	UserId         uuid.UUID
 	OrganizationId uuid.UUID
 	Role           string
+}
+
+type OidcFlow struct {
+	Id         uuid.UUID
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsDeleted  bool
+	Purpose    string
+	Provider   string
+	TokenHash  []byte
+	StateHash  []byte
+	DeviceHash []byte
+	UserId     *uuid.UUID
+	SessionId  *uuid.UUID
+	ExpiresAt  time.Time
+	UsedAt     *time.Time
 }
 
 type Organization struct {
@@ -296,4 +330,28 @@ type User struct {
 	WebauthnHandle    []byte
 	IsInstanceOwner   bool
 	MfaResetAt        *time.Time
+}
+
+type UserIdentity struct {
+	Id         uuid.UUID
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsDeleted  bool
+	UserId     uuid.UUID
+	Provider   string
+	Issuer     string
+	Subject    string
+	Email      string
+	LastUsedAt *time.Time
+}
+
+type UserPreference struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	UserId         uuid.UUID
+	ThemeId        string
+	CustomThemes   []byte
+	OrganizationId *uuid.UUID
 }
