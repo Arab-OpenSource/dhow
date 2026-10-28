@@ -208,3 +208,7 @@ func RateLimited(retryAfter time.Duration) *AppError {
 	e.RetryAfter = retryAfter
 	return e
 }
+
+func InvitationSendLimit() *AppError {
+	return New(http.StatusConflict, CodeInvitationSendLimit, KeyInvitationSendLimit)
+}

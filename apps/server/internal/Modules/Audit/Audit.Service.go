@@ -18,16 +18,13 @@ import (
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
 	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit/Models"
-	"github.com/Arab-OpenSource/dhow/internal/logging"
 )
 
 const (
 	walkBatch        = 500
-	maxDataEntries   = 24
 	viaKey           = "Via"
 	viaIDKey         = "ViaId"
 	viaAPIToken      = "api_token"
-	maxDataValueLen  = 256
 	instanceChainKey = "instance"
 )
 
@@ -112,7 +109,7 @@ func (s *Service) append(ctx context.Context, org *uuid.UUID, action string, a e
 			TargetType:     a.TargetType,
 			TargetID:       a.TargetID,
 			IP:             a.IP,
-			Data:           withCredential(ctx, sanitizeData(a.Data)),
+			Data:           withCredential(ctx, s.sanitizeData(ctx, action, a.Data)),
 			PrevHash:       prev,
 		}
 		if ev.Hash, err = models.ComputeHash(prev, ev); err != nil {
@@ -127,29 +124,6 @@ func (s *Service) append(ctx context.Context, org *uuid.UUID, action string, a e
 			TargetType: ev.TargetType, TargetID: ev.TargetID, Ip: ev.IP, Data: data, PrevHash: prev, Hash: ev.Hash,
 		})
 	})
-}
-
-func sanitizeData(in map[string]string) map[string]string {
-	out := make(map[string]string, len(in))
-	keys := make([]string, 0, len(in))
-	for k := range in {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		if len(out) >= maxDataEntries {
-			break
-		}
-		if logging.IsSensitiveKey(k) || k == viaKey || k == viaIDKey {
-			continue
-		}
-		v := in[k]
-		if len(v) > maxDataValueLen {
-			v = v[:maxDataValueLen]
-		}
-		out[k] = v
-	}
-	return out
 }
 
 func (s *Service) List(ctx context.Context, org uuid.UUID, page, limit int) ([]models.Event, int64, error) {

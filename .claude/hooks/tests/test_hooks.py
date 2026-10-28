@@ -481,6 +481,73 @@ class DatabaseRules(unittest.TestCase):
         self.assertIsNone(edit(path, '-- name: DeleteProject :exec\nUPDATE "Projects" SET "IsDeleted" = true WHERE "Id" = $1;\n'))
         self.assertIsNone(edit("apps/server/internal/Database/Migrations/00003_x.sql", 'DELETE FROM "Instance" WHERE "Id" = 2;\n'))
 
+    RETENTION = "apps/server/internal/Database/Retention/Queries/Retention.sql"
+    PURGE = ('-- name: PurgeOidcFlows :execrows\nDELETE FROM "OidcFlows"\nWHERE "Id" IN (\n'
+             '    SELECT f."Id" FROM "OidcFlows" f WHERE f."ExpiresAt" < @before LIMIT @batch FOR UPDATE SKIP LOCKED\n);\n')
+
+    def test_retention_may_delete_expired_rows_of_temporary_tables(self):
+        self.assertIsNone(edit(self.RETENTION, self.PURGE))
+        for table in ("LoginThrottles", "RunnerThrottles", "AuthChallenges", "Invitations", "SetupTokens", "RateLimits"):
+            self.assertIsNone(edit(self.RETENTION, self.PURGE.replace('"OidcFlows"', '"%s"' % table)), table)
+
+    def test_retention_may_not_delete_from_a_table_with_history(self):
+        for table in ("AuditEvents", "Memberships", "Sessions", "Users", "ApiTokens"):
+            self.assertIn("temporary tables", edit(self.RETENTION, self.PURGE.replace('"OidcFlows"', '"%s"' % table)), table)
+
+    def test_retention_selects_from_the_table_it_deletes_from(self):
+        mixed = self.PURGE.replace('FROM "OidcFlows" f', 'FROM "AuditEvents" f')
+        self.assertIn("same table", edit(self.RETENTION, mixed))
+
+    def test_retention_delete_needs_the_batch_template(self):
+        for statement in ('DELETE FROM "OidcFlows";', 'DELETE FROM "OidcFlows" WHERE "Id" = @id;',
+                          'DELETE FROM "OidcFlows" USING "Users" WHERE "ExpiresAt" < @before;',
+                          'DELETE FROM ONLY "OidcFlows" WHERE "ExpiresAt" < @before;',
+                          'WITH d AS (DELETE FROM "AuditEvents" WHERE "CreatedAt" < @before RETURNING 1) SELECT 1;'):
+            self.assertIn("exactly", edit(self.RETENTION, "-- name: P :execrows\n" + statement + "\n"), statement)
+
+    def test_retention_delete_needs_an_anded_time_bound(self):
+        for conds in ('true', 'f."Id" = @id', '(f."ExpiresAt" < @before OR true)', 'f."ExpiresAt" > @before'):
+            purge = self.PURGE.replace('f."ExpiresAt" < @before', conds)
+            self.assertIn("fixed period", edit(self.RETENTION, purge), conds)
+
+    def test_retention_delete_may_not_use_a_top_level_or(self):
+        for conds in ('f."ExpiresAt" < @before OR true', 'f."ExpiresAt" < @before or f."Id" IS NOT NULL'):
+            self.assertIn("OR", edit(self.RETENTION, self.PURGE.replace('f."ExpiresAt" < @before', conds)), conds)
+
+    def test_retention_accepts_alternatives_in_parentheses_and_least(self):
+        ok = ('f."UsedAt" IS NULL AND f."ExpiresAt" < @before AND (f."A" IS NULL OR f."A" < @before)',
+              'f."UsedAt" IS NULL AND LEAST(f."ExpiresAt", f."UsedAt") < @before')
+        for conds in ok:
+            self.assertIsNone(edit(self.RETENTION, self.PURGE.replace('f."ExpiresAt" < @before', conds)), conds)
+
+    def test_retention_checks_the_whole_file_on_a_partial_edit(self):
+        final = self.PURGE + '\n-- name: Bad :execrows\n' + self.PURGE.split("\n", 1)[1].replace('"OidcFlows"', '"AuditEvents"')
+        self.assertIn("temporary tables", edit(self.RETENTION, "LIMIT @batch", old="LIMIT @batch", exists=True, final=final))
+
+    def test_comments_and_missing_spaces_do_not_hide_a_delete(self):
+        module = "apps/server/internal/Modules/System/Queries/X.sql"
+        for statement in ('DELETE /**/ FROM "Projects" WHERE "Id" = $1;', 'DELETE/* x */FROM "Projects";',
+                          'DELETE -- c\nFROM "Projects";', 'DELETE FROM"Projects" WHERE "Id" = $1;', 'delete\n  from "Projects";'):
+            self.assertIn("soft", edit(module, "-- name: D :exec\n" + statement + "\n"), statement)
+            self.assertIsNotNone(edit(self.RETENTION, "-- name: D :exec\n" + statement.replace('"Projects"', '"AuditEvents"') + "\n"), statement)
+        sneaky = self.PURGE.replace('DELETE FROM "OidcFlows"', 'DELETE /**/ FROM"AuditEvents"').replace('FROM "OidcFlows" f', 'FROM "AuditEvents" f')
+        self.assertIn("temporary tables", edit(self.RETENTION, sneaky))
+
+    def test_a_delete_inside_a_string_or_after_a_comment_marker_in_a_string_is_still_seen(self):
+        module = "apps/server/internal/Modules/System/Queries/X.sql"
+        self.assertIn("soft", edit(module, "-- name: D :exec\nSELECT '--'; DELETE FROM \"Projects\";\n"))
+        self.assertIsNone(edit(module, "-- name: N :one\n-- DELETE FROM \"Projects\" is never allowed\nSELECT 1;\n"))
+
+    def test_the_exception_is_only_for_the_retention_file(self):
+        for path in ("apps/server/internal/Modules/Session/Queries/Retention.sql",
+                     "apps/server/internal/Database/Retention/Queries/Other.sql",
+                     "apps/server/internal/Core/RateLimit/Queries/RateLimit.sql"):
+            self.assertIn("soft", edit(path, self.PURGE), path)
+
+    def test_truncate_is_never_allowed_in_queries(self):
+        self.assertIn("TRUNCATE", edit(self.RETENTION, '-- name: T :exec\nTRUNCATE "OidcFlows";\n'))
+        self.assertIn("TRUNCATE", edit("apps/server/internal/Modules/System/Queries/X.sql", '-- name: T :exec\nTRUNCATE "Projects";\n'))
+
 
 class OpenapiRules(unittest.TestCase):
     PATH = "packages/openapi/openapi.yaml"

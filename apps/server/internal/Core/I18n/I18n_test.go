@@ -56,6 +56,7 @@ func TestCatalogsCoverTheSameKeys(t *testing.T) {
 		"errors.secretsUnavailable",
 		"errors.jobFinished",
 		"errors.jobQueueFull",
+		"errors.invitationSendLimit",
 		"jobs.list.loaded",
 		"jobs.job.loaded",
 		"jobs.job.created",

@@ -41,7 +41,7 @@ WHERE i."Id" = @id AND i."OrganizationId" = @organization_id AND i."AcceptedAt" 
   AND NOT i."IsDeleted";
 
 -- name: LockOpenInvitation :one
-SELECT "Id", "Role"
+SELECT "Id", "Role", "SendCount"
 FROM "Invitations"
 WHERE "Id" = @id AND "OrganizationId" = @organization_id AND "AcceptedAt" IS NULL AND "RevokedAt" IS NULL
   AND NOT "IsDeleted"

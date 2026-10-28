@@ -163,7 +163,7 @@ RETURNING "KeyVersion";
 -- name: EnsureRunnerThrottle :exec
 INSERT INTO "RunnerThrottles" ("Key", "Failures", "LastFailureAt", "CreatedAt", "UpdatedAt")
 VALUES (@key, 0, @now, @now, @now)
-ON CONFLICT ("Key") DO NOTHING;
+ON CONFLICT ("Key") DO UPDATE SET "UpdatedAt" = GREATEST("RunnerThrottles"."UpdatedAt", EXCLUDED."UpdatedAt");
 
 -- name: LockRunnerThrottle :one
 SELECT "Failures", "LastFailureAt", "LockedUntil"

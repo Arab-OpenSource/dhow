@@ -31,8 +31,10 @@ func TestADisabledOwnerIsNotACoOwner(t *testing.T) {
 	assert.Equal(t, "LAST_OWNER", transfer.Error.Code, "ownership never moves to a disabled account alone: %s", transfer.Raw)
 	assert.Equal(t, "owner", owner.RoleIn(org))
 
+	demoteGhost := owner.ChangeRole(org, ghost.String(), "admin", apptest.PasswordFactor(d.Password))
+	assert.Equal(t, http.StatusOK, demoteGhost.Status, "the active owner can still demote the disabled one: %s", demoteGhost.Raw)
 	removeGhost := owner.Do(apptest.Request{Method: http.MethodDelete, Path: apptest.OrgPath(org, "/members/"+ghost.String())})
-	assert.Equal(t, http.StatusOK, removeGhost.Status, "the active owner can still remove the disabled one: %s", removeGhost.Raw)
+	assert.Equal(t, http.StatusOK, removeGhost.Status, "and then remove them: %s", removeGhost.Raw)
 }
 
 func TestADisabledInviterInvalidatesTheInvitation(t *testing.T) {

@@ -1,0 +1,4 @@
+go test fuzz v1
+string("ɒ")
+int64(1793178009)
+int64(40)

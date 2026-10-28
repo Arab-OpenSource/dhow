@@ -43,7 +43,7 @@ func (t *APITokens) New() (string, []byte, error) {
 
 func (t *APITokens) Hash(token string) ([]byte, bool) {
 	rest, ok := strings.CutPrefix(token, config.APITokenPrefix)
-	if !ok {
+	if !ok || len(rest) != base64.RawURLEncoding.EncodedLen(config.APITokenBytes) {
 		return nil, false
 	}
 	raw, err := base64.RawURLEncoding.Strict().DecodeString(rest)

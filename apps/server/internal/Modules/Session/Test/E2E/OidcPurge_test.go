@@ -14,10 +14,10 @@ import (
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 )
 
-func liveFlows(t *testing.T, env *apptest.Env) int {
+func storedFlows(t *testing.T, env *apptest.Env) int {
 	t.Helper()
 	var n int
-	require.NoError(t, env.Pool.QueryRow(context.Background(), `SELECT count(*) FROM "OidcFlows" WHERE NOT "IsDeleted"`).Scan(&n))
+	require.NoError(t, env.Pool.QueryRow(context.Background(), `SELECT count(*) FROM "OidcFlows"`).Scan(&n))
 	return n
 }
 
@@ -28,25 +28,26 @@ func beginLogin(t *testing.T, env *apptest.Env) apptest.OidcStart {
 	return start
 }
 
-func TestExpiredAndUsedOidcFlowsArePurged(t *testing.T) {
+func TestExpiredOidcFlowsAreDeletedAfterTheGracePeriod(t *testing.T) {
 	env, idp := apptest.NewWithIdP(t, apptest.OidcOptions{})
 	owner, _ := env.SetupAndLogin()
 	stale := beginLogin(t, env)
-	env.Clock.Advance(config.OidcFlowTTL + time.Second)
 	used := beginLogin(t, env)
 	code, state := idp.Authorize(used.URL, sara())
 	owner.FinishOidc("/oidc/callback", used.Cookie, code, state, nil)
+	env.Clock.Advance(config.OidcFlowTTL + config.RetentionOidcFlowAfter + time.Second)
 	fresh := beginLogin(t, env)
-	require.Equal(t, 3, liveFlows(t, env))
+	require.Equal(t, 3, storedFlows(t, env))
 
-	n, err := env.Wired.Options.Session.PurgeOidcFlows(context.Background())
+	report, err := env.Wired.Retention.Run(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, int64(2), n, "the expired flow and the used one")
-	assert.Equal(t, 1, liveFlows(t, env))
+	assert.True(t, report.Ran)
+	assert.Equal(t, int64(2), report.Deleted["OidcFlows"], "the expired flow and the used one")
+	assert.Equal(t, 1, storedFlows(t, env), "the rows are gone from the table, not only marked")
 
 	code, state = idp.Authorize(fresh.URL, sara())
 	res := (&apptest.Client{Env: env}).FinishOidc("/oidc/callback", fresh.Cookie, code, state, nil)
-	assert.NotEqual(t, "OIDC_FLOW_INVALID", errorCode(res), "a live flow survives the purge: %s", res.Raw)
+	assert.NotEqual(t, "OIDC_FLOW_INVALID", errorCode(res), "a live flow survives: %s", res.Raw)
 	code, state = idp.Authorize(stale.URL, sara())
 	res = (&apptest.Client{Env: env}).FinishOidc("/oidc/callback", stale.Cookie, code, state, nil)
 	assert.Equal(t, "OIDC_FLOW_INVALID", errorCode(res))
@@ -55,9 +56,9 @@ func TestExpiredAndUsedOidcFlowsArePurged(t *testing.T) {
 func TestTheMaintenanceLoopPurgesAndStops(t *testing.T) {
 	env, _ := apptest.NewWithIdP(t, apptest.OidcOptions{})
 	beginLogin(t, env)
-	env.Clock.Advance(config.OidcFlowTTL + time.Second)
-	stop := app.StartMaintenance(context.Background(), env.Wired.Options.Session, 10*time.Millisecond)
-	assert.Eventually(t, func() bool { return liveFlows(t, env) == 0 }, 5*time.Second, 20*time.Millisecond)
+	env.Clock.Advance(config.OidcFlowTTL + config.RetentionOidcFlowAfter + time.Second)
+	stop := app.StartMaintenance(context.Background(), env.Wired.Retention, 10*time.Millisecond)
+	assert.Eventually(t, func() bool { return storedFlows(t, env) == 0 }, 5*time.Second, 20*time.Millisecond)
 	done := make(chan struct{})
 	go func() {
 		stop()

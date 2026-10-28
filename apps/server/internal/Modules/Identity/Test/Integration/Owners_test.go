@@ -51,16 +51,17 @@ func TestTwoOwnersLeavingAtOnceLeaveOneBehind(t *testing.T) {
 	assert.Equal(t, 1, owners(t, env, org.String()))
 }
 
-func TestTwoOwnersRemovingEachOtherLeaveOneBehind(t *testing.T) {
+func TestTwoOwnersDemotingEachOtherLeaveOneBehind(t *testing.T) {
 	env := apptest.New(t)
 	first, d := env.SetupAndLogin()
 	org := env.OrganizationID(d.OrgSlug)
 	second, secondID := env.SignedIn(org, "second@example.com", "owner")
 	targets := []string{secondID.String(), first.Me().User.Id}
 	clients := []*apptest.Client{first, second}
+	factors := []map[string]any{apptest.PasswordFactor(d.Password), apptest.PasswordFactor("a long password for second@example.com")}
 
 	statuses := race(2, func(i int) int {
-		return clients[i].Do(apptest.Request{Method: http.MethodDelete, Path: apptest.OrgPath(org, "/members/"+targets[i])}).Status
+		return clients[i].ChangeRole(org, targets[i], "admin", factors[i]).Status
 	})
 	ok := 0
 	for _, s := range statuses {

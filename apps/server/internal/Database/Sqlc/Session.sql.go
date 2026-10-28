@@ -15,7 +15,7 @@ import (
 const ensureThrottle = `-- name: EnsureThrottle :exec
 INSERT INTO "LoginThrottles" ("Key", "Failures", "LastFailureAt", "CreatedAt", "UpdatedAt")
 VALUES ($1, 0, $2, $2, $2)
-ON CONFLICT ("Key") DO NOTHING
+ON CONFLICT ("Key") DO UPDATE SET "UpdatedAt" = GREATEST("LoginThrottles"."UpdatedAt", EXCLUDED."UpdatedAt")
 `
 
 type EnsureThrottleParams struct {

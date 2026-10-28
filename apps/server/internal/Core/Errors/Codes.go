@@ -42,6 +42,7 @@ const (
 	CodeInvitationInvalid       = "INVITATION_INVALID"
 	CodeInvitationEmailMismatch = "INVITATION_EMAIL_MISMATCH"
 	CodeInvitationAccountExists = "INVITATION_ACCOUNT_EXISTS"
+	CodeInvitationSendLimit     = "INVITATION_SEND_LIMIT"
 )
 
 const (
@@ -100,6 +101,7 @@ const (
 	KeyInvitationInvalid       = "errors.invitationInvalid"
 	KeyInvitationEmailMismatch = "errors.invitationEmailMismatch"
 	KeyInvitationAccountExists = "errors.invitationAccountExists"
+	KeyInvitationSendLimit     = "errors.invitationSendLimit"
 )
 
 const (

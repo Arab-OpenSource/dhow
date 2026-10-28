@@ -25,6 +25,7 @@ const (
 	fieldToken         = "Token"
 
 	messageSelfRoleChange = "errors.selfRoleChange"
+	messageOwnerRemoval   = "errors.ownerRemoval"
 	messageSelfMfaReset   = "errors.selfMfaReset"
 	messageFactorRequired = "errors.factorRequired"
 	messageTransferToSelf = "errors.transferToSelf"

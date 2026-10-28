@@ -9,7 +9,7 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { formatDateTime } from '@/Core/Format/TimeFormat';
 import { useOrganizationStore } from '@/Core/Store/useOrganizationStore';
 import { useToastStore } from '@/Core/Store/useToastStore';
-import { startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
+import { membersFixture, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { envelope, meBody, ORG_ID } from '@/Core/Testing/Fetch';
 import { INVITE_LINK, orgBackend, TEAM_ID } from '@/Core/Testing/OrgBackend';
 import { Ar } from '@/I18n/Locales/Ar';
@@ -120,6 +120,17 @@ describe('a member slide', () => {
         CurrentFactor: { Method: 'password', Password: 'correct horse battery staple' },
       });
     });
+  });
+
+  it('sends an owner through the role change before removing them', async () => {
+    const coOwner = '0198a000-0000-7000-8000-0000000000b4';
+    const members = [
+      ...membersFixture(),
+      { UserId: coOwner, Name: 'Laila Owner', Email: 'laila@future.dev', Role: 'owner', EffectiveRole: 'owner', JoinedAt: '2026-10-06T08:00:00Z', Mfa: 'totp' },
+    ];
+    const { dialog } = await open(`/?stack=organization,member-${coOwner}`, Ar['organization.tab.members'], { members });
+    expect(await within(dialog).findByText(Ar['member.remove.ownerFirst'].replace('{name}', 'Laila Owner'))).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: Ar['member.remove.action'].replace('{name}', 'Laila Owner') })).not.toBeInTheDocument();
   });
 
   it('points to My account on your own member slide', async () => {

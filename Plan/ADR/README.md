@@ -41,6 +41,7 @@
 | [0037](0037-mfa-implementation.md) | تنفيذ التحقق بخطوتين في M2.2: خطوة `mfa_pending`، وTOTP، وأكواد الطوارئ، ومفاتيح المرور |
 | [0038](0038-orgs-teams-invites-implementation.md) | تنفيذ المؤسسات والفرق والدعوات في M2.3: مين يعمل مؤسسة، والدور الفعلي، وقواعد منح الأدوار، والدعوة برابط مرة واحدة |
 | [0039](0039-oidc-api-tokens-preferences.md) | تنفيذ OIDC وAPI tokens والتفضيلات في M2.4: الإعداد من الـ env، وGitHub كمزوّد OAuth لوحده، والـ token اللي عمره ما يعدّي صاحبه، والتفضيلات في السيرفر |
+| [0040](0040-identity-hardening.md) | تقوية الهوية في M2.5: rate limiter مختلط، والمسح الفعلي للجداول المؤقتة بس، وقايمة سماح للـ audit، والمراجعة الخارجية في M9 |
 | [0041](0041-runner-identity-and-registration.md) | هوية الـ runner وتسجيله: مفاتيح Ed25519 متثبّتة، وتوكن قصير، وإثبات امتلاك عند الحاجات الحساسة |
 | [0042](0042-runner-protocol-and-leasing.md) | بروتوكول الـ runner: Connect بـ RPCs unary بس، وleases بـ fencing token، وتسليم at-least-once بإنهاء idempotent |
 | [0043](0043-job-sandbox-rootless-podman.md) | الـ sandbox: Podman rootless افتراضيًا، وagent هو PID 1، وحدود cgroup v2 بتفشل مقفولة، وgVisor اختياري |
@@ -54,5 +55,3 @@
 | [0051](0051-jobs-and-leasing-implementation.md) | تنفيذ الـ jobs والـ leases في M3.3: الـ triggers، والـ claim، والرسائل الموقّعة، وقواعد الإنهاء، والـ reconciler |
 | [0052](0052-job-logs-implementation.md) | تنفيذ الـ logs في M3.4: الجدول المقسّم، والـ Append بقفل الـ attempt، والـ SSE بقراية لكل مشترك، والصيانة تحت advisory lock |
 | [0053](0053-runner-implementation.md) | تنفيذ الـ runner في M3.5: الطبقات، والهوية على القرص، والقفل الذاتي، والـ journal، والـ masking والـ logs، والـ driver الوهمي |
-
-الرقم 0040 محجوز لقرار M2 اللي جاي.

@@ -49,4 +49,8 @@ func TestLockDurationIsMonotonic(t *testing.T) {
 func TestThrottleKeys(t *testing.T) {
 	assert.Equal(t, "account:abc", auth.AccountThrottleKey("abc"))
 	assert.Equal(t, "ip:203.0.113.7", auth.IPThrottleKey("203.0.113.7"))
+	assert.Equal(t, "ip:2001:db8:1:2::/64", auth.IPThrottleKey("2001:db8:1:2::abcd"), "one host usually holds a whole /64")
+	assert.Equal(t, auth.IPThrottleKey("2001:db8:1:2::1"), auth.IPThrottleKey("2001:db8:1:2:ffff::1"))
+	assert.Equal(t, "ip:203.0.113.7", auth.IPThrottleKey("::ffff:203.0.113.7"))
+	assert.Equal(t, "ip:unknown", auth.IPThrottleKey(""))
 }

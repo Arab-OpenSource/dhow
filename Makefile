@@ -134,16 +134,36 @@ hooks-test: ## Test the Claude Code project hooks
 test: ## Run Go tests with the race detector
 	$(GO) test -race -count=1 -coverprofile=coverage.out $(PKG)
 
+FUZZTIME     ?= 10s
+FUZZ_TARGETS := \
+	Core/Auth:FuzzHashSessionToken Core/Auth:FuzzAPITokenHash Core/Auth:FuzzAuthorizationHeader Core/Auth:FuzzTotp \
+	Core/Auth:FuzzRecoveryCode Core/Auth:FuzzEmailAndName Core/Auth:FuzzPasswordLength Core/Auth:FuzzWebAuthnResponses \
+	Core/I18n:FuzzParseAcceptLanguage Core/Middleware:FuzzClientIP Core/RateLimit:FuzzNetwork \
+	Core/Oidc:FuzzEmailVerifiedClaim Core/Oidc:FuzzAcceptedEmail
+
+.PHONY: fuzz
+fuzz: ## Fuzz the auth inputs, FUZZTIME per target (default 10s; the M2.5 bar is 60s)
+	@found=$$(grep -rhoE '^func Fuzz[A-Za-z0-9]+' apps/server/internal --include='*_test.go' | sed 's/^func //' | sort); \
+	listed=$$(printf '%s\n' $(FUZZ_TARGETS) | sed 's/.*://' | sort); \
+	test "$$found" = "$$listed" || { echo "fuzz: FUZZ_TARGETS does not match the Fuzz functions in the code" >&2; exit 1; }
+	set -e; for t in $(FUZZ_TARGETS); do \
+		echo "fuzz $${t#*:} for $(FUZZTIME)"; \
+		$(GO) test -run '^$$' -fuzz "^$${t#*:}$$" -fuzztime $(FUZZTIME) ./apps/server/internal/$${t%%:*}; \
+	done
+
+.PHONY: timing
+timing: ## Run the statistical timing tests against DHOW_TEST_DATABASE_URL (slow, separate CI job)
+	$(GO) test -tags timing -count=1 -run '^TestTiming' -timeout 30m -v ./apps/server/internal/App/Timing/...
+
 .PHONY: test-runner
 test-runner: ## Run the runner tests with the fake sandbox driver (dhowtest build tag)
 	$(GO) test -race -count=1 -tags dhowtest ./apps/runner/...
 
-FUZZTIME    ?= 60s
 RUNNER_FUZZ := Masking:FuzzMasker Masking:FuzzMaskerKeepsCleanText Logs:FuzzChunker Logs:FuzzSpillRecords \
 	Journal:FuzzJournalOpen Executor:FuzzVerifyGrant
 
 .PHONY: fuzz-runner
-fuzz-runner: ## Fuzz every runner target for FUZZTIME each (default 60s)
+fuzz-runner: ## Fuzz every runner target for FUZZTIME each (default 10s; the M3.5 bar is 60s)
 	set -e; for t in $(RUNNER_FUZZ); do \
 		$(GO) test -run '^$$' -fuzz "^$${t##*:}$$" -fuzztime $(FUZZTIME) ./apps/runner/internal/$${t%%:*}; \
 	done

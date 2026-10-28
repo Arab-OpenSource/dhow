@@ -36,12 +36,10 @@ func (s *Service) reserve(ctx context.Context, now time.Time, keys ...throttleKe
 				return err
 			}
 			if row.LockedUntil != nil && row.LockedUntil.After(now) {
-				wait = max(wait, row.LockedUntil.Sub(now))
+				wait = row.LockedUntil.Sub(now)
+				return nil
 			}
 			rows = append(rows, row)
-		}
-		if wait > 0 {
-			return nil
 		}
 		for i, k := range keys {
 			failures := rows[i].Failures + 1

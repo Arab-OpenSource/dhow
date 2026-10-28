@@ -60,6 +60,8 @@ http() {
 printf 'Preparing the install directory\n'
 cp -- "$root/deploy/compose/compose.yaml" "$root/deploy/compose/init.sh" "$root/deploy/compose/.env.example" "$work/"
 "$work/init.sh" "$public_url" >/dev/null
+printf 'DHOW_RATE_LIMIT_PUBLIC=20\nDHOW_RATE_LIMIT_INVITES_USER=3\n' >>"$work/.env"
+expect "the smoke stack runs with low rate limits" grep -q '^DHOW_RATE_LIMIT_PUBLIC=20$' "$work/.env"
 expect ".env is mode 600" test "$(stat -c %a "$work/.env")" = 600
 expect "init.sh refuses to overwrite .env" bash -c '! "$1" >/dev/null 2>&1' _ "$work/init.sh"
 
@@ -406,6 +408,34 @@ expect "a callback without a flow answers OIDC_FLOW_INVALID" test "$status:$(jso
 
 dhow_logs=$(compose logs --no-color dhow 2>&1)
 expect "the API token never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "${pat#dhow_pat_}" "$dhow_logs"
+
+printf 'Rate limits\n'
+limited=0
+for attempt in $(seq 1 25); do
+  status=$(api "$work/rl" POST /api/v1/oidc/authorize '{"Provider":"google"}' "${origin[@]}" --header "X-Forwarded-For: 192.0.2.$attempt")
+  if [[ $status = 429 ]]; then
+    limited=$attempt
+    break
+  fi
+done
+expect "the OIDC routes answer 429 within the limit of 20 per 10 minutes" test "$limited" -ge 1 -a "$limited" -le 19
+expect "a forged X-Forwarded-For does not escape the limit" test "$limited" -ne 0
+expect "the 429 is RATE_LIMITED" grep -q '"Code":"RATE_LIMITED"' "$work/rl.body"
+expect "the 429 carries Retry-After" has_header "$work/rl.head" Retry-After '[0-9]'
+expect "the 429 message is in Arabic by default" grep -q 'استنى شوية' "$work/rl.body"
+status=$(api "$work/rl-en" POST /api/v1/oidc/callback '{"Provider":"google","Code":"x","State":"y"}' "${origin[@]}" --header 'Accept-Language: en')
+expect "the callback shares the OIDC counter" test "$status" = 429
+expect "the 429 message is in English with Accept-Language: en" grep -q 'Wait a little and try again' "$work/rl-en.body"
+status=$(api "$work/rl-pk" POST /api/v1/sessions/passkey-options '' "${origin[@]}")
+expect "passkey options keep their own counter" test "$status" = 200
+for n in 1 2; do
+  status=$(api "$work/rl-invite-$n" POST "$org_api/invitations" "{\"Email\":\"limit$n@smoke.test\",\"Role\":\"viewer\"}" "${origin[@]}" "${session[@]}")
+  expect "invitation $((n + 1)) of 3 this hour answers 201" test "$status" = 201
+done
+status=$(api "$work/rl-invite-3" POST "$org_api/invitations" '{"Email":"limit3@smoke.test","Role":"viewer"}' "${origin[@]}" "${session[@]}")
+expect "the fourth invitation of the hour answers 429 RATE_LIMITED" test "$status:$(json_field "$work/rl-invite-3.body" Code)" = 429:RATE_LIMITED
+rows=$(compose exec -T postgres psql -U dhow -d dhow -tAc 'SELECT count(*) FROM "RateLimits"' | tr -d '[:space:]')
+expect "the counters live in the database" test "${rows:-0}" -ge 3
 
 printf 'Security headers\n'
 for page in web ready; do

@@ -263,6 +263,17 @@ type Passkey struct {
 	LastUsedAt        *time.Time
 }
 
+type RateLimit struct {
+	Id          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	IsDeleted   bool
+	Key         string
+	WindowStart time.Time
+	Hits        int32
+	ExpiresAt   time.Time
+}
+
 type RecoveryCode struct {
 	Id        uuid.UUID
 	CreatedAt time.Time

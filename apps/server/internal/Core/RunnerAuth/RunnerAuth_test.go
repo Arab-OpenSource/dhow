@@ -79,6 +79,12 @@ func TestTokens(t *testing.T) {
 		_, ok := runnerauth.ParseRegistrationToken(bad)
 		assert.False(t, ok, bad)
 	}
+	for _, spelling := range []string{reg[:15] + "\n" + reg[15:], reg[:15] + "\r" + reg[15:], reg + "\n"} {
+		_, ok := runnerauth.ParseRegistrationToken(spelling)
+		assert.False(t, ok, "a line break is not another spelling of the token: %q", spelling)
+	}
+	_, ok = runnerauth.HashAccessToken(access[:15] + "\n" + access[15:])
+	assert.False(t, ok, "the same holds for access tokens")
 	_, ok = runnerauth.HashAccessToken(reg)
 	assert.False(t, ok, "a registration token is not an access token")
 	_, ok = runnerauth.ParseRegistrationToken(access)

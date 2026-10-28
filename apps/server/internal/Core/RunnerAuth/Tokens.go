@@ -23,7 +23,7 @@ func newToken(prefix string) (string, []byte, error) {
 
 func parseToken(prefix, token string) ([]byte, bool) {
 	rest, ok := strings.CutPrefix(token, prefix)
-	if !ok {
+	if !ok || len(rest) != base64.RawURLEncoding.EncodedLen(config.RunnerTokenBytes) {
 		return nil, false
 	}
 	raw, err := base64.RawURLEncoding.Strict().DecodeString(rest)

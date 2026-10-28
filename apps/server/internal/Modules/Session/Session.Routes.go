@@ -10,13 +10,33 @@ import (
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
 	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
 	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session/Gen"
 )
 
 type Deps struct {
 	Service *Service
 	Guard   *auth.Guard
+	Limits  *ratelimit.PerClient
 	Log     *slog.Logger
+}
+
+const (
+	limitPassword = "password"
+	limitMfa      = "mfa"
+	limitOidc     = "oidc"
+	limitPasskey  = "passkey"
+)
+
+func RateLimited() []ratelimit.Route {
+	return []ratelimit.Route{
+		{Method: http.MethodPost, Path: "/sessions", Group: limitPassword},
+		{Method: http.MethodPost, Path: "/sessions/mfa", Group: limitMfa},
+		{Method: http.MethodPost, Path: "/sessions/passkey", Group: limitPasskey},
+		{Method: http.MethodPost, Path: "/oidc/authorize", Group: limitOidc},
+		{Method: http.MethodPost, Path: "/oidc/callback", Group: limitOidc},
+		{Method: http.MethodPost, Path: "/sessions/passkey-options", Group: limitPasskey},
+	}
 }
 
 func Policies() []policy.Rule {
@@ -61,7 +81,7 @@ func Routes(r chi.Router, d Deps) {
 	guard := d.Guard.Middleware(policy.NewTable(Policies()...))
 	gen.HandlerWithOptions(strict, gen.ChiServerOptions{
 		BaseRouter:       r,
-		Middlewares:      []gen.MiddlewareFunc{middleware.BodyLimit(config.AuthBodyMaxBytes), guard},
+		Middlewares:      []gen.MiddlewareFunc{middleware.BodyLimit(config.AuthBodyMaxBytes), d.Limits.Middleware(RateLimited()...), guard},
 		ErrorHandlerFunc: middleware.StrictRequestError,
 	})
 }

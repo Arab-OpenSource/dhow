@@ -21,6 +21,9 @@ func HashBytes(b []byte) []byte {
 }
 
 func HashSessionToken(token string, n int) ([]byte, bool) {
+	if len(token) != base64.RawURLEncoding.EncodedLen(n) {
+		return nil, false
+	}
 	raw, err := base64.RawURLEncoding.Strict().DecodeString(token)
 	if err != nil || len(raw) != n {
 		return nil, false

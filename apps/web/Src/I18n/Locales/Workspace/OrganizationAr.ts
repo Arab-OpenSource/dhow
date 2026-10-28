@@ -47,6 +47,7 @@ export const OrganizationAr = {
   'member.remove.action': 'شيل {name}',
   'member.remove.confirm': 'أكّد إنك هتشيله',
   'member.remove.done': '{name} اتشال من المؤسسة.',
+  'member.remove.ownerFirst': '{name} صاحب مؤسسة. غيّر دوره الأول من فوق، وده محتاج تأكيد هويتك، وبعدين تقدر تشيله.',
   'member.mfa.title': 'التحقق بخطوتين',
   'member.mfa.state': 'الخطوة التانية: {state}',
   'member.mfa.reset': 'صفّر الخطوة التانية',

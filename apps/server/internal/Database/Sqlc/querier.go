@@ -177,12 +177,19 @@ type Querier interface {
 	PickOverdueLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
 	PickRevokedRunnerLease(ctx context.Context) (uuid.UUID, error)
 	PickUnstartedLease(ctx context.Context, startSeconds float64) (uuid.UUID, error)
-	PurgeOidcFlows(ctx context.Context, now time.Time) (int64, error)
+	PurgeAuthChallenges(ctx context.Context, arg PurgeAuthChallengesParams) (int64, error)
+	PurgeInvitations(ctx context.Context, arg PurgeInvitationsParams) (int64, error)
+	PurgeLoginThrottles(ctx context.Context, arg PurgeLoginThrottlesParams) (int64, error)
+	PurgeOidcFlows(ctx context.Context, arg PurgeOidcFlowsParams) (int64, error)
+	PurgeRateLimits(ctx context.Context, arg PurgeRateLimitsParams) (int64, error)
+	PurgeRunnerThrottles(ctx context.Context, arg PurgeRunnerThrottlesParams) (int64, error)
+	PurgeSetupTokens(ctx context.Context, arg PurgeSetupTokensParams) (int64, error)
 	RecordPasskeyUse(ctx context.Context, arg RecordPasskeyUseParams) (int64, error)
 	RefundRunnerThrottle(ctx context.Context, arg RefundRunnerThrottleParams) error
 	RefundThrottle(ctx context.Context, arg RefundThrottleParams) error
 	RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error
 	ReissueInvitation(ctx context.Context, arg ReissueInvitationParams) (int64, error)
+	ReleaseRetentionLock(ctx context.Context, lockKey int64) (bool, error)
 	RemoveAllTeamBindings(ctx context.Context, arg RemoveAllTeamBindingsParams) error
 	RemoveAllTeamMembers(ctx context.Context, arg RemoveAllTeamMembersParams) error
 	RemoveMemberTeams(ctx context.Context, arg RemoveMemberTeamsParams) error
@@ -197,6 +204,7 @@ type Querier interface {
 	ResolveApiToken(ctx context.Context, arg ResolveApiTokenParams) (ResolveApiTokenRow, error)
 	ResolveRunnerSession(ctx context.Context, tokenHash []byte) (ResolveRunnerSessionRow, error)
 	ResolveSession(ctx context.Context, arg ResolveSessionParams) (ResolveSessionRow, error)
+	RetentionClock(ctx context.Context) (time.Time, error)
 	RetireConfirmedTotp(ctx context.Context, arg RetireConfirmedTotpParams) (int64, error)
 	RetireExpiredInvitations(ctx context.Context, arg RetireExpiredInvitationsParams) error
 	RetireRecoveryCodes(ctx context.Context, arg RetireRecoveryCodesParams) (int64, error)
@@ -226,12 +234,14 @@ type Querier interface {
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	StartAttempt(ctx context.Context, id uuid.UUID) (JobAttempt, error)
 	TakeOidcFlow(ctx context.Context, arg TakeOidcFlowParams) (TakeOidcFlowRow, error)
+	TakeRateLimit(ctx context.Context, arg TakeRateLimitParams) (TakeRateLimitRow, error)
 	TakeWebauthnChallenge(ctx context.Context, arg TakeWebauthnChallengeParams) ([]byte, error)
 	TouchApiToken(ctx context.Context, arg TouchApiTokenParams) error
 	TouchIdentity(ctx context.Context, arg TouchIdentityParams) error
 	TouchRunner(ctx context.Context, arg TouchRunnerParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	TryLockLogPartitions(ctx context.Context) (bool, error)
+	TryRetentionLock(ctx context.Context, lockKey int64) (bool, error)
 	UnreadableLogPartitions(ctx context.Context) ([]string, error)
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
 	UpdateRunner(ctx context.Context, arg UpdateRunnerParams) (Runner, error)

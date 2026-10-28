@@ -128,6 +128,36 @@ func TestAddressLockoutAcrossAccounts(t *testing.T) {
 	assert.Equal(t, http.StatusOK, elsewhere.Status, "other addresses are not affected")
 }
 
+func TestALockedAddressCreatesNoMoreThrottleRows(t *testing.T) {
+	env, _ := setupEnv(t)
+	const attacker = "203.0.113.13:5000"
+	for i := range 20 {
+		attempt(env, fmt.Sprintf("user%d@example.com", i), "wrong password", attacker)
+	}
+	var before int
+	require.NoError(t, env.Pool.QueryRow(context.Background(), `SELECT count(*) FROM "LoginThrottles"`).Scan(&before))
+	for i := range 30 {
+		res := attempt(env, fmt.Sprintf("spray%d@example.com", i), "wrong password", attacker)
+		require.Positive(t, retryAfter(t, res), "attempt %d is refused while the address is locked", i)
+	}
+	var after int
+	require.NoError(t, env.Pool.QueryRow(context.Background(), `SELECT count(*) FROM "LoginThrottles"`).Scan(&after))
+	assert.Equal(t, before, after, "a locked address stops before any account counter is created")
+}
+
+func TestAnIPv6AttackerCannotSpreadOverItsSlash64(t *testing.T) {
+	env, d := setupEnv(t)
+	for i := range 20 {
+		remote := fmt.Sprintf("[2001:db8:7:7::%x]:5000", i+1)
+		res := attempt(env, fmt.Sprintf("user%d@example.com", i), "wrong password", remote)
+		assert.Zero(t, retryAfter(t, res), "attempt %d", i)
+	}
+	locked := attempt(env, d.Email, d.Password, "[2001:db8:7:7:ffff:ffff:ffff:1]:5000")
+	assert.Equal(t, 30, retryAfter(t, locked), "every address of the /64 shares one counter")
+	elsewhere := attempt(env, d.Email, d.Password, "[2001:db8:7:8::1]:5000")
+	assert.Equal(t, http.StatusOK, elsewhere.Status, "the next /64 is another client")
+}
+
 func TestLockedAttemptsAreNotCounted(t *testing.T) {
 	env, d := setupEnv(t)
 	const ip = "203.0.113.13:5000"
