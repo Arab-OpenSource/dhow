@@ -40,9 +40,12 @@ RETENTION_TABLES = (
     '"LoginThrottles"', '"RunnerThrottles"', '"AuthChallenges"', '"OidcFlows"', '"Invitations"', '"SetupTokens"',
     '"RateLimits"',
 )
-SQL_DELETE_STATEMENT = re.compile(r'(?is)\bdelete\s+from\s+("[^"]*"|\S+)(.*?)(?:;|\Z)')
+SQL_ANY_DELETE = re.compile(r"(?i)\bdelete\b\s*from\b")
 SQL_TRUNCATE = re.compile(r"(?i)\btruncate\b")
-SQL_TIME_BOUND = re.compile(r"(?i)<\s*@before\b")
+RETENTION_TEMPLATE = re.compile(
+    r'(?is)^delete from ("[A-Za-z]+") where "Id" in \(select ([a-z]+)\."Id" from ("[A-Za-z]+") \2 '
+    r'where (?P<conds>.+?) limit @batch for update skip locked\)$')
+RETENTION_TIME_BOUND = re.compile(r'(?i)^(?:least\([a-z]+\."[A-Za-z]+"(?:, ?[a-z]+\."[A-Za-z]+")+\)|[a-z]+\."[A-Za-z]+") < @before$')
 BASE_COLUMN_TABLE_ALLOWLIST = ('"Instance"',)
 BASE_COLUMNS = (
     (re.compile(r'(?i)"Id"\s+uuid\s+PRIMARY\s+KEY\s+DEFAULT\s+uuidv7\(\)'), '"Id" uuid PRIMARY KEY DEFAULT uuidv7()'),
@@ -59,7 +62,6 @@ LIKE_COPY = re.compile(r"(?i)^\s*LIKE\s+(%s|%I|\"[A-Z][A-Za-z0-9]*\")(\s+INCLUDI
 SQL_TIMESTAMP_NO_TZ = re.compile(r"(?i)\btimestamp\b(?!\s*(?:\(\d+\))?\s*with\s+time\s+zone)")
 SQL_VARCHAR = re.compile(r"(?i)\b(varchar|character\s+varying)\b")
 SQL_TRANSLATED_COLUMN = re.compile(r'(?m)^\s*"([A-Z][A-Za-z0-9]*[a-z0-9](?:Ar|En))"\s+[A-Za-z]')
-SQL_DELETE_FROM = re.compile(r"(?i)\bdelete\s+from\b")
 OPENAPI_PATH_KEY = re.compile(r"""^\s*["']?(/[^\s:"']*)["']?:\s*$""")
 KEBAB_SEGMENT = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 PATH_PARAM_SEGMENT = re.compile(r"^\{[A-Za-z][A-Za-z0-9_]*\}$")
@@ -416,27 +418,97 @@ def check_migration_rules(rel, added, old, **_):
     return None
 
 
+def strip_sql_comments(text):
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if text.startswith("--", i):
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+            out.append(" ")
+        elif text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            out.append(" ")
+        elif c in "'\"":
+            j = i + 1
+            while j < n:
+                if text[j] == c and text.startswith(c * 2, j):
+                    j += 2
+                    continue
+                if text[j] == c:
+                    break
+                j += 1
+            out.append(text[i:j + 1])
+            i = j + 1
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
+def top_level_split(conds, word):
+    parts, depth, start = [], 0, 0
+    pattern = re.compile(r"(?i)\b" + word + r"\b")
+    i = 0
+    while i < len(conds):
+        ch = conds[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif depth == 0:
+            m = pattern.match(conds, i)
+            if m and (i == 0 or not conds[i - 1].isalnum()):
+                parts.append(conds[start:i].strip())
+                start = i = m.end()
+                continue
+        i += 1
+    parts.append(conds[start:].strip())
+    return parts
+
+
+def retention_statement_violation(rel, statement):
+    flat = re.sub(r"\s+", " ", statement).strip()
+    flat = re.sub(r"\s+\)", ")", re.sub(r"\(\s+", "(", flat))
+    flat = re.sub(r'(?i)\b(from|delete)"', r'\1 "', flat)
+    m = RETENTION_TEMPLATE.match(flat)
+    if not m:
+        return (f"{rel}: a retention DELETE must be exactly `DELETE FROM \"T\" WHERE \"Id\" IN (SELECT x.\"Id\" FROM \"T\" x "
+                "WHERE ... LIMIT @batch FOR UPDATE SKIP LOCKED)`, so it deletes in batches and never touches a row in use.")
+    outer, inner, conds = m.group(1), m.group(3), m.group("conds")
+    if outer != inner:
+        return f"{rel}: a retention DELETE selects its rows from the same table it deletes from ({outer} is not {inner})."
+    if outer not in RETENTION_TABLES:
+        return (f"{rel}: retention may only DELETE from the temporary tables {', '.join(RETENTION_TABLES)}, "
+                f"not {outer}. Rows with history (audit, memberships, sessions) are soft-deleted only.")
+    if len(top_level_split(conds, "or")) > 1:
+        return f"{rel}: a retention DELETE on {outer} may not use OR at the top level of its WHERE: put alternatives in parentheses."
+    if not any(RETENTION_TIME_BOUND.match(c) for c in top_level_split(conds, "and")):
+        return (f"{rel}: every retention DELETE on {outer} needs a WHERE bounded by a fixed period "
+                "(an `AND`ed `x.\"Column\" < @before`), so it never removes live rows.")
+    return None
+
+
 def retention_violation(rel, text):
-    for m in SQL_DELETE_STATEMENT.finditer(text):
-        table, rest = m.group(1), m.group(2)
-        if table not in RETENTION_TABLES:
-            return (f"{rel}: retention may only DELETE from the temporary tables {', '.join(RETENTION_TABLES)}, "
-                    f"not {table}. Rows with history (audit, memberships, sessions) are soft-deleted only.")
-        if not re.match(r"(?is)\s*where\b", rest) or not SQL_TIME_BOUND.search(rest):
-            return (f"{rel}: every retention DELETE on {table} needs a WHERE bounded by a fixed period "
-                    "(`... < @before`), so it never removes live rows.")
+    for statement in text.split(";"):
+        if SQL_ANY_DELETE.search(statement):
+            reason = retention_statement_violation(rel, statement)
+            if reason:
+                return reason
     return None
 
 
 def check_module_queries(rel, added, old, final_content=None, **_):
     if not MODULE_QUERY_SQL.search(rel):
         return None
-    text = "\n".join(new_lines(added, old))
+    whole = strip_sql_comments(final_content if final_content is not None else added)
+    text = strip_sql_comments("\n".join(new_lines(added, old))) + "\n" + whole
     if SQL_TRUNCATE.search(text):
         return f"{rel}: no TRUNCATE in queries."
     if rel == RETENTION_SQL:
-        return retention_violation(rel, final_content if final_content is not None else added)
-    if SQL_DELETE_FROM.search(text):
+        return retention_violation(rel, whole)
+    if SQL_ANY_DELETE.search(text):
         return (f"{rel}: no DELETE FROM in queries. Deletion is soft: UPDATE ... SET \"IsDeleted\" = true, \"UpdatedAt\" = now(). "
                 f"The only exception is {RETENTION_SQL}, for expired rows of temporary tables.")
     return None

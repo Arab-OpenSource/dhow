@@ -37,7 +37,7 @@ const purgeInvitations = `-- name: PurgeInvitations :execrows
 DELETE FROM "Invitations"
 WHERE "Id" IN (
     SELECT i."Id" FROM "Invitations" i
-    WHERE i."AcceptedAt" IS NULL AND (i."ExpiresAt" < $1 OR i."RevokedAt" < $1)
+    WHERE i."AcceptedAt" IS NULL AND LEAST(i."ExpiresAt", i."RevokedAt") < $1
     LIMIT $2
     FOR UPDATE SKIP LOCKED
 )

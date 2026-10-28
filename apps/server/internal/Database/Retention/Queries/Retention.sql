@@ -47,7 +47,7 @@ WHERE "Id" IN (
 DELETE FROM "Invitations"
 WHERE "Id" IN (
     SELECT i."Id" FROM "Invitations" i
-    WHERE i."AcceptedAt" IS NULL AND (i."ExpiresAt" < @before OR i."RevokedAt" < @before)
+    WHERE i."AcceptedAt" IS NULL AND LEAST(i."ExpiresAt", i."RevokedAt") < @before
     LIMIT @batch
     FOR UPDATE SKIP LOCKED
 );
