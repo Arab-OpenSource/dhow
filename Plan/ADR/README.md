@@ -40,6 +40,7 @@
 | [0036](0036-interactive-host-installer.md) | الـ installer التفاعلي على السيرفر (`dhow-server install`) |
 | [0037](0037-mfa-implementation.md) | تنفيذ التحقق بخطوتين في M2.2: خطوة `mfa_pending`، وTOTP، وأكواد الطوارئ، ومفاتيح المرور |
 | [0038](0038-orgs-teams-invites-implementation.md) | تنفيذ المؤسسات والفرق والدعوات في M2.3: مين يعمل مؤسسة، والدور الفعلي، وقواعد منح الأدوار، والدعوة برابط مرة واحدة |
+| [0039](0039-oidc-api-tokens-preferences.md) | تنفيذ OIDC وAPI tokens والتفضيلات في M2.4: الإعداد من الـ env، وGitHub كمزوّد OAuth لوحده، والـ token اللي عمره ما يعدّي صاحبه، والتفضيلات في السيرفر |
 | [0041](0041-runner-identity-and-registration.md) | هوية الـ runner وتسجيله: مفاتيح Ed25519 متثبّتة، وتوكن قصير، وإثبات امتلاك عند الحاجات الحساسة |
 | [0042](0042-runner-protocol-and-leasing.md) | بروتوكول الـ runner: Connect بـ RPCs unary بس، وleases بـ fencing token، وتسليم at-least-once بإنهاء idempotent |
 | [0043](0043-job-sandbox-rootless-podman.md) | الـ sandbox: Podman rootless افتراضيًا، وagent هو PID 1، وحدود cgroup v2 بتفشل مقفولة، وgVisor اختياري |
@@ -51,4 +52,4 @@
 | [0049](0049-web-code-splitting-and-message-catalogs.md) | تقسيم الواجهة لـ chunks بتتحمّل وقت الحاجة، وكتالوج الرسائل لجزئين |
 | [0050](0050-runner-identity-implementation.md) | تنفيذ هوية الـ runner في M3.2: صيغة الرسائل الموقّعة، والـ gate، والـ throttle، وكشف النسخ |
 
-الرقمين 0039 و0040 محجوزين لقرارات M2 اللي جاية.
+الرقم 0040 محجوز لقرار M2 اللي جاي.
