@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 
 import type { ApiError } from '@/Core/Api/ApiError';
 import { MFA_QUERY_KEY } from '@/Core/Auth/Factor';
+import { ME_QUERY_KEY } from '@/Core/Auth/MeQuery';
 import { listPasskeys, type TPasskey } from '@/Modules/Mfa/Api/MfaApi';
 
 export const PASSKEYS_QUERY_KEY = ['passkeys'] as const;
@@ -15,6 +16,7 @@ export const useRefreshMfa = (): (() => Promise<void>) => {
   const client = useQueryClient();
   return useCallback(async () => {
     await Promise.all([
+      client.invalidateQueries({ queryKey: ME_QUERY_KEY }),
       client.invalidateQueries({ queryKey: MFA_QUERY_KEY }),
       client.invalidateQueries({ queryKey: PASSKEYS_QUERY_KEY }),
       client.invalidateQueries({ queryKey: SESSIONS_QUERY_KEY }),

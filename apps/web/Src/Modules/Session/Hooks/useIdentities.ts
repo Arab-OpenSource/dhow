@@ -14,6 +14,7 @@ import {
   removeIdentity,
   type TLinkedIdentity,
 } from '@/Modules/Session/Api/OidcApi';
+import { SESSIONS_QUERY_KEY } from '@/Modules/Session/Hooks/useSessions';
 import { rememberOidcPurpose } from '@/Modules/Session/Store/OidcCallback';
 
 export interface IIdentityEntry {
@@ -74,7 +75,10 @@ export const useIdentitiesCard = (methods: readonly TFactorMethod[], navigate: (
     }
     const revoked = await removeIdentity(entry.Identity.Id, await factor());
     setOpen(null);
-    await client.invalidateQueries({ queryKey: IDENTITIES_QUERY_KEY });
+    await Promise.all([
+      client.invalidateQueries({ queryKey: IDENTITIES_QUERY_KEY }),
+      client.invalidateQueries({ queryKey: SESSIONS_QUERY_KEY }),
+    ]);
     Push({
       Id: `identity-removed-${entry.Identity.Id}`,
       Accent: 'live',
