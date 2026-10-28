@@ -681,7 +681,7 @@ export interface paths {
         put?: never;
         /**
          * Create a job from a job spec
-         * @description Needs `job.create`. The spec is validated and normalized (defaults filled in) and the job is queued. The image must be pinned by digest. A spec that references secrets is refused with 422 `SECRETS_UNAVAILABLE` while no secret store is configured.
+         * @description Needs `job.create`. The spec is validated and normalized (defaults filled in) and the job is queued. The image must be pinned by digest. A spec that references secrets is refused with 422 `SECRETS_UNAVAILABLE` while no secret store is configured, and an organization with 1000 queued jobs gets 429 `JOB_QUEUE_FULL`.
          */
         post: operations["createJob"];
         delete?: never;
@@ -1212,14 +1212,14 @@ export interface components {
             DiskBytes?: number;
         };
         JobNetwork: {
-            /** @description Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`. */
+            /** @description Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`. IP literals are refused. */
             Egress?: string[];
         };
         JobSpec: {
             /** @description An image reference pinned by digest (`name@sha256:...`). */
             Image: string;
             Steps: components["schemas"]["JobStep"][];
-            /** @description Plain environment for every step. Names that start with `DHOW_` are reserved. */
+            /** @description Plain environment for every step. Names that start with `DHOW_` are reserved. Every member who can read the job sees these values, viewers included, so never put a credential here: reference it from Secrets. */
             Env?: {
                 [key: string]: string;
             };

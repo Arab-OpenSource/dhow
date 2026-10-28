@@ -3,7 +3,9 @@ package jobspec
 import "time"
 
 const (
-	MaxSpecBytes = 256 << 10
+	MaxGrantBytes      = 256 << 10
+	GrantOverheadBytes = 4 << 10
+	MaxSpecBytes       = MaxGrantBytes - GrantOverheadBytes
 
 	MaxImageLength = 512
 
@@ -19,7 +21,7 @@ const (
 	MaxSecrets            = 50
 	MaxSecretNameLength   = 64
 	MaxSecretFileLength   = 128
-	MaxEgressEntries      = 100
+	MaxEgressEntries      = 64
 	MaxEgressEntryLength  = 260
 	MaxLabels             = 32
 	MaxLabelLength        = 128

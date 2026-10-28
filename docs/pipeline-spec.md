@@ -11,6 +11,7 @@ runner, the CLI (`dhow lint`) and the visual editor.
 - **Expressions are CEL** inside `${{ … }}`. They are typed, non-Turing-complete and have cost limits.
   - Values from Git (commit message, author, branch) are **data** and are never re-parsed as expressions.
 - **Secrets are referenced, not embedded.** `secrets.NAME` resolves only within the job's environment scope.
+- **Plain `env` values are not secret.** Every member who can read the job sees them in the API and the UI, viewers included, so a token, password or key never goes in `env`: reference it from `secrets` instead.
 
 ## 2. Full example
 

@@ -931,7 +931,7 @@ paths:
       description: >-
         Needs `job.create`. The spec is validated and normalized (defaults filled in) and the job is queued. The image
         must be pinned by digest. A spec that references secrets is refused with 422 `SECRETS_UNAVAILABLE` while no
-        secret store is configured.
+        secret store is configured, and an organization with 1000 queued jobs gets 429 `JOB_QUEUE_FULL`.
       security:
         - SessionCookie: []
           CsrfToken: []
@@ -2067,10 +2067,10 @@ components:
       properties:
         Egress:
           type: array
-          maxItems: 100
+          maxItems: 64
           items:
             type: string
-          description: Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`.
+          description: Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`. IP literals are refused.
     JobSpec:
       type: object
       additionalProperties: false
@@ -2089,7 +2089,9 @@ components:
           type: object
           additionalProperties:
             type: string
-          description: Plain environment for every step. Names that start with `DHOW_` are reserved.
+          description: >-
+            Plain environment for every step. Names that start with `DHOW_` are reserved. Every member who can read the job
+            sees these values, viewers included, so never put a credential here: reference it from Secrets.
         Secrets:
           type: array
           maxItems: 50

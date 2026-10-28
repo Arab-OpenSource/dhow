@@ -295,7 +295,7 @@ type JobListResponse struct {
 
 // JobNetwork defines model for JobNetwork.
 type JobNetwork struct {
-	// Egress Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`.
+	// Egress Hosts the job may reach through the runner proxy, as `host`, `*.host` or `host:port`. IP literals are refused.
 	Egress *[]string `json:"Egress,omitempty"`
 }
 
@@ -338,7 +338,7 @@ type JobSecretRef struct {
 
 // JobSpec defines model for JobSpec.
 type JobSpec struct {
-	// Env Plain environment for every step. Names that start with `DHOW_` are reserved.
+	// Env Plain environment for every step. Names that start with `DHOW_` are reserved. Every member who can read the job sees these values, viewers included, so never put a credential here: reference it from Secrets.
 	Env *map[string]string `json:"Env,omitempty"`
 
 	// Image An image reference pinned by digest (`name@sha256:...`).

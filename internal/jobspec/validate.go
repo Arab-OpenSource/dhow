@@ -2,6 +2,7 @@ package jobspec
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -257,6 +258,9 @@ func validEgress(e string) bool {
 		if err != nil || n < 1 || n > maxPort || strconv.Itoa(n) != port {
 			return false
 		}
+	}
+	if net.ParseIP(host) != nil {
+		return false
 	}
 	return len(host) <= 253 && egressHost.MatchString(host)
 }

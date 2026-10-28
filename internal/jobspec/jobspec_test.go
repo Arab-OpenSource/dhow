@@ -142,6 +142,13 @@ func TestValidateRejects(t *testing.T) {
 		{"an egress URL", func(s *runnerv1.JobSpec) { s.Network.Egress = []string{"https://example.com"} }, "Network.Egress[0]", jobspec.ReasonInvalid},
 		{"an egress port out of range", func(s *runnerv1.JobSpec) { s.Network.Egress = []string{"example.com:70000"} }, "Network.Egress[0]", jobspec.ReasonInvalid},
 		{"an egress port with a leading zero", func(s *runnerv1.JobSpec) { s.Network.Egress = []string{"example.com:0443"} }, "Network.Egress[0]", jobspec.ReasonInvalid},
+		{"an IP literal in egress", func(s *runnerv1.JobSpec) { s.Network.Egress = []string{"10.0.0.1:443"} }, "Network.Egress[0]", jobspec.ReasonInvalid},
+		{"too many egress entries", func(s *runnerv1.JobSpec) {
+			s.Network.Egress = nil
+			for i := range jobspec.MaxEgressEntries + 1 {
+				s.Network.Egress = append(s.Network.Egress, "h"+strings.Repeat("x", i)+".example.com")
+			}
+		}, "Network.Egress", jobspec.ReasonTooMany},
 		{"an egress wildcard in the middle", func(s *runnerv1.JobSpec) { s.Network.Egress = []string{"a.*.com"} }, "Network.Egress[0]", jobspec.ReasonInvalid},
 		{"an unknown isolation", func(s *runnerv1.JobSpec) { s.Isolation = runnerv1.Isolation(9) }, "Isolation", jobspec.ReasonInvalid},
 		{"an invalid label", func(s *runnerv1.JobSpec) { s.Labels = []string{"Prod"} }, "Labels[0]", jobspec.ReasonInvalid},
