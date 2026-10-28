@@ -66,6 +66,7 @@ export const JobsEn: Record<keyof typeof JobsAr, string> = {
   'jobs.reason.SPEC_REJECTED': 'The runner refused the settings of this job.',
   'jobs.reason.STEP_FAILED': 'A step failed.',
   'jobs.reason.NO_MATCHING_RUNNER': 'No matching runner.',
+  'jobs.detail.title': 'Job details',
   'jobs.detail.loading': 'Loading the job',
   'jobs.detail.error': 'We could not load this job.',
   'jobs.detail.notFound': 'This job does not exist, or it is not in your organization.',

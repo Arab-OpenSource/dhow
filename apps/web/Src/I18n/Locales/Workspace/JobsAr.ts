@@ -64,6 +64,7 @@ export const JobsAr = {
   'jobs.reason.SPEC_REJECTED': 'رفض جهاز التشغيل إعدادات هذا التشغيل.',
   'jobs.reason.STEP_FAILED': 'فشلت إحدى الخطوات.',
   'jobs.reason.NO_MATCHING_RUNNER': 'لا يوجد جهاز تشغيل مناسب.',
+  'jobs.detail.title': 'تفاصيل التشغيل',
   'jobs.detail.loading': 'جارٍ تحميل التشغيل',
   'jobs.detail.error': 'لم نتمكن من تحميل هذا التشغيل.',
   'jobs.detail.notFound': 'هذا التشغيل غير موجود، أو ليس في مؤسستك.',

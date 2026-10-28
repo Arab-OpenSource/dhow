@@ -16,7 +16,7 @@ const mount = async (jobs: IJobsBackend, role = 'owner') => {
   const router = createAppRouter(createMemoryHistory({ initialEntries: [`/?stack=jobs,job-${JOB_ID}`] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['jobs.title'] }, { timeout: 5000 });
+  const dialog = await screen.findByRole('dialog', { name: Ar['jobs.detail.title'] }, { timeout: 5000 });
   return { ...backend, router, user, dialog };
 };
 

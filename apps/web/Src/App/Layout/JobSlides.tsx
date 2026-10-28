@@ -22,7 +22,7 @@ export const buildJobSlide = (id: TFrameId, { t, navigation }: IFrameContext): I
   if (job) {
     return {
       id,
-      title: t('jobs.title'),
+      title: t('jobs.detail.title'),
       subtitle: <span>{t('jobs.detail.subtitle')}</span>,
       children: <LazyJobBody jobId={job} />,
     };
