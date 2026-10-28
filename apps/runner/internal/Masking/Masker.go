@@ -8,6 +8,7 @@ import (
 const (
 	MinLength   = 4
 	Replacement = "***"
+	LongSecret  = 4 << 10
 )
 
 type compiled struct {
@@ -29,21 +30,31 @@ func New() *Masker {
 	return m
 }
 
-func (m *Masker) Add(secret []byte) bool {
-	if len(secret) < MinLength {
-		return false
-	}
+func (m *Masker) Add(secret []byte) bool { return m.AddAll([][]byte{secret})[0] }
+
+func (m *Masker) AddAll(secrets [][]byte) []bool {
+	added := make([]bool, len(secrets))
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.secrets[string(secret)] {
-		return true
+	changed := false
+	for i, secret := range secrets {
+		if len(secret) < MinLength {
+			continue
+		}
+		added[i] = true
+		if m.secrets[string(secret)] {
+			continue
+		}
+		m.secrets[string(secret)] = true
+		for _, v := range Variants(secret) {
+			m.patterns[string(v)] = true
+		}
+		changed = true
 	}
-	m.secrets[string(secret)] = true
-	for _, v := range Variants(secret) {
-		m.patterns[string(v)] = true
+	if changed {
+		m.rebuild()
 	}
-	m.rebuild()
-	return true
+	return added
 }
 
 func (m *Masker) Clear() {

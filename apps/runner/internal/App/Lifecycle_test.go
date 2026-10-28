@@ -208,3 +208,17 @@ func TestASuccessIsNeverReportedAfterTheRunnerFencedItself(t *testing.T) {
 		assert.NotEqual(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, c.GetResult())
 	}
 }
+
+func TestASecretTooLargeToMaskStopsTheJob(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	spec := runnertest.Spec()
+	spec.Secrets = []*runnerv1.SecretRef{{Name: "BLOB", Target: &runnerv1.SecretRef_AsFile{AsFile: "blob"}}}
+	srv.Enqueue(spec, map[string][]byte{"BLOB": []byte(strings.Repeat("k", 64<<10+1))})
+	running := r.Start(fake.Recording{}, runnertest.StartOptions{})
+	out := running.Next(t, finishWithin)
+	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_FAILED, out.Result)
+	assert.Equal(t, runnerv1.FailureReason_FAILURE_REASON_SPEC_REJECTED, out.Reason)
+	assert.NotContains(t, kinds(running.Driver.Events()), fake.EventExec)
+	assert.Contains(t, logText(srv.Leases()[0]), "the secret BLOB is too large to mask")
+}

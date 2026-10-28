@@ -30,14 +30,20 @@ func Variants(secret []byte) [][]byte {
 		seen[string(v)] = true
 		out = append(out, append([]byte(nil), v...))
 	}
-	encodings(secret, add)
+	forms := encodings
+	if len(secret) > LongSecret || !utf8.Valid(secret) || bytes.IndexByte(secret, 0) >= 0 {
+		forms = rawOnly
+	}
+	forms(secret, add)
 	if bytes.ContainsAny(secret, "\r\n") {
 		for _, line := range bytes.FieldsFunc(secret, func(r rune) bool { return r == '\n' || r == '\r' }) {
-			encodings(line, add)
+			forms(line, add)
 		}
 	}
 	return out
 }
+
+func rawOnly(v []byte, add func([]byte)) { add(v) }
 
 func encodings(v []byte, add func([]byte)) {
 	if len(v) < MinLength {

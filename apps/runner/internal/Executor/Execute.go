@@ -3,10 +3,12 @@ package executor
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"google.golang.org/protobuf/proto"
 
 	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
+	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
 	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
 	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
 	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
@@ -18,6 +20,7 @@ var (
 	ErrSecretsMissing = errors.New("the server sent no secrets for a job that references some")
 	ErrSecretsKEM     = errors.New("the sealed secrets use an unknown KEM")
 	ErrSecretsBundle  = errors.New("the sealed secrets do not decode")
+	ErrSecretTooLarge = fmt.Errorf("a secret is larger than %d bytes, or all of them together are larger than %d", config.MaxSecretBytes, config.MaxSecretsBytes)
 )
 
 func reasonName(r runnerv1.FailureReason) string {
@@ -144,7 +147,10 @@ func (a *attempt) start(ctx context.Context) (result, bool) {
 	if a.fenced() {
 		return a.lostResult(), false
 	}
-	if err := a.openSecrets(res.GetSecrets()); err != nil {
+	if err := a.openSecrets(res.GetSecrets()); errors.Is(err, ErrSecretTooLarge) {
+		a.log.Error("a job secret is too large to mask, so the job does not run")
+		return failed(runnerv1.FailureReason_FAILURE_REASON_SPEC_REJECTED, 0), false
+	} else if err != nil {
 		a.log.Error("could not open the job secrets", "error", a.masked(err))
 		a.pipe.Systemf(nil, "dhow: SANDBOX_FAILED: the job secrets could not be opened")
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
@@ -200,15 +206,25 @@ func (a *attempt) openSecrets(sealed *runnerv1.SealedSecrets) error {
 		values[s.GetName()] = append([]byte(nil), s.GetValue()...)
 		clear(s.Value)
 	}
+	total := 0
+	batch := make([][]byte, 0, len(refs))
 	for _, ref := range refs {
-		if _, ok := values[ref.GetName()]; !ok {
+		v, ok := values[ref.GetName()]
+		if !ok {
 			return ErrSecretsMissing
 		}
+		total += len(v)
+		if len(v) > config.MaxSecretBytes || total > config.MaxSecretsBytes {
+			a.pipe.Systemf(nil, "dhow: SPEC_REJECTED: the secret %s is too large to mask (at most %d bytes each, %d together)",
+				ref.GetName(), config.MaxSecretBytes, config.MaxSecretsBytes)
+			return ErrSecretTooLarge
+		}
+		batch = append(batch, v)
 	}
-	for _, ref := range refs {
-		if !a.masker.Add(values[ref.GetName()]) {
+	for i, added := range a.masker.AddAll(batch) {
+		if !added {
 			a.pipe.Systemf(nil, "dhow: warning: the secret %s is shorter than %d characters, so the log does not hide it",
-				ref.GetName(), masking.MinLength)
+				refs[i].GetName(), masking.MinLength)
 		}
 	}
 	a.secrets = values

@@ -10,13 +10,16 @@ type edge struct {
 }
 
 type automaton struct {
-	edges  [][]edge
-	rootTo [256]int32
-	fail   []int32
-	out    []int32
-	depth  []int32
-	keep   []int32
-	maxLen int
+	edges   [][]edge
+	starts  []int32
+	labels  []byte
+	targets []int32
+	rootTo  [256]int32
+	fail    []int32
+	out     []int32
+	depth   []int32
+	keep    []int32
+	maxLen  int
 }
 
 func newAutomaton(patterns [][]byte) *automaton {
@@ -25,10 +28,38 @@ func newAutomaton(patterns [][]byte) *automaton {
 		a.insert(p)
 	}
 	a.link()
+	a.compact()
 	return a
 }
 
+func (a *automaton) compact() {
+	total := 0
+	for _, es := range a.edges {
+		total += len(es)
+	}
+	a.starts = make([]int32, len(a.edges)+1)
+	a.labels = make([]byte, 0, total)
+	a.targets = make([]int32, 0, total)
+	for n, es := range a.edges {
+		a.starts[n] = int32(len(a.labels)) //nolint:gosec // Bounded by the node count.
+		for _, e := range es {
+			a.labels = append(a.labels, e.b)
+			a.targets = append(a.targets, e.to)
+		}
+	}
+	a.starts[len(a.edges)] = int32(len(a.labels)) //nolint:gosec // Bounded by the node count.
+	a.edges, a.depth = nil, nil
+}
+
 func (a *automaton) child(node int32, b byte) int32 {
+	if a.edges == nil {
+		lo, hi := int(a.starts[node]), int(a.starts[node+1])
+		i := lo + sort.Search(hi-lo, func(i int) bool { return a.labels[lo+i] >= b })
+		if i < hi && a.labels[i] == b {
+			return a.targets[i]
+		}
+		return -1
+	}
 	es := a.edges[node]
 	i := sort.Search(len(es), func(i int) bool { return es[i].b >= b })
 	if i < len(es) && es[i].b == b {

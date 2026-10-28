@@ -2,11 +2,14 @@ package masking_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
 	"net/url"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -153,3 +156,43 @@ func TestVariantsIncludeTheDocumentedForms(t *testing.T) {
 		assert.True(t, got[want], want)
 	}
 }
+
+func TestLargeSecretsStayCheap(t *testing.T) {
+	sizes := []int{64 << 10, 256 << 10}
+	for range 50 {
+		sizes = append(sizes, 16<<10)
+	}
+	batch := make([][]byte, 0, len(sizes))
+	for _, n := range sizes {
+		b := make([]byte, n)
+		_, err := rand.Read(b)
+		require.NoError(t, err)
+		batch = append(batch, b)
+	}
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+	start := time.Now()
+	m := masking.New()
+	added := m.AddAll(batch)
+	took := time.Since(start)
+	runtime.GC()
+	runtime.ReadMemStats(&after)
+	live := int64(after.HeapAlloc) - int64(before.HeapAlloc)
+	t.Logf("built in %s, %d MiB live", took, live>>20)
+	assert.Less(t, took, 30*time.Second)
+	assert.Less(t, live, int64(128<<20))
+	for _, a := range added {
+		assert.True(t, a)
+	}
+	out := m.Mask(append([]byte("x"), batch[1]...))
+	assert.Equal(t, "x***", string(out), "a long secret is still masked raw")
+	runtime.KeepAlive(m)
+}
+
+func TestLongOrBinarySecretsSkipTheEncodedForms(t *testing.T) {
+	long := []byte(strings.Repeat("abcdefgh", masking.LongSecret/8+1))
+	assert.Len(t, masking.Variants(long), 1)
+	assert.Len(t, masking.Variants([]byte("bin\x00ary-value")), 1)
+}
+
