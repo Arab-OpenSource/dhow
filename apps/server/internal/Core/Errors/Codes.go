@@ -26,6 +26,8 @@ const (
 	CodeEnrollmentExpired      = "ENROLLMENT_EXPIRED"
 	CodePasskeyRejected        = "PASSKEY_REJECTED"
 	CodeRunnerRevoked          = "RUNNER_REVOKED"
+	CodeSecretsUnavailable     = "SECRETS_UNAVAILABLE"
+	CodeJobFinished            = "JOB_FINISHED"
 )
 
 const (
@@ -54,4 +56,6 @@ const (
 	KeyEnrollmentExpired      = "errors.enrollmentExpired"
 	KeyPasskeyRejected        = "errors.passkeyRejected"
 	KeyRunnerRevoked          = "errors.runnerRevoked"
+	KeySecretsUnavailable     = "errors.secretsUnavailable"
+	KeyJobFinished            = "errors.jobFinished"
 )

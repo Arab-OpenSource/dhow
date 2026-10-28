@@ -36,20 +36,31 @@ const (
 	SessionManageSelf Action = "session.manage_self"
 	RunnerRead        Action = "runner.read"
 	RunnerManage      Action = "runner.manage"
+	JobRead           Action = "job.read"
+	JobCreate         Action = "job.create"
+	JobCancel         Action = "job.cancel"
 )
 
 func Actions() []Action {
-	return []Action{OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage}
+	return []Action{
+		OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
+		JobRead, JobCreate, JobCancel,
+	}
 }
 
 func Grants(role Role) []Action {
 	switch role {
 	case RoleOwner, RoleAdmin:
-		return []Action{OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage}
-	case RoleMaintainer, RoleDeveloper:
-		return []Action{OrgRead, MemberRead, SessionManageSelf, RunnerRead}
+		return []Action{
+			OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
+			JobRead, JobCreate, JobCancel,
+		}
+	case RoleMaintainer:
+		return []Action{OrgRead, MemberRead, SessionManageSelf, RunnerRead, JobRead, JobCancel}
+	case RoleDeveloper:
+		return []Action{OrgRead, MemberRead, SessionManageSelf, RunnerRead, JobRead}
 	case RoleViewer:
-		return []Action{OrgRead, SessionManageSelf}
+		return []Action{OrgRead, SessionManageSelf, JobRead}
 	default:
 		return nil
 	}
