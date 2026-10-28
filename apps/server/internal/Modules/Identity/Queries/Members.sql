@@ -101,3 +101,8 @@ WHERE "Id" = @id AND NOT "IsDeleted";
 SELECT "Id", "Email", "Name", "Locale"
 FROM "Users"
 WHERE "Id" = @id AND NOT "IsDeleted";
+
+-- name: RevokeUserApiTokens :execrows
+UPDATE "ApiTokens"
+SET "RevokedAt" = @now::timestamptz, "RevokedByUserId" = @actor_id, "UpdatedAt" = @now
+WHERE "UserId" = @user_id AND NOT "IsDeleted" AND "RevokedAt" IS NULL;

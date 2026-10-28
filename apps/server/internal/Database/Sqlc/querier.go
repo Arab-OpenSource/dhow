@@ -199,6 +199,7 @@ type Querier interface {
 	RevokeRunnerSession(ctx context.Context, arg RevokeRunnerSessionParams) error
 	RevokeRunnerSessions(ctx context.Context, arg RevokeRunnerSessionsParams) (int64, error)
 	RevokeSessionByTokenHash(ctx context.Context, arg RevokeSessionByTokenHashParams) (int64, error)
+	RevokeUserApiTokens(ctx context.Context, arg RevokeUserApiTokensParams) (int64, error)
 	RevokeUserSession(ctx context.Context, arg RevokeUserSessionParams) (int64, error)
 	RevokeUserSessionsExcept(ctx context.Context, arg RevokeUserSessionsExceptParams) (int64, error)
 	RotateRunnerKeys(ctx context.Context, arg RotateRunnerKeysParams) (int32, error)
