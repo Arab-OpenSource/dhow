@@ -20,6 +20,7 @@ type Deps struct {
 	Build      buildinfo.Info
 	Log        *slog.Logger
 	Guard      *auth.Guard
+	Checks     []ReadinessCheck
 }
 
 func Policies() []policy.Rule {
@@ -32,7 +33,7 @@ func Policies() []policy.Rule {
 
 func Routes(r chi.Router, d Deps) {
 	controller := NewController(
-		NewHealthService(d.DB, d.Migrations, d.Log),
+		NewHealthService(d.DB, d.Migrations, d.Log, d.Checks...),
 		NewMetaService(d.Queries, d.Build),
 	)
 	strict := gen.NewStrictHandlerWithOptions(controller, nil, gen.StrictHTTPServerOptions{

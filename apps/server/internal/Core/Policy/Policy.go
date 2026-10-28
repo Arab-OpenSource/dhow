@@ -48,12 +48,13 @@ const (
 	JobRead           Action = "job.read"
 	JobCreate         Action = "job.create"
 	JobCancel         Action = "job.cancel"
+	LogRead           Action = "log.read"
 )
 
 func Actions() []Action {
 	return []Action{
 		OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, OrgCreate,
-		RunnerRead, RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel,
+		RunnerRead, RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
 	}
 }
 
@@ -79,17 +80,17 @@ func Grants(role Role) []Action {
 	case RoleOwner:
 		return []Action{
 			OrgRead, OrgUpdate, OrgLeave, OrgTransfer, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
-			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel,
+			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
 		}
 	case RoleAdmin:
 		return []Action{
 			OrgRead, OrgUpdate, OrgLeave, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
-			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel,
+			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
 		}
 	case RoleMaintainer:
-		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, JobCancel, TokenCreate}
+		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, JobCancel, LogRead, TokenCreate}
 	case RoleDeveloper:
-		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, TokenCreate}
+		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, LogRead, TokenCreate}
 	case RoleViewer:
 		return []Action{OrgRead, OrgLeave, SessionManageSelf, JobRead, TokenCreate}
 	default:

@@ -79,7 +79,7 @@ func TestMfaResetNeedsAStrictlyHigherRole(t *testing.T) {
 }
 
 func TestJobActionsFollowTheRoleRanks(t *testing.T) {
-	jobActions := []policy.Action{policy.JobRead, policy.JobCreate, policy.JobCancel}
+	jobActions := []policy.Action{policy.JobRead, policy.JobCreate, policy.JobCancel, policy.LogRead}
 	for _, low := range policy.Roles() {
 		for _, high := range policy.Roles() {
 			if policy.Rank(high) <= policy.Rank(low) {
@@ -96,4 +96,6 @@ func TestJobActionsFollowTheRoleRanks(t *testing.T) {
 	assert.True(t, policy.Allows(raised, policy.JobCreate), "a team binding to admin lets a viewer create jobs")
 	assert.False(t, policy.Allows(policy.Effective(policy.RoleViewer, policy.RoleDeveloper), policy.JobCancel))
 	assert.True(t, policy.Allows(policy.Effective(policy.RoleDeveloper, policy.RoleMaintainer), policy.JobCancel))
+	assert.False(t, policy.Allows(policy.RoleViewer, policy.LogRead), "a viewer reads jobs but never their logs")
+	assert.True(t, policy.Allows(policy.Effective(policy.RoleViewer, policy.RoleDeveloper), policy.LogRead))
 }

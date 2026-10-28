@@ -10,8 +10,9 @@ const (
 type HealthCheckName string
 
 const (
-	CheckDatabase   HealthCheckName = "database"
-	CheckMigrations HealthCheckName = "migrations"
+	CheckDatabase      HealthCheckName = "database"
+	CheckMigrations    HealthCheckName = "migrations"
+	CheckLogPartitions HealthCheckName = "log_partitions"
 )
 
 type HealthCheck struct {

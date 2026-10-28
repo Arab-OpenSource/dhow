@@ -39,6 +39,7 @@ type Resolved struct {
 
 type Resolver interface {
 	Resolve(ctx context.Context, tokenHash []byte, now time.Time) (Resolved, error)
+	Peek(ctx context.Context, tokenHash []byte, now time.Time) (Resolved, error)
 }
 
 type ResolvedToken struct {
@@ -196,6 +197,20 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 	return WithPrincipal(ctx, principal), nil
 }
 
+func (g *Guard) Reauthorize(ctx context.Context, action policy.Action, org uuid.UUID) error {
+	principal, _, ae := g.authenticateWith(ctx, g.resolver.Peek)
+	if ae != nil {
+		return ae
+	}
+	if _, member := principal.RoleIn(org); !member {
+		return apperrors.NotFound()
+	}
+	if !policy.Can(principal.Subject, action, policy.Resource{OrganizationID: org}) {
+		return apperrors.Forbidden()
+	}
+	return nil
+}
+
 func (g *Guard) organizationOf(r *http.Request, rule policy.Rule) (policy.Resource, *apperrors.AppError) {
 	if rule.Scope != policy.ScopeOrganization {
 		return policy.Resource{}, nil
@@ -247,12 +262,16 @@ func (g *Guard) authorizeToken(ctx context.Context, r *http.Request, rule policy
 }
 
 func (g *Guard) authenticate(ctx context.Context) (Principal, []byte, *apperrors.AppError) {
+	return g.authenticateWith(ctx, g.resolver.Resolve)
+}
+
+func (g *Guard) authenticateWith(ctx context.Context, resolve func(context.Context, []byte, time.Time) (Resolved, error)) (Principal, []byte, *apperrors.AppError) {
 	token := RequestMetaFrom(ctx).SessionToken
 	hash, ok := HashSessionToken(token, config.SessionTokenBytes)
 	if !ok {
 		return Principal{}, nil, apperrors.Unauthenticated()
 	}
-	res, err := g.resolver.Resolve(ctx, hash, g.now())
+	res, err := resolve(ctx, hash, g.now())
 	switch {
 	case errors.Is(err, ErrNoSession):
 		return Principal{}, nil, apperrors.Unauthenticated()

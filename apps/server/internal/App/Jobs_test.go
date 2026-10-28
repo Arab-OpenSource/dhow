@@ -46,5 +46,5 @@ func TestStartJobsFailsClosedWhenTheDatabaseIsGone(t *testing.T) {
 	env.Pool.Close()
 	_, err := app.StartJobs(context.Background(), env.Wired.Jobs, support.DiscardLogger())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "reconcile jobs before serving")
+	assert.Contains(t, err.Error(), "prepare job log partitions before serving", "partitions come first, then the reconciler")
 }

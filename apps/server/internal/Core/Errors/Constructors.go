@@ -192,3 +192,19 @@ func JobFinished() *AppError {
 func JobQueueFull() *AppError {
 	return New(http.StatusTooManyRequests, CodeJobQueueFull, KeyJobQueueFull)
 }
+
+func AttemptNotFound() *AppError {
+	return New(http.StatusNotFound, CodeAttemptNotFound, KeyAttemptNotFound)
+}
+
+func TooManyStreams(retryAfter time.Duration) *AppError {
+	e := New(http.StatusTooManyRequests, CodeTooManyStreams, KeyTooManyStreams)
+	e.RetryAfter = retryAfter
+	return e
+}
+
+func RateLimited(retryAfter time.Duration) *AppError {
+	e := New(http.StatusTooManyRequests, CodeRateLimited, KeyRateLimited)
+	e.RetryAfter = retryAfter
+	return e
+}

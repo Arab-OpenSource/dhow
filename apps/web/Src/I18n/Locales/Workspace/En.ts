@@ -46,6 +46,7 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'status.checks.empty': 'The server did not report any checks.',
   'status.check.database': 'Database',
   'status.check.migrations': 'Database migrations',
+  'status.check.log_partitions': 'Today\'s log storage',
   'status.state.live': 'Running',
   'status.state.failed': 'Failed',
   'status.summary.ok.title': 'The server is healthy',
@@ -148,6 +149,10 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'checkDetail.migrations.fix1': 'Open the server log from start-up. It names the migration that stopped and why.',
   'checkDetail.migrations.fix2': 'Fix the cause, usually the database user\'s permissions, and then start the server again.',
   'checkDetail.migrations.fix3': 'Do not edit the tables by hand. If a migration stopped halfway, restore a backup.',
+  'checkDetail.log_partitions.means': 'Job logs are stored in one part of the database for each day. This check makes sure today\'s part exists; without it, runners cannot send logs.',
+  'checkDetail.log_partitions.fix1': 'Open the server log and look for "job log partition maintenance failed". It names the cause.',
+  'checkDetail.log_partitions.fix2': 'Make sure the database is not read-only and that the server\'s database user may create tables.',
+  'checkDetail.log_partitions.fix3': 'Restart the server. It prepares today and the next three days when it starts.',
 
   'pager.label': 'Page navigation',
   'pager.previous': 'Previous page',

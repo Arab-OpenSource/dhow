@@ -66,3 +66,17 @@ func (h connectHandler) Complete(ctx context.Context, req *connect.Request[runne
 	}
 	return connect.NewResponse(&runnerv1.CompleteResponse{}), nil
 }
+
+type logHandler struct {
+	service *Service
+}
+
+var _ runnerv1connect.LogServiceHandler = logHandler{}
+
+func (h logHandler) Append(ctx context.Context, req *connect.Request[runnerv1.AppendRequest]) (*connect.Response[runnerv1.AppendResponse], error) {
+	res, err := h.service.Append(ctx, req.Msg.GetLease(), req.Msg.GetChunks())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
+}
