@@ -121,10 +121,11 @@ func parseIntRange(v string, def, lo, hi int) (int, error) {
 	if v == "" {
 		return def, nil
 	}
-	n, err := strconv.Atoi(strings.TrimSpace(v))
+	n64, err := strconv.ParseInt(strings.TrimSpace(v), 10, 32)
 	if err != nil {
 		return 0, ErrBadNumber
 	}
+	n := int(n64)
 	if n < lo || n > hi {
 		return 0, fmt.Errorf("%d %w (%d to %d)", n, ErrOutOfRange, lo, hi)
 	}

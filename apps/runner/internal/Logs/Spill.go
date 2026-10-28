@@ -19,6 +19,7 @@ const recordHeader = 4
 var (
 	ErrDiskFull     = errors.New("the runner disk is full")
 	ErrSpillCorrupt = errors.New("the log spill file is damaged")
+	ErrSpillRecord  = errors.New("a log chunk is too large to spill")
 )
 
 type SpillStore interface {
@@ -48,6 +49,9 @@ func encodeRecord(c *runnerv1.LogChunk) ([]byte, error) {
 	body, err := proto.Marshal(c)
 	if err != nil {
 		return nil, fmt.Errorf("encode a log chunk: %w", err)
+	}
+	if len(body) > maxRecordBody {
+		return nil, ErrSpillRecord
 	}
 	out := make([]byte, recordHeader, recordHeader+len(body))
 	binary.BigEndian.PutUint32(out, uint32(len(body))) //nolint:gosec // A chunk is at most 64 KiB plus a small header.
