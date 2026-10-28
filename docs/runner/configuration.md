@@ -26,6 +26,8 @@ The runner reads its settings from the environment, usually `/etc/dhow-runner/ru
 
 Every `MAX_*` value is a ceiling for one job, and the runner refuses to start if a ceiling is more than the host has: CPUs from the kernel, processes from `/proc/sys/kernel/pid_max`, memory from `sysinfo`, and free disk under the state directory in `directory` mode. With the default `tmpfs` disk mode, memory plus disk counts against memory, because tmpfs pages are charged to the job's memory. The defaults (2 GiB of memory and a 4 GiB tmpfs disk) therefore need a host with at least 6 GiB of memory. On a smaller host, lower `DHOW_RUNNER_MAX_MEMORY` and `DHOW_RUNNER_MAX_DISK`, or set `DHOW_RUNNER_DISK_MODE=directory`.
 
+The state directory must also have room for one 256 MiB log spill file per job slot (`DHOW_RUNNER_CAPACITY`), plus every job disk in `directory` mode.
+
 A job that asks for more than a ceiling fails on this runner with `RESOURCE_REQUEST_EXCEEDS_RUNNER` before it starts, and the server gives it to another runner. The default job request (1 CPU, 2 GiB, 1024 processes, 4 GiB of disk, one hour) fits the default ceilings.
 
 ## Command line flags
