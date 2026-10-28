@@ -17,6 +17,7 @@ export const useAuditEvents = (
     queryFn: () => listAuditEvents(organizationId ?? '', page, AUDIT_PAGE_SIZE, query),
     enabled: organizationId !== undefined,
     placeholderData: keepPreviousData,
+    staleTime: 0,
   });
 
 export const useAuditEvent = (organizationId: string, eventId: string): UseQueryResult<TAuditEvent, ApiError> =>
