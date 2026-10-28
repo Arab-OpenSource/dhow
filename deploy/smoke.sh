@@ -229,6 +229,74 @@ expect "the TOTP secret never reaches the logs" bash -c '! grep -qF -- "$1" <<<"
 expect "recovery codes never reach the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "$recovery" "$dhow_logs"
 expect "the challenge cookie never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "${mfa_cookie#*=}" "$dhow_logs"
 
+printf 'Runner registration over /runner-api/\n'
+(cd -- "$root" && go build -o "$work/smoke-runner" ./deploy/smoke/runner)
+runner() { "$work/smoke-runner" "$@"; }
+rpc() {
+  local prefix=$1 procedure=$2 body=$3
+  shift 3
+  curl --silent --show-error --max-time 10 --output "$prefix.body" --write-out '%{http_code}' --request POST \
+    --header 'Content-Type: application/json' "$@" --data "$body" -- "http://127.0.0.1:$port/runner-api/$procedure"
+}
+csrf=$(json_field "$work/mfa-ok.body" CsrfToken)
+session=(--header "Cookie: $mfa_session" --header "X-CSRF-Token: $csrf")
+status=$(curl --silent --max-time 5 --output "$work/me3.body" --write-out '%{http_code}' --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port/api/v1/me")
+org_id=$(json_field "$work/me3.body" OrganizationId)
+expect "the organization id is known" test -n "$org_id"
+status=$(api "$work/rrt" POST "/api/v1/organizations/$org_id/runner-registration-tokens" '{"Labels":["pool=smoke"]}' "${origin[@]}" "${session[@]}")
+expect "creating a registration token answers 201" test "$status" = 201
+rrt=$(json_field "$work/rrt.body" Token)
+expect "the registration token starts with dhow_rrt_" test "${rrt:0:9}" = dhow_rrt_
+expect "the register command reads the token from stdin" grep -q -- '--token-file -' "$work/rrt.body"
+mkdir -m 700 "$work/runner"
+printf '%s' "$rrt" >"$work/runner/token"
+chmod 600 "$work/runner/token"
+runner_url=(--url "http://127.0.0.1:$port" --origin "$public_url" --dir "$work/runner")
+set +e
+registered=$(runner register "${runner_url[@]}" --token-file "$work/runner/token" 2>"$work/runner/register.err")
+register_status=$?
+again=$(runner register "${runner_url[@]}" --token-file "$work/runner/token" 2>&1 >/dev/null)
+printf 'dhow_rrt_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' >"$work/runner/forged"
+forged=$(runner register "${runner_url[@]}" --token-file "$work/runner/forged" 2>&1 >/dev/null)
+authenticated=$(runner authenticate "${runner_url[@]}" 2>&1)
+set -e
+expect "a runner registers with the token" test "$register_status" = 0
+runner_id=${registered%% *}
+expect "the runner gets the token labels and its capabilities only" test "${registered#* }" = 'pool=smoke,dhow.os=linux,dhow.arch=amd64,dhow.isolation=container'
+expect "a used token answers INVALID_REGISTRATION_TOKEN" test "$(tail -1 <<<"$again")" = INVALID_REGISTRATION_TOKEN
+expect "an unknown token answers the same INVALID_REGISTRATION_TOKEN" test "$(tail -1 <<<"$forged")" = INVALID_REGISTRATION_TOKEN
+expect "the runner authenticates with a signed challenge" test "$authenticated" = authenticated
+access=$(cat "$work/runner/access.token")
+expect "the access token starts with dhow_rat_" test "${access:0:9}" = dhow_rat_
+status=$(curl --silent --max-time 5 --output "$work/runner.body" --write-out '%{http_code}' --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port/api/v1/organizations/$org_id/runners/$runner_id")
+expect "the runner is listed in the API" test "$status" = 200
+expect "the runner is online" grep -q '"Status":"online"' "$work/runner.body"
+expect "the runner view carries no key" bash -c '! grep -qi "PublicKey" "$1"' _ "$work/runner.body"
+
+challenge_body="{\"runner\":{\"runnerId\":\"$runner_id\"}}"
+status=$(rpc "$work/ch" dhow.runner.v1.AuthService/Challenge "$challenge_body" --header 'Dhow-Protocol: 1')
+expect "Challenge answers 200 over Connect JSON" test "$status" = 200
+status=$(rpc "$work/ch-cookie" dhow.runner.v1.AuthService/Challenge "$challenge_body" --header 'Dhow-Protocol: 1' --header "Cookie: $mfa_session")
+expect "a browser session on /runner-api/ answers 401 UNAUTHENTICATED" test "$status:$(json_field "$work/ch-cookie.body" message)" = 401:UNAUTHENTICATED
+status=$(rpc "$work/ch-old" dhow.runner.v1.AuthService/Challenge "$challenge_body")
+expect "a runner without the protocol header must upgrade" test "$(json_field "$work/ch-old.body" message)" = RUNNER_UPGRADE_REQUIRED
+status=$(rpc "$work/rotate-anon" dhow.runner.v1.AuthService/RotateKeys '{}' --header 'Dhow-Protocol: 1')
+expect "RotateKeys without a token answers 401" test "$status" = 401
+status=$(rpc "$work/rotate" dhow.runner.v1.AuthService/RotateKeys '{}' --header 'Dhow-Protocol: 1' --header "Authorization: Bearer $access")
+expect "RotateKeys with the access token passes the gate" test "$(json_field "$work/rotate.body" message)" = 'VALIDATION_FAILED: NewSigningPublicKey'
+status=$(curl --silent --max-time 5 --output "$work/me-runner.body" --write-out '%{http_code}' --header "Authorization: Bearer $access" -- "http://127.0.0.1:$port/api/v1/me")
+expect "the runner token on /api/v1 answers 401" test "$status" = 401
+
+status=$(api "$work/revoke-runner" POST "/api/v1/organizations/$org_id/runners/$runner_id/revoke" '' "${origin[@]}" "${session[@]}")
+expect "revoking the runner answers 200" test "$status" = 200
+status=$(rpc "$work/rotate-revoked" dhow.runner.v1.AuthService/RotateKeys '{}' --header 'Dhow-Protocol: 1' --header "Authorization: Bearer $access")
+expect "the first call after the revocation is RUNNER_REVOKED" test "$status:$(json_field "$work/rotate-revoked.body" message)" = 403:RUNNER_REVOKED
+
+dhow_logs=$(compose logs --no-color dhow 2>&1)
+expect "the registration token never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "${rrt#dhow_rrt_}" "$dhow_logs"
+expect "the access token never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "${access#dhow_rat_}" "$dhow_logs"
+expect "runner calls are in the access log" grep -q '"path":"/runner-api/dhow.runner.v1.AuthService/Authenticate"' <<<"$dhow_logs"
+
 printf 'Security headers\n'
 for page in web ready; do
   expect "$page: Content-Security-Policy is 'self'" has_header "$work/$page.head" Content-Security-Policy "default-src 'self'"
