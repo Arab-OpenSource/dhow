@@ -51,7 +51,12 @@ func sweepNamespace() error {
 }
 
 func ignoreJobSignals() {
-	signal.Ignore(
+	dropped := make(chan os.Signal, 16)
+	go func() {
+		for range dropped {
+		}
+	}()
+	signal.Notify(dropped,
 		unix.SIGHUP, unix.SIGINT, unix.SIGQUIT, unix.SIGTERM, unix.SIGUSR1, unix.SIGUSR2,
 		unix.SIGALRM, unix.SIGVTALRM, unix.SIGPROF, unix.SIGTSTP, unix.SIGTTIN, unix.SIGTTOU,
 		unix.SIGXCPU, unix.SIGXFSZ, unix.SIGWINCH, unix.SIGPIPE,

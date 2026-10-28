@@ -47,7 +47,7 @@ M3.6 اندمج قبل المراجعة الأمنية المستقلة، وده
 - **حدود القرار:** `socketcall` على 32-bit لسه مسموح زي ما هو في profile بتاع Docker، لأن قفله بيكسر binaries قديمة. ولو المشكلة دي بقت مهمة، قفل الشبكة كله في M3.7 بيغطيها.
 
 ### الـ agent كـ PID 1
-- الـ agent بيعمل ignore للإشارات اللي ممكن تتبعت من جوه الـ job: `TERM` و`INT` و`HUP` و`QUIT` و`USR1/2` وأخواتهم. فـ `kill -TERM 1` مثلًا مابيقفلش الـ agent، والـ kernel أصلًا مابيوصّلش `SIGKILL` لـ init من جوه الـ namespace. الإشارات المتزامنة (`SEGV` و`BUS`) لسه ممكن تقتله، وده بيأذي الـ job نفسه بس، وبيطلع `SANDBOX_FAILED` بعدد retries محدود (`MaxInfraRetries`).
+- الـ agent بيمسك الإشارات اللي ممكن تتبعت من جوه الـ job وبيرميها (مش `SIG_IGN`، لأن الـ ignore بيتورث للخطوات بعد `exec`، فـ `SIGTERM` مكانش هيوقف الخطوة)، والـ context بتاعه مابيتلغيش بـ `SIGTERM`. الإشارات دي هي: `TERM` و`INT` و`HUP` و`QUIT` و`USR1/2` وأخواتهم. فـ `kill -TERM 1` مثلًا مابيقفلش الـ agent، والـ kernel أصلًا مابيوصّلش `SIGKILL` لـ init من جوه الـ namespace. الإشارات المتزامنة (`SEGV` و`BUS`) لسه ممكن تقتله، وده بيأذي الـ job نفسه بس، وبيطلع `SANDBOX_FAILED` بعدد retries محدود (`MaxInfraRetries`).
 - الـ runner بيستنى الـ `Hello` لحد deadline محدد.
 
 ### مجلدات الـ runner

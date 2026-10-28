@@ -10,7 +10,7 @@ import (
 const CommandAgent = "__agent"
 
 func runAgent(ctx context.Context, env Env) error {
-	err := agent.Run(ctx, agent.Options{Stdio: agent.Stdio{Out: env.Stdio.Out, Err: env.Stdio.Err}})
+	err := agent.Run(context.WithoutCancel(ctx), agent.Options{Stdio: agent.Stdio{Out: env.Stdio.Out, Err: env.Stdio.Err}})
 	if err != nil {
 		return fmt.Errorf("the job agent stopped: %w", err)
 	}

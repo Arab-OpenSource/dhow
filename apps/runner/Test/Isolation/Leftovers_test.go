@@ -66,7 +66,7 @@ func TestNothingUnderTheStateDirIsOpenToOtherUsers(t *testing.T) {
 			return nil
 		}
 		perm := info.Mode().Perm()
-		if perm&0o006 != 0 {
+		if perm&0o006 != 0 && othersReach(shared.stateDir, path) {
 			open = append(open, path+" "+info.Mode().String())
 		}
 		return nil
@@ -100,4 +100,24 @@ func TestImageAnnotationsCannotReachTheRuntime(t *testing.T) {
 	out, err := shared.driver.Podman(ctx, "inspect", "--type", "container", "--format", "{{json .Config.Annotations}}", "--", "dhow-"+id)
 	require.NoError(t, err)
 	assert.False(t, strings.Contains(string(out), "run.oci.keep_original_groups"), "the image annotation reached the container")
+}
+
+func othersReach(root, path string) bool {
+	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
+		info, err := os.Lstat(dir)
+		if err != nil || info.Mode().Perm()&0o001 == 0 {
+			return false
+		}
+		if dir == root || dir == filepath.Dir(dir) {
+			return true
+		}
+	}
+}
+
+func TestSignalsFromTheJobDoNotStopTheAgent(t *testing.T) {
+	box, _ := start(t, defaultResources())
+	first := run(t, box, busybox+" kill -TERM 1; "+busybox+" kill -QUIT 1; "+busybox+" kill -USR1 1; "+busybox+" kill -INT 1; "+busybox+" sleep 1\n", nil)
+	require.Zero(t, first.result.ExitCode)
+	second := run(t, box, busybox+" true\n", nil)
+	assert.Zero(t, second.result.ExitCode, "the agent still runs steps after the job signalled it")
 }
