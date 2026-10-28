@@ -215,9 +215,6 @@ func (s *Service) ResendInvitation(ctx context.Context, org, id uuid.UUID) (mode
 	if err != nil {
 		return models.InvitationIssued{}, err
 	}
-	if err := s.takeInviteLimits(ctx, org, p.UserID); err != nil {
-		return models.InvitationIssued{}, err
-	}
 	token, err := newInviteToken()
 	if err != nil {
 		return models.InvitationIssued{}, err
@@ -230,6 +227,9 @@ func (s *Service) ResendInvitation(ctx context.Context, org, id uuid.UUID) (mode
 		}
 		if row.SendCount >= config.InvitationMaxSends {
 			return apperrors.InvitationSendLimit()
+		}
+		if err := s.takeInviteLimits(ctx, org, p.UserID); err != nil {
+			return err
 		}
 		_, err = q.ReissueInvitation(ctx, sqlc.ReissueInvitationParams{
 			ID: id, OrganizationID: org, TokenHash: token.hash, ExpiresAt: now.Add(config.InvitationTTL), Now: now,

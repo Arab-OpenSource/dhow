@@ -102,3 +102,22 @@ func TestTheInvitationLimitsDoNotCountForbiddenRequests(t *testing.T) {
 	owner.MustInvite(org, "a@example.com", "developer")
 	owner.MustInvite(org, "b@example.com", "developer")
 }
+
+func TestAResendThatCannotHappenSpendsNothing(t *testing.T) {
+	env, owner, org := limitedInvites(t, 7, 100)
+	issued := owner.MustInvite(org, "a@example.com", "developer")
+	for i := 2; i <= config.InvitationMaxSends; i++ {
+		require.Equal(t, http.StatusOK, resend(owner, org, issued.Invitation.Id).Status)
+	}
+	for range 5 {
+		require.Equal(t, http.StatusNotFound, resend(owner, org, uuid.NewString()).Status, "an unknown invitation")
+		require.Equal(t, http.StatusConflict, resend(owner, org, issued.Invitation.Id).Status, "an invitation at its send limit")
+	}
+	admin, _ := env.SignedIn(org, "admin@example.com", "admin")
+	for range 3 {
+		require.Equal(t, http.StatusNotFound, resend(admin, org, uuid.NewString()).Status)
+	}
+	owner.MustInvite(org, "b@example.com", "developer")
+	owner.MustInvite(org, "c@example.com", "developer")
+	requireRateLimited(t, owner.Invite(org, "d@example.com", "developer").Response)
+}
