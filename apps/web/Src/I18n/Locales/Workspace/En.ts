@@ -1,5 +1,7 @@
 import { AuditEn } from '@/I18n/Locales/Workspace/AuditEn';
+import { JobsEn } from '@/I18n/Locales/Workspace/JobsEn';
 import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
+import { RunnersEn } from '@/I18n/Locales/Workspace/RunnersEn';
 import type { TWorkspaceMessages } from '@/I18n/Messages';
 
 export const WorkspaceEn: TWorkspaceMessages = {
@@ -383,4 +385,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'totp.enabled': 'Authenticator codes are on',
   ...AuditEn,
   ...OrganizationEn,
+  ...JobsEn,
+  ...RunnersEn,
 };

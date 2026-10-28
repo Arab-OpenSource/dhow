@@ -4,6 +4,7 @@ export const BootAr = {
   'shell.nav.label': 'التنقّل الرئيسي',
   'shell.nav.home': 'الرئيسية',
   'shell.nav.projects': 'المشاريع',
+  'shell.nav.jobs': 'التشغيلات',
   'shell.nav.runners': 'أجهزة التشغيل',
   'shell.nav.team': 'الفريق',
   'shell.nav.audit': 'سجل الأحداث',

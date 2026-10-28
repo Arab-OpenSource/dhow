@@ -2,7 +2,7 @@ import { preloadFrame } from '@/App/Layout/LazyFrames';
 import { OrganizationChip } from '@/App/Layout/OrganizationChip';
 import type { TFrameId } from '@/App/Panels';
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
-import { canReadAudit } from '@/Core/Auth/AuthTypes';
+import { canReadAudit, canReadRunners } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { useSignOut } from '@/Core/Auth/useSignOut';
 import { Mark } from '@/Core/Ui/Mark';
@@ -13,6 +13,20 @@ const intentFor = (id: TFrameId) => () => {
   void preloadFrame(id);
 };
 
+const stackItems =
+  (stack: TFrameId[], openStack: (ids: TFrameId[]) => void) =>
+  (frame: TFrameId, icon: IMenuItem['icon'], label: string, current = stack.includes(frame)): IMenuItem => ({
+    id: frame,
+    icon,
+    label,
+    href: `/?stack=${frame}`,
+    current,
+    onSelect: () => {
+      openStack([frame]);
+    },
+    onIntent: intentFor(frame),
+  });
+
 export const ShellMenu = () => {
   const t = useT();
   const { stack, goWorkspace, openStack } = useShellNavigation();
@@ -21,49 +35,16 @@ export const ShellMenu = () => {
   const { SignOut, Pending } = useSignOut();
   const role = useCurrentMembership()?.Role;
 
+  const item = stackItems(stack, openStack);
   const items: TMenuEntry[] = [
     { id: 'home', icon: 'home', label: t('shell.nav.home'), href: '/', current: stack.length === 0, onSelect: goWorkspace },
     { id: 'projects', icon: 'layers', label: t('shell.nav.projects'), hint: t('shell.soon'), badge: t('shell.soon.badge') },
-    { id: 'runners', icon: 'server', label: t('shell.nav.runners'), hint: t('shell.soon'), badge: t('shell.soon.badge') },
-    {
-      id: 'team',
-      icon: 'users',
-      label: t('shell.nav.team'),
-      href: '/?stack=organization',
-      current: stack.includes('organization'),
-      onSelect: () => {
-        openStack(['organization']);
-      },
-      onIntent: intentFor('organization'),
-    },
+    item('jobs', 'play', t('shell.nav.jobs'), stack.some((frame) => frame === 'jobs' || frame.startsWith('job-'))),
+    { ...item('organization', 'users', t('shell.nav.team')), id: 'team' },
   ];
-  if (canReadAudit(role)) {
-    items.push({
-      id: 'audit',
-      icon: 'file',
-      label: t('shell.nav.audit'),
-      href: '/?stack=audit',
-      current: stack.includes('audit'),
-      onSelect: () => {
-        openStack(['audit']);
-      },
-      onIntent: intentFor('audit'),
-    });
-  }
-
-  const bottom: IMenuItem[] = [
-    {
-      id: 'settings',
-      icon: 'settings',
-      label: t('shell.nav.settings'),
-      href: '/?stack=appearance',
-      current: stack.includes('appearance'),
-      onSelect: () => {
-        openStack(['appearance']);
-      },
-      onIntent: intentFor('appearance'),
-    },
-  ];
+  if (canReadRunners(role)) items.splice(3, 0, item('runners', 'server', t('shell.nav.runners')));
+  if (canReadAudit(role)) items.push(item('audit', 'file', t('shell.nav.audit')));
+  const bottom: IMenuItem[] = [{ ...item('appearance', 'settings', t('shell.nav.settings')), id: 'settings' }];
 
   return (
     <SideMenu

@@ -6,6 +6,7 @@ export const BootEn: TBootMessages = {
   'shell.nav.label': 'Main navigation',
   'shell.nav.home': 'Home',
   'shell.nav.projects': 'Projects',
+  'shell.nav.jobs': 'Jobs',
   'shell.nav.runners': 'Runners',
   'shell.nav.team': 'Team',
   'shell.nav.audit': 'Audit log',

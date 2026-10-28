@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { canEditOrganization, canReadAudit, canReadMembers, ROLES, secondFactorCovers } from '@/Core/Auth/AuthTypes';
+import {
+  canEditOrganization,
+  canManageRunners,
+  canReadAudit,
+  canReadMembers,
+  canReadRunners,
+  ROLES,
+  secondFactorCovers,
+} from '@/Core/Auth/AuthTypes';
 import { isLengthValid, PASSWORD_MAX_LENGTH, scorePassword } from '@/Core/Auth/PasswordStrength';
 import { agoOf, formatClock, formatDateTime } from '@/Core/Format/TimeFormat';
 
@@ -34,6 +42,12 @@ describe('what each role may open', () => {
   it('keeps the member list from viewers', () => {
     expect(ROLES.filter(canReadMembers)).toEqual(['owner', 'admin', 'maintainer', 'developer']);
     expect(canReadAudit(undefined)).toBe(false);
+  });
+
+  it('matches the server policy for runners: viewers see none, and only the owner and admins manage them', () => {
+    expect(ROLES.filter(canReadRunners)).toEqual(['owner', 'admin', 'maintainer', 'developer']);
+    expect(ROLES.filter(canManageRunners)).toEqual(['owner', 'admin']);
+    expect(canManageRunners(undefined)).toBe(false);
   });
 });
 

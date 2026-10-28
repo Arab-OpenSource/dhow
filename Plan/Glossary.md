@@ -9,6 +9,11 @@
 | Recovery codes | أكواد الطوارئ |
 | API token | مفتاح API |
 | Runner | جهاز تشغيل |
+| Registration token | رمز التسجيل |
+| Label | وسم |
+| Capacity | السعة |
+| Pause / Resume (runner) | إيقاف مؤقت / إعادة التشغيل |
+| Revoke (runner) | إلغاء نهائي |
 | Session | جهاز داخل / جلسة |
 | Sign out everywhere | اخرج من كل الأجهزة التانية |
 | Organization | المؤسسة |
@@ -21,6 +26,10 @@
 | Developer | مطوّر |
 | Viewer | مشاهد |
 | Audit log | سجل الأحداث |
+| Job | تشغيل (الجمع: التشغيلات) |
+| Attempt | محاولة |
+| Fencing token | رقم الحجز |
+| Label | وسم (الجمع: الأوسمة) |
 | Job log | سجل التشغيل |
 | Deployment | نشر |
 | Environment | بيئة |

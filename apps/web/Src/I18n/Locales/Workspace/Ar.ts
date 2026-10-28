@@ -1,5 +1,7 @@
 import { AuditAr } from '@/I18n/Locales/Workspace/AuditAr';
+import { JobsAr } from '@/I18n/Locales/Workspace/JobsAr';
 import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
+import { RunnersAr } from '@/I18n/Locales/Workspace/RunnersAr';
 
 export const WorkspaceAr = {
   'palette.label': 'الأوامر',
@@ -382,4 +384,6 @@ export const WorkspaceAr = {
   'totp.enabled': 'اتفعّل الكود من تطبيق المصادقة',
   ...AuditAr,
   ...OrganizationAr,
+  ...JobsAr,
+  ...RunnersAr,
 } as const;
