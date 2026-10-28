@@ -27,6 +27,8 @@ const ACTIONS: Record<string, IAuditAction> = {
   'auth.oidc_login_failed': { Icon: 'alert', Bad: true },
   'auth.identity_linked': { Icon: 'user', Bad: false },
   'auth.identity_unlinked': { Icon: 'user', Bad: true },
+  'auth.api_token_created': { Icon: 'key', Bad: false },
+  'auth.api_token_revoked': { Icon: 'key', Bad: true },
   'identity.organization.updated': { Icon: 'building', Bad: false },
   'system.instance.setupCompleted': { Icon: 'shield', Bad: false },
 };

@@ -13,6 +13,7 @@ type TFramePart =
   | 'account'
   | 'account-password'
   | 'account-totp'
+  | 'account-token-new'
   | 'audit'
   | 'organization'
   | 'organizations'
@@ -66,6 +67,11 @@ const MfaSection = lazyComponent(() => import('@/Modules/Mfa/Components/MfaSecti
 const TotpBody = lazyComponent(() => import('@/Modules/Mfa/Components/TotpBody').then((module) => module.TotpBody));
 const TotpFooter = lazyComponent(() => import('@/Modules/Mfa/Components/TotpFooter').then((module) => module.TotpFooter));
 
+const TokensCard = lazyComponent(() => import('@/Modules/Tokens/Components/TokensCard').then((module) => module.TokensCard));
+const TokenNewBody = lazyComponent(() =>
+  import('@/Modules/Tokens/Components/TokenNewBody').then((module) => module.TokenNewBody),
+);
+
 const AuditBody = lazyComponent(() =>
   import('@/Modules/Audit/Components/AuditBody').then((module) => module.AuditBody),
 );
@@ -99,9 +105,10 @@ const PARTS: Record<TFramePart, readonly IPreloadable[]> = {
   check: [CheckDetailBody, SystemStatusFooter],
   appearance: [AppearanceBody, AppearanceFooter],
   'theme-edit': [ThemeEditorBody, ThemeEditorFooter],
-  account: [AccountSlide, AccountSubtitle, AccountFooter, MfaSection],
+  account: [AccountSlide, AccountSubtitle, AccountFooter, MfaSection, TokensCard],
   'account-password': [PasswordBody, PasswordFooter],
   'account-totp': [TotpBody, TotpFooter],
+  'account-token-new': [TokenNewBody],
   audit: [AuditBody, AuditFooter],
   organization: [OrganizationSlide, OrganizationSubtitle, OrganizationFooter],
   organizations: [OrganizationsBody],
@@ -176,6 +183,8 @@ export const LazyPasswordFooter = withNothing(PasswordFooter);
 export const LazyMfaSection = withSkeleton(MfaSection);
 export const LazyTotpBody = withSkeleton(TotpBody);
 export const LazyTotpFooter = withNothing(TotpFooter);
+export const LazyTokensCard = withSkeleton(TokensCard);
+export const LazyTokenNewBody = withSkeleton(TokenNewBody);
 
 export const LazyAuditBody = withSkeleton(AuditBody);
 export const LazyAuditFooter = withNothing(AuditFooter);

@@ -8,6 +8,8 @@ import {
   LazyMfaSection,
   LazyPasswordBody,
   LazyPasswordFooter,
+  LazyTokenNewBody,
+  LazyTokensCard,
   LazyTotpBody,
   LazyTotpFooter,
 } from '@/App/Layout/LazyFrames';
@@ -27,6 +29,13 @@ export const buildIdentitySlide = (id: TFrameId, { t, navigation, role }: IFrame
             <LazyMfaSection
               onSetUpTotp={() => {
                 navigation.pushFrame('account-totp');
+              }}
+            />
+          }
+          tokens={
+            <LazyTokensCard
+              onNew={() => {
+                navigation.pushFrame('account-token-new');
               }}
             />
           }
@@ -57,6 +66,14 @@ export const buildIdentitySlide = (id: TFrameId, { t, navigation, role }: IFrame
       subtitle: <span>{t('totp.slide.subtitle')}</span>,
       children: <LazyTotpBody onDone={navigation.popFrame} />,
       footer: <LazyTotpFooter onCancel={navigation.popFrame} />,
+    };
+  }
+  if (id === 'account-token-new') {
+    return {
+      id,
+      title: t('tokens.slide.title'),
+      subtitle: <span>{t('tokens.slide.subtitle')}</span>,
+      children: <LazyTokenNewBody onDone={navigation.popFrame} />,
     };
   }
   if (id === 'audit') {

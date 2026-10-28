@@ -15,6 +15,7 @@ const STATIC_FRAMES = [
   'account',
   'account-password',
   'account-totp',
+  'account-token-new',
   'audit',
   'organization',
   'organizations',
