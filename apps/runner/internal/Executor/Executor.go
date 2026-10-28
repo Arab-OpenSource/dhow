@@ -63,6 +63,7 @@ type Outcome struct {
 	ExitCode   int32
 	Reported   bool
 	SelfFenced bool
+	Survivors  bool
 	KilledAt   time.Time
 }
 

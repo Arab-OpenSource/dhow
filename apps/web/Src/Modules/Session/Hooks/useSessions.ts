@@ -11,7 +11,7 @@ import {
 export const SESSIONS_QUERY_KEY = ['sessions'] as const;
 
 export const useSessions = (): UseQueryResult<TSessionView[], ApiError> =>
-  useQuery<TSessionView[], ApiError>({ queryKey: SESSIONS_QUERY_KEY, queryFn: listSessions, staleTime: 0 });
+  useQuery<TSessionView[], ApiError>({ queryKey: SESSIONS_QUERY_KEY, queryFn: listSessions });
 
 export const useRevokeSession = () => {
   const client = useQueryClient();
