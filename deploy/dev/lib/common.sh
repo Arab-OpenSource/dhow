@@ -88,7 +88,11 @@ fetch() {
 }
 
 on_wsl() {
-  [[ -n ${WSL_DISTRO_NAME:-} || -e /proc/sys/fs/binfmt_misc/WSLInterop ]]
+  local release=
+  [[ -n ${WSL_DISTRO_NAME:-} || -n ${WSL_INTEROP:-} ]] && return 0
+  compgen -G '/proc/sys/fs/binfmt_misc/WSLInterop*' >/dev/null && return 0
+  [[ -r /proc/sys/kernel/osrelease ]] && release=$(</proc/sys/kernel/osrelease)
+  [[ ${release,,} == *microsoft* || ${release,,} == *wsl* ]]
 }
 
 drop_windows_paths() {
