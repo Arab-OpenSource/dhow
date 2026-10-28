@@ -175,8 +175,10 @@ func testDSN(t *testing.T) string {
 	return dsn
 }
 
+const migrationLockWait = 3 * time.Minute
+
 func TestFullStackWithPostgres(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), migrationLockWait)
 	defer cancel()
 	pool, err := config.OpenDatabase(ctx, testDSN(t))
 	require.NoError(t, err)
