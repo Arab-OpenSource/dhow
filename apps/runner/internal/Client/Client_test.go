@@ -43,6 +43,9 @@ type fakeAuth struct {
 	headers    http.Header
 	revoked    bool
 	rejectNext atomic.Bool
+	failAuth   atomic.Bool
+	blockAuth  chan struct{}
+	validUntil atomic.Int64
 }
 
 func (f *fakeAuth) Challenge(_ context.Context, req *connect.Request[runnerv1.ChallengeRequest]) (*connect.Response[runnerv1.ChallengeResponse], error) {
@@ -53,6 +56,12 @@ func (f *fakeAuth) Challenge(_ context.Context, req *connect.Request[runnerv1.Ch
 func (f *fakeAuth) Authenticate(_ context.Context, req *connect.Request[runnerv1.AuthenticateRequest]) (*connect.Response[runnerv1.AuthenticateResponse], error) {
 	if f.revoked {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("RUNNER_REVOKED"))
+	}
+	if f.blockAuth != nil {
+		<-f.blockAuth
+	}
+	if f.failAuth.Load() {
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("UNAVAILABLE"))
 	}
 	msg := runnersig.AuthMessage(origin, 1, req.Msg.GetChallenge().GetChallengeBytes())
 	if !ed25519.Verify(f.id.SigningPublicKey(), msg, req.Msg.GetSignature()) {
@@ -178,7 +187,8 @@ func TestTheTokenIsRenewedAtTwoThirdsOfItsLife(t *testing.T) {
 	clock.Store(int64(10 * time.Minute))
 	_, err := c.Heartbeat(context.Background(), ref)
 	require.NoError(t, err)
-	assert.EqualValues(t, 2, f.auths.Load(), "the token is renewed at ten of fifteen minutes")
+	assert.Eventually(t, func() bool { return f.auths.Load() == 2 }, 5*time.Second, 10*time.Millisecond,
+		"the token is renewed at ten of fifteen minutes")
 }
 
 func TestARejectedTokenIsReplacedOnce(t *testing.T) {
@@ -237,4 +247,52 @@ func TestErrorClassification(t *testing.T) {
 	assert.True(t, client.Transient(errors.New("dial tcp: refused")))
 	assert.False(t, client.Transient(context.Canceled))
 	assert.True(t, client.Is(connect.NewError(connect.CodeFailedPrecondition, errors.New("CANCEL_REQUESTED")), client.CodeCancelRequested))
+}
+
+func TestAFailedRenewalKeepsTheValidToken(t *testing.T) {
+	id := testIdentity(t)
+	f := &fakeAuth{id: id, valid: map[string]bool{}}
+	srv, ca := serve(t, f, nil)
+	var clock atomic.Int64
+	start := time.Now()
+	c := newClient(t, srv, ca, id, func() time.Time { return start.Add(time.Duration(clock.Load())) })
+	_, err := c.Heartbeat(context.Background(), ref)
+	require.NoError(t, err)
+	f.failAuth.Store(true)
+	clock.Store(int64(11 * time.Minute))
+	_, err = c.Heartbeat(context.Background(), ref)
+	require.NoError(t, err, "the token lives 15 minutes, so a failed renewal at 11 must not fail the call")
+	clock.Store(int64(14*time.Minute + 45*time.Second))
+	_, err = c.Heartbeat(context.Background(), ref)
+	assert.Error(t, err, "close to the real expiry the old token is no longer used")
+	f.failAuth.Store(false)
+	_, err = c.Heartbeat(context.Background(), ref)
+	require.NoError(t, err)
+}
+
+func TestARenewalInFlightDoesNotBlockOtherCalls(t *testing.T) {
+	id := testIdentity(t)
+	f := &fakeAuth{id: id, valid: map[string]bool{}}
+	srv, ca := serve(t, f, nil)
+	var clock atomic.Int64
+	start := time.Now()
+	c := newClient(t, srv, ca, id, func() time.Time { return start.Add(time.Duration(clock.Load())) })
+	_, err := c.Heartbeat(context.Background(), ref)
+	require.NoError(t, err)
+	f.blockAuth = make(chan struct{})
+	clock.Store(int64(11 * time.Minute))
+	leader := make(chan error, 1)
+	go func() {
+		_, err := c.Heartbeat(context.Background(), ref)
+		leader <- err
+	}()
+	assert.Eventually(t, func() bool {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_, err := c.Heartbeat(ctx, ref)
+		return err == nil
+	}, 5*time.Second, 50*time.Millisecond, "another call goes through with the current token while the renewal waits")
+	require.NoError(t, <-leader)
+	close(f.blockAuth)
+	assert.Eventually(t, func() bool { return f.auths.Load() == 2 }, 5*time.Second, 10*time.Millisecond)
 }
