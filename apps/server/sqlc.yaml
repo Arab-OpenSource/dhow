@@ -7,6 +7,7 @@ sql:
       - internal/Modules/Identity/Queries
       - internal/Modules/Session/Queries
       - internal/Modules/Audit/Queries
+      - internal/Modules/Runners/Queries
     gen:
       go:
         package: sqlc

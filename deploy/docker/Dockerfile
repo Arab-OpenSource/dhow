@@ -27,6 +27,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 COPY apps/server ./apps/server
 COPY internal ./internal
+COPY packages/proto/gen/go ./packages/proto/gen/go
 COPY --from=web /src/apps/web/dist/ ./apps/server/internal/App/WebDist/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \

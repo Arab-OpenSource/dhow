@@ -130,6 +130,11 @@ func NewWithPool(t *testing.T, pool *pgxpool.Pool) *Env {
 
 func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) *Env {
 	t.Helper()
+	return NewConfigured(t, pool, params, nil)
+}
+
+func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func(*config.Config)) *Env {
+	t.Helper()
 	secret := make([]byte, 32)
 	_, err := rand.Read(secret)
 	require.NoError(t, err)
@@ -137,6 +142,9 @@ func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) 
 	require.NoError(t, err)
 	cfg := config.Config{
 		SecretKey: secret, PublicURL: publicURL, ListenAddr: config.DefaultListenAddr, BreachedPasswordCheck: true,
+	}
+	if configure != nil {
+		configure(&cfg)
 	}
 	logs := &SyncBuffer{}
 	log := logging.New(logs, slog.LevelDebug)

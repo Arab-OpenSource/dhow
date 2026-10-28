@@ -62,7 +62,61 @@ func Run(ctx context.Context) error {
 	if created {
 		log.Info("first-run setup is required: open this link within one hour to create the owner account", "setup_url", setupURL)
 	}
-	return serve(ctx, NewHTTPServer(cfg, wired.Handler, log), log, "public_url", cfg.PublicURL.String())
+	servers := []served{{srv: NewHTTPServer(cfg, wired.Handler, log), attrs: []any{"public_url", cfg.PublicURL.String()}}}
+	if wired.RunnerHandler != nil {
+		runner := NewHTTPServer(cfg, wired.RunnerHandler, log)
+		runner.Addr = cfg.RunnerListenAddr
+		servers = append(servers, served{srv: runner, cert: cfg.RunnerTLSCertFile, key: cfg.RunnerTLSKeyFile, attrs: []any{"plane", "runner", "tls", cfg.RunnerPlaneTLS()}})
+		if !cfg.RunnerPlaneTLS() {
+			log.Warn("the runner listener serves plain HTTP because DHOW_DEV=true. Never use this in production.")
+		}
+	}
+	return serveAll(ctx, servers, log)
+}
+
+type served struct {
+	srv       *http.Server
+	cert, key string
+	attrs     []any
+}
+
+func (s served) listen() error {
+	if s.cert != "" {
+		return s.srv.ListenAndServeTLS(s.cert, s.key)
+	}
+	return s.srv.ListenAndServe()
+}
+
+func serveAll(ctx context.Context, servers []served, log *slog.Logger) error {
+	serveErr := make(chan error, len(servers))
+	for _, s := range servers {
+		go func() {
+			log.Info("listening", append([]any{"addr", s.srv.Addr}, s.attrs...)...)
+			serveErr <- s.listen()
+		}()
+	}
+	var failure error
+	select {
+	case err := <-serveErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			failure = fmt.Errorf("serve: %w", err)
+		}
+	case <-ctx.Done():
+	}
+	log.Info("shutting down", "timeout", config.ShutdownTimeout.String())
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), config.ShutdownTimeout)
+	defer cancel()
+	var errs []error
+	for _, s := range servers {
+		if err := s.srv.Shutdown(shutdownCtx); err != nil {
+			errs = append(errs, fmt.Errorf("graceful shutdown of %s: %w", s.srv.Addr, err))
+		}
+	}
+	if failure != nil || len(errs) > 0 {
+		return errors.Join(append([]error{failure}, errs...)...)
+	}
+	log.Info("stopped")
+	return nil
 }
 
 func NewHTTPServer(cfg config.Config, handler http.Handler, log *slog.Logger) *http.Server {
@@ -76,30 +130,4 @@ func NewHTTPServer(cfg config.Config, handler http.Handler, log *slog.Logger) *h
 		MaxHeaderBytes:    config.MaxHeaderBytes,
 		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
 	}
-}
-
-func serve(ctx context.Context, srv *http.Server, log *slog.Logger, attrs ...any) error {
-	serveErr := make(chan error, 1)
-	go func() {
-		log.Info("listening", append([]any{"addr", srv.Addr}, attrs...)...)
-		serveErr <- srv.ListenAndServe()
-	}()
-
-	select {
-	case err := <-serveErr:
-		if !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("serve: %w", err)
-		}
-		return nil
-	case <-ctx.Done():
-	}
-
-	log.Info("shutting down", "timeout", config.ShutdownTimeout.String())
-	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), config.ShutdownTimeout)
-	defer cancel()
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("graceful shutdown: %w", err)
-	}
-	log.Info("stopped")
-	return nil
 }

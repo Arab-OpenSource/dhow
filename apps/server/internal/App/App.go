@@ -15,8 +15,10 @@ import (
 	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
 	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
+	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
+	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
 )
@@ -28,6 +30,8 @@ type Options struct {
 	Identity *identity.Service
 	Session  *session.Service
 	Audit    *audit.Service
+	Runners  *runners.Service
+	Gate     *runnerauth.Gate
 	CSRF     *auth.CSRF
 	Now      func() time.Time
 	Web      http.Handler
@@ -39,7 +43,12 @@ func Policies() []policy.Rule {
 	rules = append(rules, identity.Policies()...)
 	rules = append(rules, session.Policies()...)
 	rules = append(rules, audit.Policies()...)
+	rules = append(rules, runners.Policies()...)
 	return rules
+}
+
+func RunnerPolicies() []policy.Rule {
+	return runners.Procedures()
 }
 
 type noSessions struct{}
@@ -61,6 +70,17 @@ func (o Options) guard() *auth.Guard {
 }
 
 func NewRouter(o Options) http.Handler {
+	public := publicRouter(o)
+	if o.Runners == nil || o.Config.RunnerPlaneSeparate() {
+		return public
+	}
+	root := chi.NewRouter()
+	root.Mount(config.RunnerAPIPrefix, RunnerPlane(o))
+	root.Mount("/", public)
+	return root
+}
+
+func publicRouter(o Options) chi.Router {
 	r := chi.NewRouter()
 	r.Use(
 		middleware.RequestID,
@@ -88,6 +108,9 @@ func NewRouter(o Options) http.Handler {
 		if o.Audit != nil {
 			audit.Routes(api, audit.Deps{Service: o.Audit, Guard: guard, Log: o.Log})
 		}
+		if o.Runners != nil {
+			runners.Routes(api, runners.Deps{Service: o.Runners, Guard: guard, Log: o.Log})
+		}
 	})
 
 	web := o.Web
@@ -95,13 +118,22 @@ func NewRouter(o Options) http.Handler {
 		web = WebHandler()
 	}
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/api" || strings.HasPrefix(req.URL.Path, "/api/") {
+		if isAPIPath(req.URL.Path) {
 			notFound(w, req)
 			return
 		}
 		web.ServeHTTP(w, req)
 	})
 	return r
+}
+
+func isAPIPath(p string) bool {
+	for _, prefix := range []string{"/api", config.RunnerAPIPrefix} {
+		if p == prefix || strings.HasPrefix(p, prefix+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func notFound(w http.ResponseWriter, r *http.Request) {
