@@ -117,13 +117,28 @@ func startPostgres(port, password string) error {
 
 func waitPostgres() error {
 	deadline := time.Now().Add(2 * time.Minute)
+	var last error
 	for time.Now().Before(deadline) {
-		if _, err := podman("exec", pgContainer, "pg_isready", "-U", "postgres", "-d", "dhow"); err == nil {
+		if _, last = podman("exec", pgContainer, "pg_isready", "-U", "postgres", "-d", "dhow"); last == nil {
 			return nil
 		}
 		time.Sleep(time.Second)
 	}
-	return fmt.Errorf("postgres did not become ready")
+	return fmt.Errorf("postgres did not become ready: %w\n%s", last, containerReport(pgContainer))
+}
+
+func containerReport(name string) string {
+	state, err := podman("inspect", "--format", "{{.State.Status}} exit={{.State.ExitCode}} {{.State.Error}}", name)
+	if err != nil {
+		state = err.Error()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	logs, err := exec.CommandContext(ctx, "podman", "logs", "--tail", "40", name).CombinedOutput()
+	if err != nil {
+		logs = append(logs, err.Error()...)
+	}
+	return "state: " + state + "\nlogs:\n" + string(logs)
 }
 
 func restartPostgres() error {
