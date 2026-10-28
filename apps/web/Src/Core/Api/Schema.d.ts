@@ -1321,7 +1321,7 @@ export interface paths {
         };
         /**
          * List the jobs of an organization
-         * @description Needs `job.read`. Newest first, optionally filtered by state. A caller who is not a member gets 404.
+         * @description Needs `job.read`. Newest first, optionally filtered by state. A queued job that no active runner of the organization can take carries `QueuedReason` `NO_MATCHING_RUNNER`, as in the job itself. A caller who is not a member gets 404.
          */
         get: operations["listJobs"];
         put?: never;
@@ -2343,6 +2343,11 @@ export interface components {
             Number: number;
             /** Format: uuid */
             RunnerId: string;
+            /**
+             * Format: int64
+             * @description The fencing token of the attempt's lease. Every attempt gets a larger one than the attempts before it, and the server refuses any call from a runner that holds an older token.
+             */
+            FencingToken: number;
             State: components["schemas"]["JobAttemptState"];
             FailureReason?: string;
             ExitCode?: number;

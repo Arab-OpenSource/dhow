@@ -1960,7 +1960,9 @@ paths:
       tags: [jobs]
       summary: List the jobs of an organization
       description: >-
-        Needs `job.read`. Newest first, optionally filtered by state. A caller who is not a member gets 404.
+        Needs `job.read`. Newest first, optionally filtered by state. A queued job that no active runner of the
+        organization can take carries `QueuedReason` `NO_MATCHING_RUNNER`, as in the job itself. A caller who is not a
+        member gets 404.
       security:
         - SessionCookie: []
         - ApiToken: []
@@ -4213,7 +4215,7 @@ components:
     JobAttempt:
       type: object
       additionalProperties: false
-      required: [Id, Number, RunnerId, State, LeasedAt, Steps]
+      required: [Id, Number, RunnerId, FencingToken, State, LeasedAt, Steps]
       properties:
         Id:
           type: string
@@ -4224,6 +4226,13 @@ components:
         RunnerId:
           type: string
           format: uuid
+        FencingToken:
+          type: integer
+          format: int64
+          minimum: 1
+          description: >-
+            The fencing token of the attempt's lease. Every attempt gets a larger one than the attempts before it, and
+            the server refuses any call from a runner that holds an older token.
         State:
           $ref: "#/components/schemas/JobAttemptState"
         FailureReason:

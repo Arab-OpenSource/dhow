@@ -1,4 +1,6 @@
+import { JobsEn } from '@/I18n/Locales/Workspace/JobsEn';
 import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
+import { RunnersEn } from '@/I18n/Locales/Workspace/RunnersEn';
 import type { TWorkspaceMessages } from '@/I18n/Messages';
 
 export const WorkspaceEn: TWorkspaceMessages = {
@@ -400,4 +402,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'audit.action.auth.api_token_created': 'API token created',
   'audit.action.auth.api_token_revoked': 'API token revoked',
   ...OrganizationEn,
+  ...JobsEn,
+  ...RunnersEn,
 };

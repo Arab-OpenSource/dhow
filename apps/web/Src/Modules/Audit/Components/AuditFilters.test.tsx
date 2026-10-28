@@ -15,7 +15,7 @@ const EVENTS = auditFixture(5);
 const FIRST = EVENTS[0]?.Id ?? '';
 
 const oneEvent =
-  (reply: (id: string) => Response | undefined): TRouteHandler =>
+  (reply: (id: string) => ReturnType<TRouteHandler>): TRouteHandler =>
   (_request, url) => {
     const match = /\/audit-events\/([0-9a-f-]{36})$/.exec(url.pathname);
     return match?.[1] ? reply(match[1]) : undefined;
