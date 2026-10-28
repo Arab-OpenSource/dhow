@@ -23,7 +23,7 @@ export const useTeamChange = <TArgs>(organizationId: string, teamId: string, run
         Title: args.done,
         Detail: change.Revoked > 0 ? t('team.revoked', { count: change.Revoked }) : undefined,
       });
-      void refresh();
+      void refresh(teamId);
     },
     onError: (error) => {
       Push({ Id: `team-${teamId}-failed`, Accent: 'failed', Title: errorText(error) });
