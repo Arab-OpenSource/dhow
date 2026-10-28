@@ -41,14 +41,14 @@ ADR-0043 حدد الـ sandbox: Podman rootless، وagent هو PID 1، وحدو�
 - **`make runner-isolation`** بيبني الـ runner والـ probe static وبيبني الاختبار بـ tag `isolation`، و`ISOLATION_RUN` بيسمح يشتغل تحت `systemd-run`.
 
 ### job الـ `isolation` في الـ CI
-- **قرار Sabry:** على GitHub Actions بـ `ubuntu-24.04`، مش VM. بيشتغل على أي PR مش draft يلمس `apps/runner` أو `packages/proto` أو `internal/jobspec` أو الـ `Makefile` أو الـ workflow، وعلى كل push لـ `main`.
+- **قرار Sabry:** على GitHub Actions بـ `ubuntu-26.04`، مش VM. الخطة كانت `ubuntu-24.04` على افتراض إن الـ image فيها Podman 5.8، لكن أول تشغيل لقى 4.9.3، فـ Sabry اختار `ubuntu-26.04` (عامة من سبتمبر 2026) عشان Podman يجي من التوزيعة نفسها من غير أي binary من طرف تالت. الـ actionlint المثبّت ماكانش يعرف الـ label، فاتضاف في `.github/actionlint.yaml`. بيشتغل على أي PR مش draft يلمس `apps/runner` أو `packages/proto` أو `internal/jobspec` أو الـ `Makefile` أو الـ workflow، وعلى كل push لـ `main`.
 - بيتأكد إن Podman 5.4 أو أحدث، وإلا بيفشل برسالة واضحة.
 - user مخصص (`dhowci`) بمليون subuid وsubgid، عشان كل job ليه userns بـ 65536 والـ suite بيشغّل jobين مع بعض.
-- `kernel.apparmor_restrict_unprivileged_userns=0`، لأن Ubuntu 24.04 بيمنع الـ user namespaces لأي حد مش متعرّف في AppArmor. ده لازم يتكتب في دليل التنصيب لـ Ubuntu 24.04.
+- `kernel.apparmor_restrict_unprivileged_userns=0`، لأن Ubuntu من 24.04 بيمنع الـ user namespaces لأي حد مش متعرّف في AppArmor. ده لازم يتكتب في دليل التنصيب لـ Ubuntu 24.04.
 - الاختبار بيشتغل تحت `systemd-run --uid=dhowci -p Delegate=yes -p MemorySwapMax=0`، زي الـ service الحقيقية بالظبط.
 
 ## العواقب
 - العزل بيتثبت على جهاز حقيقي في كل PR يلمس الـ runner، وأي probe بينجح بيوقف الـ merge.
 - **نضحّي** بالتحقق المحلي لصالح الـ CI: الـ suite محتاج cgroup v2 وتفويض وsubuids وPodman 5.4، ومش كل جهاز تطوير فيه ده. والـ CI مابيشتغلش على الـ draft، فالتحقق بيبدأ لما الـ PR يبقى Ready for review.
 - `/proc/self/mountinfo` جوه الـ job بيبيّن المسار على الـ host للـ mounts بتاعة الـ agent وقناة التحكم (المسار بس، من غير المحتوى). ده مقبول، والـ probe بيتأكد إن مفيش mount غير المسموح وإن الاتنين دول read-only.
-- لو Podman اللي على `ubuntu-24.04` أقدم من 5.4، الـ job هيفشل، والحل تثبيت نسخة مثبّتة بـ checksum في الـ job نفسه.
+- الـ job على `ubuntu-26.04` وباقي الـ CI على `ubuntu-24.04`، لحد ما المشروع كله ينقل.

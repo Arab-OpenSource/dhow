@@ -112,7 +112,7 @@ jobs:
   isolation:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Runner isolation (rootless Podman)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -137,7 +137,7 @@ jobs:
         if: steps.scope.outputs.run == 'true'
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q busybox-static crun uidmap
+          sudo apt-get install -y -q podman busybox-static crun uidmap
       - name: Require Podman 5.4 or newer
         if: steps.scope.outputs.run == 'true'
         run: |
