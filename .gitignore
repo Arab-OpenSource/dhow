@@ -26,3 +26,6 @@ dhow.local.yaml
 
 # Python bytecode
 __pycache__/
+
+# Redis snapshots written by local test servers
+dump.rdb
