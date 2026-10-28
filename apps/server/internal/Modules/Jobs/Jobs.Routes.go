@@ -26,10 +26,10 @@ type Deps struct {
 
 func Policies() []policy.Rule {
 	return []policy.Rule{
-		policy.Organization(http.MethodGet, "/organizations/{id}/jobs", policy.JobRead, "id"),
+		policy.Organization(http.MethodGet, "/organizations/{id}/jobs", policy.JobRead, "id").AllowTokens(),
 		policy.Organization(http.MethodPost, "/organizations/{id}/jobs", policy.JobCreate, "id"),
-		policy.Organization(http.MethodGet, "/organizations/{id}/jobs/{jobId}", policy.JobRead, "id"),
-		policy.Organization(http.MethodPost, "/organizations/{id}/jobs/{jobId}/cancel", policy.JobCancel, "id"),
+		policy.Organization(http.MethodGet, "/organizations/{id}/jobs/{jobId}", policy.JobRead, "id").AllowTokens(),
+		policy.Organization(http.MethodPost, "/organizations/{id}/jobs/{jobId}/cancel", policy.JobCancel, "id").AllowTokens(),
 	}
 }
 

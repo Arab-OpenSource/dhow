@@ -10,7 +10,7 @@ import {
   type TThemeColors,
   type TThemeToken,
 } from '@/Core/Theme/ThemeTokens';
-import { cleanThemeName, isHex, sanitizeCustomTheme } from '@/Core/Theme/ThemeValidation';
+import { cleanThemeName, isHex, sanitizeCustomTheme, sanitizeCustomThemes } from '@/Core/Theme/ThemeValidation';
 
 export interface IThemeDraft {
   Id: string;
@@ -30,6 +30,7 @@ interface IThemeState {
   Draft: IThemeDraft | null;
   Activate: (id: string) => void;
   Boot: () => void;
+  Hydrate: (activeId: string, customThemes: unknown) => void;
   BeginDraft: (options: IBeginDraftOptions) => void;
   SetDraftName: (name: string) => void;
   SetDraftColor: (token: TThemeToken, value: string) => void;
@@ -55,6 +56,15 @@ export const useThemeStore = create<IThemeState>((set, get) => ({
   Boot: () => {
     const { ActiveId, CustomThemes } = get();
     applyTheme(ActiveId, CustomThemes);
+  },
+
+  Hydrate: (activeId, customThemes) => {
+    const CustomThemes = sanitizeCustomThemes(customThemes);
+    const ActiveId = findThemeColors(activeId, CustomThemes) ? activeId : DEFAULT_THEME_ID;
+    storeCustomThemes(CustomThemes);
+    storeActiveTheme(ActiveId);
+    set({ ActiveId, CustomThemes });
+    if (get().Draft === null) applyTheme(ActiveId, CustomThemes);
   },
 
   Activate: (id) => {

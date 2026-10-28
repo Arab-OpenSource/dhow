@@ -1,0 +1,9 @@
+package: gen
+output: apps/server/internal/Modules/Tokens/Gen/Tokens.gen.go
+generate:
+  chi-server: true
+  strict-server: true
+  models: true
+output-options:
+  include-tags:
+    - tokens

@@ -30,6 +30,9 @@ const (
 
 func Policies() []policy.Rule {
 	org := func(method, path string, action policy.Action) policy.Rule {
+		return policy.Organization(method, path, action, "id").AllowTokens()
+	}
+	browser := func(method, path string, action policy.Action) policy.Rule {
 		return policy.Organization(method, path, action, "id")
 	}
 	return []policy.Rule{
@@ -37,12 +40,12 @@ func Policies() []policy.Rule {
 		policy.Instance(http.MethodPost, "/organizations", policy.OrgCreate),
 		org(http.MethodGet, orgPath, policy.OrgRead),
 		org(http.MethodPatch, orgPath, policy.OrgUpdate),
-		org(http.MethodPost, orgPath+"/leave", policy.OrgLeave),
-		org(http.MethodPost, orgPath+"/transfer-ownership", policy.OrgTransfer),
+		browser(http.MethodPost, orgPath+"/leave", policy.OrgLeave),
+		browser(http.MethodPost, orgPath+"/transfer-ownership", policy.OrgTransfer),
 		org(http.MethodGet, orgPath+"/members", policy.MemberRead),
 		org(http.MethodPatch, memberPath, policy.MemberManage),
 		org(http.MethodDelete, memberPath, policy.MemberManage),
-		org(http.MethodPost, memberPath+"/mfa-reset", policy.MemberManage),
+		browser(http.MethodPost, memberPath+"/mfa-reset", policy.MemberManage),
 		org(http.MethodGet, teamsPath, policy.MemberRead),
 		org(http.MethodPost, teamsPath, policy.MemberManage),
 		org(http.MethodGet, teamPath, policy.MemberRead),

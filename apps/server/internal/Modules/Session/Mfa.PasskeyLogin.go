@@ -60,7 +60,7 @@ func (s *Service) PasskeyLogin(ctx context.Context, challengeID uuid.UUID, crede
 		return models.LoginResult{}, err
 	}
 	who := sessionUser{ID: owner.id, Email: owner.email, Name: owner.name, Locale: owner.locale}
-	return s.openSession(ctx, now, who, meta, models.MethodPasskey)
+	return s.openSession(ctx, now, who, meta, models.MethodPasskey, "")
 }
 
 func (s *Service) checkPasskeyLogin(ctx context.Context, q *sqlc.Queries, challengeID uuid.UUID, credential json.RawMessage, now time.Time) (*passkeyUser, factorOutcome, error) {

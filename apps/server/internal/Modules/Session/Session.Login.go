@@ -54,9 +54,9 @@ func (s *Service) Login(ctx context.Context, in models.LoginInput) (models.Login
 		return models.LoginResult{}, err
 	}
 	if hasMfa(factors) {
-		return s.issuePending(ctx, now, who, factors, meta)
+		return s.issuePending(ctx, now, who, factors, meta, models.MethodPassword)
 	}
-	return s.openSession(ctx, now, who, meta, models.MethodPassword)
+	return s.openSession(ctx, now, who, meta, models.MethodPassword, "")
 }
 
 type sessionUser struct {
@@ -118,7 +118,7 @@ func (s *Service) rehash(ctx context.Context, now time.Time, user sqlc.GetUserFo
 	}
 }
 
-func (s *Service) openSession(ctx context.Context, now time.Time, user sessionUser, meta auth.RequestMeta, method string) (models.LoginResult, error) {
+func (s *Service) openSession(ctx context.Context, now time.Time, user sessionUser, meta auth.RequestMeta, method, first string) (models.LoginResult, error) {
 	cookie, tokenHash, err := auth.NewSessionToken(config.SessionTokenBytes)
 	if err != nil {
 		return models.LoginResult{}, err
@@ -152,9 +152,13 @@ func (s *Service) openSession(ctx context.Context, now time.Time, user sessionUs
 		orgs = append(orgs, m.OrganizationId)
 	}
 	actor := user.ID
+	data := map[string]string{"Method": method}
+	if first != "" {
+		data["FirstMethod"] = first
+	}
 	publishErr := s.bus.Publish(ctx, eventbus.Event{Name: eventbus.AuthLogin, Payload: eventbus.Audited{
 		OrganizationIDs: orgs, ActorUserID: &actor, TargetType: "session", TargetID: sessionID.String(), IP: meta.IPString(),
-		Data: map[string]string{"Method": method},
+		Data: data,
 	}})
 	if publishErr != nil {
 		if _, revokeErr := s.queries().RevokeUserSession(context.WithoutCancel(ctx), sqlc.RevokeUserSessionParams{ID: sessionID, UserID: user.ID, Now: now}); revokeErr != nil {

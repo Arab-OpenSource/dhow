@@ -66,14 +66,14 @@ SET "UsedAt" = @now::timestamptz, "UpdatedAt" = @now
 WHERE "UserId" = @user_id AND "CodeHash" = @code_hash AND "UsedAt" IS NULL AND NOT "IsDeleted";
 
 -- name: InsertAuthChallenge :one
-INSERT INTO "AuthChallenges" ("Kind", "TokenHash", "UserId", "SessionId", "DeviceHash", "WebauthnSession", "ExpiresAt",
-                              "CreatedAt", "UpdatedAt")
+INSERT INTO "AuthChallenges" ("Kind", "TokenHash", "UserId", "SessionId", "DeviceHash", "WebauthnSession", "FirstMethod",
+                              "ExpiresAt", "CreatedAt", "UpdatedAt")
 VALUES (@kind, sqlc.narg(token_hash), sqlc.narg(user_id), sqlc.narg(session_id), sqlc.narg(device_hash),
-        sqlc.narg(webauthn_session), @expires_at, @now, @now)
+        sqlc.narg(webauthn_session), @first_method, @expires_at, @now, @now)
 RETURNING "Id";
 
 -- name: FindMfaChallenge :one
-SELECT "Id", "UserId", "DeviceHash", "ExpiresAt"
+SELECT "Id", "UserId", "DeviceHash", "ExpiresAt", "FirstMethod"
 FROM "AuthChallenges"
 WHERE "TokenHash" = @token_hash AND "Kind" = 'mfa_pending' AND NOT "IsDeleted" AND "UsedAt" IS NULL
   AND "ExpiresAt" > @now;

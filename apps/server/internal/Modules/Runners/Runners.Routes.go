@@ -25,13 +25,13 @@ type Deps struct {
 
 func Policies() []policy.Rule {
 	return []policy.Rule{
-		policy.Organization(http.MethodGet, "/organizations/{id}/runners", policy.RunnerRead, "id"),
-		policy.Organization(http.MethodGet, "/organizations/{id}/runners/{runnerId}", policy.RunnerRead, "id"),
-		policy.Organization(http.MethodPatch, "/organizations/{id}/runners/{runnerId}", policy.RunnerManage, "id"),
-		policy.Organization(http.MethodPost, "/organizations/{id}/runners/{runnerId}/revoke", policy.RunnerManage, "id"),
-		policy.Organization(http.MethodGet, "/organizations/{id}/runner-registration-tokens", policy.RunnerManage, "id"),
-		policy.Organization(http.MethodPost, "/organizations/{id}/runner-registration-tokens", policy.RunnerManage, "id"),
-		policy.Organization(http.MethodPost, "/organizations/{id}/runner-registration-tokens/{tokenId}/revoke", policy.RunnerManage, "id"),
+		policy.Organization(http.MethodGet, "/organizations/{id}/runners", policy.RunnerRead, "id").AllowTokens(),
+		policy.Organization(http.MethodGet, "/organizations/{id}/runners/{runnerId}", policy.RunnerRead, "id").AllowTokens(),
+		policy.Organization(http.MethodPatch, "/organizations/{id}/runners/{runnerId}", policy.RunnerManage, "id").AllowTokens(),
+		policy.Organization(http.MethodPost, "/organizations/{id}/runners/{runnerId}/revoke", policy.RunnerManage, "id").AllowTokens(),
+		policy.Organization(http.MethodGet, "/organizations/{id}/runner-registration-tokens", policy.RunnerManage, "id").AllowTokens(),
+		policy.Organization(http.MethodPost, "/organizations/{id}/runner-registration-tokens", policy.RunnerManage, "id").AllowTokens(),
+		policy.Organization(http.MethodPost, "/organizations/{id}/runner-registration-tokens/{tokenId}/revoke", policy.RunnerManage, "id").AllowTokens(),
 	}
 }
 

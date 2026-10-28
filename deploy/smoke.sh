@@ -351,6 +351,62 @@ dhow_logs=$(compose logs --no-color dhow 2>&1)
 expect "the invitation token never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "$invite_token" "$dhow_logs"
 expect "the member's password never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "$dev_password" "$dhow_logs"
 
+printf 'API tokens, preferences and sign-in providers\n'
+recovery2=$(grep -o '[0-9A-Z]\{4\}-[0-9A-Z]\{4\}-[0-9A-Z]\{4\}-[0-9A-Z]\{4\}' "$work/totp-confirm.body" | sed -n 2p)
+pat_body=$(printf '{"Name":"Smoke CI","Scopes":["org.read","member.read"],"ExpiresInDays":7,"CurrentFactor":{"Method":"recovery_code","Code":"%s"}}' "$recovery2")
+status=$(api "$work/pat-nofactor" POST "$org_api/api-tokens" '{"Name":"Smoke CI","Scopes":["org.read"],"ExpiresInDays":7,"CurrentFactor":{"Method":"password","Password":"x"}}' "${origin[@]}" "${session[@]}")
+expect "creating a token with a wrong factor answers 403" test "$status" = 403
+status=$(api "$work/pat" POST "$org_api/api-tokens" "$pat_body" "${origin[@]}" "${session[@]}")
+expect "creating an API token answers 200" test "$status" = 200
+pat=$(json_field "$work/pat.body" Value)
+pat_id=$(grep -o '"Token":{"[^}]*' "$work/pat.body" | grep -o '"Id":"[^"]*"' | head -1 | cut -d'"' -f4)
+expect "the token starts with dhow_pat_ and has 32 random bytes" test "${pat:0:9}:${#pat}" = "dhow_pat_:52"
+bearer=(--header "Authorization: Bearer $pat")
+status=$(curl --silent --max-time 5 --output "$work/pat-members.body" --write-out '%{http_code}' "${bearer[@]}" -- "http://127.0.0.1:$port$org_api/members")
+expect "the token reads members without a cookie, Origin or CSRF token" test "$status" = 200
+status=$(api "$work/pat-rename" PATCH "$org_api" '{"Name":"Renamed"}' "${bearer[@]}")
+expect "the token cannot do what its scopes leave out" test "$status:$(json_field "$work/pat-rename.body" Code)" = 403:FORBIDDEN
+status=$(curl --silent --max-time 5 --output "$work/pat-me.body" --write-out '%{http_code}' "${bearer[@]}" -- "http://127.0.0.1:$port/api/v1/me")
+expect "the token is refused on browser-only routes" test "$status:$(json_field "$work/pat-me.body" Code)" = 403:SESSION_REQUIRED
+status=$(api "$work/pat-password" PUT /api/v1/me/password "{\"CurrentPassword\":\"$password\",\"NewPassword\":\"another smoke passphrase\"}" "${bearer[@]}")
+expect "the token cannot change the password" test "$status" = 403
+status=$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' "${bearer[@]}" --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port$org_api/members")
+expect "a token next to a session cookie answers 401" test "$status" = 401
+status=$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' "${bearer[@]}" -- "http://127.0.0.1:$port/api/v1/organizations/$org2_id/members")
+expect "the token sees nothing of another organization" test "$status" = 404
+status=$(rpc "$work/pat-runner" dhow.runner.v1.AuthService/RotateKeys '{}' --header 'Dhow-Protocol: 1' "${bearer[@]}")
+expect "the token on /runner-api/ answers 401 UNAUTHENTICATED" test "$status:$(json_field "$work/pat-runner.body" message)" = 401:UNAUTHENTICATED
+status=$(curl --silent --max-time 5 --output "$work/pat-list.body" --write-out '%{http_code}' --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port/api/v1/me/api-tokens")
+expect "the token list answers 200" test "$status" = 200
+expect "the token list never shows the value" bash -c '! grep -qF -- "$1" "$2"' _ "${pat#dhow_pat_}" "$work/pat-list.body"
+status=$(api "$work/pat-revoke" POST "/api/v1/me/api-tokens/$pat_id/revoke" '' "${origin[@]}" "${session[@]}")
+expect "revoking the token answers 200" test "$status" = 200
+status=$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' "${bearer[@]}" -- "http://127.0.0.1:$port$org_api/members")
+expect "the revoked token answers 401 at once" test "$status" = 401
+
+status=$(curl --silent --max-time 5 --output "$work/prefs.body" --write-out '%{http_code}' --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port/api/v1/me/preferences")
+expect "/api/v1/me/preferences answers 200" test "$status" = 200
+expect "preferences start unsaved" grep -q '"Saved":false' "$work/prefs.body"
+status=$(api "$work/prefs-save" PUT /api/v1/me/preferences "{\"Locale\":\"en\",\"ThemeId\":\"dusk\",\"CustomThemes\":[],\"OrganizationId\":\"$org_id\"}" "${origin[@]}" "${session[@]}")
+expect "saving preferences answers 200" test "$status" = 200
+curl --silent --max-time 5 --output "$work/prefs2.body" --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port/api/v1/me/preferences"
+expect "the saved theme comes back" grep -q '"ThemeId":"dusk"' "$work/prefs2.body"
+curl --silent --max-time 5 --output "$work/me4.body" --header "Cookie: $mfa_session" -- "http://127.0.0.1:$port/api/v1/me"
+expect "the saved language is the account locale" grep -q '"Locale":"en"' "$work/me4.body"
+status=$(api "$work/prefs-bad" PUT /api/v1/me/preferences '{"Locale":"en","ThemeId":"rainbow","CustomThemes":[],"OrganizationId":null}' "${origin[@]}" "${session[@]}")
+expect "an unknown theme answers 422" test "$status" = 422
+
+status=$(http "$work/oidc" /api/v1/oidc/providers)
+expect "/api/v1/oidc/providers answers 200" test "$status" = 200
+expect "no sign-in provider is configured by default" grep -q '"Data":\[\]' "$work/oidc.body"
+status=$(api "$work/oidc-start" POST /api/v1/oidc/authorize '{"Provider":"google"}' "${origin[@]}")
+expect "an unconfigured provider answers 404" test "$status" = 404
+status=$(api "$work/oidc-cb" POST /api/v1/oidc/callback '{"Provider":"google","Code":"x","State":"y"}' "${origin[@]}")
+expect "a callback without a flow answers OIDC_FLOW_INVALID" test "$status:$(json_field "$work/oidc-cb.body" Code)" = 400:OIDC_FLOW_INVALID
+
+dhow_logs=$(compose logs --no-color dhow 2>&1)
+expect "the API token never reaches the logs" bash -c '! grep -qF -- "$1" <<<"$2"' _ "${pat#dhow_pat_}" "$dhow_logs"
+
 printf 'Security headers\n'
 for page in web ready; do
   expect "$page: Content-Security-Policy is 'self'" has_header "$work/$page.head" Content-Security-Policy "default-src 'self'"

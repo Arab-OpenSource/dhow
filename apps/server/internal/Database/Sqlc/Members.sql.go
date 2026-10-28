@@ -396,6 +396,26 @@ func (q *Queries) RevokeAllUserSessions(ctx context.Context, arg RevokeAllUserSe
 	return result.RowsAffected(), nil
 }
 
+const revokeUserApiTokens = `-- name: RevokeUserApiTokens :execrows
+UPDATE "ApiTokens"
+SET "RevokedAt" = $1::timestamptz, "RevokedByUserId" = $2, "UpdatedAt" = $1
+WHERE "UserId" = $3 AND NOT "IsDeleted" AND "RevokedAt" IS NULL
+`
+
+type RevokeUserApiTokensParams struct {
+	Now     time.Time
+	ActorID *uuid.UUID
+	UserID  uuid.UUID
+}
+
+func (q *Queries) RevokeUserApiTokens(ctx context.Context, arg RevokeUserApiTokensParams) (int64, error) {
+	result, err := q.db.Exec(ctx, revokeUserApiTokens, arg.Now, arg.ActorID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const revokeUserSessionsExcept = `-- name: RevokeUserSessionsExcept :execrows
 UPDATE "Sessions"
 SET "RevokedAt" = $1::timestamptz, "UpdatedAt" = $1

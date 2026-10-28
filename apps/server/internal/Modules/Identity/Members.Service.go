@@ -100,6 +100,9 @@ func (s *Service) RemoveMember(ctx context.Context, org, target uuid.UUID) (mode
 		return models.MemberChange{}, err
 	}
 	if target == p.UserID {
+		if p.ViaToken() {
+			return models.MemberChange{}, apperrors.SessionRequired()
+		}
 		if err := s.removeSelf(ctx, p, org); err != nil {
 			return models.MemberChange{}, err
 		}
@@ -193,7 +196,7 @@ func (s *Service) ResetMfa(ctx context.Context, org, target uuid.UUID, factor au
 		return models.MemberChange{}, err
 	}
 	now := s.now()
-	var revoked, totp, passkeys, codes int64
+	var revoked, totp, passkeys, codes, tokens int64
 	var orgs []uuid.UUID
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
 		if err := lockOrganization(ctx, q, org); err != nil {
@@ -220,6 +223,9 @@ func (s *Service) ResetMfa(ctx context.Context, org, target uuid.UUID, factor au
 		if err := q.MarkMfaReset(ctx, sqlc.MarkMfaResetParams{ID: target, Now: now}); err != nil {
 			return err
 		}
+		if tokens, err = q.RevokeUserApiTokens(ctx, sqlc.RevokeUserApiTokensParams{UserID: target, ActorID: &p.UserID, Now: now}); err != nil {
+			return err
+		}
 		revoked, err = q.RevokeAllUserSessions(ctx, sqlc.RevokeAllUserSessionsParams{UserID: target, Now: now})
 		return err
 	})
@@ -229,6 +235,6 @@ func (s *Service) ResetMfa(ctx context.Context, org, target uuid.UUID, factor au
 	return models.MemberChange{UserID: target, Revoked: revoked}, s.audit(ctx, eventbus.IdentityMemberMfaReset, orgs, targetUser, target.String(),
 		map[string]string{
 			"Totp": strconv.FormatBool(totp > 0), "Passkeys": itoa(passkeys), "RecoveryCodes": itoa(codes),
-			"RevokedSessions": itoa(revoked), eventbus.SeverityKey: eventbus.SeverityHigh,
+			"RevokedSessions": itoa(revoked), "RevokedPats": itoa(tokens), eventbus.SeverityKey: eventbus.SeverityHigh,
 		})
 }

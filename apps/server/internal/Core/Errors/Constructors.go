@@ -137,6 +137,50 @@ func RunnerRevoked() *AppError {
 	return New(http.StatusConflict, CodeRunnerRevoked, KeyRunnerRevoked)
 }
 
+func OidcFlowInvalid() *AppError {
+	return New(http.StatusBadRequest, CodeOidcFlowInvalid, KeyOidcFlowInvalid)
+}
+
+func OidcSignInFailed() *AppError {
+	return New(http.StatusUnauthorized, CodeOidcSignInFailed, KeyOidcSignInFailed)
+}
+
+func OidcNotLinked() *AppError {
+	return New(http.StatusUnauthorized, CodeOidcNotLinked, KeyOidcNotLinked)
+}
+
+func OidcDomainNotAllowed() *AppError {
+	return New(http.StatusForbidden, CodeOidcDomainNotAllowed, KeyOidcDomainNotAllowed)
+}
+
+func OidcProviderUnavailable() *AppError {
+	return New(http.StatusServiceUnavailable, CodeOidcProviderUnavailable, KeyOidcProviderUnavailable)
+}
+
+func OidcIdentityInUse() *AppError {
+	return New(http.StatusConflict, CodeOidcIdentityInUse, KeyOidcIdentityInUse)
+}
+
+func OidcAlreadyLinked() *AppError {
+	return New(http.StatusConflict, CodeOidcAlreadyLinked, KeyOidcAlreadyLinked)
+}
+
+func LastSignInMethod() *AppError {
+	return New(http.StatusConflict, CodeLastSignInMethod, KeyLastSignInMethod)
+}
+
+func SessionRequired() *AppError {
+	return New(http.StatusForbidden, CodeSessionRequired, KeySessionRequired)
+}
+
+func ApiTokenLimit() *AppError {
+	return New(http.StatusConflict, CodeApiTokenLimit, KeyApiTokenLimit)
+}
+
+func ScopeNotAllowed() *AppError {
+	return New(http.StatusForbidden, CodeScopeNotAllowed, KeyScopeNotAllowed)
+}
+
 func SecretsUnavailable() *AppError {
 	return New(http.StatusUnprocessableEntity, CodeSecretsUnavailable, KeySecretsUnavailable)
 }

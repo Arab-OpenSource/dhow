@@ -19,24 +19,29 @@ import (
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
 	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
+	preferences "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Preferences"
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
+	tokens "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Tokens"
 )
 
 type Options struct {
-	Config   config.Config
-	Log      *slog.Logger
-	System   system.Deps
-	Identity *identity.Service
-	Session  *session.Service
-	Audit    *audit.Service
-	Runners  *runners.Service
-	Jobs     *jobs.Service
-	Gate     *runnerauth.Gate
-	CSRF     *auth.CSRF
-	Now      func() time.Time
-	Web      http.Handler
+	Config    config.Config
+	Log       *slog.Logger
+	System    system.Deps
+	Identity  *identity.Service
+	Session   *session.Service
+	Audit     *audit.Service
+	Runners   *runners.Service
+	Jobs      *jobs.Service
+	Tokens    *tokens.Service
+	Prefs     *preferences.Service
+	Gate      *runnerauth.Gate
+	CSRF      *auth.CSRF
+	APITokens *auth.APITokens
+	Now       func() time.Time
+	Web       http.Handler
 }
 
 func Policies() []policy.Rule {
@@ -47,6 +52,8 @@ func Policies() []policy.Rule {
 	rules = append(rules, audit.Policies()...)
 	rules = append(rules, runners.Policies()...)
 	rules = append(rules, jobs.Policies()...)
+	rules = append(rules, tokens.Policies()...)
+	rules = append(rules, preferences.Policies()...)
 	return rules
 }
 
@@ -69,8 +76,12 @@ func (o Options) guard() *auth.Guard {
 	if csrf == nil {
 		csrf = auth.NewCSRF(o.Config.SecretKey)
 	}
+	var tokenResolver auth.TokenResolver
+	if o.Tokens != nil {
+		tokenResolver = o.Tokens
+	}
 	return auth.NewGuard(auth.GuardOptions{
-		Resolver: resolver, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now,
+		Resolver: resolver, Tokens: tokenResolver, APITokens: o.APITokens, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now,
 		Instance: policy.InstanceSettings{AnyUserCreatesOrganizations: o.Config.AnyUserCreatesOrganizations},
 	})
 }
@@ -119,6 +130,12 @@ func publicRouter(o Options) chi.Router {
 		}
 		if o.Jobs != nil {
 			jobs.Routes(api, jobs.Deps{Service: o.Jobs, Guard: guard, Log: o.Log})
+		}
+		if o.Tokens != nil {
+			tokens.Routes(api, tokens.Deps{Service: o.Tokens, Guard: guard, Log: o.Log})
+		}
+		if o.Prefs != nil {
+			preferences.Routes(api, preferences.Deps{Service: o.Prefs, Guard: guard, Log: o.Log})
 		}
 	})
 
