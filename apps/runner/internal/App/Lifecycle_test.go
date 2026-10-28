@@ -192,3 +192,19 @@ func TestAStartThatOutlivesTheDeadlineNeverStartsTheSandbox(t *testing.T) {
 	assert.NotContains(t, kinds(running.Driver.Events()), fake.EventStart, "nothing runs once the runner fenced itself")
 	assert.NotContains(t, kinds(running.Driver.Events()), fake.EventExec)
 }
+
+func TestASuccessIsNeverReportedAfterTheRunnerFencedItself(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	srv.Configure(func(k *runnertest.Knobs) { k.LeaseTTL = 20 * time.Second })
+	srv.Enqueue(runnertest.Spec(), nil)
+	running := r.Start(fake.Recording{Steps: []fake.Step{{HangMillis: 500}}}, runnertest.StartOptions{})
+	runnertest.WaitEvent(t, running.Driver, fake.EventExec, finishWithin)
+	srv.Configure(func(k *runnertest.Knobs) { k.HeartbeatFail, k.EndStepFail = true, true })
+	out := running.Next(t, 40*time.Second)
+	assert.True(t, out.SelfFenced)
+	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_LOST, out.Result, "the last step finished, but the lease was given up meanwhile")
+	for _, c := range srv.Leases()[0].Completes {
+		assert.NotEqual(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, c.GetResult())
+	}
+}

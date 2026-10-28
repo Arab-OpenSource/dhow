@@ -43,6 +43,9 @@ func (a *attempt) steps(ctx context.Context) result {
 			return r
 		}
 	}
+	if a.fenced() {
+		return a.lostResult()
+	}
 	return succeeded()
 }
 
