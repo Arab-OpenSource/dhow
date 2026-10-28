@@ -187,7 +187,7 @@ func (s *Service) RevokeInvitation(ctx context.Context, org, id uuid.UUID) (mode
 }
 
 func (s *Service) ResendInvitation(ctx context.Context, org, id uuid.UUID) (models.InvitationIssued, error) {
-	_, actor, err := actorIn(ctx, org)
+	p, actor, err := actorIn(ctx, org)
 	if err != nil {
 		return models.InvitationIssued{}, err
 	}
@@ -202,7 +202,7 @@ func (s *Service) ResendInvitation(ctx context.Context, org, id uuid.UUID) (mode
 		}
 		_, err := q.ReissueInvitation(ctx, sqlc.ReissueInvitationParams{
 			ID: id, OrganizationID: org, TokenHash: token.hash, ExpiresAt: now.Add(config.InvitationTTL), Now: now,
-			EmailStatus: s.initialEmailStatus(),
+			EmailStatus: s.initialEmailStatus(), InvitedByUserID: p.UserID,
 		})
 		return err
 	})

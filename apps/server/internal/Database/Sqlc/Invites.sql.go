@@ -299,17 +299,18 @@ func (q *Queries) MarkInvitationAccepted(ctx context.Context, arg MarkInvitation
 const reissueInvitation = `-- name: ReissueInvitation :execrows
 UPDATE "Invitations"
 SET "TokenHash" = $1, "ExpiresAt" = $2, "SentAt" = $3, "SendCount" = "SendCount" + 1,
-    "EmailStatus" = $4, "UpdatedAt" = $3
-WHERE "Id" = $5 AND "OrganizationId" = $6 AND "AcceptedAt" IS NULL AND "RevokedAt" IS NULL
+    "EmailStatus" = $4, "InvitedByUserId" = $5, "UpdatedAt" = $3
+WHERE "Id" = $6 AND "OrganizationId" = $7 AND "AcceptedAt" IS NULL AND "RevokedAt" IS NULL
 `
 
 type ReissueInvitationParams struct {
-	TokenHash      []byte
-	ExpiresAt      time.Time
-	Now            time.Time
-	EmailStatus    string
-	ID             uuid.UUID
-	OrganizationID uuid.UUID
+	TokenHash       []byte
+	ExpiresAt       time.Time
+	Now             time.Time
+	EmailStatus     string
+	InvitedByUserID uuid.UUID
+	ID              uuid.UUID
+	OrganizationID  uuid.UUID
 }
 
 func (q *Queries) ReissueInvitation(ctx context.Context, arg ReissueInvitationParams) (int64, error) {
@@ -318,6 +319,7 @@ func (q *Queries) ReissueInvitation(ctx context.Context, arg ReissueInvitationPa
 		arg.ExpiresAt,
 		arg.Now,
 		arg.EmailStatus,
+		arg.InvitedByUserID,
 		arg.ID,
 		arg.OrganizationID,
 	)

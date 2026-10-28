@@ -55,7 +55,7 @@ WHERE "Id" = @id AND "OrganizationId" = @organization_id AND "AcceptedAt" IS NUL
 -- name: ReissueInvitation :execrows
 UPDATE "Invitations"
 SET "TokenHash" = @token_hash, "ExpiresAt" = @expires_at, "SentAt" = @now, "SendCount" = "SendCount" + 1,
-    "EmailStatus" = @email_status, "UpdatedAt" = @now
+    "EmailStatus" = @email_status, "InvitedByUserId" = @invited_by_user_id, "UpdatedAt" = @now
 WHERE "Id" = @id AND "OrganizationId" = @organization_id AND "AcceptedAt" IS NULL AND "RevokedAt" IS NULL;
 
 -- name: FindUsableInvitation :one
