@@ -10,6 +10,7 @@ import (
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
 	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
+	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Models"
 )
@@ -55,7 +56,23 @@ func (s *Service) UpdateOrganization(ctx context.Context, id uuid.UUID, name str
 	return models.Organization{ID: row.Id, Name: row.Name, Slug: row.Slug, CreatedAt: row.CreatedAt}, nil
 }
 
+func mfaOf(totp, passkey bool) string {
+	switch {
+	case passkey:
+		return "passkey"
+	case totp:
+		return "totp"
+	default:
+		return "none"
+	}
+}
+
 func (s *Service) ListMembers(ctx context.Context, id uuid.UUID, page, limit int) ([]models.Member, int64, error) {
+	_, actor, err := actorIn(ctx, id)
+	if err != nil {
+		return nil, 0, err
+	}
+	manager := policy.Allows(actor, policy.MemberManage)
 	q := s.queries()
 	total, err := q.CountMembers(ctx, id)
 	if err != nil {
@@ -69,7 +86,16 @@ func (s *Service) ListMembers(ctx context.Context, id uuid.UUID, page, limit int
 	}
 	out := make([]models.Member, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, models.Member{UserID: r.UserId, Name: r.Name, Email: r.Email, Role: r.Role, JoinedAt: r.JoinedAt})
+		effective, ok := policy.EffectiveOf(r.Role, r.TeamRoles)
+		if !ok {
+			continue
+		}
+		m := models.Member{UserID: r.UserId, Name: r.Name, Email: r.Email, Role: r.Role, EffectiveRole: string(effective), JoinedAt: r.JoinedAt}
+		if manager {
+			m.Mfa = mfaOf(r.HasTotp, r.HasPasskey)
+			m.MfaResetPending = r.MfaResetAt != nil && m.Mfa == "none"
+		}
+		out = append(out, m)
 	}
 	return out, total, nil
 }

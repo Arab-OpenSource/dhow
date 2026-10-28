@@ -1,5 +1,6 @@
 import { Outlet } from '@tanstack/react-router';
 
+import { AccountBanners } from '@/App/Layout/AccountBanners';
 import { LazyCommandPalette, LazySlideHost, preloadShellParts } from '@/App/Layout/ShellParts';
 import { ShellMenu } from '@/App/Layout/ShellMenu';
 import { ShellTopBar } from '@/App/Layout/ShellTopBar';
@@ -45,6 +46,7 @@ export const AppShell = () => {
           <ShellTopBar />
           <main id="main" tabIndex={-1} className="flex-1 overflow-auto px-4 pt-4 pb-24 md:px-6 md:pt-6 md:pb-6">
             <SystemBanners />
+            <AccountBanners />
             <Outlet />
           </main>
         </div>

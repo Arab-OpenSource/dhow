@@ -28,22 +28,40 @@ There is no configuration file and no fallback value for a secret. A missing or 
 | `DHOW_RUNNER_TLS_CERT_FILE` | With `DHOW_RUNNER_LISTEN_ADDR` | none | `/etc/dhow/runner-tls.crt` | The PEM certificate chain of the separate runner listener. It is refused without `DHOW_RUNNER_LISTEN_ADDR`, without `DHOW_RUNNER_TLS_KEY_FILE`, or when the pair does not load. |
 | `DHOW_RUNNER_TLS_KEY_FILE` | With `DHOW_RUNNER_LISTEN_ADDR` | none | `/etc/dhow/runner-tls.key` | The PEM private key of that certificate. Like a secret file, other users must not be able to read or write it (`chmod 600`). |
 | `DHOW_RUNNER_MAX_POLLS` | No | `500` | `200` | How many `Lease` long-polls one server instance keeps open at once. A waiting poll holds no database connection, but every wake-up runs one short claim transaction, so the default is 25 polls for each of the 20 pooled database connections. Above the limit a runner gets `RESOURCE_EXHAUSTED` with `Retry-After` and backs off. A whole number from 1 to 10000. |
+| `DHOW_ORG_CREATION` | No | `instance-owner` | `any-user` | Who may create more organizations. `instance-owner` allows only the instance owner, the account made by the first-owner setup. `any-user` allows every signed-in user. Any other value stops the server. |
+| `DHOW_SMTP_HOST` | No | empty | `smtp.example.com` | The mail server for invitation emails. Empty turns email off: an admin still gets the invitation link and sends it themselves. A host name or an IP address, without a port. See [Email](#email). |
+| `DHOW_SMTP_PORT` | No | `587`, or `465` with `DHOW_SMTP_TLS=tls` | `2525` | The mail server's port, from 1 to 65535. |
+| `DHOW_SMTP_TLS` | No | `starttls` | `tls`, `none` | `starttls` connects in plain text and requires `STARTTLS` before anything else is sent. `tls` connects over TLS from the first byte (usually port 465). `none` sends in plain text and is accepted only without a username and password, for a relay on a private network. The server certificate is always verified. |
+| `DHOW_SMTP_USERNAME` | No | empty | `dhow` | The SMTP login. Set it together with a password, or leave both empty for a relay that needs no login. |
+| `DHOW_SMTP_PASSWORD` | No | empty | none | The SMTP password. It is sent only over TLS (`AUTH PLAIN`) and never logged. |
+| `DHOW_SMTP_PASSWORD_FILE` | No | none | `/run/secrets/dhow-smtp-password` | A file that holds `DHOW_SMTP_PASSWORD`, see [Secrets in files](#secrets-in-files). |
+| `DHOW_SMTP_FROM` | With `DHOW_SMTP_HOST` | none | `Dhow <dhow@example.com>` | The sender of invitation emails, as one RFC 5322 address with an optional display name. |
 
 `DHOW_DEV=true` never turns off the `Secure` flag of the session cookie, the `Origin` check or the secret key checks.
 
 ## Secrets in files
 
-`DHOW_SECRET_KEY` and `DHOW_DATABASE_URL` can come from a file instead of the environment, so they never show up in `ps`, `systemctl show` or `docker inspect`:
+`DHOW_SECRET_KEY`, `DHOW_DATABASE_URL` and `DHOW_SMTP_PASSWORD` can come from a file instead of the environment, so they never show up in `ps`, `systemctl show` or `docker inspect`:
 
-- `DHOW_SECRET_KEY_FILE` and `DHOW_DATABASE_URL_FILE` name the file.
-- Under systemd, `LoadCredential=dhow-secret-key:...` and `LoadCredential=dhow-database-url:...` work without any variable: Dhow reads `$CREDENTIALS_DIRECTORY/dhow-secret-key` and `$CREDENTIALS_DIRECTORY/dhow-database-url`. The [unit file](binary-systemd.md) does this.
+- `DHOW_SECRET_KEY_FILE`, `DHOW_DATABASE_URL_FILE` and `DHOW_SMTP_PASSWORD_FILE` name the file.
+- Under systemd, `LoadCredential=dhow-secret-key:...`, `LoadCredential=dhow-database-url:...` and `LoadCredential=dhow-smtp-password:...` work without any variable: Dhow reads `$CREDENTIALS_DIRECTORY/dhow-secret-key`, `$CREDENTIALS_DIRECTORY/dhow-database-url` and `$CREDENTIALS_DIRECTORY/dhow-smtp-password`. The [unit file](binary-systemd.md) does this for the first two.
 
-The rules are the same for both:
+The rules are the same for all of them:
 
 - Set each secret in one place only. A variable together with its `_FILE`, or with a systemd credential, stops the server.
 - The file must be a regular file of at most 64 KiB that other users cannot read or write (`chmod 600`). Group access is allowed.
 - One trailing newline (`\n` or `\r\n`) is removed, so `openssl rand -hex 32 > file` works. An empty file is refused.
 - The value is checked exactly like the variable: a placeholder key or a URL without a secure `sslmode` still stops the server, and the error names the file, never its content.
+
+## Email
+
+Email is optional. Without `DHOW_SMTP_HOST`, an admin who invites someone gets the invitation link (`https://<your host>/invite#<token>`) and sends it through any channel they trust.
+
+With SMTP set up, Dhow also emails the link to the invited address in the inviter's language. Sending is fail-safe: if the mail server is down or refuses the message, the invitation still exists, the admin still gets the link, and the screen says the email was not sent. Dhow waits at most 10 seconds for the mail server.
+
+- The link is the only secret in the email. It works once and expires after 7 days, and resending an invitation makes a new link and voids the old one.
+- `DHOW_SMTP_FROM`, the organization name and the inviter's name are the only values that reach the headers, and a value that contains a line break never does.
+- Test the settings by inviting your own address.
 
 ## Development and tests
 

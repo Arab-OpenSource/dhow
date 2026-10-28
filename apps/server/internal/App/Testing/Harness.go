@@ -23,6 +23,7 @@ import (
 	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
 	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 	"github.com/Arab-OpenSource/dhow/internal/logging"
@@ -129,23 +130,39 @@ func NewWithPool(t *testing.T, pool *pgxpool.Pool) *Env {
 	return NewWithPoolAndParams(t, pool, TestParams())
 }
 
+type Options struct {
+	Pool    *pgxpool.Pool
+	Params  *auth.Params
+	Mailer  mailer.Sender
+	Profile func(*config.Config)
+	Secrets *FakeSecrets
+}
+
 func NewWithPoolAndParams(t *testing.T, pool *pgxpool.Pool, params auth.Params) *Env {
 	t.Helper()
-	return NewConfigured(t, pool, params, nil)
+	return NewWithOptions(t, Options{Pool: pool, Params: &params})
 }
 
 func NewConfigured(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func(*config.Config)) *Env {
 	t.Helper()
-	return newEnv(t, pool, params, configure, nil)
+	return NewWithOptions(t, Options{Pool: pool, Params: &params, Profile: configure})
 }
 
 func NewWithSecrets(t *testing.T, secrets *FakeSecrets) *Env {
 	t.Helper()
-	return newEnv(t, dbtest.NewPool(t), TestParams(), nil, secrets)
+	return NewWithOptions(t, Options{Secrets: secrets})
 }
 
-func newEnv(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func(*config.Config), secrets *FakeSecrets) *Env {
+func NewWithOptions(t *testing.T, o Options) *Env {
 	t.Helper()
+	pool := o.Pool
+	if pool == nil {
+		pool = dbtest.NewPool(t)
+	}
+	params := TestParams()
+	if o.Params != nil {
+		params = *o.Params
+	}
 	secret := make([]byte, 32)
 	_, err := rand.Read(secret)
 	require.NoError(t, err)
@@ -154,8 +171,8 @@ func newEnv(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func
 	cfg := config.Config{
 		SecretKey: secret, PublicURL: publicURL, ListenAddr: config.DefaultListenAddr, BreachedPasswordCheck: true,
 	}
-	if configure != nil {
-		configure(&cfg)
+	if o.Profile != nil {
+		o.Profile(&cfg)
 	}
 	logs := &SyncBuffer{}
 	log := logging.New(logs, slog.LevelDebug)
@@ -163,10 +180,10 @@ func newEnv(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func
 	breach := &FakeBreach{}
 	infra := app.Infra{
 		Config: cfg, Log: log, Pool: pool, Migrations: fakeMigrations{}, Build: buildinfo.Info{Version: "test", Commit: "test"},
-		Breach: breach, HashParams: &params, Now: clock.Now,
+		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer,
 	}
-	if secrets != nil {
-		infra.Secrets = secrets
+	if o.Secrets != nil {
+		infra.Secrets = o.Secrets
 	}
 	wired, err := app.Build(t.Context(), infra)
 	require.NoError(t, err)
@@ -175,7 +192,7 @@ func newEnv(t *testing.T, pool *pgxpool.Pool, params auth.Params, configure func
 	require.NoError(t, err)
 	return &Env{
 		T: t, Pool: pool, Wired: wired, Handler: wired.Handler, Logs: logs, Clock: clock, Breach: breach, Hasher: hasher, Config: cfg,
-		Secrets: secrets,
+		Secrets: o.Secrets,
 	}
 }
 

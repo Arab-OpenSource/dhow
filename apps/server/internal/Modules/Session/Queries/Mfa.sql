@@ -116,3 +116,8 @@ WHERE "UserId" = @user_id AND "SessionId" = @session_id AND "ConfirmedAt" IS NUL
   AND "ExpiresAt" > @now
 ORDER BY "CreatedAt" DESC, "Id" DESC
 LIMIT 1;
+
+-- name: ClearMfaReset :exec
+UPDATE "Users"
+SET "MfaResetAt" = NULL, "UpdatedAt" = @now
+WHERE "Id" = @id AND "MfaResetAt" IS NOT NULL;

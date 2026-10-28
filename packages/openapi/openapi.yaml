@@ -15,7 +15,13 @@ tags:
   - name: system
     description: Health and instance metadata. Served by the System module.
   - name: identity
-    description: First-owner setup, organizations and members. Served by the Identity module.
+    description: First-owner setup and organizations. Served by the Identity module.
+  - name: members
+    description: Member roles, removal and the admin reset of a lost second factor. Served by the Identity module.
+  - name: teams
+    description: Teams, team membership and the roles teams grant (role bindings). Served by the Identity module.
+  - name: invitations
+    description: Email invitations, by link and optional SMTP, and accepting them. Served by the Identity module.
   - name: session
     description: Sign-in, sign-out, the current user, own sessions and password change. Served by the Session module.
   - name: mfa
@@ -631,6 +637,32 @@ paths:
                 $ref: "#/components/schemas/RevokedCountResponse"
         default:
           $ref: "#/components/responses/Error"
+  /organizations:
+    post:
+      operationId: createOrganization
+      tags: [identity]
+      summary: Create an organization
+      description: >-
+        Needs `org.create`, an instance-level action: only the instance owner may create organizations, unless the
+        server runs with `DHOW_ORG_CREATION=any-user`. The caller becomes its only owner.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+      responses:
+        "201":
+          description: The new organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+        default:
+          $ref: "#/components/responses/Error"
   /organizations/{id}:
     get:
       operationId: getOrganization
@@ -694,6 +726,562 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MemberListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/leave:
+    post:
+      operationId: leaveOrganization
+      tags: [identity]
+      summary: Leave an organization
+      description: >-
+        Needs `org.leave`, which every role has. The last owner cannot leave (`LAST_OWNER`): transfer the ownership
+        first. Team memberships in the organization end too.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The caller is no longer a member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/transfer-ownership:
+    post:
+      operationId: transferOwnership
+      tags: [identity]
+      summary: Hand the ownership to another member
+      description: >-
+        Needs `org.transfer` (owners only) and a current factor of the caller. The target becomes an owner and the
+        caller becomes an admin. Every session of the target and every other session of the caller are revoked.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferOwnershipRequest"
+      responses:
+        "200":
+          description: The ownership moved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/members/{userId}:
+    patch:
+      operationId: changeMemberRole
+      tags: [members]
+      summary: Change a member's role
+      description: >-
+        Needs `member.manage`. Nobody grants a role above their own (`ROLE_NOT_ALLOWED`), only owners change an
+        owner, and the caller cannot change their own role. Granting or taking away the owner role also needs a
+        current factor of the caller. Every session of the member is revoked, so the new role applies at once.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeMemberRoleRequest"
+      responses:
+        "200":
+          description: The role changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: removeMember
+      tags: [members]
+      summary: Remove a member from the organization
+      description: >-
+        Needs `member.manage` and the same rank rules as a role change. The last owner is never removed
+        (`LAST_OWNER`). Removing yourself works like leaving. The member's team memberships in the organization end
+        and every session of the member is revoked.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: The member was removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/members/{userId}/mfa-reset:
+    post:
+      operationId: resetMemberMfa
+      tags: [members]
+      summary: Reset a member's two-step verification
+      description: >-
+        For a member who lost every second factor and every recovery code. Needs `member.manage`, a current factor of
+        the caller, and authority over every organization the member belongs to, because the factors belong to the
+        account. Removes the member's TOTP, passkeys and recovery codes, revokes every session, and asks the member to
+        set up a second factor again. Audited as a high-severity event.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CurrentFactorRequest"
+      responses:
+        "200":
+          description: The second factors were removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/teams:
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: List the teams of an organization
+      description: Needs `member.read`.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Every team, by name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Create a team
+      description: >-
+        Needs `member.manage`. An optional `Role` binds the team to the organization at that role in the same request,
+        capped by the caller's own role. Team names are unique in the organization, ignoring case.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamRequest"
+      responses:
+        "201":
+          description: The new team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamDetailResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/teams/{teamId}:
+    get:
+      operationId: getTeam
+      tags: [teams]
+      summary: Read a team with its members and role bindings
+      description: Needs `member.read`. A team of another organization is 404.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: The team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamDetailResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateTeam
+      tags: [teams]
+      summary: Rename a team or change its description
+      description: Needs `member.manage`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TeamId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamRequest"
+      responses:
+        "200":
+          description: The updated team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamDetailResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteTeam
+      tags: [teams]
+      summary: Delete a team
+      description: >-
+        Needs `member.manage`, and the caller's role must be at least every role the team grants. Members whose
+        effective role drops are signed out everywhere.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: The team was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokedCountResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/teams/{teamId}/members:
+    post:
+      operationId: addTeamMember
+      tags: [teams]
+      summary: Add a member of the organization to a team
+      description: >-
+        Needs `member.manage`, and the caller's role must be at least every role the team grants. Only members of the
+        organization can join its teams. If the member's effective role rises, every session of the member is revoked.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TeamId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddTeamMemberRequest"
+      responses:
+        "200":
+          description: The updated team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/teams/{teamId}/members/{userId}:
+    delete:
+      operationId: removeTeamMember
+      tags: [teams]
+      summary: Remove a member from a team
+      description: >-
+        Needs `member.manage`, and the caller's role must be at least every role the team grants. If the member's
+        effective role drops, every session of the member is revoked.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TeamId"
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: The updated team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/teams/{teamId}/role-bindings:
+    post:
+      operationId: createRoleBinding
+      tags: [teams]
+      summary: Grant a role to a team
+      description: >-
+        Needs `member.manage`. The role is capped by the caller's own role and is never `owner`. A team has at most one
+        binding per scope target. Only the `org` scope exists today; project and environment scopes arrive with
+        projects. Members whose effective role rises are signed out everywhere.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TeamId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleBindingRequest"
+      responses:
+        "201":
+          description: The updated team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/teams/{teamId}/role-bindings/{bindingId}:
+    patch:
+      operationId: updateRoleBinding
+      tags: [teams]
+      summary: Change the role a binding grants
+      description: >-
+        Needs `member.manage`, and the caller's role must be at least both the old and the new role. Members whose
+        effective role changes are signed out everywhere.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TeamId"
+        - $ref: "#/components/parameters/BindingId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleBindingRequest"
+      responses:
+        "200":
+          description: The updated team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteRoleBinding
+      tags: [teams]
+      summary: Take a role away from a team
+      description: >-
+        Needs `member.manage`, and the caller's role must be at least the role the binding grants. Members whose
+        effective role drops are signed out everywhere.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TeamId"
+        - $ref: "#/components/parameters/BindingId"
+      responses:
+        "200":
+          description: The updated team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamChangeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/invitations:
+    get:
+      operationId: listInvitations
+      tags: [invitations]
+      summary: List the open invitations of an organization
+      description: >-
+        Needs `member.manage`. Open means neither accepted nor revoked; expired ones are listed with `Expired` so they
+        can be resent. Newest first.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The open invitations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createInvitation
+      tags: [invitations]
+      summary: Invite someone by email
+      description: >-
+        Needs `member.manage`. The role is capped by the caller's own role and is never `owner`. The answer carries the
+        invitation link once (`${PUBLIC_URL}/invite#<token>`); the server keeps only the token's SHA-256. The link
+        works once and expires after 7 days. When SMTP is set up the link is emailed too, and `EmailStatus` says
+        whether that worked: the invitation exists either way. An open invitation for the same address is
+        `INVITATION_PENDING`, and an existing member is `ALREADY_MEMBER`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvitationRequest"
+      responses:
+        "201":
+          description: The invitation and its link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationIssuedResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/invitations/{invitationId}:
+    delete:
+      operationId: revokeInvitation
+      tags: [invitations]
+      summary: Revoke an invitation
+      description: Needs `member.manage` and a role at least the invited one. The link stops working at once.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "200":
+          description: The revoked invitation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/invitations/{invitationId}/resend:
+    post:
+      operationId: resendInvitation
+      tags: [invitations]
+      summary: Make a new link for an invitation
+      description: >-
+        Needs `member.manage` and a role at least the invited one. Replaces the token, so the old link stops working,
+        and starts a new 7-day period. Emails the new link when SMTP is set up.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/InvitationId"
+      responses:
+        "200":
+          description: The invitation and its new link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationIssuedResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /invitations/preview:
+    post:
+      operationId: previewInvitation
+      tags: [invitations]
+      summary: Read what an invitation link offers
+      description: >-
+        Public. The token travels in the body, never in the URL, so it stays out of access logs. An unknown, used,
+        revoked or expired token, or one whose inviter no longer has the authority to invite, is `INVITATION_INVALID`
+        with nothing else.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationTokenRequest"
+      responses:
+        "200":
+          description: The invitation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationPreviewResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /invitations/accept:
+    post:
+      operationId: acceptInvitation
+      tags: [invitations]
+      summary: Accept an invitation with a new account
+      description: >-
+        Public. Creates the account for the invited email with the given name and password (12 to 128 characters,
+        checked against known breaches) and adds it to the organization at the invited role. The token works once:
+        two parallel calls never both succeed. An address that already has an account is `INVITATION_ACCOUNT_EXISTS`:
+        sign in and use `POST /me/invitations/accept`. No session is created; sign in afterwards.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptInvitationRequest"
+      responses:
+        "200":
+          description: The account was created and joined the organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationAcceptedResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/invitations/accept:
+    post:
+      operationId: acceptInvitationSignedIn
+      tags: [invitations]
+      summary: Accept an invitation as the signed-in user
+      description: >-
+        The invitation's email must be the signed-in user's email (`INVITATION_EMAIL_MISMATCH` otherwise). A user is
+        never added to an organization because of a matching email alone: the token is always required.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationTokenRequest"
+      responses:
+        "200":
+          description: The user joined the organization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationAcceptedResponse"
         default:
           $ref: "#/components/responses/Error"
   /organizations/{id}/audit-events:
@@ -1043,6 +1631,34 @@ components:
       required: false
       schema:
         $ref: "#/components/schemas/JobState"
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TeamId:
+      name: teamId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BindingId:
+      name: bindingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     Page:
       name: Page
       in: query
@@ -1127,7 +1743,9 @@ components:
             `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`,
             `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`,
             `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`,
-            `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED` or `PASSKEY_REJECTED`.
+            `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`,
+            `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH` or
+            `INVITATION_ACCOUNT_EXISTS`.
           example: INTERNAL
         Message:
           type: string
@@ -1282,7 +1900,7 @@ components:
     Member:
       type: object
       additionalProperties: false
-      required: [UserId, Name, Email, Role, JoinedAt]
+      required: [UserId, Name, Email, Role, EffectiveRole, JoinedAt]
       properties:
         UserId:
           type: string
@@ -1293,9 +1911,18 @@ components:
           type: string
         Role:
           $ref: "#/components/schemas/Role"
+        EffectiveRole:
+          $ref: "#/components/schemas/Role"
+          description: The higher of the direct role and every role the member's teams grant in the organization.
         JoinedAt:
           type: string
           format: date-time
+        Mfa:
+          $ref: "#/components/schemas/MfaState"
+          description: The member's strongest second factor. Present only for callers with `member.manage`.
+        MfaResetPending:
+          type: boolean
+          description: An admin reset the member's second factor and the member has not set up a new one yet.
     MemberListResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"
@@ -1339,6 +1966,9 @@ components:
           format: date-time
           description: When the session ends at the latest (absolute timeout).
     MembershipView:
+      description: >-
+        One organization of the user. `Role` is the effective role: the higher of the direct role and every role the
+        user's teams grant there.
       type: object
       additionalProperties: false
       required: [OrganizationId, OrganizationName, OrganizationSlug, Role]
@@ -1362,7 +1992,7 @@ components:
     Me:
       type: object
       additionalProperties: false
-      required: [User, Memberships, CsrfToken, SessionId, ExpiresAt]
+      required: [User, Memberships, CsrfToken, SessionId, ExpiresAt, CanCreateOrganizations, MfaReenrollRequired]
       properties:
         User:
           $ref: "#/components/schemas/User"
@@ -1378,6 +2008,12 @@ components:
         ExpiresAt:
           type: string
           format: date-time
+        CanCreateOrganizations:
+          type: boolean
+          description: True when this user may call `POST /organizations`.
+        MfaReenrollRequired:
+          type: boolean
+          description: An admin reset this user's second factor, and a new one is not set up yet.
     SessionView:
       type: object
       additionalProperties: false
@@ -1988,6 +2624,385 @@ components:
           properties:
             Data:
               $ref: "#/components/schemas/CreatedRunnerRegistrationToken"
+    BindableRole:
+      type: string
+      enum: [admin, maintainer, developer, viewer]
+      description: A role that an invitation or a team binding may grant. Owner comes only from a direct membership.
+    MfaState:
+      type: string
+      enum: [passkey, totp, none]
+    CreateOrganizationRequest:
+      type: object
+      additionalProperties: false
+      required: [Name, Slug]
+      properties:
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        Slug:
+          type: string
+          maxLength: 63
+          description: Lowercase letters, digits and single hyphens. Unique among organizations.
+    TransferOwnershipRequest:
+      type: object
+      additionalProperties: false
+      required: [UserId, CurrentFactor]
+      properties:
+        UserId:
+          type: string
+          format: uuid
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    ChangeMemberRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [Role]
+      properties:
+        Role:
+          $ref: "#/components/schemas/Role"
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    MemberChange:
+      type: object
+      additionalProperties: false
+      required: [UserId, Revoked]
+      properties:
+        UserId:
+          type: string
+          format: uuid
+        Role:
+          $ref: "#/components/schemas/Role"
+        Revoked:
+          type: integer
+          minimum: 0
+          description: How many sessions of the member were revoked.
+    MemberChangeResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/MemberChange"
+    RoleBinding:
+      type: object
+      additionalProperties: false
+      required: [Id, Scope, Role, CreatedAt]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Scope:
+          $ref: "#/components/schemas/BindingScope"
+        Role:
+          $ref: "#/components/schemas/BindableRole"
+        CreatedAt:
+          type: string
+          format: date-time
+    BindingScope:
+      type: string
+      enum: [org]
+      description: Where a binding applies. `project` and `environment` arrive with projects.
+    Team:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Description, MemberCount, Bindings, CreatedAt]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        Description:
+          type: string
+        MemberCount:
+          type: integer
+          minimum: 0
+        Bindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleBinding"
+        CreatedAt:
+          type: string
+          format: date-time
+    TeamMember:
+      type: object
+      additionalProperties: false
+      required: [UserId, Name, Email, Role, AddedAt]
+      properties:
+        UserId:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        Email:
+          type: string
+        Role:
+          $ref: "#/components/schemas/Role"
+        AddedAt:
+          type: string
+          format: date-time
+    TeamDetail:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Description, MemberCount, Bindings, CreatedAt, Members]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        Description:
+          type: string
+        MemberCount:
+          type: integer
+          minimum: 0
+        Bindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleBinding"
+        CreatedAt:
+          type: string
+          format: date-time
+        Members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMember"
+    TeamListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Team"
+    TeamDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/TeamDetail"
+    TeamChange:
+      type: object
+      additionalProperties: false
+      required: [Team, Revoked]
+      properties:
+        Team:
+          $ref: "#/components/schemas/TeamDetail"
+        Revoked:
+          type: integer
+          minimum: 0
+          description: How many sessions were revoked because an effective role changed.
+    TeamChangeResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/TeamChange"
+    CreateTeamRequest:
+      type: object
+      additionalProperties: false
+      required: [Name]
+      properties:
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        Description:
+          type: string
+          maxLength: 500
+        Role:
+          $ref: "#/components/schemas/BindableRole"
+    UpdateTeamRequest:
+      type: object
+      additionalProperties: false
+      required: [Name]
+      properties:
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        Description:
+          type: string
+          maxLength: 500
+    AddTeamMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [UserId]
+      properties:
+        UserId:
+          type: string
+          format: uuid
+    CreateRoleBindingRequest:
+      type: object
+      additionalProperties: false
+      required: [Scope, Role]
+      properties:
+        Scope:
+          $ref: "#/components/schemas/BindingScope"
+        Role:
+          $ref: "#/components/schemas/BindableRole"
+    UpdateRoleBindingRequest:
+      type: object
+      additionalProperties: false
+      required: [Role]
+      properties:
+        Role:
+          $ref: "#/components/schemas/BindableRole"
+    EmailStatus:
+      type: string
+      enum: [disabled, sent, failed]
+      description: >-
+        `disabled` when SMTP is not set up, `sent` when the mail server accepted the email, `failed` when it did not.
+        The link works in every case.
+    Invitation:
+      type: object
+      additionalProperties: false
+      required: [Id, Email, Role, InvitedByName, CreatedAt, ExpiresAt, SentAt, SendCount, EmailStatus, Expired]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Email:
+          type: string
+        Role:
+          $ref: "#/components/schemas/BindableRole"
+        InvitedByName:
+          type: string
+        CreatedAt:
+          type: string
+          format: date-time
+        ExpiresAt:
+          type: string
+          format: date-time
+        SentAt:
+          type: string
+          format: date-time
+        SendCount:
+          type: integer
+          minimum: 1
+        EmailStatus:
+          $ref: "#/components/schemas/EmailStatus"
+        Expired:
+          type: boolean
+    InvitationResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Invitation"
+    InvitationListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Invitation"
+    CreateInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [Email, Role]
+      properties:
+        Email:
+          type: string
+          maxLength: 254
+        Role:
+          $ref: "#/components/schemas/BindableRole"
+    InvitationIssued:
+      type: object
+      additionalProperties: false
+      required: [Invitation, Link]
+      properties:
+        Invitation:
+          $ref: "#/components/schemas/Invitation"
+        Link:
+          type: string
+          description: The only copy of the link. Never stored and never logged.
+    InvitationIssuedResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/InvitationIssued"
+    InvitationTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [Token]
+      properties:
+        Token:
+          type: string
+          minLength: 1
+          maxLength: 256
+    InvitationPreview:
+      type: object
+      additionalProperties: false
+      required: [OrganizationName, InviterName, Email, Role, ExpiresAt, AccountExists]
+      properties:
+        OrganizationName:
+          type: string
+        InviterName:
+          type: string
+        Email:
+          type: string
+        Role:
+          $ref: "#/components/schemas/BindableRole"
+        ExpiresAt:
+          type: string
+          format: date-time
+        AccountExists:
+          type: boolean
+          description: True when the email already has an account, which accepts by signing in.
+    InvitationPreviewResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/InvitationPreview"
+    AcceptInvitationRequest:
+      type: object
+      additionalProperties: false
+      required: [Token, Name, Password]
+      properties:
+        Token:
+          type: string
+          minLength: 1
+          maxLength: 256
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        Password:
+          type: string
+          maxLength: 1024
+          description: 12 to 128 characters. Never returned and never logged.
+        Locale:
+          $ref: "#/components/schemas/Locale"
+    InvitationAccepted:
+      type: object
+      additionalProperties: false
+      required: [User, Organization, Role]
+      properties:
+        User:
+          $ref: "#/components/schemas/User"
+        Organization:
+          $ref: "#/components/schemas/Organization"
+        Role:
+          $ref: "#/components/schemas/Role"
+    InvitationAcceptedResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/InvitationAccepted"
     JobState:
       type: string
       enum: [queued, leased, running, succeeded, failed, canceled, timed_out, lost]

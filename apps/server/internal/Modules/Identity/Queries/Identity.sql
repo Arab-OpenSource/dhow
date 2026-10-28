@@ -61,8 +61,19 @@ WHERE o."Id" = @id AND NOT o."IsDeleted"
   AND EXISTS (SELECT 1 FROM "Memberships" m WHERE m."OrganizationId" = o."Id" AND m."UserId" = @user_id AND NOT m."IsDeleted")
 RETURNING o."Id", o."Name", o."Slug", o."CreatedAt";
 
+-- name: MarkInstanceOwner :exec
+UPDATE "Users"
+SET "IsInstanceOwner" = true, "UpdatedAt" = @now
+WHERE "Id" = @id AND NOT "IsDeleted";
+
 -- name: ListMembers :many
-SELECT u."Id" AS "UserId", u."Name", u."Email", m."Role", m."CreatedAt" AS "JoinedAt"
+SELECT u."Id" AS "UserId", u."Name", u."Email", m."Role", m."CreatedAt" AS "JoinedAt",
+       ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
+             WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
+       EXISTS (SELECT 1 FROM "TotpFactors" t
+               WHERE t."UserId" = u."Id" AND t."ConfirmedAt" IS NOT NULL AND NOT t."IsDeleted") AS "HasTotp",
+       EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted") AS "HasPasskey",
+       u."MfaResetAt"
 FROM "Memberships" m
 JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted"
 WHERE m."OrganizationId" = @organization_id AND NOT m."IsDeleted"

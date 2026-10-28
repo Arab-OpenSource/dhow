@@ -13,7 +13,9 @@ import { RootLayout } from '@/App/Layout/RootLayout';
 import { ShellGate } from '@/App/Layout/ShellGate';
 import { parseShellSearch, stringifyShellSearch, UNKNOWN_STACK } from '@/App/Panels';
 import { LoginRoute, preloadLoginPage } from '@/App/Routes/LoginRoute';
+import { InviteRoute, preloadInvitePage } from '@/App/Routes/InviteRoute';
 import { preloadSetupPage, SetupRoute } from '@/App/Routes/SetupRoute';
+import { INVITE_PATH, takeInviteTokenFromHash } from '@/Modules/Identity/Store/InviteToken';
 import { SETUP_PATH, takeSetupTokenFromHash } from '@/Modules/Identity/Store/SetupToken';
 
 const rootRoute = createRootRoute({
@@ -54,6 +56,16 @@ const setupRoute = createRoute({
   component: SetupRoute,
 });
 
+const inviteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: INVITE_PATH,
+  beforeLoad: ({ location }) => {
+    if (takeInviteTokenFromHash(location.hash)) throw redirect({ to: INVITE_PATH, hash: '', replace: true });
+  },
+  loader: preloadInvitePage,
+  component: InviteRoute,
+});
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -63,7 +75,7 @@ const loginRoute = createRoute({
   component: LoginRoute,
 });
 
-const routeTree = rootRoute.addChildren([shellRoute.addChildren([workspaceRoute, shellNotFoundRoute]), setupRoute, loginRoute]);
+const routeTree = rootRoute.addChildren([shellRoute.addChildren([workspaceRoute, shellNotFoundRoute]), setupRoute, inviteRoute, loginRoute]);
 
 export const createAppRouter = (history?: RouterHistory) =>
   createRouter({ routeTree, history, stringifySearch: stringifyShellSearch });

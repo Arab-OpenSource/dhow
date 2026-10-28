@@ -7,6 +7,25 @@ const (
 
 	IdentityOrganizationUpdated = "identity.organization.updated"
 
+	IdentityOrganizationCreated  = "identity.organization.created"
+	IdentityOwnershipTransferred = "identity.organization.ownership_transferred"
+	IdentityMemberLeft           = "identity.member.left"
+	IdentityMemberRoleChanged    = "identity.member.role_changed"
+	IdentityMemberRemoved        = "identity.member.removed"
+	IdentityMemberMfaReset       = "identity.member.mfa_reset"
+	IdentityTeamCreated          = "identity.team.created"
+	IdentityTeamUpdated          = "identity.team.updated"
+	IdentityTeamDeleted          = "identity.team.deleted"
+	IdentityTeamMemberAdded      = "identity.team.member_added"
+	IdentityTeamMemberRemoved    = "identity.team.member_removed"
+	IdentityRoleBindingAdded     = "identity.team.role_binding_added"
+	IdentityRoleBindingChanged   = "identity.team.role_binding_changed"
+	IdentityRoleBindingRemoved   = "identity.team.role_binding_removed"
+	IdentityInvitationCreated    = "identity.invitation.created"
+	IdentityInvitationResent     = "identity.invitation.resent"
+	IdentityInvitationRevoked    = "identity.invitation.revoked"
+	IdentityInvitationAccepted   = "identity.invitation.accepted"
+
 	AuthLogin                 = "auth.login"
 	AuthLoginFailed           = "auth.login_failed"
 	AuthLogout                = "auth.logout"
@@ -41,6 +60,24 @@ func AuditedEvents() []string {
 	return []string{
 		SystemInstanceSetupCompleted,
 		IdentityOrganizationUpdated,
+		IdentityOrganizationCreated,
+		IdentityOwnershipTransferred,
+		IdentityMemberLeft,
+		IdentityMemberRoleChanged,
+		IdentityMemberRemoved,
+		IdentityMemberMfaReset,
+		IdentityTeamCreated,
+		IdentityTeamUpdated,
+		IdentityTeamDeleted,
+		IdentityTeamMemberAdded,
+		IdentityTeamMemberRemoved,
+		IdentityRoleBindingAdded,
+		IdentityRoleBindingChanged,
+		IdentityRoleBindingRemoved,
+		IdentityInvitationCreated,
+		IdentityInvitationResent,
+		IdentityInvitationRevoked,
+		IdentityInvitationAccepted,
 		AuthLogin,
 		AuthLoginFailed,
 		AuthLogout,
@@ -68,6 +105,11 @@ func AuditedEvents() []string {
 		JobCancelRequested,
 	}
 }
+
+const (
+	SeverityKey  = "Severity"
+	SeverityHigh = "high"
+)
 
 type Audited struct {
 	OrganizationIDs []uuid.UUID

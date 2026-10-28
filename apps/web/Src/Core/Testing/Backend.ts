@@ -63,7 +63,10 @@ export interface IMemberFixture {
   Name: string;
   Email: string;
   Role: string;
+  EffectiveRole: string;
   JoinedAt: string;
+  Mfa?: string;
+  MfaResetPending?: boolean;
 }
 
 export const auditFixture = (count: number): IAuditFixture[] =>
@@ -80,9 +83,15 @@ export const auditFixture = (count: number): IAuditFixture[] =>
   }));
 
 export const membersFixture = (): IMemberFixture[] => [
-  { UserId: USER_ID, Name: 'Sabry Dawood', Email: 'sabry@future.dev', Role: 'owner', JoinedAt: '2026-10-01T08:00:00Z' },
-  { UserId: '0198a000-0000-7000-8000-0000000000b2', Name: 'Mona Adel', Email: 'mona@future.dev', Role: 'admin', JoinedAt: '2026-10-05T08:00:00Z' },
-  { UserId: '0198a000-0000-7000-8000-0000000000b3', Name: 'Hana Samir', Email: 'hana@future.dev', Role: 'developer', JoinedAt: '2026-10-10T08:00:00Z' },
+  { UserId: USER_ID, Name: 'Sabry Dawood', Email: 'sabry@future.dev', Role: 'owner', EffectiveRole: 'owner', JoinedAt: '2026-10-01T08:00:00Z', Mfa: 'passkey' },
+  {
+    UserId: '0198a000-0000-7000-8000-0000000000b2', Name: 'Mona Adel', Email: 'mona@future.dev', Role: 'admin', EffectiveRole: 'admin',
+    JoinedAt: '2026-10-05T08:00:00Z', Mfa: 'totp',
+  },
+  {
+    UserId: '0198a000-0000-7000-8000-0000000000b3', Name: 'Hana Samir', Email: 'hana@future.dev', Role: 'developer', EffectiveRole: 'developer',
+    JoinedAt: '2026-10-10T08:00:00Z', Mfa: 'none',
+  },
 ];
 
 export type TRouteHandler = (request: Request, url: URL) => Response | undefined;

@@ -19,12 +19,47 @@ type Deps struct {
 	Log     *slog.Logger
 }
 
+const (
+	orgPath        = "/organizations/{id}"
+	memberPath     = orgPath + "/members/{userId}"
+	teamsPath      = orgPath + "/teams"
+	teamPath       = teamsPath + "/{teamId}"
+	bindingPath    = teamPath + "/role-bindings/{bindingId}"
+	invitationPath = orgPath + "/invitations"
+)
+
 func Policies() []policy.Rule {
+	org := func(method, path string, action policy.Action) policy.Rule {
+		return policy.Organization(method, path, action, "id")
+	}
 	return []policy.Rule{
 		policy.Public(http.MethodPost, "/setup"),
-		policy.Organization(http.MethodGet, "/organizations/{id}", policy.OrgRead, "id"),
-		policy.Organization(http.MethodPatch, "/organizations/{id}", policy.OrgUpdate, "id"),
-		policy.Organization(http.MethodGet, "/organizations/{id}/members", policy.MemberRead, "id"),
+		policy.Instance(http.MethodPost, "/organizations", policy.OrgCreate),
+		org(http.MethodGet, orgPath, policy.OrgRead),
+		org(http.MethodPatch, orgPath, policy.OrgUpdate),
+		org(http.MethodPost, orgPath+"/leave", policy.OrgLeave),
+		org(http.MethodPost, orgPath+"/transfer-ownership", policy.OrgTransfer),
+		org(http.MethodGet, orgPath+"/members", policy.MemberRead),
+		org(http.MethodPatch, memberPath, policy.MemberManage),
+		org(http.MethodDelete, memberPath, policy.MemberManage),
+		org(http.MethodPost, memberPath+"/mfa-reset", policy.MemberManage),
+		org(http.MethodGet, teamsPath, policy.MemberRead),
+		org(http.MethodPost, teamsPath, policy.MemberManage),
+		org(http.MethodGet, teamPath, policy.MemberRead),
+		org(http.MethodPatch, teamPath, policy.MemberManage),
+		org(http.MethodDelete, teamPath, policy.MemberManage),
+		org(http.MethodPost, teamPath+"/members", policy.MemberManage),
+		org(http.MethodDelete, teamPath+"/members/{userId}", policy.MemberManage),
+		org(http.MethodPost, teamPath+"/role-bindings", policy.MemberManage),
+		org(http.MethodPatch, bindingPath, policy.MemberManage),
+		org(http.MethodDelete, bindingPath, policy.MemberManage),
+		org(http.MethodGet, invitationPath, policy.MemberManage),
+		org(http.MethodPost, invitationPath, policy.MemberManage),
+		org(http.MethodDelete, invitationPath+"/{invitationId}", policy.MemberManage),
+		org(http.MethodPost, invitationPath+"/{invitationId}/resend", policy.MemberManage),
+		policy.Public(http.MethodPost, "/invitations/preview"),
+		policy.Public(http.MethodPost, "/invitations/accept"),
+		policy.Authenticated(http.MethodPost, "/me/invitations/accept", policy.SessionManageSelf),
 	}
 }
 

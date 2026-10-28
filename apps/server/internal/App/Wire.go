@@ -14,6 +14,8 @@ import (
 	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
 	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
+	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
+	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
@@ -36,6 +38,7 @@ type Infra struct {
 	HashParams *auth.Params
 	Now        func() time.Time
 	Web        http.Handler
+	Mailer     mailer.Sender
 }
 
 type Wired struct {
@@ -81,15 +84,21 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		return nil, err
 	}
 	bus := eventbus.New(in.Log)
+	instance := policy.InstanceSettings{AnyUserCreatesOrganizations: in.Config.AnyUserCreatesOrganizations}
 
 	auditService := audit.NewService(in.Pool, in.Log, in.Now)
 	audit.Subscribe(bus, auditService)
-	identityService := identity.NewService(identity.Options{
-		DB: in.Pool, Hasher: hasher, Passwords: passwords, Bus: bus, PublicURL: in.Config.PublicURL.String(), Log: in.Log, Now: in.Now,
-	})
 	sessionService := session.NewService(session.Options{
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, CSRF: csrf, Sealer: sealer, Recovery: recovery, WebAuthn: passkeys,
-		Bus: bus, Log: in.Log, Now: in.Now,
+		Bus: bus, Instance: instance, Log: in.Log, Now: in.Now,
+	})
+	mail := in.Mailer
+	if mail == nil {
+		mail = mailerFor(in.Config, in.Now)
+	}
+	identityService := identity.NewService(identity.Options{
+		DB: in.Pool, Hasher: hasher, Passwords: passwords, Bus: bus, Factors: sessionService, Mailer: mail,
+		PublicURL: in.Config.PublicURL.String(), Log: in.Log, Now: in.Now,
 	})
 
 	runnersService := runners.NewService(runners.Options{
@@ -133,4 +142,14 @@ func listener(pool *pgxpool.Pool) jobs.Listener {
 	return func(ctx context.Context) (*pgx.Conn, error) {
 		return pgx.ConnectConfig(ctx, pool.Config().ConnConfig.Copy())
 	}
+}
+
+func mailerFor(cfg config.Config, now func() time.Time) mailer.Sender {
+	if !cfg.SMTP.Enabled() {
+		return mailer.Disabled{}
+	}
+	return mailer.NewSMTP(mailer.SMTPOptions{
+		Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, From: cfg.SMTP.From,
+		TLS: cfg.SMTP.TLS, Timeout: config.MailTimeout, Now: now,
+	})
 }

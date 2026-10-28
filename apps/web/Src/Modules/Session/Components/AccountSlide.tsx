@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { useMe } from '@/Core/Auth/useMe';
+import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Badge } from '@/Core/Ui/Badge';
 import { Button } from '@/Core/Ui/Button';
@@ -12,7 +12,7 @@ import { AccountBody } from '@/Modules/Session/Components/AccountBody';
 export const AccountSubtitle = () => {
   const t = useT();
   const me = useMe();
-  const role = me.data?.Memberships[0]?.Role;
+  const role = useCurrentMembership()?.Role;
 
   return (
     <>

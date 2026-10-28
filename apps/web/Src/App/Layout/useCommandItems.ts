@@ -1,6 +1,6 @@
 import { useShellNavigation } from '@/App/Layout/useShellNavigation';
-import { canReadAudit } from '@/Core/Auth/AuthTypes';
-import { useMe } from '@/Core/Auth/useMe';
+import { canManageMembers, canReadAudit } from '@/Core/Auth/AuthTypes';
+import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useSignOut } from '@/Core/Auth/useSignOut';
 import type { ICommandItem } from '@/Core/Ui/CommandPalette';
 import { otherLocale } from '@/I18n/Locale';
@@ -15,7 +15,7 @@ export const useCommandItems = (): ICommands => {
   const { Locale, SetLocale, t } = useI18n();
   const { goWorkspace, openStack } = useShellNavigation();
   const { SignOut } = useSignOut();
-  const role = useMe().data?.Memberships[0]?.Role;
+  const role = useCurrentMembership()?.Role;
   const target = otherLocale(Locale);
 
   const items: ICommandItem[] = [
@@ -26,6 +26,10 @@ export const useCommandItems = (): ICommands => {
     { id: 'theme-new', icon: 'plus', label: t('palette.command.createTheme'), kind: t('palette.kind.panel') },
     { id: 'account', icon: 'user', label: t('palette.command.account'), kind: t('palette.kind.panel') },
     { id: 'organization', icon: 'users', label: t('palette.command.organization'), kind: t('palette.kind.panel') },
+    { id: 'organizations', icon: 'building', label: t('palette.command.organizations'), kind: t('palette.kind.panel') },
+    ...(canManageMembers(role)
+      ? [{ id: 'invite', icon: 'plus' as const, label: t('palette.command.invite'), kind: t('palette.kind.panel') }]
+      : []),
     { id: 'password', icon: 'key', label: t('palette.command.password'), kind: t('palette.kind.panel') },
     ...(canReadAudit(role)
       ? [{ id: 'audit', icon: 'file' as const, label: t('palette.command.audit'), kind: t('palette.kind.panel') }]
@@ -46,6 +50,8 @@ export const useCommandItems = (): ICommands => {
     else if (item.id === 'theme-new') openStack(['appearance', 'theme-edit']);
     else if (item.id === 'account') openStack(['account']);
     else if (item.id === 'organization') openStack(['organization']);
+    else if (item.id === 'organizations') openStack(['organizations']);
+    else if (item.id === 'invite') openStack(['organization', 'organization-invite']);
     else if (item.id === 'audit') openStack(['audit']);
     else if (item.id === 'password') openStack(['account', 'account-password']);
     else if (item.id === 'sign-out') void SignOut();

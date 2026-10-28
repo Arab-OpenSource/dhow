@@ -62,6 +62,14 @@ const (
 )
 
 const (
+	InvitationTTL        = 7 * 24 * time.Hour
+	InvitationTokenBytes = 32
+	InvitationListLimit  = 200
+	MailTimeout          = 10 * time.Second
+	TeamDescriptionMax   = 500
+)
+
+const (
 	PasswordMinLength = 12
 	PasswordMaxLength = 128
 	AuthBodyMaxBytes  = 16 << 10

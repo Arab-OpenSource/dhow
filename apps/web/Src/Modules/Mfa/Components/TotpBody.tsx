@@ -2,23 +2,24 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import type { ApiError } from '@/Core/Api/ApiError';
+import { factorMethods, type TMfaStatus } from '@/Core/Auth/Factor';
 import { passkeysSupported } from '@/Core/Auth/WebAuthn';
+import { useMfaStatus } from '@/Core/Auth/useMfaStatus';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
+import { useFactorAction } from '@/Core/Hooks/useFactorAction';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { Button } from '@/Core/Ui/Button';
+import { FactorFields } from '@/Core/Ui/FactorFields';
 import { Field } from '@/Core/Ui/Field';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Input } from '@/Core/Ui/Input';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
-import { confirmTotp, startTotp, type TMfaStatus, type TTotpEnrollment } from '@/Modules/Mfa/Api/MfaApi';
-import { FactorFields } from '@/Modules/Mfa/Components/FactorFields';
+import { confirmTotp, startTotp, type TTotpEnrollment } from '@/Modules/Mfa/Api/MfaApi';
 import { QrCode } from '@/Modules/Mfa/Components/QrCode';
 import { RecoveryCodes } from '@/Modules/Mfa/Components/RecoveryCodes';
-import { useFactorAction } from '@/Modules/Mfa/Hooks/useFactorAction';
-import { useMfaStatus, useRefreshMfa } from '@/Modules/Mfa/Hooks/useMfa';
+import { useRefreshMfa } from '@/Modules/Mfa/Hooks/useMfa';
 import { TOTP_FORM_ID, useTotpFormStore } from '@/Modules/Mfa/Store/useTotpFormStore';
-import { factorMethods } from '@/Modules/Mfa/Types/Factor';
 
 export interface ITotpBodyProps {
   onDone: () => void;

@@ -252,6 +252,13 @@ class RoutePolicyRules(unittest.TestCase):
     def test_route_files_that_register_nothing_are_fine(self):
         self.assertIsNone(edit(ROUTES, "package audit\n\ntype Deps struct{}\n"))
 
+    def test_instance_rules_count_as_declared_policies(self):
+        src = GOOD_ROUTES.replace(
+            "policy.Organization(http.MethodGet, \"/organizations/{id}/audit-events\", policy.AuditRead, \"id\")",
+            "policy.Instance(http.MethodPost, \"/organizations\", policy.OrgCreate)")
+        self.assertIn("policy.Instance(", src)
+        self.assertIsNone(edit(ROUTES, src))
+
     def test_the_system_module_declares_its_policies(self):
         src = GOOD_ROUTES.replace("package audit", "package system")
         self.assertIsNone(edit(SERVER + "Modules/System/System.Routes.go", src))

@@ -39,6 +39,7 @@
 | [0035](0035-identity-core-implementation.md) | تنفيذ نواة الهوية في M2.1: سلسلة الـ audit، والـ throttle، وإعلان الـ policy لكل route |
 | [0036](0036-interactive-host-installer.md) | الـ installer التفاعلي على السيرفر (`dhow-server install`) |
 | [0037](0037-mfa-implementation.md) | تنفيذ التحقق بخطوتين في M2.2: خطوة `mfa_pending`، وTOTP، وأكواد الطوارئ، ومفاتيح المرور |
+| [0038](0038-orgs-teams-invites-implementation.md) | تنفيذ المؤسسات والفرق والدعوات في M2.3: مين يعمل مؤسسة، والدور الفعلي، وقواعد منح الأدوار، والدعوة برابط مرة واحدة |
 | [0041](0041-runner-identity-and-registration.md) | هوية الـ runner وتسجيله: مفاتيح Ed25519 متثبّتة، وتوكن قصير، وإثبات امتلاك عند الحاجات الحساسة |
 | [0042](0042-runner-protocol-and-leasing.md) | بروتوكول الـ runner: Connect بـ RPCs unary بس، وleases بـ fencing token، وتسليم at-least-once بإنهاء idempotent |
 | [0043](0043-job-sandbox-rootless-podman.md) | الـ sandbox: Podman rootless افتراضيًا، وagent هو PID 1، وحدود cgroup v2 بتفشل مقفولة، وgVisor اختياري |
@@ -51,4 +52,4 @@
 | [0050](0050-runner-identity-implementation.md) | تنفيذ هوية الـ runner في M3.2: صيغة الرسائل الموقّعة، والـ gate، والـ throttle، وكشف النسخ |
 | [0051](0051-jobs-and-leasing-implementation.md) | تنفيذ الـ jobs والـ leases في M3.3: الـ triggers، والـ claim، والرسائل الموقّعة، وقواعد الإنهاء، والـ reconciler |
 
-الأرقام من 0038 لـ 0040 محجوزة لقرارات M2 اللي جاية.
+الرقمين 0039 و0040 محجوزين لقرارات M2 اللي جاية.

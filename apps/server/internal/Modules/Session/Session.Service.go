@@ -39,6 +39,7 @@ type Options struct {
 	Recovery  *auth.RecoveryHasher
 	WebAuthn  *webauthn.WebAuthn
 	Bus       Publisher
+	Instance  policy.InstanceSettings
 	Log       *slog.Logger
 	Now       func() time.Time
 }
@@ -52,11 +53,15 @@ type Service struct {
 	recovery  *auth.RecoveryHasher
 	webauthn  *webauthn.WebAuthn
 	bus       Publisher
+	instance  policy.InstanceSettings
 	log       *slog.Logger
 	now       func() time.Time
 }
 
-var _ auth.Resolver = (*Service)(nil)
+var (
+	_ auth.Resolver        = (*Service)(nil)
+	_ auth.FactorConfirmer = (*Service)(nil)
+)
 
 func NewService(o Options) *Service {
 	now := o.Now
@@ -65,7 +70,7 @@ func NewService(o Options) *Service {
 	}
 	return &Service{
 		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, csrf: o.CSRF, sealer: o.Sealer, recovery: o.Recovery,
-		webauthn: o.WebAuthn, bus: o.Bus, log: o.Log, now: now,
+		webauthn: o.WebAuthn, bus: o.Bus, instance: o.Instance, log: o.Log, now: now,
 	}
 }
 
@@ -93,18 +98,22 @@ func (s *Service) Resolve(ctx context.Context, tokenHash []byte, now time.Time) 
 		}
 	}
 	resolved := auth.Resolved{
-		SessionID: row.Id, UserID: row.UserId, CsrfHash: row.CsrfHash, ExpiresAt: row.ExpiresAt,
+		SessionID: row.Id, UserID: row.UserId, InstanceOwner: row.IsInstanceOwner, CsrfHash: row.CsrfHash, ExpiresAt: row.ExpiresAt,
 		Email: row.Email, Name: row.Name, Locale: row.Locale,
 		Memberships: make([]policy.Membership, 0, len(memberships)),
 	}
 	for _, m := range memberships {
-		role, ok := policy.ParseRole(m.Role)
+		role, ok := policy.EffectiveOf(m.Role, m.TeamRoles)
 		if !ok {
 			continue
 		}
 		resolved.Memberships = append(resolved.Memberships, policy.Membership{OrganizationID: m.OrganizationId, Role: role})
 	}
 	return resolved, nil
+}
+
+func (s *Service) ConfirmFactor(ctx context.Context, p auth.Principal, f auth.Factor) error {
+	return s.confirmFactor(ctx, p, models.Factor(f))
 }
 
 func principalOf(ctx context.Context) (auth.Principal, error) {
@@ -120,20 +129,35 @@ func (s *Service) Me(ctx context.Context) (models.Me, error) {
 	if err != nil {
 		return models.Me{}, err
 	}
-	rows, err := s.queries().ListUserMemberships(ctx, p.UserID)
+	q := s.queries()
+	rows, err := q.ListUserMemberships(ctx, p.UserID)
+	if err != nil {
+		return models.Me{}, err
+	}
+	flags, err := q.GetUserAccountFlags(ctx, p.UserID)
+	if err != nil {
+		return models.Me{}, err
+	}
+	factors, err := q.GetMfaFactors(ctx, p.UserID)
 	if err != nil {
 		return models.Me{}, err
 	}
 	memberships := make([]models.Membership, 0, len(rows))
 	for _, r := range rows {
+		role, ok := policy.EffectiveOf(r.Role, r.TeamRoles)
+		if !ok {
+			continue
+		}
 		memberships = append(memberships, models.Membership{
 			OrganizationID: r.OrganizationId, OrganizationName: r.OrganizationName,
-			OrganizationSlug: r.OrganizationSlug, Role: r.Role,
+			OrganizationSlug: r.OrganizationSlug, Role: string(role),
 		})
 	}
 	return models.Me{
 		User:        models.User{ID: p.UserID, Email: p.Email, Name: p.Name, Locale: p.Locale},
 		Memberships: memberships, CSRFToken: p.CSRFToken, SessionID: p.SessionID, ExpiresAt: p.ExpiresAt,
+		CanCreateOrganizations: policy.CanInstance(p.Subject, policy.OrgCreate, s.instance),
+		MfaReenrollRequired:    flags.MfaResetAt != nil && !hasMfa(factors),
 	}, nil
 }
 
