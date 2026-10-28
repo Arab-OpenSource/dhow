@@ -1,0 +1,43 @@
+name: Clean up merged branches
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List the branches without deleting them
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete branches whose pull request was merged at their head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${REPO}/branches?per_page=100" --jq '.[] | [.name, .commit.sha] | @tsv' > branches.tsv
+          while IFS=$'\t' read -r name sha; do
+            if [[ "$name" == "$DEFAULT_BRANCH" ]]; then
+              continue
+            fi
+            merged=$(gh api --method GET "repos/${REPO}/pulls" -f state=closed -f head="${OWNER}:${name}" -f per_page=100 \
+              --jq "[.[] | select(.merged_at != null and .head.sha == \"${sha}\")] | length")
+            if [[ "$merged" == "0" ]]; then
+              echo "keep    ${name}"
+            elif [[ "$DRY_RUN" == "true" ]]; then
+              echo "delete  ${name} (dry run)"
+            else
+              gh api --method DELETE "repos/${REPO}/git/refs/heads/${name}"
+              echo "deleted ${name}"
+            fi
+          done < branches.tsv

@@ -128,7 +128,7 @@
 - ممنوع `--no-verify`، وممنوع force-push على `main`.
 - **أي branch بيتفتح له draft PR من أول commit**، وفي وصفه «اتعمل» و«لسه»، عشان الشغل يبقى محفوظ وظاهر.
 - **الـ CI مابيشتغلش على الـ draft.** كل job فيه شرط `!github.event.pull_request.draft`، والـ `pull_request` بيسمع لـ `ready_for_review`. والـ PR بيتحوّل لـ «Ready for review» بعد ما الميزة تخلص و`make check` والمراجعة الأمنية يعدّوا، فالـ CI يشتغل ساعتها. وأي workflow جديد لازم ياخد نفس الشرط.
-- **الـ branch بيتمسح تلقائي بعد الدمج** (`delete-merged-branch.yml`).
+- **الـ branch بيتمسح تلقائي بعد الدمج** (`delete-merged-branch.yml`). والـ branches القديمة بتتمسح بـ `cleanup-merged-branches.yml` يدوي، وهو بيمسح بس الـ branch اللي آخر commit فيه هو نفس آخر commit في PR اندمج.
 
 ## التواصل
 
