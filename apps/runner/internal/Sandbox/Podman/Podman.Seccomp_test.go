@@ -7,23 +7,23 @@ import (
 )
 
 type seccompArg struct {
-	Index    int    `json:"index"`
-	Value    uint64 `json:"value"`
-	ValueTwo uint64 `json:"valueTwo"`
-	Op       string `json:"op"`
+	Index    int
+	Value    uint64
+	ValueTwo uint64
+	Op       string
 }
 
 type seccompRule struct {
-	Names    []string     `json:"names"`
-	Action   string       `json:"action"`
-	ErrnoRet *int         `json:"errnoRet"`
-	Args     []seccompArg `json:"args"`
+	Names    []string
+	Action   string
+	ErrnoRet *int
+	Args     []seccompArg
 }
 
 type seccompDoc struct {
-	DefaultAction   string        `json:"defaultAction"`
-	DefaultErrnoRet int           `json:"defaultErrnoRet"`
-	Syscalls        []seccompRule `json:"syscalls"`
+	DefaultAction   string
+	DefaultErrnoRet int
+	Syscalls        []seccompRule
 }
 
 const (
