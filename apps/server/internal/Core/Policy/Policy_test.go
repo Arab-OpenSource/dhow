@@ -13,11 +13,17 @@ import (
 func TestMatrix(t *testing.T) {
 	org := uuid.New()
 	want := map[policy.Role]map[policy.Action]bool{
-		policy.RoleOwner:      {policy.OrgRead: true, policy.OrgUpdate: true, policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true},
-		policy.RoleAdmin:      {policy.OrgRead: true, policy.OrgUpdate: true, policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true},
-		policy.RoleMaintainer: {policy.OrgRead: true, policy.MemberRead: true},
-		policy.RoleDeveloper:  {policy.OrgRead: true, policy.MemberRead: true},
-		policy.RoleViewer:     {policy.OrgRead: true},
+		policy.RoleOwner: {
+			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.OrgTransfer: true,
+			policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true,
+		},
+		policy.RoleAdmin: {
+			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.MemberRead: true, policy.MemberManage: true,
+			policy.AuditRead: true,
+		},
+		policy.RoleMaintainer: {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true},
+		policy.RoleDeveloper:  {policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true},
+		policy.RoleViewer:     {policy.OrgRead: true, policy.OrgLeave: true},
 	}
 	for _, role := range policy.Roles() {
 		subject := policy.Subject{UserID: uuid.New(), Memberships: []policy.Membership{{OrganizationID: org, Role: role}}}
@@ -66,6 +72,7 @@ func TestCanDenies(t *testing.T) {
 		{"organization action without an organization", owner, policy.OrgRead, policy.Resource{}},
 		{"unknown action", owner, policy.Action("org.delete"), policy.Resource{OrganizationID: orgA}},
 		{"unknown role", policy.Subject{UserID: uuid.New(), Memberships: []policy.Membership{{OrganizationID: orgA, Role: "root"}}}, policy.OrgRead, policy.Resource{OrganizationID: orgA}},
+		{"instance action through the organization check", owner, policy.OrgCreate, policy.Resource{OrganizationID: orgA}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -90,6 +97,9 @@ func TestTable(t *testing.T) {
 		policy.Authenticated(http.MethodGet, "/me", policy.SessionManageSelf),
 		policy.Organization(http.MethodGet, "/organizations/{id}", policy.OrgRead, "id"),
 		policy.Organization(http.MethodGet, "/broken", policy.OrgRead, ""),
+		policy.Instance(http.MethodPost, "/organizations", policy.OrgCreate),
+		policy.Instance(http.MethodPost, "/instance-read", policy.OrgRead),
+		policy.Organization(http.MethodPost, "/organizations/{id}/create", policy.OrgCreate, "id"),
 		policy.Authenticated(http.MethodGet, "/wrong-action", policy.OrgRead),
 		policy.Rule{Method: http.MethodGet, Path: "/no-scope"},
 	)
@@ -106,6 +116,9 @@ func TestTable(t *testing.T) {
 		{"wrong method", http.MethodDelete, "/sessions", false, 0},
 		{"unknown path", http.MethodGet, "/unknown", false, 0},
 		{"organization rule without a parameter is invalid", http.MethodGet, "/broken", false, 0},
+		{"instance", http.MethodPost, "/organizations", true, policy.ScopeInstance},
+		{"instance rule with an organization action is invalid", http.MethodPost, "/instance-read", false, 0},
+		{"organization rule with an instance action is invalid", http.MethodPost, "/organizations/{id}/create", false, 0},
 		{"authenticated rule with an organization action is invalid", http.MethodGet, "/wrong-action", false, 0},
 		{"rule without a scope is invalid", http.MethodGet, "/no-scope", false, 0},
 	}
@@ -125,5 +138,29 @@ func TestRuleUnsafe(t *testing.T) {
 	}
 	for method, want := range tests {
 		assert.Equal(t, want, policy.Public(method, "/x").Unsafe(), method)
+	}
+}
+
+func TestCanInstance(t *testing.T) {
+	org := uuid.New()
+	owner := policy.Subject{UserID: uuid.New(), InstanceOwner: true}
+	member := policy.Subject{UserID: uuid.New(), Memberships: []policy.Membership{{OrganizationID: org, Role: policy.RoleOwner}}}
+	tests := []struct {
+		name    string
+		subject policy.Subject
+		action  policy.Action
+		inst    policy.InstanceSettings
+		want    bool
+	}{
+		{"instance owner", owner, policy.OrgCreate, policy.InstanceSettings{}, true},
+		{"owner of an organization only", member, policy.OrgCreate, policy.InstanceSettings{}, false},
+		{"any user when the instance allows it", member, policy.OrgCreate, policy.InstanceSettings{AnyUserCreatesOrganizations: true}, true},
+		{"anonymous even when the instance allows it", policy.Subject{}, policy.OrgCreate, policy.InstanceSettings{AnyUserCreatesOrganizations: true}, false},
+		{"organization action through the instance check", owner, policy.OrgRead, policy.InstanceSettings{}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, policy.CanInstance(tt.subject, tt.action, tt.inst))
+		})
 	}
 }

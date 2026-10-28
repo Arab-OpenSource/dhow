@@ -23,14 +23,15 @@ import (
 var ErrNoSession = errors.New("no active session")
 
 type Resolved struct {
-	SessionID   uuid.UUID
-	UserID      uuid.UUID
-	CsrfHash    []byte
-	ExpiresAt   time.Time
-	Email       string
-	Name        string
-	Locale      string
-	Memberships []policy.Membership
+	SessionID     uuid.UUID
+	UserID        uuid.UUID
+	InstanceOwner bool
+	CsrfHash      []byte
+	ExpiresAt     time.Time
+	Email         string
+	Name          string
+	Locale        string
+	Memberships   []policy.Membership
 }
 
 type Resolver interface {
@@ -41,6 +42,7 @@ type GuardOptions struct {
 	Resolver  Resolver
 	CSRF      *CSRF
 	PublicURL *url.URL
+	Instance  policy.InstanceSettings
 	Log       *slog.Logger
 	Now       func() time.Time
 }
@@ -49,6 +51,7 @@ type Guard struct {
 	resolver Resolver
 	csrf     *CSRF
 	origin   string
+	instance policy.InstanceSettings
 	log      *slog.Logger
 	now      func() time.Time
 }
@@ -58,7 +61,7 @@ func NewGuard(o GuardOptions) *Guard {
 	if now == nil {
 		now = time.Now
 	}
-	return &Guard{resolver: o.Resolver, csrf: o.CSRF, origin: OriginOf(o.PublicURL), log: o.Log, now: now}
+	return &Guard{resolver: o.Resolver, csrf: o.CSRF, origin: OriginOf(o.PublicURL), instance: o.Instance, log: o.Log, now: now}
 }
 
 func OriginOf(u *url.URL) string {
@@ -73,6 +76,8 @@ func OriginOf(u *url.URL) string {
 }
 
 func (g *Guard) CSRF() *CSRF { return g.csrf }
+
+func (g *Guard) Instance() policy.InstanceSettings { return g.instance }
 
 func (g *Guard) Middleware(table *policy.Table) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -127,6 +132,12 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 	if rule.Unsafe() && !g.csrf.Verify(r.Header.Get(config.CSRFHeaderName), csrfHash) {
 		return ctx, apperrors.CSRFFailed()
 	}
+	if rule.Scope == policy.ScopeInstance {
+		if !policy.CanInstance(principal.Subject, rule.Action, g.instance) {
+			return ctx, apperrors.Forbidden()
+		}
+		return WithPrincipal(ctx, principal), nil
+	}
 	var resource policy.Resource
 	if rule.Scope == policy.ScopeOrganization {
 		id, err := uuid.Parse(chi.URLParam(r, rule.OrgParam))
@@ -158,7 +169,9 @@ func (g *Guard) authenticate(ctx context.Context) (Principal, []byte, *apperrors
 		return Principal{}, nil, apperrors.Internal(err)
 	}
 	return Principal{
-		Subject:   policy.Subject{UserID: res.UserID, SessionID: res.SessionID, Memberships: res.Memberships},
+		Subject: policy.Subject{
+			UserID: res.UserID, SessionID: res.SessionID, InstanceOwner: res.InstanceOwner, Memberships: res.Memberships,
+		},
 		Email:     res.Email,
 		Name:      res.Name,
 		Locale:    res.Locale,

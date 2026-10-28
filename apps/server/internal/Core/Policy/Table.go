@@ -8,6 +8,7 @@ const (
 	ScopePublic Scope = iota + 1
 	ScopeAuthenticated
 	ScopeOrganization
+	ScopeInstance
 )
 
 type Rule struct {
@@ -30,6 +31,10 @@ func Organization(method, path string, action Action, orgParam string) Rule {
 	return Rule{Method: method, Path: path, Scope: ScopeOrganization, Action: action, OrgParam: orgParam}
 }
 
+func Instance(method, path string, action Action) Rule {
+	return Rule{Method: method, Path: path, Scope: ScopeInstance, Action: action}
+}
+
 func (r Rule) Key() string { return r.Method + " " + r.Path }
 
 func (r Rule) Valid() bool {
@@ -39,7 +44,9 @@ func (r Rule) Valid() bool {
 	case ScopeAuthenticated:
 		return r.Action == SessionManageSelf
 	case ScopeOrganization:
-		return r.Action != "" && r.Action != SessionManageSelf && r.OrgParam != ""
+		return r.Action != "" && r.Action != SessionManageSelf && !IsInstanceAction(r.Action) && r.OrgParam != ""
+	case ScopeInstance:
+		return IsInstanceAction(r.Action) && r.OrgParam == ""
 	default:
 		return false
 	}
