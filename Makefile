@@ -103,6 +103,57 @@ proto-lint: ## Lint the runner protocol and check it for breaking changes agains
 		echo "proto-lint: $(PROTO_AGAINST_BRANCH) has no $(PROTO_DIR) yet, so there is nothing to break"; \
 	fi
 
+DEV_ENV         ?= .env.dev
+DEV_DB_ENGINE   ?= $(shell command -v docker >/dev/null 2>&1 && echo docker || { command -v podman >/dev/null 2>&1 && echo podman; })
+DEV_DB_PORT     ?= 5432
+DEV_DB_NAME     := dhow-dev-postgres
+DEV_DB_VOLUME   := dhow-dev-pgdata
+DEV_DB_PASSWORD := dhow-dev-only
+DEV_DB_URL      := postgres://dhow:$(DEV_DB_PASSWORD)@127.0.0.1:$(DEV_DB_PORT)
+
+.PHONY: dev-setup
+dev-setup: ## Install what development needs, ask for your settings and generate secrets (SETUP_ARGS="--help" for options)
+	bash deploy/dev/setup.sh $(SETUP_ARGS)
+
+.PHONY: dev-env
+dev-env: ## Write .env.dev once: DHOW_DEV, a fresh secret key and the local database URLs
+	@if [ -f $(DEV_ENV) ]; then echo "$(DEV_ENV) already exists; delete it to make a new one"; exit 0; fi; \
+	umask 077; { \
+		echo "DHOW_DEV=true"; \
+		echo "DHOW_PUBLIC_URL=http://localhost:8080"; \
+		echo "DHOW_DATABASE_URL=$(DEV_DB_URL)/dhow?sslmode=disable"; \
+		echo "DHOW_TEST_DATABASE_URL=$(DEV_DB_URL)/dhow_test?sslmode=disable"; \
+		echo "DHOW_SECRET_KEY=$$(od -An -tx1 -N32 /dev/urandom | tr -d ' \n')"; \
+	} > $(DEV_ENV); echo "wrote $(DEV_ENV)"
+
+.PHONY: dev-db
+dev-db: ## Start PostgreSQL 18 with the dhow and dhow_test databases in Docker or Podman (DEV_DB_ENGINE=podman)
+	@test -n "$(DEV_DB_ENGINE)" || { echo "dev-db: found neither docker nor podman; install PostgreSQL 18 natively (docs/development.md)" >&2; exit 1; }
+	@if $(DEV_DB_ENGINE) container inspect $(DEV_DB_NAME) >/dev/null 2>&1; then $(DEV_DB_ENGINE) start $(DEV_DB_NAME) >/dev/null; \
+	else $(DEV_DB_ENGINE) run -d --name $(DEV_DB_NAME) -e POSTGRES_USER=dhow -e POSTGRES_PASSWORD=$(DEV_DB_PASSWORD) -e POSTGRES_DB=dhow \
+		-p 127.0.0.1:$(DEV_DB_PORT):5432 -v $(DEV_DB_VOLUME):/var/lib/postgresql docker.io/library/postgres:18 >/dev/null; fi
+	@for i in $$(seq 1 60); do $(DEV_DB_ENGINE) exec $(DEV_DB_NAME) pg_isready -h 127.0.0.1 -U dhow -d dhow >/dev/null 2>&1 && break; sleep 1; done
+	@$(DEV_DB_ENGINE) exec $(DEV_DB_NAME) psql -h 127.0.0.1 -U dhow -d dhow -tAc "SELECT 1 FROM pg_database WHERE datname = 'dhow_test'" | grep -q 1 \
+		|| $(DEV_DB_ENGINE) exec $(DEV_DB_NAME) psql -h 127.0.0.1 -U dhow -d dhow -qc "CREATE DATABASE dhow_test"
+	@echo "PostgreSQL 18 is up on 127.0.0.1:$(DEV_DB_PORT) with the databases dhow and dhow_test ($(DEV_DB_ENGINE))"
+
+.PHONY: dev-db-reset
+dev-db-reset: ## Delete the development PostgreSQL container and its data
+	$(DEV_DB_ENGINE) rm -f $(DEV_DB_NAME)
+	$(DEV_DB_ENGINE) volume rm -f $(DEV_DB_VOLUME)
+
+.PHONY: dev
+dev: dev-env ## Run the server from source with .env.dev on http://localhost:8080 (run make web first for the UI)
+	set -a; . $(abspath $(DEV_ENV)); set +a; $(GO) run ./apps/server/cmd/dhow-server
+
+.PHONY: dev-vite
+dev-vite: dev-env ## Run the server for the Vite dev server: then pnpm -C apps/web dev and open http://localhost:5173
+	set -a; . $(abspath $(DEV_ENV)); set +a; DHOW_PUBLIC_URL=http://localhost:5173 $(GO) run ./apps/server/cmd/dhow-server
+
+.PHONY: dev-check
+dev-check: dev-env ## Run make check with the test database from .env.dev, so no database test is skipped
+	set -a; . $(abspath $(DEV_ENV)); set +a; $(MAKE) check
+
 .PHONY: help
 help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'

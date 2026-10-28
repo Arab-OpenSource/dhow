@@ -1,6 +1,6 @@
 # حالة داو: اللي اتعمل واللي لسه
 
-**آخر تحديث:** 2026-10-28 · **main:** `b4432f2` (M2.5)
+**آخر تحديث:** 2026-10-28 · **main:** `78dd01d` (M3.6)
 
 الوثيقة دي نقطة البداية لأي جلسة جديدة. التفاصيل في [سجل التقدّم](Progress/README.md) والقرارات في [`ADR/`](ADR/README.md) والخطة الكاملة في [`docs/roadmap.md`](../docs/roadmap.md).
 
@@ -26,28 +26,17 @@
 | M3.3 | الـ jobs والـ leases والـ fencing والـ reconciler | #19 |
 | M3.4 | تخزين الـ logs والـ SSE | #21 |
 | M3.5 | الـ runner binary والـ lease loop والـ masking (بـ driver وهمي) | #22 |
+| M2.6 | سياسة الخطوة التانية للمؤسسة، والجلسة 7 أيام وخمول 4 ساعات للأدمن، وإيميلات تنبيه بيانات الدخول (ADR-0054) | #26 |
+| M3.6 | driver الـ Podman rootless، والـ agent كـ PID 1، والـ seccomp، والحدود متحقق منها من الـ cgroup نفسه، والـ escape والـ limits suites في job `isolation` على `ubuntu-26.04` (ADR-0055) | #25 |
+| تطوير محلي | `docs/development.md`، وسكربتات التجهيز `deploy/dev/setup.sh` و`setup.ps1`، وأهداف `make dev-*` | #27 |
 
 شرط خلاص M2 اتحقق: اختبارات الصلاحيات خضرا، ومفيش finding مفتوح Critical أو High. والمراجعة الخارجية اتنقلت لـ M9 (ADR-0040).
 
 ## شغّال ومش متعمله merge
 
-### M2.6: سياسة الخطوة التانية والجلسات والتنبيهات (`m2/session-policy`، draft PR #26)
+مفيش. M2.6 وM3.6 والتطوير المحلي اتدمجوا في 2026-10-28 (الأقسام 6 و7 و8 في سجل اليوم).
 
-الخطة في `Plan/M2.6-Plan.md` والقرارات في [ADR-0054](ADR/0054-second-factor-policy-sessions-and-credential-alerts.md) والقسم 6 في سجل اليوم.
-- **T1:** إعداد `RequireSecondFactor` للمؤسسة، ومهلة 7 أيام، وبعدها `403 SECOND_FACTOR_REQUIRED` على الإجراءات الحساسة. التوسيع بيدّي مهلة للأدوار الجديدة بس.
-- **T2:** الجلسة 7 أيام بالكتير (وكمان الجلسات القديمة)، والخمول 12 ساعة، أو 4 ساعات لأي حد owner أو admin، من الدور الحالي في كل طلب.
-- **T3:** موديول `Alerts`: إيميل لـ 10 أحداث بيانات دخول لو الـ SMTP متظبط، في الخلفية ومن غير أسرار، والـ audit في كل الأحوال.
-
-**الحالة:** الميزة خلصت. `make check` كامل أخضر، والواجهة خضرا، والمراجعة الأمنية المستقلة اتعملت (Medium واحد وكام Low، واتصلّحوا كلهم: F25 لحد F30 في قايمة الفحص)، وF10 وF11 وF12 اتقفلوا. الفرع فيه `origin/main`.
-- لسه: مراجعة Sabry، وبعدها Ready for review عشان الـ CI يشتغل، وsquash merge.
-
-### M3.6: driver الـ Podman والـ agent والـ seccomp (`m3/podman`، draft PR #25)
-
-- اتعمل: طبقة `Agent`، وdriver الـ Podman rootless، والـ agent كـ PID 1، وقناة `Wire`، والـ seccomp، والـ escape والـ limits suites (`apps/runner/Test/Isolation` و`make runner-isolation`)، وjob الـ `isolation` في الـ CI، وADR-0055، والوثائق، والقسم 7 في سجل اليوم.
-- لسه: الـ suite عمره ما اشتغل، لأن جهاز التطوير cgroup v1 ومفيهوش Podman. التحقق في job الـ `isolation` على GitHub Actions بـ `ubuntu-26.04` (قرار Sabry بعد ما `ubuntu-24.04` طلع فيه Podman 4.9.3). وبعدها المراجعة الأمنية المستقلة.
-- مخاطر معروفة: كشف الـ OOM من `podman inspect`، وتفويض الـ cgroup تحت `systemd-run`. والاتنين هيبانوا من أول تشغيل.
-
-**الخطوات قبل الـ merge لكل واحد:** تكملة اللي لسه، وبعدين `make check`، ومراجعة أمنية مستقلة، وإصلاح الـ findings، وPR، والـ CI أخضر، وsquash merge.
+**الخطوات قبل الـ merge لأي مرحلة:** الشغل، وبعدين `make check`، ومراجعة أمنية مستقلة، وإصلاح الـ findings، وPR، والـ CI أخضر، وsquash merge.
 
 ## اللي لسه في M3 (بالترتيب)
 
@@ -80,6 +69,8 @@ M4 الـ pipelines ومزوّدي Git، وM5 الأسرار والبيئات، 
 - **التنضيف:** تنضيف `"RunnerSessions"` في M3.13. واحتفاظ الـ logs لكل مؤسسة في M4.
 - **الهوية:** أول دخول بالـ IdP وقبول الدعوات بيه، وback-channel logout. وشاشة tokens المؤسسة في الواجهة. وحذف مؤسسة.
 - **مع M4:** scopes المشروع والبيئة في الـ tokens والـ bindings.
+- **M3.6 اتدمج من غير المراجعة الأمنية المستقلة** (قرار Sabry عشان التلات PRs يتدمجوا مع بعض). الـ escape والـ limits suites خضرا، بس المراجعة لازم تتعمل على الـ runner والـ agent والـ driver قبل M3.7 أو معاه، وبالذات: الـ state dir بقى `0711`، وقناة التحكم بـ `U=true`، و`--cgroups=split`، والـ agent بيشغّل الخطوات جنب حلقة القراية.
+- **`setup.ps1`** ماتجرّبش على Windows حقيقي (مفيش WSL2 على runners بتاعة GitHub).
 - **الأمان:**
   - حد إيميلات التنبيه لكل مستخدم (فيه بس سقف 32 إرسال معلّق للسيرفر كله)، والتنبيهات تتنقل على queue الـ M7.
   - Trusted Types في الـ CSP مع M7 (F9).

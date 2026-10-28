@@ -1,0 +1,52 @@
+[CmdletBinding()]
+param(
+    [string]$Distro = 'Ubuntu-24.04',
+    [string]$Repo = 'https://github.com/Khaymah/dhow.git',
+    [string]$Path = 'src/dhow',
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$SetupArgs = @()
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Stop-Setup([string]$Message) {
+    Write-Host "dev-setup: $Message" -ForegroundColor Red
+    exit 1
+}
+
+if ($Path -match '(^/)|(\.\.)') {
+    Stop-Setup 'Path is relative to your Linux home folder and must not contain ..'
+}
+
+if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
+    Stop-Setup 'WSL is not available. It needs Windows 10 version 2004 or newer, or Windows 11.'
+}
+
+$installed = @(& wsl.exe --list --quiet 2>$null) |
+    ForEach-Object { ($_ -replace "`0", '').Trim() } |
+    Where-Object { $_ }
+
+if ($installed -notcontains $Distro) {
+    Write-Host "Installing $Distro in WSL2. When it opens, create your Linux user, then run this script again."
+    Write-Host 'Windows may ask you to restart first.'
+    & wsl.exe --install --distribution $Distro
+    exit 0
+}
+
+& wsl.exe --distribution $Distro --cd '~' --exec test -d "$Path/.git"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Cloning $Repo into ~/$Path inside $Distro"
+    & wsl.exe --distribution $Distro --cd '~' --exec git clone -- $Repo $Path
+    if ($LASTEXITCODE -ne 0) {
+        Stop-Setup 'git clone failed'
+    }
+}
+
+& wsl.exe --distribution $Distro --cd '~' --exec bash "$Path/deploy/dev/setup.sh" @SetupArgs
+if ($LASTEXITCODE -ne 0) {
+    Stop-Setup "the setup inside $Distro failed"
+}
+
+Write-Host ''
+Write-Host "The code is in ~/$Path inside $Distro. Open a shell there with: wsl -d $Distro, then cd ~/$Path"
+Write-Host 'In VS Code, the WSL extension opens it from there. The browser on Windows reaches http://localhost:8080.'

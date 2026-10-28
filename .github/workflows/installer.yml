@@ -34,12 +34,53 @@ jobs:
           persist-credentials: false
       - name: Check the shell scripts
         run: |
-          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh
+          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh deploy/dev/setup.sh deploy/dev/lib/*.sh
           shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh
+          shellcheck -x deploy/dev/setup.sh
+      - name: Parse the Windows setup script
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/deploy/dev/setup.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors; exit 1 }
       - name: Rate the systemd unit
         run: |
           systemd-analyze security --offline=yes --no-pager deploy/systemd/dhow.service | tail -1 | tee rating.txt
           grep -Eq 'exposure level for dhow.service: [0-9.]+ (OK|SAFE|PERFECT)' rating.txt
+
+  dev-setup:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: Development setup on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            args: --db=container
+          - os: macos-latest
+            args: --db=native --skip-web
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run the setup script without questions
+        env:
+          SETUP_ARGS: ${{ matrix.args }}
+        run: |
+          read -ra args <<<"$SETUP_ARGS"
+          deploy/dev/setup.sh --yes "${args[@]}"
+      - name: Start the server and wait for it
+        run: |
+          export PATH="$HOME/.local/share/dhow-dev/go/bin:$HOME/.local/share/dhow-dev/node/bin:$HOME/.local/bin:$PATH"
+          make dev > server.log 2>&1 &
+          for _ in $(seq 1 150); do
+            curl -sf http://127.0.0.1:8080/api/v1/health/ready >/dev/null && break
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:8080/api/v1/health/ready
+          grep -q setup_url server.log
 
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft

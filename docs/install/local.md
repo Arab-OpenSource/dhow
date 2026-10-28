@@ -10,7 +10,7 @@ There are two ways to run Dhow locally:
 | | [From source](#from-source) | [The Compose stack](#the-compose-stack) |
 |---|---|---|
 | For | Working on Dhow | Trying the released image |
-| Needs | Go, Node.js LTS with pnpm, Docker for PostgreSQL | Docker with Compose |
+| Needs | Go, Node.js LTS with pnpm, PostgreSQL 18 (Docker, Podman or native) | Docker with Compose |
 | Address | `http://localhost:8080` | `http://127.0.0.1:8080`, and HTTPS for signing in |
 | `DHOW_DEV` | `true` | not set |
 
@@ -22,54 +22,16 @@ The browser also sends the address in the bar as `Origin`, and Dhow compares it 
 
 ## From source
 
-You need the Go version pinned in `go.mod` (the `go` command downloads it), Node.js LTS with pnpm through Corepack, Docker, and `openssl`. Run every command from the root of a clone of the repository.
-
-1. Start PostgreSQL 18 on the loopback interface:
-
-   ```sh
-   docker run -d --name dhow-dev-postgres \
-     -e POSTGRES_USER=dhow -e POSTGRES_PASSWORD=dhow-dev-only -e POSTGRES_DB=dhow \
-     -p 127.0.0.1:5432:5432 -v dhow-dev-pgdata:/var/lib/postgresql \
-     postgres:18
-   ```
-
-2. Build the web app into the server's embed directory. `make web` runs pnpm from the repository root, where Corepack finds no `packageManager` field, so activate the version that `apps/web/package.json` names first. Skip the two `corepack` lines if `pnpm --version` already prints that version:
-
-   ```sh
-   corepack enable
-   corepack prepare pnpm@10.28.0 --activate
-   make web
-   ```
-
-3. Create a secret key once and keep it outside the repository. Stored secrets need the same key at every start:
-
-   ```sh
-   mkdir -p ~/.config/dhow
-   (umask 077 && openssl rand -hex 32 > ~/.config/dhow/dev-secret-key)
-   ```
-
-4. Start the server:
-
-   ```sh
-   DHOW_DEV=true \
-   DHOW_DATABASE_URL='postgres://dhow:dhow-dev-only@127.0.0.1:5432/dhow?sslmode=disable' \
-   DHOW_SECRET_KEY="$(cat ~/.config/dhow/dev-secret-key)" \
-   DHOW_PUBLIC_URL=http://localhost:8080 \
-   go run ./apps/server/cmd/dhow-server
-   ```
-
-   Dhow applies the migrations, logs a `setup_url` line with a link such as `http://localhost:8080/setup#...`, and listens on `127.0.0.1:8080`.
-
-5. Check it from another terminal with `curl -s http://localhost:8080/api/v1/health/ready`, then open the setup link in Chrome or Firefox to create the owner account. The link is valid for one hour. Restart the server to get a new one.
-
-After a change to `apps/web`, run `make web` again and restart the server. For live reloading instead, run `pnpm dev` in `apps/web` and open `http://localhost:5173`: Vite serves the web app and forwards `/api` to the server on port 8080. The browser then sends `http://localhost:5173` as `Origin`, so start the server with `DHOW_PUBLIC_URL=http://localhost:5173` for that, and open the setup link on port 5173.
-
-To start over with an empty database:
+The full guide for working on Dhow is [Develop Dhow on your machine](../development.md): PostgreSQL 18 with Docker, Podman or a native install on Linux, macOS and Windows (WSL2), the web app with live reload, the tests, and the runner. In short:
 
 ```sh
-docker rm -f dhow-dev-postgres
-docker volume rm dhow-dev-pgdata
+make dev-env
+make dev-db
+make web
+make dev
 ```
+
+Then open the `setup_url` link the server logs, on `http://localhost:8080`.
 
 ## The Compose stack
 
