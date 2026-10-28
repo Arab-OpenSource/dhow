@@ -41,6 +41,28 @@ port_of() {
   [[ $hostport == *:* ]] && printf '%s' "${hostport##*:}"
 }
 
+is_port() {
+  [[ $1 =~ ^[0-9]+$ ]] && (($1 >= 1 && $1 <= 65535))
+}
+
+is_host() {
+  [[ $1 =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]
+}
+
+is_tls() {
+  [[ $1 == starttls || $1 == tls || $1 == none ]]
+}
+
+is_mailbox() {
+  local addr='[^[:space:]<>@,;"]+@[^[:space:]<>@,;"]+'
+  local plain="^${addr}\$" named="^[^<>@,;\"]*<${addr}>\$"
+  [[ $1 =~ $plain || $1 =~ $named ]]
+}
+
+smtp_valid() {
+  is_host "$smtp_host" && is_port "$smtp_port" && is_tls "$smtp_tls" && is_mailbox "$smtp_from"
+}
+
 load_existing() {
   [[ -f $env_file ]] || return 0
   step "Found $env_file"
@@ -71,23 +93,23 @@ load_existing() {
 
 collect_settings() {
   step "Settings"
-  ask http_port "Port for the server on localhost" "${http_port:-8080}"
-  if ! [[ $http_port =~ ^[0-9]+$ ]] || ((http_port < 1 || http_port > 65535)); then
-    fail "not a port: $http_port"
-  fi
+  ask_valid http_port "Port for the server on localhost" "${http_port:-8080}" is_port "Type a number from 1 to 65535."
   if [[ $db_mode != url ]]; then
-    ask db_port "Port for PostgreSQL on localhost" "${db_port:-5432}"
-    [[ $db_port =~ ^[0-9]+$ ]] || fail "not a port: $db_port"
+    ask_valid db_port "Port for PostgreSQL on localhost" "${db_port:-5432}" is_port "Type a number from 1 to 65535."
   fi
   [[ -n $secret_key ]] || secret_key=$(random_hex 32)
   [[ -n $db_password ]] || db_password=$(random_hex 16)
+  if [[ -n $smtp_host ]] && ! smtp_valid; then
+    warn "the SMTP settings in $env_file are not valid, so they are asked again"
+    smtp_host='' smtp_port='' smtp_tls='' smtp_user='' smtp_password='' smtp_from=''
+  fi
   if [[ -z $smtp_host ]] && confirm "Send email (invitations and sign-in alerts) through an SMTP server?" n; then
-    ask smtp_host "SMTP host" ""
-    ask smtp_port "SMTP port" "587"
-    ask smtp_tls "TLS mode: starttls, tls or none" "starttls"
+    ask_valid smtp_host "SMTP host" "" is_host "Type a host name such as smtp.example.com."
+    ask_valid smtp_port "SMTP port" "587" is_port "Type a number from 1 to 65535."
+    ask_valid smtp_tls "TLS mode: starttls, tls or none" "starttls" is_tls "Type starttls, tls or none."
     ask smtp_user "SMTP user name (empty for none)" ""
     [[ -n $smtp_user ]] && ask_secret smtp_password "SMTP password"
-    ask smtp_from "From address" "Dhow <dhow@localhost>"
+    ask_valid smtp_from "From address" "Dhow <dhow@localhost>" is_mailbox "Type an address such as dhow@example.com or Dhow <dhow@example.com>."
   fi
 }
 

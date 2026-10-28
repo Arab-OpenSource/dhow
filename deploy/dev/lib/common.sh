@@ -51,17 +51,31 @@ ask_secret() {
   printf -v "$name" '%s' "$reply"
 }
 
+ask_valid() {
+  local name=$1 question=$2 default=$3 check=$4 hint=$5
+  while :; do
+    ask "$name" "$question" "$default"
+    "$check" "${!name}" && return 0
+    interactive || fail "$question: '${!name}' is not valid. $hint"
+    printf '%s\n' "$hint" >&2
+  done
+}
+
 confirm() {
-  local question=$1 default=${2:-y} reply=
-  if interactive; then
-    if [[ $default == y ]]; then
-      read -r -p "$question [Y/n]: " reply
-    else
-      read -r -p "$question [y/N]: " reply
+  local question=$1 default=${2:-y} reply= hint='[Y/n]'
+  [[ $default == y ]] || hint='[y/N]'
+  while :; do
+    reply=
+    if interactive; then
+      read -r -p "$question $hint: " reply
     fi
-  fi
-  reply=${reply:-$default}
-  [[ $reply == y || $reply == Y || $reply == yes ]]
+    reply=${reply:-$default}
+    case ${reply,,} in
+      y | yes) return 0 ;;
+      n | no) return 1 ;;
+    esac
+    printf 'Answer y or n.\n' >&2
+  done
 }
 
 as_root() {

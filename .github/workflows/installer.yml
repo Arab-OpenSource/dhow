@@ -38,6 +38,8 @@ jobs:
           shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh
           shellcheck -x deploy/dev/setup.sh
           shellcheck deploy/dev/test/fresh.sh
+          shellcheck -x deploy/dev/test/settings.sh
+          bash deploy/dev/test/settings.sh
       - name: Parse the Windows setup script
         shell: pwsh
         run: |
