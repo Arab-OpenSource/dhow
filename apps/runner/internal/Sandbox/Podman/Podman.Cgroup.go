@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
 )
 
 func (b *box) enforced(ctx context.Context) error {

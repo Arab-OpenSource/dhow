@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 )
 
 type liveResolver struct {

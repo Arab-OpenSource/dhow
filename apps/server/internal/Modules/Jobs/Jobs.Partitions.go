@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 )
 
 type PartitionResult struct {

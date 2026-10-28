@@ -7,12 +7,13 @@
 package runnerv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -483,7 +484,7 @@ const file_dhow_runner_v1_auth_proto_rawDesc = "" +
 	"\fAuthenticate\x12#.dhow.runner.v1.AuthenticateRequest\x1a$.dhow.runner.v1.AuthenticateResponse\x12S\n" +
 	"\n" +
 	"RotateKeys\x12!.dhow.runner.v1.RotateKeysRequest\x1a\".dhow.runner.v1.RotateKeysResponseB\xc8\x01\n" +
-	"\x12com.dhow.runner.v1B\tAuthProtoP\x01ZMgithub.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
+	"\x12com.dhow.runner.v1B\tAuthProtoP\x01ZMgithub.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
 
 var (
 	file_dhow_runner_v1_auth_proto_rawDescOnce sync.Once

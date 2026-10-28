@@ -9,10 +9,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	"github.com/Arab-OpenSource/dhow/internal/logging"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	"github.com/Khaymah/dhow/internal/logging"
 )
 
 type GateOptions struct {

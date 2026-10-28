@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v3"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
 )
 
 const openapiFile = "../../../../packages/openapi/openapi.yaml"

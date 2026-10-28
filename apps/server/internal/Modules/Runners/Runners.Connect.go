@@ -5,10 +5,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners/Models"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
-	"github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners/Models"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
+	"github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
 )
 
 type connectHandler struct {

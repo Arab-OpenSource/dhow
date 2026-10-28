@@ -9,9 +9,9 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	client "github.com/Khaymah/dhow/apps/runner/internal/Client"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 const (

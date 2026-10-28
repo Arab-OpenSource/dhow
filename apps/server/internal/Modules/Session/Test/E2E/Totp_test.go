@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 )
 
 func withTotp(t *testing.T) (*apptest.Env, *apptest.Client, apptest.SetupDetails, apptest.TotpEnrollment) {

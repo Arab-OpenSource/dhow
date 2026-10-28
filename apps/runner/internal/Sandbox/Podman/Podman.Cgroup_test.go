@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
 )
 
 func writeCgroup(t *testing.T, files map[string]string) (string, string) {

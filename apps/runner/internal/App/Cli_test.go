@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	app "github.com/Arab-OpenSource/dhow/apps/runner/internal/App"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
+	app "github.com/Khaymah/dhow/apps/runner/internal/App"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 )
 
 func cli(t *testing.T, env map[string]string, stdin string, args ...string) (string, error) {

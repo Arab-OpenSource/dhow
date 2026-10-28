@@ -194,7 +194,7 @@ class ServerLayoutRules(unittest.TestCase):
 
 
 def imp(path):
-    return 'package x\n\nimport "github.com/Arab-OpenSource/dhow/apps/server/internal/' + path + '"\n'
+    return 'package x\n\nimport "github.com/Khaymah/dhow/apps/server/internal/' + path + '"\n'
 
 
 GOOD_ROUTES = (
@@ -373,11 +373,11 @@ class ServerImportRules(unittest.TestCase):
         self.assertIn("composition root", edit(SERVER + "Modules/System/System.Routes.go", imp("App")))
 
     def test_aliased_and_grouped_imports_are_scanned(self):
-        src = ('package x\n\nimport (\n\t"fmt"\n\tapperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"\n)\n')
+        src = ('package x\n\nimport (\n\t"fmt"\n\tapperrors "github.com/Khaymah/dhow/apps/server/internal/Modules/System"\n)\n')
         self.assertIsNotNone(edit(SERVER + "Core/Errors/AppError.go", src))
 
     def test_existing_imports_are_not_rescanned(self):
-        line = '\t"github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"\n'
+        line = '\t"github.com/Khaymah/dhow/apps/server/internal/Modules/System"\n'
         self.assertIsNone(edit(SERVER + "Core/Errors/AppError.go", "x := 1\n" + line, old=line))
 
     def test_test_files_and_test_folders_are_exempt(self):

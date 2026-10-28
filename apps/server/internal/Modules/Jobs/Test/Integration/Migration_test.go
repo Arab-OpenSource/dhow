@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	migrations "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Migrations"
-	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
+	migrations "github.com/Khaymah/dhow/apps/server/internal/Database/Migrations"
+	dbtest "github.com/Khaymah/dhow/apps/server/internal/Database/Testing"
 )
 
 func TestTheJobsMigrationRollsBackCompletely(t *testing.T) {

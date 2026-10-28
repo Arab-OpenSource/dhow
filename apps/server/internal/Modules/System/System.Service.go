@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"time"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Models"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Models"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 const readinessTimeout = 2 * time.Second

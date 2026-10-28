@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
 )
 
 func resetMfa(c *apptest.Client, org uuid.UUID, user string, factor map[string]any) apptest.Response {

@@ -15,13 +15,13 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
-	"github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	dbtest "github.com/Khaymah/dhow/apps/server/internal/Database/Testing"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
+	"github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
 )
 
 type rpcResult struct {

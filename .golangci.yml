@@ -51,4 +51,4 @@ formatters:
     - goimports
   settings:
     goimports:
-      local-prefixes: [github.com/Arab-OpenSource/dhow]
+      local-prefixes: [github.com/Khaymah/dhow]

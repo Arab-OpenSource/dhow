@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	app "github.com/Arab-OpenSource/dhow/apps/runner/internal/App"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
+	app "github.com/Khaymah/dhow/apps/runner/internal/App"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
 )
 
 func TestAReleaseBuildRefusesToRunWithoutARealDriver(t *testing.T) {

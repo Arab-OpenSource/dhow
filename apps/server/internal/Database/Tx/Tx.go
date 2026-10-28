@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 )
 
 type Beginner interface {

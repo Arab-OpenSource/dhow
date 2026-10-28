@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
-	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
-	oidcmock "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Oidc/Mock"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
+	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
+	oidcmock "github.com/Khaymah/dhow/apps/server/internal/Core/Oidc/Mock"
 )
 
 const firefox = "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0"

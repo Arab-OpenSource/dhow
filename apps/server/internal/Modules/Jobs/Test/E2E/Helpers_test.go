@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
 )
 
 type world struct {

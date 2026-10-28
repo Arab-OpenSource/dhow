@@ -1,6 +1,6 @@
 package response
 
-import config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
+import config "github.com/Khaymah/dhow/apps/server/internal/Config"
 
 func PageParams(page, limit *int) (int, int) {
 	p, l := 1, config.DefaultPageLimit

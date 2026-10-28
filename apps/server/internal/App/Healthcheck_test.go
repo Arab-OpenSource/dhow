@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 )
 
 func listenAddr(srv *httptest.Server) string { return srv.Listener.Addr().String() }

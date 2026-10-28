@@ -3,10 +3,10 @@ package tokens
 import (
 	"context"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Tokens/Gen"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Tokens/Models"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Tokens/Gen"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Tokens/Models"
 )
 
 const (

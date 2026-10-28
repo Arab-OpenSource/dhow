@@ -3,10 +3,10 @@ package audit
 import (
 	"context"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit/Gen"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit/Models"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	response "github.com/Khaymah/dhow/apps/server/internal/Core/Response"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Audit/Gen"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Audit/Models"
 )
 
 const (

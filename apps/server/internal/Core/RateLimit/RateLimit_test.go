@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
 )
 
 type clock struct {

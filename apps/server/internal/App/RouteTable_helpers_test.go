@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 )
 
 func mustUUID(v string) uuid.UUID { return uuid.MustParse(v) }

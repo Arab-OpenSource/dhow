@@ -13,7 +13,7 @@ ROOT_MARKDOWN = {"README.md", "README.ar.md", "CLAUDE.md", "CONTRIBUTING.md", "S
 MARKDOWN_DIRS = ("docs/", "Plan/", ".github/", ".claude/")
 
 SERVER_INTERNAL = "apps/server/internal/"
-SERVER_IMPORT_PREFIX = "github.com/Arab-OpenSource/dhow/apps/server/internal/"
+SERVER_IMPORT_PREFIX = "github.com/Khaymah/dhow/apps/server/internal/"
 SERVER_TOP_LEVEL = ("App", "Config", "Core", "Database", "Modules")
 SERVER_NESTED = ("Core", "Database", "Modules")
 PASCAL_DIR = re.compile(r"^[A-Z][A-Za-z0-9]*$")

@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	masking "github.com/Khaymah/dhow/apps/runner/internal/Masking"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 var (

@@ -16,10 +16,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
-	podman "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox/Podman"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+	podman "github.com/Khaymah/dhow/apps/runner/internal/Sandbox/Podman"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 const (

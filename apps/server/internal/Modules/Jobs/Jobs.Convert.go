@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"math"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Gen"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
-	"github.com/Arab-OpenSource/dhow/internal/jobspec"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Gen"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
+	"github.com/Khaymah/dhow/internal/jobspec"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 type specReader struct {

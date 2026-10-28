@@ -12,10 +12,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	executor "github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"
-	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	executor "github.com/Khaymah/dhow/apps/runner/internal/Executor"
+	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
+	"github.com/Khaymah/dhow/internal/runnersig"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 type fixture struct {

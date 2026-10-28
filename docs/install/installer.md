@@ -9,7 +9,7 @@ The installer is part of the `dhow-server` binary, so there is one artifact to v
 `deploy/install/get.sh` downloads the right release for the host, verifies it and starts the installer. Download it, read it, then run it. Never pipe it into a shell:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/Arab-OpenSource/dhow/main/deploy/install/get.sh
+curl -fsSLO https://raw.githubusercontent.com/Khaymah/dhow/main/deploy/install/get.sh
 less get.sh
 bash get.sh
 ```

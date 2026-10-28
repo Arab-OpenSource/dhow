@@ -9,7 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 )
 
 const (

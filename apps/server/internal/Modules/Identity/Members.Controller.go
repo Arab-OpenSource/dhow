@@ -3,10 +3,10 @@ package identity
 import (
 	"context"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Gen"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Models"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity/Gen"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity/Models"
 )
 
 const (

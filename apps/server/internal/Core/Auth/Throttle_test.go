@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 )
 
 func TestLockDuration(t *testing.T) {

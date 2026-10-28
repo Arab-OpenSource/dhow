@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	retention "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Retention"
+	retention "github.com/Khaymah/dhow/apps/server/internal/Database/Retention"
 )
 
 func StartMaintenance(ctx context.Context, r *retention.Runner, every time.Duration) func() {

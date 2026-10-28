@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Models"
-	support "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Test/Support"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Models"
+	support "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Test/Support"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 type deadlinePinger struct{ deadline time.Time }

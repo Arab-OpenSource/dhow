@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 )
 
 func TestRankOrdersTheRoles(t *testing.T) {

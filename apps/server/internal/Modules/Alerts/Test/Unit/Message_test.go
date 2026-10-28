@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
-	alerts "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Alerts"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
+	alerts "github.com/Khaymah/dhow/apps/server/internal/Modules/Alerts"
 )
 
 func TestApproximateIP(t *testing.T) {

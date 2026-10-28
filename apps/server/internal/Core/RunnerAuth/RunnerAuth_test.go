@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
 )
 
 func secret(b byte) []byte {

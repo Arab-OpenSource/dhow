@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	migrations "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Migrations"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Gen"
-	support "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System/Test/Support"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	migrations "github.com/Khaymah/dhow/apps/server/internal/Database/Migrations"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Gen"
+	support "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Test/Support"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 func TestLiveness(t *testing.T) {

@@ -3,10 +3,10 @@ package app
 import (
 	"net/http"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
-	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
-	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
+	jobs "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs"
+	runners "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners"
 )
 
 func RunnerPlane(o Options) http.Handler {

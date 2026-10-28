@@ -10,15 +10,15 @@ import (
 	"testing"
 	"time"
 
-	app "github.com/Arab-OpenSource/dhow/apps/runner/internal/App"
-	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	executor "github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"
-	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
-	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
-	fake "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox/Fake"
-	"github.com/Arab-OpenSource/dhow/internal/jobspec"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	app "github.com/Khaymah/dhow/apps/runner/internal/App"
+	client "github.com/Khaymah/dhow/apps/runner/internal/Client"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	executor "github.com/Khaymah/dhow/apps/runner/internal/Executor"
+	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
+	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
+	fake "github.com/Khaymah/dhow/apps/runner/internal/Sandbox/Fake"
+	"github.com/Khaymah/dhow/internal/jobspec"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 const (

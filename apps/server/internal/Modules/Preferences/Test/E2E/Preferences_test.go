@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	preferences "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Preferences"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	preferences "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences"
 )
 
 type prefs struct {

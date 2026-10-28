@@ -5,7 +5,7 @@ import (
 	"net/netip"
 	"time"
 
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 )
 
 type Principal struct {

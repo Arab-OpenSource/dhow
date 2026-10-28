@@ -12,9 +12,9 @@ import (
 
 	"github.com/google/uuid"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
 )
 
 const (

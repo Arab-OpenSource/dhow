@@ -3,9 +3,9 @@ package preferences
 import (
 	"context"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Preferences/Gen"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Preferences/Models"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences/Gen"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences/Models"
 )
 
 const (

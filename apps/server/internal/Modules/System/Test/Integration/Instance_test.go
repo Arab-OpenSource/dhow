@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	migrations "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Migrations"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
-	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	migrations "github.com/Khaymah/dhow/apps/server/internal/Database/Migrations"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	dbtest "github.com/Khaymah/dhow/apps/server/internal/Database/Testing"
+	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 func testPool(t *testing.T) *pgxpool.Pool {

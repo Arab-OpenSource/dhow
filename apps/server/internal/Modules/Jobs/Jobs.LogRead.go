@@ -10,10 +10,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
 )
 
 func logText(data []byte) string {

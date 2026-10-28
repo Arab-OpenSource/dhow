@@ -7,10 +7,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 )
 
 func (s *Service) ResolveToken(ctx context.Context, hash []byte, now time.Time) (auth.ResolvedToken, error) {

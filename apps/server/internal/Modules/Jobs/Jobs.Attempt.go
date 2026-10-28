@@ -12,13 +12,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/proto"
 
-	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
-	"github.com/Arab-OpenSource/dhow/internal/jobspec"
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	dbtx "github.com/Khaymah/dhow/apps/server/internal/Database/Tx"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
+	"github.com/Khaymah/dhow/internal/jobspec"
+	"github.com/Khaymah/dhow/internal/runnersig"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 const failureReasonPrefix = "FAILURE_REASON_"

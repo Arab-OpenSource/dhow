@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 )
 
 const origin = "https://dhow.example.com"

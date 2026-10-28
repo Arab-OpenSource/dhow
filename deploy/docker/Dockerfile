@@ -33,8 +33,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath \
       -ldflags "-s -w -buildid= \
-        -X github.com/Arab-OpenSource/dhow/internal/buildinfo.version=${VERSION} \
-        -X github.com/Arab-OpenSource/dhow/internal/buildinfo.commit=${COMMIT}" \
+        -X github.com/Khaymah/dhow/internal/buildinfo.version=${VERSION} \
+        -X github.com/Khaymah/dhow/internal/buildinfo.commit=${COMMIT}" \
       -o /out/dhow-server ./apps/server/cmd/dhow-server
 
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
@@ -44,7 +44,7 @@ ARG COMMIT=unknown
 
 LABEL org.opencontainers.image.title="Dhow" \
       org.opencontainers.image.description="Self-hosted continuous deployment control plane" \
-      org.opencontainers.image.source="https://github.com/Arab-OpenSource/dhow" \
+      org.opencontainers.image.source="https://github.com/Khaymah/dhow" \
       org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}"

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
+	appcrypto "github.com/Khaymah/dhow/apps/server/internal/Core/Crypto"
 )
 
 const (

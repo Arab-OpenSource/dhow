@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 )
 
 type streamLimiter struct {

@@ -6,10 +6,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session/Models"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Session/Models"
 )
 
 func (s *Service) BeginOidcLogin(ctx context.Context, provider string) (models.OidcAuthorization, error) {

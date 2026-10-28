@@ -3,8 +3,8 @@ package middleware
 import (
 	"net/http"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	response "github.com/Khaymah/dhow/apps/server/internal/Core/Response"
 )
 
 func BodyLimit(n int64) func(http.Handler) http.Handler {

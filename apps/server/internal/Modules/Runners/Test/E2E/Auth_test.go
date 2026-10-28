@@ -13,9 +13,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	"github.com/Khaymah/dhow/internal/runnersig"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 func challenge(t *testing.T, rc *apptest.RunnerClient, runnerID string) *runnerv1.IssuedChallenge {

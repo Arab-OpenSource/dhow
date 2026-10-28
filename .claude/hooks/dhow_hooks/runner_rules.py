@@ -3,7 +3,7 @@ import re
 from .common import GENERATED_PATH, is_test, new_lines
 
 RUNNER_INTERNAL = "apps/runner/internal/"
-RUNNER_IMPORT_PREFIX = "github.com/Arab-OpenSource/dhow/apps/runner/internal/"
+RUNNER_IMPORT_PREFIX = "github.com/Khaymah/dhow/apps/runner/internal/"
 RUNNER_LAYERS = ("App", "Agent", "Config", "Identity", "Client", "Executor", "Journal", "Masking", "Logs", "Sandbox")
 RUNNER_ALLOWED_IMPORTS = {
     "App": set(RUNNER_LAYERS),
@@ -20,7 +20,7 @@ RUNNER_ALLOWED_IMPORTS = {
 PASCAL_DIR = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 PASCAL_GO_FILE = re.compile(r"^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*\.go$")
 GO_IMPORT_PATH = re.compile(r'"' + re.escape(RUNNER_IMPORT_PREFIX) + r'([^"]+)"')
-SERVER_IMPORT = re.compile(r'"github\.com/Arab-OpenSource/dhow/apps/server/')
+SERVER_IMPORT = re.compile(r'"github\.com/Khaymah/dhow/apps/server/')
 
 
 def is_runner_go(rel):

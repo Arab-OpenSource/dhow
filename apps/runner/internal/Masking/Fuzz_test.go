@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
+	masking "github.com/Khaymah/dhow/apps/runner/internal/Masking"
 )
 
 func FuzzMasker(f *testing.F) {

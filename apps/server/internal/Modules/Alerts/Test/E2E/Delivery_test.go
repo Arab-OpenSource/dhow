@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
 )
 
 type heldMailer struct {

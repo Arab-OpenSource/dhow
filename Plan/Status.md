@@ -6,7 +6,7 @@
 
 ## الريبو والوصول
 
-- الريبو `Khaymah/dhow`، واسمه القديم `Arab-OpenSource/dhow` بيعمل redirect.
+- الريبو `Khaymah/dhow`، واسمه القديم `Khaymah/dhow` بيعمل redirect.
 - أدوات GitHub في الجلسات بتشتغل بالاسم القديم، ومابيوصلش منها أحداث للـ PRs، فالـ CI بيتراجع يدوي (`get_check_runs`).
 - الـ proxy بيرفض مسح الـ branches ورفع الـ tags. الـ branches بتتمسح بعد الدمج بـ `delete-merged-branch.yml`، والـ tags بتتعمل من GitHub نفسه.
 

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit/Models"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Audit/Models"
 )
 
 func sample() models.Event {

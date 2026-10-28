@@ -10,14 +10,14 @@ import (
 	"sync"
 	"time"
 
-	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	executor "github.com/Arab-OpenSource/dhow/apps/runner/internal/Executor"
-	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
-	journal "github.com/Arab-OpenSource/dhow/apps/runner/internal/Journal"
-	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
-	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
+	client "github.com/Khaymah/dhow/apps/runner/internal/Client"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	executor "github.com/Khaymah/dhow/apps/runner/internal/Executor"
+	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
+	journal "github.com/Khaymah/dhow/apps/runner/internal/Journal"
+	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 type Runner struct {

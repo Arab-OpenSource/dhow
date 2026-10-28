@@ -13,11 +13,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit/Models"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	dbtx "github.com/Khaymah/dhow/apps/server/internal/Database/Tx"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Audit/Models"
 )
 
 const (

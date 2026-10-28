@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
-	fake "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox/Fake"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+	fake "github.com/Khaymah/dhow/apps/runner/internal/Sandbox/Fake"
 )
 
 var ErrDriverMissing = errors.New("is not built into this test build; only the fake driver is")

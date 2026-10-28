@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	mailer "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Mail"
+	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
 )
 
 type FakeMailer struct {

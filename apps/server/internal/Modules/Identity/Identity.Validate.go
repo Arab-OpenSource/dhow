@@ -3,9 +3,9 @@ package identity
 import (
 	"regexp"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Models"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity/Models"
 )
 
 const (

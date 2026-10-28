@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 )
 
 const oidcTestSecret = "Zq3vT8wLp2Rk9sXy4Nb7Hc1Jd6Fg0Ma5"

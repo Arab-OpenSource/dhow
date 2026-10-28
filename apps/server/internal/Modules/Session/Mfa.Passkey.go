@@ -14,9 +14,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session/Models"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Session/Models"
 )
 
 const messageNoPasskeys = "errors.noPasskeys"

@@ -8,7 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
+	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
 )
 
 const (

@@ -7,11 +7,12 @@
 package runnerv1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -238,7 +239,7 @@ const file_dhow_runner_v1_registration_proto_rawDesc = "" +
 	"\x12server_key_version\x18\x05 \x01(\x05R\x10serverKeyVersion2d\n" +
 	"\x13RegistrationService\x12M\n" +
 	"\bRegister\x12\x1f.dhow.runner.v1.RegisterRequest\x1a .dhow.runner.v1.RegisterResponseB\xd0\x01\n" +
-	"\x12com.dhow.runner.v1B\x11RegistrationProtoP\x01ZMgithub.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
+	"\x12com.dhow.runner.v1B\x11RegistrationProtoP\x01ZMgithub.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
 
 var (
 	file_dhow_runner_v1_registration_proto_rawDescOnce sync.Once

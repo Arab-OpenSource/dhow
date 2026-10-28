@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	i18n "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/I18n"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
 )
 
 const fallbackErrorBody = `{"Success":false,"Error":{"Code":"INTERNAL","Message":"Something went wrong. Try again later."}}` + "\n"

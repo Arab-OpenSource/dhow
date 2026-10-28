@@ -13,7 +13,7 @@ import (
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 )
 
 var (

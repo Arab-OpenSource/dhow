@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apptest "github.com/Arab-OpenSource/dhow/apps/server/internal/App/Testing"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
+	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
 )
 
 const checkViolation = "23514"

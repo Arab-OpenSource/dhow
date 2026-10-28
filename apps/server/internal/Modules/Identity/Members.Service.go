@@ -6,13 +6,13 @@ import (
 
 	"github.com/google/uuid"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
-	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity/Models"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
+	dbtx "github.com/Khaymah/dhow/apps/server/internal/Database/Tx"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity/Models"
 )
 
 func checkRoleChange(actor policy.Role, target member, next policy.Role) error {

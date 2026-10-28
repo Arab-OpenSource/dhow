@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
+	masking "github.com/Khaymah/dhow/apps/runner/internal/Masking"
 )
 
 const secret = `p@ss/w0rd+"quoted"&<tag> ok`

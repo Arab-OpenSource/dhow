@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
-	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
+	masking "github.com/Khaymah/dhow/apps/runner/internal/Masking"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 type server struct {

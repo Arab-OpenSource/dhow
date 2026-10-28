@@ -22,12 +22,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	identity "github.com/Arab-OpenSource/dhow/apps/runner/internal/Identity"
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
-	"github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
+	client "github.com/Khaymah/dhow/apps/runner/internal/Client"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
+	"github.com/Khaymah/dhow/internal/runnersig"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
+	"github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1/runnerv1connect"
 )
 
 const origin = "https://dhow.example.com"

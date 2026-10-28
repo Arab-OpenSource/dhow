@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
-	"github.com/Arab-OpenSource/dhow/internal/logging"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	response "github.com/Khaymah/dhow/apps/server/internal/Core/Response"
+	"github.com/Khaymah/dhow/internal/logging"
 )
 
 func Recover(log *slog.Logger) func(http.Handler) http.Handler {

@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
+	"github.com/Khaymah/dhow/internal/runnersig"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 var remoteCounter atomic.Int64

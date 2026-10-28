@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
-	appcrypto "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Crypto"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	appcrypto "github.com/Khaymah/dhow/apps/server/internal/Core/Crypto"
 )
 
 const bearerScheme = "Bearer "

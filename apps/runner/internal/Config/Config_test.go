@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 )
 
 type env map[string]string

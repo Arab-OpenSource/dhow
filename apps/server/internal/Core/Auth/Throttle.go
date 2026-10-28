@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
+	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
 )
 
 const maxShift = 30

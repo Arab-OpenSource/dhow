@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	middleware "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Middleware"
+	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
 )
 
 func clientIPOf(trusted []netip.Prefix, remote string, forwarded []string) netip.Addr {

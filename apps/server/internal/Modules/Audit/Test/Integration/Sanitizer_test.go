@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
-	dbtest "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Testing"
-	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
-	"github.com/Arab-OpenSource/dhow/internal/logging"
+	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	dbtest "github.com/Khaymah/dhow/apps/server/internal/Database/Testing"
+	audit "github.com/Khaymah/dhow/apps/server/internal/Modules/Audit"
+	"github.com/Khaymah/dhow/internal/logging"
 )
 
 type loggedFixture struct {

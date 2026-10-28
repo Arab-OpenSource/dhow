@@ -10,10 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	app "github.com/Arab-OpenSource/dhow/apps/server/internal/App"
-	jobs "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs"
-	"github.com/Arab-OpenSource/dhow/internal/jobspec"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	app "github.com/Khaymah/dhow/apps/server/internal/App"
+	jobs "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs"
+	"github.com/Khaymah/dhow/internal/jobspec"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 const TestImage = "registry.example.com/dhow/test@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

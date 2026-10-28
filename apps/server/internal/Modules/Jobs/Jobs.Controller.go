@@ -6,11 +6,11 @@ import (
 
 	"github.com/google/uuid"
 
-	apperrors "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Errors"
-	policy "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Policy"
-	response "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Response"
-	gen "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Gen"
-	models "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Jobs/Models"
+	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
+	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
+	response "github.com/Khaymah/dhow/apps/server/internal/Core/Response"
+	gen "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Gen"
+	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
 )
 
 const (

@@ -7,13 +7,13 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	client "github.com/Arab-OpenSource/dhow/apps/runner/internal/Client"
-	config "github.com/Arab-OpenSource/dhow/apps/runner/internal/Config"
-	logs "github.com/Arab-OpenSource/dhow/apps/runner/internal/Logs"
-	masking "github.com/Arab-OpenSource/dhow/apps/runner/internal/Masking"
-	sandbox "github.com/Arab-OpenSource/dhow/apps/runner/internal/Sandbox"
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
-	runnerv1 "github.com/Arab-OpenSource/dhow/packages/proto/gen/go/dhow/runner/v1"
+	client "github.com/Khaymah/dhow/apps/runner/internal/Client"
+	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
+	masking "github.com/Khaymah/dhow/apps/runner/internal/Masking"
+	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
+	"github.com/Khaymah/dhow/internal/runnersig"
+	runnerv1 "github.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1"
 )
 
 var (

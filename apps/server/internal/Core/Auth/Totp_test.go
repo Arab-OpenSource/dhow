@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
+	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 )
 
 var rfcSecret = []byte("12345678901234567890")

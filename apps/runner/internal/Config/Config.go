@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Arab-OpenSource/dhow/internal/jobspec"
+	"github.com/Khaymah/dhow/internal/jobspec"
 )
 
 const (

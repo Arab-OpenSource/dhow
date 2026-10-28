@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Arab-OpenSource/dhow/internal/runnersig"
+	"github.com/Khaymah/dhow/internal/runnersig"
 )
 
 func TestMessagesAreDomainSeparatedAndUnambiguous(t *testing.T) {
