@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	config "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"
@@ -10,9 +11,10 @@ import (
 )
 
 type PartitionResult struct {
-	Skipped bool
-	Created int
-	Dropped int
+	Skipped    bool
+	Created    int
+	Dropped    int
+	Unreadable []string
 }
 
 func (s *Service) MaintainLogPartitions(ctx context.Context) (PartitionResult, error) {
@@ -38,8 +40,13 @@ func (s *Service) MaintainLogPartitions(ctx context.Context) (PartitionResult, e
 			return fmt.Errorf("drop expired log partitions: %w", err)
 		}
 		out.Created, out.Dropped = int(created), int(dropped)
-		return nil
+		out.Unreadable, err = q.UnreadableLogPartitions(ctx)
+		return err
 	})
+	if err == nil && len(out.Unreadable) > 0 {
+		s.log.WarnContext(ctx, "job log partitions without a dated name are never dropped; rename or detach them",
+			"partitions", strings.Join(out.Unreadable, ","))
+	}
 	return out, err
 }
 

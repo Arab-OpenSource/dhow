@@ -348,3 +348,14 @@ func (q *Queries) TryLockLogPartitions(ctx context.Context) (bool, error) {
 	err := row.Scan(&column_1)
 	return column_1, err
 }
+
+const unreadableLogPartitions = `-- name: UnreadableLogPartitions :one
+SELECT "UnreadableLogPartitions"()::text[]
+`
+
+func (q *Queries) UnreadableLogPartitions(ctx context.Context) ([]string, error) {
+	row := q.db.QueryRow(ctx, unreadableLogPartitions)
+	var column_1 []string
+	err := row.Scan(&column_1)
+	return column_1, err
+}

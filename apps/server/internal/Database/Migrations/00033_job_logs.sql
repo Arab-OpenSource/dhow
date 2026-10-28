@@ -1,6 +1,4 @@
 -- +goose Up
-CREATE UNIQUE INDEX "UX_JobAttempts_Id_Job_Organization" ON "JobAttempts" ("Id", "JobId", "OrganizationId");
-
 ALTER TABLE "JobAttempts"
     ADD COLUMN "LogTruncatedAt" timestamptz,
     ADD COLUMN "LateResultLoggedAt" timestamptz;
@@ -18,8 +16,7 @@ CREATE TABLE "LogChunks" (
     "StepIndex"      integer CHECK ("StepIndex" BETWEEN 0 AND 99),
     "EmittedAt"      timestamptz,
     "Data"           bytea NOT NULL CHECK (octet_length("Data") BETWEEN 1 AND 65536),
-    PRIMARY KEY ("Id", "CreatedAt"),
-    FOREIGN KEY ("AttemptId", "JobId", "OrganizationId") REFERENCES "JobAttempts" ("Id", "JobId", "OrganizationId")
+    PRIMARY KEY ("Id", "CreatedAt")
 ) PARTITION BY RANGE ("CreatedAt");
 
 CREATE INDEX "IX_LogChunks_Attempt_Seq" ON "LogChunks" ("AttemptId", "Seq");
@@ -43,12 +40,37 @@ $$;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
+CREATE FUNCTION "LogPartitionDay"("Name" TEXT) RETURNS date LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE
+    "Digits" TEXT;
+    "Parsed" date;
+BEGIN
+    IF "Name" IS NULL OR "Name" !~ '^LogChunks_[0-9]{8}$' THEN
+        RETURN NULL;
+    END IF;
+    "Digits" := substring("Name" FROM 11);
+    BEGIN
+        "Parsed" := to_date("Digits", 'YYYYMMDD');
+    EXCEPTION WHEN datetime_field_overflow OR invalid_datetime_format THEN
+        RETURN NULL;
+    END;
+    IF to_char("Parsed", 'YYYYMMDD') <> "Digits" THEN
+        RETURN NULL;
+    END IF;
+    RETURN "Parsed";
+END
+$$;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
 CREATE FUNCTION "EnsureLogPartitions"("DaysAhead" integer) RETURNS integer LANGUAGE plpgsql AS $$
 DECLARE
-    "Parent"  regclass := '"LogChunks"'::regclass;
-    "Schema"  TEXT;
-    "Target"  date;
-    "Created" integer := 0;
+    "Parent"   regclass := '"LogChunks"'::regclass;
+    "Schema"   TEXT;
+    "Target"   date;
+    "Name"     TEXT;
+    "Existing" regclass;
+    "Created"  integer := 0;
 BEGIN
     IF "DaysAhead" < 0 OR "DaysAhead" > 31 THEN
         RAISE EXCEPTION 'log partitions are made from 0 to 31 days ahead, not %', "DaysAhead"
@@ -57,11 +79,16 @@ BEGIN
     SELECT n.nspname INTO "Schema" FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.oid = "Parent";
     FOR "Offset" IN 0.."DaysAhead" LOOP
         "Target" := "LogPartitionToday"() + "Offset";
-        IF to_regclass(format('%I.%I', "Schema", "LogPartitionName"("Target"))) IS NULL THEN
-            EXECUTE format('CREATE TABLE %I.%I PARTITION OF %s FOR VALUES FROM (%L) TO (%L)',
-                "Schema", "LogPartitionName"("Target"), "Parent",
-                "LogPartitionBound"("Target"), "LogPartitionBound"("Target" + 1));
+        "Name" := "LogPartitionName"("Target");
+        "Existing" := to_regclass(format('%I.%I', "Schema", "Name"));
+        IF "Existing" IS NULL THEN
+            EXECUTE format('CREATE TABLE %I.%I (LIKE %s INCLUDING ALL)', "Schema", "Name", "Parent");
+            EXECUTE format('ALTER TABLE %s ATTACH PARTITION %I.%I FOR VALUES FROM (%L) TO (%L)',
+                "Parent", "Schema", "Name", "LogPartitionBound"("Target"), "LogPartitionBound"("Target" + 1));
             "Created" := "Created" + 1;
+        ELSIF NOT EXISTS (SELECT 1 FROM pg_inherits i WHERE i.inhrelid = "Existing" AND i.inhparent = "Parent") THEN
+            RAISE EXCEPTION 'table %.% exists but is not a partition of "LogChunks"; attach it or rename it', "Schema", "Name"
+                USING ERRCODE = 'object_not_in_prerequisite_state';
         END IF;
     END LOOP;
     RETURN "Created";
@@ -83,8 +110,8 @@ BEGIN
         SELECT c.oid::regclass AS "Partition"
         FROM pg_inherits i
         JOIN pg_class c ON c.oid = i.inhrelid
-        WHERE i.inhparent = '"LogChunks"'::regclass AND c.relname ~ '^LogChunks_[0-9]{8}$'
-          AND to_date(substring(c.relname FROM 11), 'YYYYMMDD') < "LogPartitionToday"() - "RetentionDays"
+        WHERE i.inhparent = '"LogChunks"'::regclass
+          AND "LogPartitionDay"(c.relname) < "LogPartitionToday"() - "RetentionDays"
         ORDER BY c.relname
     LOOP
         EXECUTE format('DROP TABLE %s', "Child"."Partition");
@@ -96,6 +123,15 @@ $$;
 -- +goose StatementEnd
 
 -- +goose StatementBegin
+CREATE FUNCTION "UnreadableLogPartitions"() RETURNS TEXT[] LANGUAGE sql STABLE AS $$
+    SELECT COALESCE(array_agg(c.relname::text ORDER BY c.relname), '{}')
+    FROM pg_inherits i
+    JOIN pg_class c ON c.oid = i.inhrelid
+    WHERE i.inhparent = '"LogChunks"'::regclass AND "LogPartitionDay"(c.relname) IS NULL
+$$;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
 CREATE FUNCTION "LogPartitionReady"() RETURNS boolean LANGUAGE sql STABLE AS $$
     SELECT EXISTS (
         SELECT 1
@@ -103,6 +139,21 @@ CREATE FUNCTION "LogPartitionReady"() RETURNS boolean LANGUAGE sql STABLE AS $$
         JOIN pg_class c ON c.oid = i.inhrelid
         WHERE i.inhparent = '"LogChunks"'::regclass AND c.relname = "LogPartitionName"("LogPartitionToday"())
     )
+$$;
+-- +goose StatementEnd
+
+-- +goose StatementBegin
+DO $$
+DECLARE
+    "Function" TEXT;
+BEGIN
+    FOREACH "Function" IN ARRAY ARRAY[
+        '"LogPartitionName"(date)', '"LogPartitionBound"(date)', '"LogPartitionToday"()', '"LogPartitionDay"(text)',
+        '"EnsureLogPartitions"(integer)', '"DropLogPartitions"(integer)', '"UnreadableLogPartitions"()', '"LogPartitionReady"()'
+    ] LOOP
+        EXECUTE format('ALTER FUNCTION %I.%s SET search_path = pg_catalog, %I, pg_temp', current_schema(), "Function", current_schema());
+    END LOOP;
+END
 $$;
 -- +goose StatementEnd
 
@@ -170,10 +221,11 @@ $$;
 -- +goose StatementEnd
 DROP TABLE "LogChunks";
 DROP FUNCTION "LogPartitionReady"();
+DROP FUNCTION "UnreadableLogPartitions"();
 DROP FUNCTION "DropLogPartitions"(integer);
 DROP FUNCTION "EnsureLogPartitions"(integer);
+DROP FUNCTION "LogPartitionDay"(text);
 DROP FUNCTION "LogPartitionToday"();
 DROP FUNCTION "LogPartitionBound"(date);
 DROP FUNCTION "LogPartitionName"(date);
 ALTER TABLE "JobAttempts" DROP COLUMN "LateResultLoggedAt", DROP COLUMN "LogTruncatedAt";
-DROP INDEX "UX_JobAttempts_Id_Job_Organization";

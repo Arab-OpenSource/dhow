@@ -208,6 +208,7 @@ type Querier interface {
 	TouchRunner(ctx context.Context, arg TouchRunnerParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	TryLockLogPartitions(ctx context.Context) (bool, error)
+	UnreadableLogPartitions(ctx context.Context) ([]string, error)
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
 	UpdateRunner(ctx context.Context, arg UpdateRunnerParams) (Runner, error)
 	UpdateRunnerThrottle(ctx context.Context, arg UpdateRunnerThrottleParams) error

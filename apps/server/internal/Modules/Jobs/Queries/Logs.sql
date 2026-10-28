@@ -79,3 +79,6 @@ SELECT "DropLogPartitions"(@retention_days::integer)::integer;
 
 -- name: LogPartitionReady :one
 SELECT "LogPartitionReady"()::boolean;
+
+-- name: UnreadableLogPartitions :one
+SELECT "UnreadableLogPartitions"()::text[];

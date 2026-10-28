@@ -176,7 +176,7 @@ func TestTheLogMigrationRollsBackCompletely(t *testing.T) {
 			   AND table_name = 'JobAttempts' AND column_name IN ('LogTruncatedAt', 'LateResultLoggedAt'))`).Scan(&n))
 		return n
 	}
-	assert.Equal(t, 5+6+2, objects(), "the parent, four partitions, six functions and two columns")
+	assert.Equal(t, 5+8+2, objects(), "the parent, four partitions, eight functions and two columns")
 	require.NoError(t, m.DownTo(ctx, 31))
 	assert.Zero(t, objects())
 	var jobs int
@@ -184,5 +184,91 @@ func TestTheLogMigrationRollsBackCompletely(t *testing.T) {
 	assert.Equal(t, 1, jobs, "the jobs migration is untouched")
 	_, err = m.Up(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, 5+6+2, objects())
+	assert.Equal(t, 5+8+2, objects())
+}
+
+func locksHeld(t *testing.T, tx pgx.Tx, table string) []string {
+	t.Helper()
+	rows, err := tx.Query(t.Context(), `SELECT l.mode FROM pg_locks l WHERE l.pid = pg_backend_pid() AND l.relation = to_regclass($1) ORDER BY 1`,
+		pgx.Identifier{table}.Sanitize())
+	require.NoError(t, err)
+	modes, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	require.NoError(t, err)
+	return modes
+}
+
+func TestPartitionDDLNeverLocksTheAttempts(t *testing.T) {
+	env := apptest.New(t)
+	_, err := env.Pool.Exec(t.Context(), `DROP TABLE `+pgx.Identifier{dayName(t, env, 3)}.Sanitize())
+	require.NoError(t, err)
+	makeOldPartition(t, env, -40)
+
+	tx, err := env.Pool.Begin(t.Context())
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	var created int
+	require.NoError(t, tx.QueryRow(t.Context(), `SELECT "EnsureLogPartitions"(3)`).Scan(&created))
+	assert.Equal(t, 1, created)
+	assert.Empty(t, locksHeld(t, tx, "JobAttempts"), "creating a partition takes no lock on the attempts")
+	assert.NotContains(t, locksHeld(t, tx, "LogChunks"), "AccessExclusiveLock", "attaching a new partition keeps reads and appends running")
+	assert.Contains(t, locksHeld(t, tx, "LogChunks"), "ShareUpdateExclusiveLock")
+	require.NoError(t, tx.Commit(t.Context()))
+
+	tx, err = env.Pool.Begin(t.Context())
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	var dropped int
+	require.NoError(t, tx.QueryRow(t.Context(), `SELECT "DropLogPartitions"(30)`).Scan(&dropped))
+	assert.Equal(t, 1, dropped)
+	assert.Empty(t, locksHeld(t, tx, "JobAttempts"), "dropping a partition takes no lock on the attempts")
+	assert.Contains(t, locksHeld(t, tx, "LogChunks"), "AccessExclusiveLock", "a drop briefly blocks the log table, bounded by lock_timeout (ADR-0052)")
+}
+
+func TestPartitionsWithUnreadableNamesAreSkippedNotFatal(t *testing.T) {
+	env := apptest.New(t)
+	makeOldPartition(t, env, -40)
+	for name, from := range map[string]string{"LogChunks_20261399": "2001-01-01", "LogChunksManual": "2001-01-02"} {
+		_, err := env.Pool.Exec(t.Context(), `CREATE TABLE `+pgx.Identifier{name}.Sanitize()+
+			` PARTITION OF "LogChunks" FOR VALUES FROM ('`+from+` 00:00:00+00') TO ('`+from+` 12:00:00+00')`)
+		require.NoError(t, err)
+	}
+	res, err := env.Wired.Jobs.MaintainLogPartitions(t.Context())
+	require.NoError(t, err, "a partition with a bad name never wedges maintenance")
+	assert.Equal(t, 1, res.Dropped, "the dated old partition is still dropped")
+	assert.Equal(t, []string{"LogChunksManual", "LogChunks_20261399"}, res.Unreadable)
+	names := partitions(t, env)
+	assert.Contains(t, names, "LogChunks_20261399")
+	assert.Contains(t, names, "LogChunksManual")
+	assert.Contains(t, env.Logs.String(), "job log partitions without a dated name are never dropped")
+}
+
+func TestATableWithThePartitionNameThatIsNotAttachedFailsMaintenance(t *testing.T) {
+	env := apptest.New(t)
+	future := dayName(t, env, 3)
+	_, err := env.Pool.Exec(t.Context(), `DROP TABLE `+pgx.Identifier{future}.Sanitize())
+	require.NoError(t, err)
+	_, err = env.Pool.Exec(t.Context(), `CREATE TABLE `+pgx.Identifier{future}.Sanitize()+` (LIKE "LogChunks" INCLUDING ALL)`)
+	require.NoError(t, err)
+	_, err = env.Wired.Jobs.MaintainLogPartitions(t.Context())
+	require.ErrorContains(t, err, "is not a partition of")
+	assert.NotContains(t, partitions(t, env), future)
+}
+
+func TestThePartitionFunctionsPinTheirSearchPath(t *testing.T) {
+	env := apptest.New(t)
+	var schema string
+	require.NoError(t, env.Pool.QueryRow(t.Context(), `SELECT current_schema()`).Scan(&schema))
+	rows, err := env.Pool.Query(t.Context(), `SELECT p.proname, COALESCE(array_to_string(p.proconfig, ';'), '')
+		FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+		WHERE n.nspname = current_schema() AND (p.proname LIKE '%LogPartition%') ORDER BY 1`)
+	require.NoError(t, err)
+	type fn struct {
+		Name, Config string
+	}
+	fns, err := pgx.CollectRows(rows, pgx.RowToStructByPos[fn])
+	require.NoError(t, err)
+	require.Len(t, fns, 8)
+	for _, f := range fns {
+		assert.Equal(t, "search_path=pg_catalog, "+schema+", pg_temp", f.Config, f.Name)
+	}
 }
