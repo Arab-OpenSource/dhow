@@ -442,6 +442,15 @@ class DatabaseRules(unittest.TestCase):
         self.assertIn("PascalCase", edit(self.MIGRATION, ddl.replace("%I.%I", "%s")))
         self.assertIn("PascalCase", edit(self.MIGRATION, ddl.replace("%I.%I", "log_chunks_x")))
 
+    def test_a_dynamic_partition_copied_with_like_needs_no_columns_of_its_own(self):
+        ddl = "EXECUTE format('CREATE TABLE %I.%I (LIKE %s INCLUDING ALL)', s, n, p);\n"
+        self.assertIsNone(edit(self.MIGRATION, ddl))
+        self.assertIsNone(edit(self.MIGRATION, ddl.replace("%s INCLUDING ALL", '"LogChunks"')))
+        self.assertIn("base column", edit(self.MIGRATION, ddl.replace("LIKE %s INCLUDING ALL", '"Data" bytea')))
+        self.assertIn("base column", edit(self.MIGRATION, ddl.replace("%s INCLUDING ALL", "%s INCLUDING ALL, \"Extra\" TEXT")))
+        self.assertIn("base column", edit(self.MIGRATION, 'CREATE TABLE "Copy" (LIKE "LogChunks" INCLUDING ALL);\n'),
+                      "a named table must declare its columns")
+
     def test_translation_tables_follow_the_same_rule(self):
         translations = GOOD_TABLE.replace("Projects", "ProjectTranslations").replace('"Name" text NOT NULL', '"Locale" text NOT NULL')
         self.assertIsNone(edit(self.MIGRATION, translations))

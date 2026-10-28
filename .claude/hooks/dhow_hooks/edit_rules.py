@@ -47,6 +47,7 @@ PARTITIONED_ID = re.compile(r'(?i)"Id"\s+uuid\s+NOT\s+NULL\s+DEFAULT\s+uuidv7\(\
 PARTITIONED_KEY = re.compile(r'(?i)\bPRIMARY\s+KEY\s*\(\s*"Id"\s*,\s*"[A-Z][A-Za-z0-9]*"')
 PARTITION_BY = re.compile(r"(?i)^\s*PARTITION\s+BY\b")
 FORMAT_IDENTIFIER = re.compile(r"^(%I\.)?%I$")
+LIKE_COPY = re.compile(r"(?i)^\s*LIKE\s+(%s|%I|\"[A-Z][A-Za-z0-9]*\")(\s+INCLUDING\s+ALL)?\s*$")
 SQL_TIMESTAMP_NO_TZ = re.compile(r"(?i)\btimestamp\b(?!\s*(?:\(\d+\))?\s*with\s+time\s+zone)")
 SQL_VARCHAR = re.compile(r"(?i)\b(varchar|character\s+varying)\b")
 SQL_TRANSLATED_COLUMN = re.compile(r'(?m)^\s*"([A-Z][A-Za-z0-9]*[a-z0-9](?:Ar|En))"\s+[A-Za-z]')
@@ -384,6 +385,8 @@ def check_migration_rules(rel, added, old, **_):
         return None
     for name, statement, body, trailer in table_bodies(added):
         if name in BASE_COLUMN_TABLE_ALLOWLIST or statement in old:
+            continue
+        if FORMAT_IDENTIFIER.match(name) and LIKE_COPY.match(body.rstrip(")")):
             continue
         for index, (pattern, wanted) in enumerate(BASE_COLUMNS):
             if index == 0 and partitioned_id(body, trailer):
