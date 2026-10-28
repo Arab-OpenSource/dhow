@@ -58,12 +58,31 @@ func encodings(v []byte, add func([]byte)) {
 			add(base64Window(raw, v, shift))
 		}
 	}
+	wrapped(base64.StdEncoding.EncodeToString(v), add)
 	add([]byte(url.QueryEscape(string(v))))
 	add([]byte(url.PathEscape(string(v))))
 	add([]byte(hex.EncodeToString(v)))
 	add([]byte(strings.ToUpper(hex.EncodeToString(v))))
 	for _, j := range jsonForms(v) {
 		add(j)
+	}
+}
+
+var wrapWidths = []int{64, 76}
+
+const minWrappedTail = 8
+
+func wrapped(encoded string, add func([]byte)) {
+	for _, width := range wrapWidths {
+		if len(encoded) <= width {
+			continue
+		}
+		for i := 0; i < len(encoded); i += width {
+			line := encoded[i:min(i+width, len(encoded))]
+			if len(line) >= minWrappedTail {
+				add([]byte(line))
+			}
+		}
 	}
 }
 

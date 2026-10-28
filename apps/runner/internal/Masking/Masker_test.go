@@ -196,3 +196,21 @@ func TestLongOrBinarySecretsSkipTheEncodedForms(t *testing.T) {
 	assert.Len(t, masking.Variants([]byte("bin\x00ary-value")), 1)
 }
 
+func TestWrappedBase64IsMasked(t *testing.T) {
+	value := strings.Repeat("a long secret that wraps when encoded ", 3)
+	m := masking.New()
+	m.Add([]byte(value))
+	encoded := base64.StdEncoding.EncodeToString([]byte(value))
+	for _, width := range []int{64, 76} {
+		var wrapped strings.Builder
+		for i := 0; i < len(encoded); i += width {
+			wrapped.WriteString(encoded[i:min(i+width, len(encoded))] + "\n")
+		}
+		out := m.MaskString(wrapped.String())
+		for _, line := range strings.Split(strings.TrimSpace(wrapped.String()), "\n") {
+			if len(line) >= 8 {
+				assert.NotContains(t, out, line, "width %d", width)
+			}
+		}
+	}
+}
