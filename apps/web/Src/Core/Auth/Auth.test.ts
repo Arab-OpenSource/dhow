@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canEditOrganization, canReadAudit, canReadMembers, ROLES } from '@/Core/Auth/AuthTypes';
+import { canEditOrganization, canReadAudit, canReadMembers, ROLES, secondFactorCovers } from '@/Core/Auth/AuthTypes';
 import { isLengthValid, PASSWORD_MAX_LENGTH, scorePassword } from '@/Core/Auth/PasswordStrength';
 import { agoOf, formatClock, formatDateTime } from '@/Core/Format/TimeFormat';
 
@@ -63,5 +63,13 @@ describe('time formatting', () => {
     expect(formatDateTime('2026-10-27T12:00:00Z', 'en')).toContain('2026');
     expect(formatDateTime('2026-10-27T12:00:00Z', 'ar')).toMatch(/2026/);
     expect(formatDateTime('nope', 'en')).toBe('');
+  });
+});
+
+describe('who the second-step rule covers', () => {
+  it('matches the server: nobody when off, owners and admins for admins, every role for everyone', () => {
+    expect(ROLES.filter((role) => secondFactorCovers('off', role))).toEqual([]);
+    expect(ROLES.filter((role) => secondFactorCovers('admins', role))).toEqual(['owner', 'admin']);
+    expect(ROLES.filter((role) => secondFactorCovers('everyone', role))).toEqual(ROLES);
   });
 });
