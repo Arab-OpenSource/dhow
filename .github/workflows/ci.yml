@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
@@ -14,6 +15,7 @@ concurrency:
 
 jobs:
   go:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Go (lint, test, vulnerabilities)
     runs-on: ubuntu-24.04
     services:
@@ -78,6 +80,7 @@ jobs:
         run: make hooks-test
 
   timing:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Go (timing side channels)
     runs-on: ubuntu-24.04
     services:
@@ -107,6 +110,7 @@ jobs:
         run: make timing
 
   web:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Web (lint, typecheck, test, build, size)
     runs-on: ubuntu-24.04
     env:
@@ -149,6 +153,7 @@ jobs:
         run: pnpm size
 
   image:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Image (build, smoke test, SBOM, vulnerability scan)
     runs-on: ubuntu-24.04
     env:
