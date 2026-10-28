@@ -70,9 +70,9 @@ confirm() {
       read -r -p "$question $hint: " reply
     fi
     reply=${reply:-$default}
-    case ${reply,,} in
-      y | yes) return 0 ;;
-      n | no) return 1 ;;
+    case $reply in
+      [yY] | [yY][eE][sS]) return 0 ;;
+      [nN] | [nN][oO]) return 1 ;;
     esac
     printf 'Answer y or n.\n' >&2
   done
@@ -122,7 +122,7 @@ on_wsl() {
   [[ -n ${WSL_DISTRO_NAME:-} || -n ${WSL_INTEROP:-} ]] && return 0
   compgen -G '/proc/sys/fs/binfmt_misc/WSLInterop*' >/dev/null && return 0
   [[ -r /proc/sys/kernel/osrelease ]] && release=$(</proc/sys/kernel/osrelease)
-  [[ ${release,,} == *microsoft* || ${release,,} == *wsl* ]]
+  [[ $release == *[Mm]icrosoft* || $release == *[Ww][Ss][Ll]* ]]
 }
 
 drop_windows_paths() {

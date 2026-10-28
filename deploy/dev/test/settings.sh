@@ -59,5 +59,9 @@ if (ask_valid answer "Port" Y is_port "Type a number." 2>/dev/null); then
   failures=$((failures + 1))
 fi
 
+detect_platform
+on_wsl || true
+drop_windows_paths
+
 ((failures == 0)) || exit 1
 printf 'settings checks passed\n'
