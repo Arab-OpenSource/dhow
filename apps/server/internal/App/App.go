@@ -18,6 +18,7 @@ import (
 	runnerauth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RunnerAuth"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
+	preferences "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Preferences"
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
@@ -33,6 +34,7 @@ type Options struct {
 	Audit     *audit.Service
 	Runners   *runners.Service
 	Tokens    *tokens.Service
+	Prefs     *preferences.Service
 	Gate      *runnerauth.Gate
 	CSRF      *auth.CSRF
 	APITokens *auth.APITokens
@@ -48,6 +50,7 @@ func Policies() []policy.Rule {
 	rules = append(rules, audit.Policies()...)
 	rules = append(rules, runners.Policies()...)
 	rules = append(rules, tokens.Policies()...)
+	rules = append(rules, preferences.Policies()...)
 	return rules
 }
 
@@ -124,6 +127,9 @@ func publicRouter(o Options) chi.Router {
 		}
 		if o.Tokens != nil {
 			tokens.Routes(api, tokens.Deps{Service: o.Tokens, Guard: guard, Log: o.Log})
+		}
+		if o.Prefs != nil {
+			preferences.Routes(api, preferences.Deps{Service: o.Prefs, Guard: guard, Log: o.Log})
 		}
 	})
 

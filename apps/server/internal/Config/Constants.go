@@ -76,6 +76,13 @@ const (
 )
 
 const (
+	PreferencesBodyMaxBytes = 128 << 10
+	MaxCustomThemes         = 50
+	ThemeNameMax            = 40
+	DefaultThemeID          = "sea"
+)
+
+const (
 	SetupTokenTTL   = time.Hour
 	SetupTokenBytes = 32
 )

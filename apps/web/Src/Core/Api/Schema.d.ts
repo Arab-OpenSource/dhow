@@ -454,6 +454,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signed-in user's display preferences
+         * @description The language, the active theme, the custom themes and the chosen organization. `Saved` is false until the user saves preferences for the first time, so the web app can move what it kept in the browser to the server. An organization the user is no longer a member of comes back as null.
+         */
+        get: operations["getPreferences"];
+        /**
+         * Replace the signed-in user's display preferences
+         * @description Replaces every field. `ThemeId` must name a system theme or one of `CustomThemes`. A custom theme sets every theme color as lower-case `#rrggbb`. `OrganizationId` must be an organization the user belongs to, or null.
+         */
+        put: operations["savePreferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/password": {
         parameters: {
             query?: never;
@@ -1991,6 +2015,36 @@ export interface components {
         CreatedApiTokenResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["CreatedApiToken"];
         };
+        /** @description One `#rrggbb` color for every theme token, keyed by the token name (`canvas`, `t1`, `a1`, ...). */
+        ThemeColors: {
+            [key: string]: string;
+        };
+        CustomTheme: {
+            Id: string;
+            Name: string;
+            Colors: components["schemas"]["ThemeColors"];
+        };
+        SavePreferencesRequest: {
+            Locale: components["schemas"]["Locale"];
+            ThemeId: string;
+            CustomThemes: components["schemas"]["CustomTheme"][];
+            /** Format: uuid */
+            OrganizationId: string | null;
+        };
+        Preferences: {
+            Locale: components["schemas"]["Locale"];
+            ThemeId: string;
+            CustomThemes: components["schemas"]["CustomTheme"][];
+            /** Format: uuid */
+            OrganizationId: string | null;
+            /** @description False until the first save. */
+            Saved: boolean;
+            /** Format: date-time */
+            UpdatedAt?: string | null;
+        };
+        PreferencesResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Preferences"];
+        };
     };
     responses: {
         /** @description An error. Never contains internal details. */
@@ -2614,6 +2668,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The preferences. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencesResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    savePreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePreferencesRequest"];
+            };
+        };
+        responses: {
+            /** @description The saved preferences. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreferencesResponse"];
                 };
             };
             default: components["responses"]["Error"];

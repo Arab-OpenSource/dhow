@@ -20,6 +20,7 @@ import (
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	audit "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Identity"
+	preferences "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Preferences"
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
@@ -134,6 +135,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Audit:     auditService,
 		Runners:   runnersService,
 		Tokens:    tokensService,
+		Prefs:     preferences.NewService(in.Pool, in.Log, in.Now),
 		Gate:      gate,
 		CSRF:      csrf,
 		APITokens: apiTokens,

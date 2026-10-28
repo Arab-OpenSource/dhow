@@ -36,6 +36,8 @@ tags:
     description: >-
       Personal API tokens (`dhow_pat_...`) for the CLI, CI and integrations, scoped to one organization. Served by the
       Tokens module. Routes marked with `ApiToken` also accept `Authorization: Bearer <token>` instead of a session.
+  - name: preferences
+    description: The signed-in user's language, themes and chosen organization. Served by the Preferences module.
   - name: audit
     description: The tamper-evident audit log. Served by the Audit module.
   - name: runners
@@ -612,6 +614,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MeResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/preferences:
+    get:
+      operationId: getPreferences
+      tags: [preferences]
+      summary: The signed-in user's display preferences
+      description: >-
+        The language, the active theme, the custom themes and the chosen organization. `Saved` is false until the user
+        saves preferences for the first time, so the web app can move what it kept in the browser to the server. An
+        organization the user is no longer a member of comes back as null.
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: savePreferences
+      tags: [preferences]
+      summary: Replace the signed-in user's display preferences
+      description: >-
+        Replaces every field. `ThemeId` must name a system theme or one of `CustomThemes`. A custom theme sets every
+        theme color as lower-case `#rrggbb`. `OrganizationId` must be an organization the user belongs to, or null.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavePreferencesRequest"
+      responses:
+        "200":
+          description: The saved preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferencesResponse"
         default:
           $ref: "#/components/responses/Error"
   /me/password:
@@ -3480,3 +3527,73 @@ components:
           properties:
             Data:
               $ref: "#/components/schemas/CreatedApiToken"
+    ThemeColors:
+      type: object
+      maxProperties: 64
+      additionalProperties:
+        type: string
+        maxLength: 7
+      description: One `#rrggbb` color for every theme token, keyed by the token name (`canvas`, `t1`, `a1`, ...).
+    CustomTheme:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Colors]
+      properties:
+        Id:
+          type: string
+          maxLength: 40
+        Name:
+          type: string
+          maxLength: 160
+        Colors:
+          $ref: "#/components/schemas/ThemeColors"
+    SavePreferencesRequest:
+      type: object
+      additionalProperties: false
+      required: [Locale, ThemeId, CustomThemes, OrganizationId]
+      properties:
+        Locale:
+          $ref: "#/components/schemas/Locale"
+        ThemeId:
+          type: string
+          maxLength: 40
+        CustomThemes:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/CustomTheme"
+        OrganizationId:
+          type: string
+          format: uuid
+          nullable: true
+    Preferences:
+      type: object
+      additionalProperties: false
+      required: [Locale, ThemeId, CustomThemes, OrganizationId, Saved]
+      properties:
+        Locale:
+          $ref: "#/components/schemas/Locale"
+        ThemeId:
+          type: string
+        CustomThemes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomTheme"
+        OrganizationId:
+          type: string
+          format: uuid
+          nullable: true
+        Saved:
+          type: boolean
+          description: False until the first save.
+        UpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    PreferencesResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Preferences"
