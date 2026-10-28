@@ -57,6 +57,8 @@ func TestAnOldFencingTokenIsRefusedAfterTheJobIsLeasedAgain(t *testing.T) {
 	assert.Equal(t, "lost", v.Attempts[0].State)
 	assert.Equal(t, "LEASE_LOST", v.Attempts[0].FailureReason)
 	assert.Equal(t, "running", v.Attempts[1].State)
+	assert.Equal(t, old.Ref.GetFencingToken(), v.Attempts[0].FencingToken)
+	assert.Equal(t, next.Ref.GetFencingToken(), v.Attempts[1].FencingToken, "the API shows the token of each attempt")
 }
 
 func TestStartHappensOnceAndNeedsProof(t *testing.T) {

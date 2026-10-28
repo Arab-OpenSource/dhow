@@ -251,8 +251,11 @@ type Job struct {
 
 // JobAttempt defines model for JobAttempt.
 type JobAttempt struct {
-	ExitCode          *int               `json:"ExitCode,omitempty"`
-	FailureReason     *string            `json:"FailureReason,omitempty"`
+	ExitCode      *int    `json:"ExitCode,omitempty"`
+	FailureReason *string `json:"FailureReason,omitempty"`
+
+	// FencingToken The fencing token of the attempt's lease. Every attempt gets a larger one than the attempts before it, and the server refuses any call from a runner that holds an older token.
+	FencingToken      int64              `json:"FencingToken"`
 	FinishedAt        *time.Time         `json:"FinishedAt,omitempty"`
 	Id                openapi_types.UUID `json:"Id"`
 	LeasedAt          time.Time          `json:"LeasedAt"`
