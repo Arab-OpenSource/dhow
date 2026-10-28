@@ -30,33 +30,6 @@ func (q *Queries) CountActiveUserTokens(ctx context.Context, arg CountActiveUser
 	return count, err
 }
 
-const getApiTokenOwner = `-- name: GetApiTokenOwner :one
-SELECT "UserId", "OrganizationId", "RevokedAt"
-FROM "ApiTokens"
-WHERE "Id" = $1 AND NOT "IsDeleted"
-  AND ($2::uuid IS NULL OR "UserId" = $2::uuid)
-  AND ($3::uuid IS NULL OR "OrganizationId" = $3::uuid)
-`
-
-type GetApiTokenOwnerParams struct {
-	ID             uuid.UUID
-	UserID         *uuid.UUID
-	OrganizationID *uuid.UUID
-}
-
-type GetApiTokenOwnerRow struct {
-	UserId         uuid.UUID
-	OrganizationId uuid.UUID
-	RevokedAt      *time.Time
-}
-
-func (q *Queries) GetApiTokenOwner(ctx context.Context, arg GetApiTokenOwnerParams) (GetApiTokenOwnerRow, error) {
-	row := q.db.QueryRow(ctx, getApiTokenOwner, arg.ID, arg.UserID, arg.OrganizationID)
-	var i GetApiTokenOwnerRow
-	err := row.Scan(&i.UserId, &i.OrganizationId, &i.RevokedAt)
-	return i, err
-}
-
 const getTokenMembership = `-- name: GetTokenMembership :one
 SELECT m."Id", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
@@ -124,7 +97,7 @@ func (q *Queries) InsertApiToken(ctx context.Context, arg InsertApiTokenParams) 
 	return i, err
 }
 
-const listOrganizationApiTokens = `-- name: ListOrganizationApiTokens :many
+const listApiTokens = `-- name: ListApiTokens :many
 SELECT t."Id", t."OrganizationId", o."Name" AS "OrganizationName", t."Name", t."Scopes", t."CreatedAt", t."ExpiresAt",
        t."RevokedAt", t."LastUsedAt", t."LastUsedIp", t."UserId", u."Name" AS "UserName", u."Email" AS "UserEmail",
        (m."Id" IS NOT NULL)::boolean AS "MembershipActive"
@@ -132,17 +105,22 @@ FROM "ApiTokens" t
 JOIN "Organizations" o ON o."Id" = t."OrganizationId"
 JOIN "Users" u ON u."Id" = t."UserId"
 LEFT JOIN "Memberships" m ON m."Id" = t."MembershipId" AND NOT m."IsDeleted"
-WHERE t."OrganizationId" = $1 AND NOT t."IsDeleted"
+WHERE NOT t."IsDeleted"
+  AND ($1::uuid IS NULL OR t."UserId" = $1::uuid)
+  AND ($2::uuid IS NULL OR t."OrganizationId" = $2::uuid)
+  AND ($3::uuid IS NULL OR t."Id" = $3::uuid)
 ORDER BY t."CreatedAt" DESC, t."Id" DESC
-LIMIT $2
+LIMIT $4
 `
 
-type ListOrganizationApiTokensParams struct {
-	OrganizationID uuid.UUID
+type ListApiTokensParams struct {
+	UserID         *uuid.UUID
+	OrganizationID *uuid.UUID
+	ID             *uuid.UUID
 	MaxRows        int32
 }
 
-type ListOrganizationApiTokensRow struct {
+type ListApiTokensRow struct {
 	Id               uuid.UUID
 	OrganizationId   uuid.UUID
 	OrganizationName string
@@ -159,15 +137,20 @@ type ListOrganizationApiTokensRow struct {
 	MembershipActive bool
 }
 
-func (q *Queries) ListOrganizationApiTokens(ctx context.Context, arg ListOrganizationApiTokensParams) ([]ListOrganizationApiTokensRow, error) {
-	rows, err := q.db.Query(ctx, listOrganizationApiTokens, arg.OrganizationID, arg.MaxRows)
+func (q *Queries) ListApiTokens(ctx context.Context, arg ListApiTokensParams) ([]ListApiTokensRow, error) {
+	rows, err := q.db.Query(ctx, listApiTokens,
+		arg.UserID,
+		arg.OrganizationID,
+		arg.ID,
+		arg.MaxRows,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListOrganizationApiTokensRow{}
+	items := []ListApiTokensRow{}
 	for rows.Next() {
-		var i ListOrganizationApiTokensRow
+		var i ListApiTokensRow
 		if err := rows.Scan(
 			&i.Id,
 			&i.OrganizationId,
@@ -194,74 +177,18 @@ func (q *Queries) ListOrganizationApiTokens(ctx context.Context, arg ListOrganiz
 	return items, nil
 }
 
-const listUserApiTokens = `-- name: ListUserApiTokens :many
-SELECT t."Id", t."OrganizationId", o."Name" AS "OrganizationName", t."Name", t."Scopes", t."CreatedAt", t."ExpiresAt",
-       t."RevokedAt", t."LastUsedAt", t."LastUsedIp", t."UserId", u."Name" AS "UserName", u."Email" AS "UserEmail",
-       (m."Id" IS NOT NULL)::boolean AS "MembershipActive"
-FROM "ApiTokens" t
-JOIN "Organizations" o ON o."Id" = t."OrganizationId"
-JOIN "Users" u ON u."Id" = t."UserId"
-LEFT JOIN "Memberships" m ON m."Id" = t."MembershipId" AND NOT m."IsDeleted"
-WHERE t."UserId" = $1 AND NOT t."IsDeleted"
-ORDER BY t."CreatedAt" DESC, t."Id" DESC
-LIMIT $2
+const lockUserForTokens = `-- name: LockUserForTokens :one
+SELECT "Id"
+FROM "Users"
+WHERE "Id" = $1 AND NOT "IsDeleted" AND NOT "Disabled"
+FOR UPDATE
 `
 
-type ListUserApiTokensParams struct {
-	UserID  uuid.UUID
-	MaxRows int32
-}
-
-type ListUserApiTokensRow struct {
-	Id               uuid.UUID
-	OrganizationId   uuid.UUID
-	OrganizationName string
-	Name             string
-	Scopes           []string
-	CreatedAt        time.Time
-	ExpiresAt        time.Time
-	RevokedAt        *time.Time
-	LastUsedAt       *time.Time
-	LastUsedIp       string
-	UserId           uuid.UUID
-	UserName         string
-	UserEmail        string
-	MembershipActive bool
-}
-
-func (q *Queries) ListUserApiTokens(ctx context.Context, arg ListUserApiTokensParams) ([]ListUserApiTokensRow, error) {
-	rows, err := q.db.Query(ctx, listUserApiTokens, arg.UserID, arg.MaxRows)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListUserApiTokensRow{}
-	for rows.Next() {
-		var i ListUserApiTokensRow
-		if err := rows.Scan(
-			&i.Id,
-			&i.OrganizationId,
-			&i.OrganizationName,
-			&i.Name,
-			&i.Scopes,
-			&i.CreatedAt,
-			&i.ExpiresAt,
-			&i.RevokedAt,
-			&i.LastUsedAt,
-			&i.LastUsedIp,
-			&i.UserId,
-			&i.UserName,
-			&i.UserEmail,
-			&i.MembershipActive,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) LockUserForTokens(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, lockUserForTokens, id)
+	var Id uuid.UUID
+	err := row.Scan(&Id)
+	return Id, err
 }
 
 const resolveApiToken = `-- name: ResolveApiToken :one

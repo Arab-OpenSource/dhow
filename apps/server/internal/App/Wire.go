@@ -23,6 +23,7 @@ import (
 	runners "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Session"
 	system "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/System"
+	tokens "github.com/Arab-OpenSource/dhow/apps/server/internal/Modules/Tokens"
 	"github.com/Arab-OpenSource/dhow/internal/buildinfo"
 )
 
@@ -113,6 +114,13 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		DB: in.Pool, Keys: runnerKeys, Bus: bus, Origin: auth.OriginOf(in.Config.PublicURL), PublicURL: in.Config.PublicURL.String(),
 		Log: in.Log, Now: in.Now,
 	})
+	apiTokens, err := auth.NewAPITokens(in.Config.SecretKey)
+	if err != nil {
+		return nil, err
+	}
+	tokensService := tokens.NewService(tokens.Options{
+		DB: in.Pool, Tokens: apiTokens, Factors: sessionService, Bus: bus, Log: in.Log, Now: in.Now,
+	})
 	gate := runnerauth.NewGate(runnerauth.GateOptions{Verifier: runnersService, Log: in.Log, Now: in.Now})
 
 	opts := Options{
@@ -121,14 +129,16 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		System: system.Deps{
 			DB: in.Pool, Migrations: in.Migrations, Queries: sqlc.New(in.Pool), Build: in.Build, Log: in.Log,
 		},
-		Identity: identityService,
-		Session:  sessionService,
-		Audit:    auditService,
-		Runners:  runnersService,
-		Gate:     gate,
-		CSRF:     csrf,
-		Now:      in.Now,
-		Web:      in.Web,
+		Identity:  identityService,
+		Session:   sessionService,
+		Audit:     auditService,
+		Runners:   runnersService,
+		Tokens:    tokensService,
+		Gate:      gate,
+		CSRF:      csrf,
+		APITokens: apiTokens,
+		Now:       in.Now,
+		Web:       in.Web,
 	}
 	wired := &Wired{Options: opts, Handler: NewRouter(opts), Identity: identityService}
 	if in.Config.RunnerPlaneSeparate() {

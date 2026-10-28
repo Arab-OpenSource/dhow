@@ -35,7 +35,7 @@ UPDATE "ApiTokens"
 SET "LastUsedAt" = @now::timestamptz, "LastUsedIp" = @ip, "UpdatedAt" = @now
 WHERE "Id" = @id AND ("LastUsedAt" IS NULL OR "LastUsedAt" <= @touch_before::timestamptz);
 
--- name: ListUserApiTokens :many
+-- name: ListApiTokens :many
 SELECT t."Id", t."OrganizationId", o."Name" AS "OrganizationName", t."Name", t."Scopes", t."CreatedAt", t."ExpiresAt",
        t."RevokedAt", t."LastUsedAt", t."LastUsedIp", t."UserId", u."Name" AS "UserName", u."Email" AS "UserEmail",
        (m."Id" IS NOT NULL)::boolean AS "MembershipActive"
@@ -43,21 +43,18 @@ FROM "ApiTokens" t
 JOIN "Organizations" o ON o."Id" = t."OrganizationId"
 JOIN "Users" u ON u."Id" = t."UserId"
 LEFT JOIN "Memberships" m ON m."Id" = t."MembershipId" AND NOT m."IsDeleted"
-WHERE t."UserId" = @user_id AND NOT t."IsDeleted"
+WHERE NOT t."IsDeleted"
+  AND (sqlc.narg(user_id)::uuid IS NULL OR t."UserId" = sqlc.narg(user_id)::uuid)
+  AND (sqlc.narg(organization_id)::uuid IS NULL OR t."OrganizationId" = sqlc.narg(organization_id)::uuid)
+  AND (sqlc.narg(id)::uuid IS NULL OR t."Id" = sqlc.narg(id)::uuid)
 ORDER BY t."CreatedAt" DESC, t."Id" DESC
 LIMIT @max_rows;
 
--- name: ListOrganizationApiTokens :many
-SELECT t."Id", t."OrganizationId", o."Name" AS "OrganizationName", t."Name", t."Scopes", t."CreatedAt", t."ExpiresAt",
-       t."RevokedAt", t."LastUsedAt", t."LastUsedIp", t."UserId", u."Name" AS "UserName", u."Email" AS "UserEmail",
-       (m."Id" IS NOT NULL)::boolean AS "MembershipActive"
-FROM "ApiTokens" t
-JOIN "Organizations" o ON o."Id" = t."OrganizationId"
-JOIN "Users" u ON u."Id" = t."UserId"
-LEFT JOIN "Memberships" m ON m."Id" = t."MembershipId" AND NOT m."IsDeleted"
-WHERE t."OrganizationId" = @organization_id AND NOT t."IsDeleted"
-ORDER BY t."CreatedAt" DESC, t."Id" DESC
-LIMIT @max_rows;
+-- name: LockUserForTokens :one
+SELECT "Id"
+FROM "Users"
+WHERE "Id" = @id AND NOT "IsDeleted" AND NOT "Disabled"
+FOR UPDATE;
 
 -- name: RevokeApiToken :one
 UPDATE "ApiTokens"
@@ -66,10 +63,3 @@ WHERE "Id" = @id AND NOT "IsDeleted" AND "RevokedAt" IS NULL
   AND (sqlc.narg(user_id)::uuid IS NULL OR "UserId" = sqlc.narg(user_id)::uuid)
   AND (sqlc.narg(organization_id)::uuid IS NULL OR "OrganizationId" = sqlc.narg(organization_id)::uuid)
 RETURNING "Id", "UserId", "OrganizationId", "Name";
-
--- name: GetApiTokenOwner :one
-SELECT "UserId", "OrganizationId", "RevokedAt"
-FROM "ApiTokens"
-WHERE "Id" = @id AND NOT "IsDeleted"
-  AND (sqlc.narg(user_id)::uuid IS NULL OR "UserId" = sqlc.narg(user_id)::uuid)
-  AND (sqlc.narg(organization_id)::uuid IS NULL OR "OrganizationId" = sqlc.narg(organization_id)::uuid);

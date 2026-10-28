@@ -123,6 +123,9 @@ func (s *Service) Resolve(ctx context.Context, tokenHash []byte, now time.Time) 
 }
 
 func (s *Service) ConfirmFactor(ctx context.Context, p auth.Principal, f auth.Factor) error {
+	if p.ViaToken() || p.SessionID == uuid.Nil {
+		return apperrors.SessionRequired()
+	}
 	return s.confirmFactor(ctx, p, models.Factor(f))
 }
 

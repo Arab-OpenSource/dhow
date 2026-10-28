@@ -195,7 +195,7 @@ func policyFailure(res apptest.Response) bool {
 		return false
 	}
 	switch res.Error.Code {
-	case "UNAUTHENTICATED", "FORBIDDEN", "CSRF_FAILED", "NOT_FOUND":
+	case "UNAUTHENTICATED", "FORBIDDEN", "CSRF_FAILED", "NOT_FOUND", "SESSION_REQUIRED":
 		return true
 	default:
 		return false
@@ -211,6 +211,16 @@ func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request
 		path = "/sessions/00000000-0000-7000-8000-000000000001"
 		if c.UserID != "" {
 			path = "/sessions/" + sessionIDOf(c)
+		}
+	}
+	if strings.HasPrefix(rule.Path, "/organizations/{id}/api-tokens/{tokenId}") {
+		token := c.Env.SeedAPIToken(mustUUID(fx.byRole[policy.RoleOwner]), mustUUID(fx.orgA))
+		path = strings.NewReplacer("{id}", fx.orgA, "{tokenId}", token.ID.String()).Replace(rule.Path)
+	}
+	if strings.HasPrefix(rule.Path, "/me/api-tokens/{id}") {
+		path = strings.Replace(rule.Path, "{id}", "00000000-0000-7000-8000-000000000005", 1)
+		if c.UserID != "" {
+			path = strings.Replace(rule.Path, "{id}", c.Env.SeedAPIToken(mustUUID(c.UserID), mustUUID(fx.orgB)).ID.String(), 1)
 		}
 	}
 	if strings.HasPrefix(rule.Path, "/me/passkeys/{id}") {

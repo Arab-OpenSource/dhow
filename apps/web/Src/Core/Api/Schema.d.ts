@@ -959,6 +959,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/api-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every API token of the organization
+         * @description Needs `token.manage` (Owner or Admin). Never contains a token value.
+         */
+        get: operations["listOrganizationApiTokens"];
+        put?: never;
+        /**
+         * Create an API token for this organization
+         * @description Needs a browser session and a current factor. Every scope must be allowed by the caller's effective role now, and on every later request the token can do only what both its scopes and its creator's role at that moment allow. The value (`dhow_pat_...`) is in this response only; the server keeps an HMAC of it. A user has at most 50 active tokens.
+         */
+        post: operations["createApiToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/api-tokens/{tokenId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke any API token of the organization
+         * @description Needs `token.manage`. Idempotent.
+         */
+        post: operations["revokeOrganizationApiToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/api-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in user's API tokens in every organization */
+        get: operations["listMyApiTokens"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/api-tokens/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke one of the signed-in user's API tokens
+         * @description Idempotent. Another user's token id answers 404.
+         */
+        post: operations["revokeMyApiToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/invitations/preview": {
         parameters: {
             query?: never;
@@ -1852,6 +1933,63 @@ export interface components {
         };
         LinkedIdentityChangeResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["LinkedIdentityChange"];
+        };
+        /** @enum {string} */
+        ApiTokenScope: "org.read" | "org.update" | "member.read" | "member.manage" | "audit.read" | "runner.read" | "runner.manage";
+        /**
+         * @description `inactive` means the creator is no longer a member of the organization, so the token does nothing until it expires or is revoked.
+         * @enum {string}
+         */
+        ApiTokenStatus: "active" | "expired" | "revoked" | "inactive";
+        ApiTokenOwner: {
+            /** Format: uuid */
+            Id: string;
+            Name: string;
+            Email: string;
+        };
+        ApiToken: {
+            /** Format: uuid */
+            Id: string;
+            /** Format: uuid */
+            OrganizationId: string;
+            OrganizationName: string;
+            Name: string;
+            Scopes: components["schemas"]["ApiTokenScope"][];
+            Status: components["schemas"]["ApiTokenStatus"];
+            Owner: components["schemas"]["ApiTokenOwner"];
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            ExpiresAt: string;
+            /**
+             * Format: date-time
+             * @description Updated at most once a minute.
+             */
+            LastUsedAt?: string | null;
+            LastUsedIp: string;
+            /** Format: date-time */
+            RevokedAt?: string | null;
+        };
+        ApiTokenResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["ApiToken"];
+        };
+        ApiTokenListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["ApiToken"][];
+        };
+        CreateApiTokenRequest: {
+            Name: string;
+            Scopes: components["schemas"]["ApiTokenScope"][];
+            /** @description Every token expires. The longest is 366 days. */
+            ExpiresInDays: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        CreatedApiToken: {
+            Token: components["schemas"]["ApiToken"];
+            /** @description The token, `dhow_pat_` followed by 43 base64url characters. Send it as `Authorization: Bearer <value>`. Shown only in this response. */
+            Value: string;
+        };
+        CreatedApiTokenResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["CreatedApiToken"];
         };
     };
     responses: {
@@ -3279,6 +3417,124 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvitationIssuedResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listOrganizationApiTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tokens, newest first, at most 200. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateApiTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description The token and, this once, its value. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedApiTokenResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeOrganizationApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                tokenId: components["parameters"]["TokenId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The revoked token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listMyApiTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The tokens, newest first, at most 200. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeMyApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The revoked token. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenResponse"];
                 };
             };
             default: components["responses"]["Error"];

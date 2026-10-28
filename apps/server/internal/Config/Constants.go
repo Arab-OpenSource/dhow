@@ -64,6 +64,18 @@ const (
 )
 
 const (
+	APITokenPrefix        = "dhow_pat_"
+	APITokenBytes         = 32
+	APITokenKeyLabel      = "dhow/api-token/v1" //nolint:gosec // A key derivation label, not a credential.
+	APITokenMaxPerUser    = 50
+	APITokenMaxTTLDays    = 366
+	APITokenNameMax       = 100
+	APITokenListLimit     = 200
+	APITokenTouchInterval = time.Minute
+	APITokenMaxScopes     = 16
+)
+
+const (
 	SetupTokenTTL   = time.Hour
 	SetupTokenBytes = 32
 )

@@ -32,6 +32,10 @@ tags:
     description: >-
       Sign-in with external identity providers (OpenID Connect, and GitHub over OAuth 2.0) and the identities linked to
       an account. Served by the Session module, because signing in opens a session.
+  - name: tokens
+    description: >-
+      Personal API tokens (`dhow_pat_...`) for the CLI, CI and integrations, scoped to one organization. Served by the
+      Tokens module. Routes marked with `ApiToken` also accept `Authorization: Bearer <token>` instead of a session.
   - name: audit
     description: The tamper-evident audit log. Served by the Audit module.
   - name: runners
@@ -871,6 +875,7 @@ paths:
       description: Needs `org.read`. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -890,6 +895,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -915,6 +921,7 @@ paths:
       description: Needs `member.read`. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -990,6 +997,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/UserId"
@@ -1019,6 +1027,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/UserId"
@@ -1070,6 +1079,7 @@ paths:
       description: Needs `member.read`.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -1091,6 +1101,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1116,6 +1127,7 @@ paths:
       description: Needs `member.read`. A team of another organization is 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1136,6 +1148,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1164,6 +1177,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1187,6 +1201,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1216,6 +1231,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1241,6 +1257,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1270,6 +1287,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1299,6 +1317,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TeamId"
@@ -1322,6 +1341,7 @@ paths:
         can be resent. Newest first.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -1346,6 +1366,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1372,6 +1393,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/InvitationId"
@@ -1395,6 +1417,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/InvitationId"
@@ -1405,6 +1428,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvitationIssuedResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/api-tokens:
+    get:
+      operationId: listOrganizationApiTokens
+      tags: [tokens]
+      summary: Every API token of the organization
+      description: Needs `token.manage` (Owner or Admin). Never contains a token value.
+      security:
+        - SessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The tokens, newest first, at most 200.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createApiToken
+      tags: [tokens]
+      summary: Create an API token for this organization
+      description: >-
+        Needs a browser session and a current factor. Every scope must be allowed by the caller's effective role now,
+        and on every later request the token can do only what both its scopes and its creator's role at that moment
+        allow. The value (`dhow_pat_...`) is in this response only; the server keeps an HMAC of it. A user has at most
+        50 active tokens.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiTokenRequest"
+      responses:
+        "200":
+          description: The token and, this once, its value.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedApiTokenResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/api-tokens/{tokenId}/revoke:
+    post:
+      operationId: revokeOrganizationApiToken
+      tags: [tokens]
+      summary: Revoke any API token of the organization
+      description: Needs `token.manage`. Idempotent.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/TokenId"
+      responses:
+        "200":
+          description: The revoked token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/api-tokens:
+    get:
+      operationId: listMyApiTokens
+      tags: [tokens]
+      summary: The signed-in user's API tokens in every organization
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The tokens, newest first, at most 200.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /me/api-tokens/{id}/revoke:
+    post:
+      operationId: revokeMyApiToken
+      tags: [tokens]
+      summary: Revoke one of the signed-in user's API tokens
+      description: Idempotent. Another user's token id answers 404.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The revoked token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiTokenResponse"
         default:
           $ref: "#/components/responses/Error"
   /invitations/preview:
@@ -1492,6 +1620,7 @@ paths:
       description: Needs `audit.read`. Newest first. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -1515,6 +1644,7 @@ paths:
         wrong.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       responses:
@@ -1536,6 +1666,7 @@ paths:
         minutes. Never contains a key or a token. A caller who is not a member gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -1557,6 +1688,7 @@ paths:
       description: Needs `runner.read`. Never contains a key or a token. A runner of another organization gets 404.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/RunnerId"
@@ -1579,6 +1711,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/RunnerId"
@@ -1608,6 +1741,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/RunnerId"
@@ -1628,6 +1762,7 @@ paths:
       description: Needs `runner.manage`. Metadata only, the token itself is never shown again.
       security:
         - SessionCookie: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
@@ -1651,6 +1786,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
       requestBody:
@@ -1677,6 +1813,7 @@ paths:
       security:
         - SessionCookie: []
           CsrfToken: []
+        - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/TokenId"
@@ -1699,6 +1836,12 @@ components:
       type: apiKey
       in: header
       name: X-CSRF-Token
+    ApiToken:
+      type: http
+      scheme: bearer
+      description: >-
+        A personal API token. Accepted only on the routes that list it, never together with a session cookie, and
+        without the CSRF token or the Origin check because a browser never sends it on its own.
   parameters:
     Id:
       name: id
@@ -3220,3 +3363,120 @@ components:
           properties:
             Data:
               $ref: "#/components/schemas/LinkedIdentityChange"
+    ApiTokenScope:
+      type: string
+      enum: [org.read, org.update, member.read, member.manage, audit.read, runner.read, runner.manage]
+    ApiTokenStatus:
+      type: string
+      enum: [active, expired, revoked, inactive]
+      description: >-
+        `inactive` means the creator is no longer a member of the organization, so the token does nothing until it
+        expires or is revoked.
+    ApiTokenOwner:
+      type: object
+      additionalProperties: false
+      required: [Id, Name, Email]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Name:
+          type: string
+        Email:
+          type: string
+    ApiToken:
+      type: object
+      additionalProperties: false
+      required: [Id, OrganizationId, OrganizationName, Name, Scopes, Status, Owner, CreatedAt, ExpiresAt, LastUsedIp]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        OrganizationId:
+          type: string
+          format: uuid
+        OrganizationName:
+          type: string
+        Name:
+          type: string
+        Scopes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApiTokenScope"
+        Status:
+          $ref: "#/components/schemas/ApiTokenStatus"
+        Owner:
+          $ref: "#/components/schemas/ApiTokenOwner"
+        CreatedAt:
+          type: string
+          format: date-time
+        ExpiresAt:
+          type: string
+          format: date-time
+        LastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Updated at most once a minute.
+        LastUsedIp:
+          type: string
+        RevokedAt:
+          type: string
+          format: date-time
+          nullable: true
+    ApiTokenResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/ApiToken"
+    ApiTokenListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ApiToken"
+    CreateApiTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [Name, Scopes, ExpiresInDays, CurrentFactor]
+      properties:
+        Name:
+          type: string
+          maxLength: 400
+        Scopes:
+          type: array
+          minItems: 1
+          maxItems: 16
+          items:
+            $ref: "#/components/schemas/ApiTokenScope"
+        ExpiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 366
+          description: Every token expires. The longest is 366 days.
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    CreatedApiToken:
+      type: object
+      additionalProperties: false
+      required: [Token, Value]
+      properties:
+        Token:
+          $ref: "#/components/schemas/ApiToken"
+        Value:
+          type: string
+          description: >-
+            The token, `dhow_pat_` followed by 43 base64url characters. Send it as `Authorization: Bearer <value>`.
+            Shown only in this response.
+    CreatedApiTokenResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/CreatedApiToken"

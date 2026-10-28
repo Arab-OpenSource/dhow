@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	auth "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/Auth"
 	eventbus "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/EventBus"
 	sqlc "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Arab-OpenSource/dhow/apps/server/internal/Database/Tx"
@@ -23,6 +24,9 @@ import (
 const (
 	walkBatch        = 500
 	maxDataEntries   = 24
+	viaKey           = "Via"
+	viaIDKey         = "ViaId"
+	viaAPIToken      = "api_token"
 	maxDataValueLen  = 256
 	instanceChainKey = "instance"
 )
@@ -50,6 +54,7 @@ func (s *Service) Handle(ctx context.Context, ev eventbus.Event) error {
 	if !ok {
 		return fmt.Errorf("audit event %s carries an unexpected payload", ev.Name)
 	}
+	a.Data = withCredential(ctx, a.Data)
 	chains := make([]*uuid.UUID, 0, max(len(a.OrganizationIDs), 1))
 	ids := append([]uuid.UUID(nil), a.OrganizationIDs...)
 	sort.Slice(ids, func(i, j int) bool { return bytes.Compare(ids[i][:], ids[j][:]) < 0 })
@@ -65,6 +70,19 @@ func (s *Service) Handle(ctx context.Context, ev eventbus.Event) error {
 		}
 	}
 	return nil
+}
+
+func withCredential(ctx context.Context, data map[string]string) map[string]string {
+	p, ok := auth.PrincipalFrom(ctx)
+	if !ok || !p.ViaToken() {
+		return data
+	}
+	out := make(map[string]string, len(data)+2)
+	for k, v := range data {
+		out[k] = v
+	}
+	out[viaKey], out[viaIDKey] = viaAPIToken, p.TokenID.String()
+	return out
 }
 
 func chainKey(org *uuid.UUID) string {
