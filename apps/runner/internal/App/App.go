@@ -49,6 +49,8 @@ func Main(ctx context.Context, args []string, env Env) error {
 		env.Harden = hardenProcess
 	}
 	switch args[0] {
+	case CommandAgent:
+		return runAgent(ctx, env)
 	case CommandRegister:
 		return runRegister(ctx, args[1:], env)
 	case CommandRun:

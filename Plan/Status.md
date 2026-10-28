@@ -43,10 +43,9 @@
 
 ### M3.6: driver الـ Podman والـ agent والـ seccomp (`m3/podman`، draft PR #25)
 
-- اتعمل (commitين على الـ branch): طبقة `Agent` في قواعد الاستيراد، وdriver الـ Podman rootless، والـ agent كـ PID 1، وقناة `Wire`، والـ seccomp واختباره.
-- لسه: الـ escape suite والـ limits suite، وjob الـ `isolation` في الـ CI، وADR-0055، والوثائق، وسجل التقدّم.
-- التحقق في job اسمه `isolation` على GitHub Actions بـ `ubuntu-24.04` (قرار Sabry).
-- الأرقام: ADR-0055 والقسم 7 في سجل اليوم.
+- اتعمل: طبقة `Agent`، وdriver الـ Podman rootless، والـ agent كـ PID 1، وقناة `Wire`، والـ seccomp، والـ escape والـ limits suites (`apps/runner/Test/Isolation` و`make runner-isolation`)، وjob الـ `isolation` في الـ CI، وADR-0055، والوثائق، والقسم 7 في سجل اليوم.
+- لسه: الـ suite عمره ما اشتغل، لأن جهاز التطوير cgroup v1 ومفيهوش Podman. التحقق في job الـ `isolation` على GitHub Actions بـ `ubuntu-26.04` (قرار Sabry بعد ما `ubuntu-24.04` طلع فيه Podman 4.9.3). وبعدها المراجعة الأمنية المستقلة.
+- مخاطر معروفة: كشف الـ OOM من `podman inspect`، وتفويض الـ cgroup تحت `systemd-run`. والاتنين هيبانوا من أول تشغيل.
 
 **الخطوات قبل الـ merge لكل واحد:** تكملة اللي لسه، وبعدين `make check`، ومراجعة أمنية مستقلة، وإصلاح الـ findings، وPR، والـ CI أخضر، وsquash merge.
 

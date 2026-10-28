@@ -11,7 +11,18 @@ A runner is the `dhow-runner` process that takes jobs from a Dhow server and run
 
 ## Status
 
-The runner in this release registers, signs in, takes jobs, fences itself, masks secrets and ships logs. The sandbox driver that actually runs a job's steps in rootless Podman arrives with the next milestone step (M3.6), and the Kubernetes driver after it (M3.11). Until then `dhow-runner run` refuses to start and says so, rather than run jobs without isolation. Test builds (`-tags dhowtest`) carry a fake driver that replays recorded output and runs no process.
+The runner registers, signs in, takes jobs, fences itself, masks secrets and ships logs, and runs each job in rootless Podman at the `container` isolation level (M3.6). Egress through the runner's proxy (M3.7), gVisor (M3.8) and the Kubernetes driver (M3.11) come next. Test builds (`-tags dhowtest`) carry a fake driver that replays recorded output and runs no process.
+
+## The sandbox
+
+Each job gets a fresh container that the runner creates with its own Podman configuration, never the machine's:
+
+- **No privileges.** No capabilities, `no-new-privileges`, an embedded seccomp profile that also blocks `unshare` and `setns`, keyrings, BPF, `io_uring`, `perf_event_open`, `ptrace` and every mount call, and a user namespace of its own with 65536 sub-ids.
+- **Nothing from the host.** A read-only root filesystem, no network, private IPC, PID, UTS and cgroup namespaces, `/workspace` and `/tmp` on size-limited tmpfs, and only two read-only mounts: the runner binary as the agent and the control channel.
+- **Limits that fail closed.** CPU, memory without swap, processes and disk come from cgroup v2. After `podman create` the runner inspects the container and refuses to run anything if one setting differs from what it asked for.
+- **An agent as PID 1.** The runner binary runs inside as the agent: it turns off ptrace on itself, runs each step as `/bin/sh -e -s` with the script on stdin, keeps secret files on a `noexec` tmpfs only for the step, and exits when the runner's control channel closes, so the container dies with the runner.
+
+The escape and limits suites (`apps/runner/Test/Isolation`, `make runner-isolation`) run a probe inside a real container and fail if any escape works. CI runs them on every pull request that touches the runner. The decisions are in [ADR-0043](../../Plan/ADR/0043-job-sandbox-rootless-podman.md) and [ADR-0055](../../Plan/ADR/0055-podman-driver-and-agent-implementation.md).
 
 ## How a runner works
 

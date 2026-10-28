@@ -340,8 +340,8 @@ docker run -d --name dhow-pg -e POSTGRES_USER=dhow -e POSTGRES_PASSWORD=dhow -e 
   - **`apps/runner/Test/Isolation`:**
     - `escape-probe` (Go static) وimage اختبار بتتبني محليًا من `scratch`.
     - `make runner-isolation`.
-  - **job في الـ CI اسمه `isolation`** على `ubuntu-24.04`:
-    - Podman 5.8.x موجود على الـ image، والـ job بيتأكد إنه 5.4 أو أحدث، ولو أقدم بيفشل.
+  - **job في الـ CI اسمه `isolation`** على `ubuntu-26.04` (الـ image بتاعة `ubuntu-24.04` طلع فيها Podman 4.9.3، ADR-0055):
+    - Podman من التوزيعة، والـ job بيتأكد إنه 5.4 أو أحدث، ولو أقدم بيفشل.
     - user مخصص بـ subuid.
     - الـ runner تحت `systemd-run -p Delegate=yes -p MemorySwapMax=0 --uid=...`.
 - **قبول:** الـ escape suite والـ limits suite (تحت، من غير أجزاء الشبكة) خضرا، وأي probe بينجح يفشّل الـ job.
@@ -531,7 +531,7 @@ M3.1 ─► M3.2 ─► M3.3 ─► M3.4 ─► M3.12
 |---|---|---|
 | السيرفر (state machine وleases وlogs وroute-table) | ✅ كل PR (Postgres 18 service) | — |
 | الـ runner بالـ driver الوهمي وfuzz قصير | ✅ كل PR | — |
-| escape وlimits على Podman rootless (`container`) | ✅ كل PR يلمس `apps/runner` أو `packages/proto` (`ubuntu-24.04`، وPodman 5.8.x على الـ image) | ✅ Fedora (SELinux enforcing) وDebian 13 وUbuntu 26.04 (قيود AppArmor على الـ userns) |
+| escape وlimits على Podman rootless (`container`) | ✅ كل PR يلمس `apps/runner` أو `packages/proto` (`ubuntu-26.04`، وPodman من التوزيعة) | ✅ Fedora (SELinux enforcing) وDebian 13 وUbuntu 26.04 (قيود AppArmor على الـ userns) |
 | gVisor على الـ host | لو الـ spike ثابت على `ubuntu-24.04` | ✅ ليلي |
 | الفوضى (chaos) | ✅ ليلي وعلى label `chaos` | ✅ قبل كل release |
 | Helm وKubernetes driver وNetworkPolicy | ✅ kind على كل PR يلمس `deploy/helm` أو `Sandbox/Kubernetes` | — |

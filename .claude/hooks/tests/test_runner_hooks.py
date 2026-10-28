@@ -23,7 +23,8 @@ class RunnerLayoutRules(unittest.TestCase):
     def test_allowed_locations(self):
         for rel in ("App/App.go", "App/App.Run.go", "Config/Config.go", "Identity/Identity.go", "Client/Client.Auth.go",
                     "Executor/Executor.go", "Journal/Journal.go", "Masking/Masker.go", "Logs/Logs.Spill.go",
-                    "Sandbox/Sandbox.go", "Sandbox/Fake/Fake.go", "Executor/executor_test.go"):
+                    "Sandbox/Sandbox.go", "Sandbox/Fake/Fake.go", "Sandbox/Podman/Podman.Inspect.go", "Sandbox/Wire/Wire.go",
+                    "Agent/Agent.go", "Executor/executor_test.go"):
             self.assertIsNone(edit(RUNNER + rel, "package x\n"), rel)
 
     def test_unknown_layer_blocked(self):
@@ -78,8 +79,24 @@ class RunnerImportRules(unittest.TestCase):
         for src, dst in cases:
             self.assertIsNone(edit(RUNNER + src, imp(dst)), src + " -> " + dst)
 
+    def test_the_agent_imports_only_the_sandbox_wire(self):
+        self.assertIsNone(edit(RUNNER + "Agent/Agent.go", imp("Sandbox/Wire")))
+        self.assertIsNone(edit(RUNNER + "App/App.go", imp("Agent")))
+        for dst in ("Config", "Executor", "Client", "Identity", "Journal", "Logs", "Masking"):
+            self.assertIn("forbidden import", edit(RUNNER + "Agent/Agent.go", imp(dst)), dst)
+
+    def test_nothing_but_app_imports_the_agent(self):
+        for src in ("Executor/Executor.go", "Sandbox/Podman/Podman.go", "Sandbox/Sandbox.go", "Config/Config.go"):
+            self.assertIn("forbidden import", edit(RUNNER + src, imp("Agent")), src)
+
+    def test_the_podman_driver_stays_a_sandbox_leaf(self):
+        for dst in ("Sandbox", "Sandbox/Wire", "Config"):
+            self.assertIsNone(edit(RUNNER + "Sandbox/Podman/Podman.go", imp(dst)), dst)
+        for dst in ("Masking", "Logs", "Executor"):
+            self.assertIn("forbidden import", edit(RUNNER + "Sandbox/Podman/Podman.go", imp(dst)), dst)
+
     def test_unknown_runner_package_blocked(self):
-        self.assertIn("not a runner layer", edit(RUNNER + "App/App.go", imp("Agent")))
+        self.assertIn("not a runner layer", edit(RUNNER + "App/App.go", imp("Utils")))
 
     def test_server_code_is_never_imported(self):
         src = 'package x\n\nimport "github.com/Arab-OpenSource/dhow/apps/server/internal/Config"\n'
