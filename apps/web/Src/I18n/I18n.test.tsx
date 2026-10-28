@@ -72,7 +72,7 @@ describe('the UI glossary (ADR-0034)', () => {
   });
 
   it('says the coming-soon tooltip in both languages', () => {
-    expect(Ar['shell.soon']).toBe('جاية قريب');
+    expect(Ar['shell.soon']).toBe('قريبًا');
     expect(En['shell.soon']).toBe('Coming soon');
   });
 });

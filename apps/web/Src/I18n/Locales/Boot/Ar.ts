@@ -9,7 +9,7 @@ export const BootAr = {
   'shell.nav.audit': 'سجل الأحداث',
   'shell.nav.settings': 'الإعدادات',
   'shell.nav.account': 'حسابي',
-  'shell.soon': 'جاية قريب',
+  'shell.soon': 'قريبًا',
   'shell.skipToContent': 'روح للمحتوى',
   'shell.brand': 'داو',
   'shell.search': 'دوّر على صفحة أو أمر',

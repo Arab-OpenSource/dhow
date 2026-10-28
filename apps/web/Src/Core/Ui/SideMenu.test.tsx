@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { renderUi } from '@/Core/Testing/Render';
@@ -71,14 +71,24 @@ describe('SideMenu', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
-  it('shows sections that do not exist yet as disabled, with a tooltip on keyboard focus', async () => {
-    const { user } = renderUi(<SideMenu {...build()} />);
+  it('shows sections that do not exist yet as disabled, with a visible coming-soon badge and a tooltip on the phone bar', async () => {
+    const onSelect = vi.fn();
+    const { user } = renderUi(<SideMenu {...build(onSelect)} />);
     const pending = screen.getByRole('button', { name: 'Projects' });
     expect(pending).toHaveAttribute('aria-disabled', 'true');
+    expect(pending).toHaveAccessibleDescription('Coming soon');
+    expect(pending).toHaveClass('cursor-not-allowed', 'text-tertiary');
+    expect(pending).not.toHaveClass('hover:bg-hover');
+    const badge = within(pending).getByText('Coming soon');
+    expect(badge).toHaveAttribute('data-tone', 'mute');
+    expect(badge.parentElement).toHaveClass('max-md:sr-only');
     await user.tab();
     await user.tab();
     expect(pending).toHaveFocus();
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Coming soon');
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('Projects · Coming soon');
+    await user.click(pending);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('makes the account row a real link that marks the open account slide', () => {
@@ -102,6 +112,6 @@ describe('SideMenu', () => {
     renderUi(<SideMenu {...build()} />);
     const nav = screen.getByRole('navigation');
     const names = [...nav.querySelectorAll('a, button')].map((node) => node.textContent);
-    expect(names).toEqual(['Home', 'Projects', 'Team', 'Settings', 'SSabry Dawood']);
+    expect(names).toEqual(['Home', 'ProjectsComing soon', 'Team', 'Settings', 'SSabry Dawood']);
   });
 });
