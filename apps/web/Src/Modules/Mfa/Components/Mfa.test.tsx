@@ -32,7 +32,8 @@ describe('two-step verification in my account', () => {
     const { dialog } = await mount();
     const section = within(dialog).getByRole('list', { name: Ar['mfa.section.title'] });
     expect(within(section).getByText(Ar['mfa.totp.title'])).toBeInTheDocument();
-    expect(within(section).getByText(Ar['mfa.totp.off'])).toBeInTheDocument();
+    expect(within(section).getByText(Ar['mfa.totp.off.alone'])).toBeInTheDocument();
+    expect(within(section).queryByText(Ar['mfa.totp.off'])).not.toBeInTheDocument();
     expect(within(section).getByText(Ar['mfa.recovery.off'])).toBeInTheDocument();
     expect(within(dialog).getByText(Ar['mfa.passkeys.empty'])).toBeInTheDocument();
     expect(within(dialog).getByText(Ar['mfa.passkeys.unsupported'])).toBeInTheDocument();
@@ -43,6 +44,7 @@ describe('two-step verification in my account', () => {
     await user.click(screen.getByRole('button', { name: Ar['mfa.totp.enable'] }));
     const slide = await screen.findByRole('dialog', { name: Ar['totp.slide.title'] });
     expect(router.state.location.href).toBe('/?stack=account,account-totp');
+    await user.click(await within(slide).findByRole('button', { name: Ar['totp.start'] }));
     expect(await within(slide).findByRole('img', { name: Ar['totp.qr'] })).toBeInTheDocument();
     expect(within(slide).getByText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP')).toBeInTheDocument();
     expect(within(slide).queryByRole('group', { name: Ar['factor.methods'] })).not.toBeInTheDocument();
@@ -81,7 +83,7 @@ describe('two-step verification in my account', () => {
     await user.type(screen.getByLabelText(Ar['factor.method.totp']), GOOD_CODE);
     await user.click(screen.getByRole('button', { name: Ar['mfa.totp.disable.confirm'] }));
     expect(await screen.findByText(Ar['mfa.totp.disabled'])).toBeInTheDocument();
-    expect(await screen.findByText(Ar['mfa.totp.off'])).toBeInTheDocument();
+    expect(await screen.findByText(Ar['mfa.totp.off.alone'])).toBeInTheDocument();
   });
 
   it('makes new recovery codes after a confirmation and offers copy and download', async () => {
@@ -118,5 +120,28 @@ describe('two-step verification in my account', () => {
     await user.click(screen.getByRole('button', { name: Ar['mfa.passkeys.remove.confirm'] }));
     expect(await screen.findByText(Ar['mfa.passkeys.removed'])).toBeInTheDocument();
     expect(state.mfa.Passkeys).toHaveLength(0);
+  });
+});
+
+describe('starting TOTP and the TOTP status line', () => {
+  it('calls passkeys enough only when the account has one', async () => {
+    const { dialog } = await mount({ mfa: { TotpEnabled: false, RecoveryCodesRemaining: 10, Passkeys: [passkeyFixture()] } });
+    const section = within(dialog).getByRole('list', { name: Ar['mfa.section.title'] });
+    expect(await within(section).findByText(Ar['mfa.totp.off'])).toBeInTheDocument();
+    expect(within(section).queryByText(Ar['mfa.totp.off.alone'])).not.toBeInTheDocument();
+  });
+
+  it('does not start an enrollment just because the TOTP slide was opened from a link', async () => {
+    const { calls } = startBackend();
+    const user = userEvent.setup();
+    render(<App router={createAppRouter(createMemoryHistory({ initialEntries: ['/?stack=account,account-totp'] }))} queryClient={createQueryClient({ retry: false })} />);
+    const slide = await screen.findByRole('dialog', { name: Ar['totp.slide.title'] });
+    const start = await within(slide).findByRole('button', { name: Ar['totp.start'] });
+    expect(within(slide).getByText(Ar['totp.start.about'])).toBeInTheDocument();
+    expect(posted(calls, '/me/totp')).toHaveLength(0);
+    expect(within(slide).queryByRole('img', { name: Ar['totp.qr'] })).not.toBeInTheDocument();
+    await user.click(start);
+    expect(await within(slide).findByRole('img', { name: Ar['totp.qr'] })).toBeInTheDocument();
+    expect(posted(calls, '/me/totp')).toHaveLength(1);
   });
 });

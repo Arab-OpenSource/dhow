@@ -30,6 +30,16 @@ export interface ISlideViewProps {
   onReturn: () => void;
 }
 
+export const SLIDE_BODY = 'grid min-h-0 flex-1 auto-rows-max content-start gap-block overflow-auto px-card py-card';
+
+export const SlideContent = ({ children }: { children: ReactNode }) => <div className="flex flex-col gap-block">{children}</div>;
+
+export const SlidePinned = ({ children }: { children: ReactNode }) => (
+  <div data-slide-pinned="" className="sticky -top-card z-10 -mt-card -mb-block bg-canvas pt-card pb-block">
+    {children}
+  </div>
+);
+
 type TTrailProps = Pick<ISlideViewProps, 'trail' | 'index' | 'onCrumb'>;
 
 interface ISlideHeaderProps extends Pick<
@@ -164,7 +174,7 @@ export const SlideView = ({
           onCloseAll={onCloseAll}
           onCrumb={onCrumb}
         />
-        <div className="grid min-h-0 flex-1 auto-rows-max content-start gap-block overflow-auto px-card py-card">{slide.children}</div>
+        <div className={SLIDE_BODY}>{slide.children}</div>
         {slide.footer ? (
           <footer className="flex items-center gap-2 border-t border-line px-card py-3">{slide.footer}</footer>
         ) : null}

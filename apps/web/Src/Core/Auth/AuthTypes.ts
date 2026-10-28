@@ -16,6 +16,11 @@ export const SECOND_FACTOR_RULES: readonly TSecondFactorRule[] = ['off', 'admins
 
 export const ruleReach = (rule: TSecondFactorRule): number => SECOND_FACTOR_RULES.indexOf(rule);
 
+const SECOND_FACTOR_ADMIN_ROLES: readonly TRole[] = ['owner', 'admin'];
+
+export const secondFactorCovers = (rule: TSecondFactorRule, role: TRole): boolean =>
+  rule === 'everyone' || (rule === 'admins' && SECOND_FACTOR_ADMIN_ROLES.includes(role));
+
 const AUDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const ORGANIZATION_EDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const MEMBER_READ_ROLES: readonly TRole[] = ['owner', 'admin', 'maintainer', 'developer'];
