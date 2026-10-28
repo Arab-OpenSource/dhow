@@ -223,7 +223,16 @@ func (s *stack) runnerPodman(args ...string) (string, error) {
 }
 
 func (s *stack) sandboxes() []string {
-	out, err := s.runnerPodman("ps", "--all", "--filter", "label=dhow.runner", "--format", "{{.Names}}")
+	return s.listSandboxes("--all")
+}
+
+func (s *stack) runningSandboxes() []string {
+	return s.listSandboxes()
+}
+
+func (s *stack) listSandboxes(flags ...string) []string {
+	args := append([]string{"ps"}, flags...)
+	out, err := s.runnerPodman(append(args, "--filter", "label=dhow.runner", "--format", "{{.Names}}")...)
 	if err != nil || out == "" {
 		return nil
 	}

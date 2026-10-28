@@ -72,22 +72,36 @@ func waitTicks(t *testing.T, id, job string, n int, within time.Duration) {
 
 func waitNoSandboxes(t *testing.T, within time.Duration) time.Duration {
 	t.Helper()
+	return waitUntilEmpty(t, within, "sandboxes", shared.stack.sandboxes)
+}
+
+func waitNothingRunning(t *testing.T, within time.Duration) time.Duration {
+	t.Helper()
+	return waitUntilEmpty(t, within, "running sandboxes", shared.stack.runningSandboxes)
+}
+
+func waitUntilEmpty(t *testing.T, within time.Duration, what string, list func() []string) time.Duration {
+	t.Helper()
 	start := time.Now()
 	for time.Since(start) < within {
-		if len(shared.stack.sandboxes()) == 0 {
+		if len(list()) == 0 {
 			return time.Since(start)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	t.Fatalf("sandboxes still exist after %s: %v", within, shared.stack.sandboxes())
+	t.Fatalf("%s still exist after %s: %v", what, within, list())
 	return within
 }
 
 func jobProcesses() []string {
+	harness := harnessContainerIDs()
 	entries, _ := os.ReadDir("/proc")
 	var out []string
 	for _, e := range entries {
 		if _, err := strconv.Atoi(e.Name()); err != nil {
+			continue
+		}
+		if inContainers(e.Name(), harness) {
 			continue
 		}
 		raw, err := os.ReadFile(filepath.Join("/proc", e.Name(), "status"))
@@ -106,9 +120,30 @@ func jobProcesses() []string {
 	return out
 }
 
+func harnessContainerIDs() []string {
+	out, err := podman("inspect", "--format", "{{.Id}}", pgContainer, regContainer)
+	if err != nil {
+		return nil
+	}
+	return strings.Fields(out)
+}
+
+func inContainers(pid string, ids []string) bool {
+	raw, err := os.ReadFile(filepath.Join("/proc", pid, "cgroup"))
+	if err != nil {
+		return false
+	}
+	for _, id := range ids {
+		if strings.Contains(string(raw), id) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestAJobThatIgnoresTermIsKilledAfterTheGrace(t *testing.T) {
 	name := uniqueName("ignore-term")
-	id := newJob(t, name, jobStep{Name: "stubborn", Run: tickScript(name, 1) + "trap '' TERM\nwhile :; do busybox sleep 1; done\n"})
+	id := newJob(t, name, jobStep{Name: "stubborn", Run: "trap '' TERM\n" + tickScript(name, 1) + "while :; do busybox sleep 1; done\n"})
 	waitTicks(t, id, name, 1, 3*time.Minute)
 	asked := time.Now()
 	shared.api.cancel(t, id)
@@ -135,7 +170,7 @@ func TestKillingTheRunnerMidStepRetriesTheJobOnce(t *testing.T) {
 	id := newJob(t, name, jobStep{Name: "ticks", Run: tickScript(name, 20)})
 	waitTicks(t, id, name, 2, 3*time.Minute)
 	shared.stack.killRunner()
-	gone := waitNoSandboxes(t, 3*time.Second)
+	gone := waitNothingRunning(t, 3*time.Second)
 	t.Logf("the sandbox went away %s after the runner died", gone)
 	require.NoError(t, shared.stack.startRunner())
 	d := shared.api.waitJob(t, id, 4*time.Minute, finished)
@@ -150,7 +185,7 @@ func TestKillingTheRunnerAfterAMutatingStepBeganLosesTheJob(t *testing.T) {
 	id := newJob(t, name, jobStep{Name: "deploy", Mutating: true, Run: tickScript(name, 30)})
 	waitTicks(t, id, name, 2, 3*time.Minute)
 	shared.stack.killRunner()
-	waitNoSandboxes(t, 3*time.Second)
+	waitNothingRunning(t, 3*time.Second)
 	require.NoError(t, shared.stack.startRunner())
 	d := shared.api.waitJob(t, id, 4*time.Minute, finished)
 	assert.Equal(t, "lost", d.Job.State)

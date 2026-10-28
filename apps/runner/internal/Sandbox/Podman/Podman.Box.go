@@ -237,7 +237,7 @@ func (b *box) Kill(ctx context.Context) error {
 	if conn != nil {
 		_ = conn.Close()
 	}
-	if err != nil && !isGone(err) {
+	if err != nil && !isGone(err) && !notRunning(err) {
 		return errors.Join(err, killCgroup(ctx, b.cgroupDir(), killDrainWait))
 	}
 	return killCgroup(ctx, b.cgroupDir(), killDrainWait)
@@ -291,6 +291,10 @@ func (b *box) Inspect(ctx context.Context) (sandbox.Inspection, error) {
 		return sandbox.Inspection{}, err
 	}
 	return sandbox.Inspection{Running: in.State.Running}, nil
+}
+
+func notRunning(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "can only kill running containers")
 }
 
 func isGone(err error) bool {
