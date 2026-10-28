@@ -175,3 +175,20 @@ func TestAGrantThatArrivesLateInTheLongPollIsHeartbeatAtOnce(t *testing.T) {
 	assert.False(t, out.SelfFenced, "the deadline counts from the poll, so the first heartbeat cannot wait a full interval")
 	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_SUCCEEDED, out.Result)
 }
+
+func TestAStartThatOutlivesTheDeadlineNeverStartsTheSandbox(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	srv.Configure(func(k *runnertest.Knobs) {
+		k.LeaseTTL, k.StartDelay, k.HeartbeatFail = 20*time.Second, 12*time.Second, true
+	})
+	spec := runnertest.Spec(&runnerv1.Step{Name: "print", Run: "env"})
+	spec.Secrets = []*runnerv1.SecretRef{{Name: "API_TOKEN", Target: &runnerv1.SecretRef_AsEnv{AsEnv: "API_TOKEN"}}}
+	srv.Enqueue(spec, map[string][]byte{"API_TOKEN": []byte("a-secret-value")})
+	running := r.Start(fake.Recording{}, runnertest.StartOptions{})
+	out := running.Next(t, 40*time.Second)
+	assert.True(t, out.SelfFenced)
+	assert.Equal(t, runnerv1.AttemptResult_ATTEMPT_RESULT_LOST, out.Result)
+	assert.NotContains(t, kinds(running.Driver.Events()), fake.EventStart, "nothing runs once the runner fenced itself")
+	assert.NotContains(t, kinds(running.Driver.Events()), fake.EventExec)
+}

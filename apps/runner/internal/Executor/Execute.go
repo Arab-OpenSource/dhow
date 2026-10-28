@@ -110,8 +110,10 @@ func (a *attempt) start(ctx context.Context) (result, bool) {
 	var res *runnerv1.StartResponse
 	retried := false
 	err := a.retry(ctx, func(rctx context.Context) error {
+		sctx, cancel := context.WithDeadline(rctx, a.fence.Deadline())
+		defer cancel()
 		sent := a.fence.now()
-		r, err := a.e.o.API.Start(rctx, a.ref, proof)
+		r, err := a.e.o.API.Start(sctx, a.ref, proof)
 		if err == nil {
 			a.fence.extend(sent, r.GetControl())
 			res = r
@@ -139,16 +141,31 @@ func (a *attempt) start(ctx context.Context) (result, bool) {
 		a.log.Error("the server refused to start the attempt", "code", client.Code(err).String(), "reason", client.Reason(err))
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
 	}
+	if a.fenced() {
+		return a.lostResult(), false
+	}
 	if err := a.openSecrets(res.GetSecrets()); err != nil {
 		a.log.Error("could not open the job secrets", "error", a.masked(err))
 		a.pipe.Systemf(nil, "dhow: SANDBOX_FAILED: the job secrets could not be opened")
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
+	}
+	if a.fenced() {
+		return a.lostResult(), false
 	}
 	if err := a.currentBox().Start(ctx); err != nil {
 		a.log.Error("could not start the sandbox", "error", a.masked(err))
 		return failed(runnerv1.FailureReason_FAILURE_REASON_SANDBOX_FAILED, 0), false
 	}
 	return result{}, true
+}
+
+func (a *attempt) fenced() bool {
+	select {
+	case <-a.fence.Lost():
+		return true
+	default:
+		return false
+	}
 }
 
 func (a *attempt) currentBox() sandbox.Sandbox {

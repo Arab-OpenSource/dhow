@@ -151,8 +151,23 @@ func (s *Server) control(l *Lease) *runnerv1.LeaseControl {
 	return &runnerv1.LeaseControl{CancelRequested: l.Cancel, LeaseTtlSeconds: ttlSeconds(l.TTL)}
 }
 
-func (h handlers) Start(_ context.Context, req *connect.Request[runnerv1.StartRequest]) (*connect.Response[runnerv1.StartResponse], error) {
+func (s *Server) pause(ctx context.Context, pick func(Knobs) time.Duration) error {
+	s.mu.Lock()
+	d := pick(s.knobs)
+	s.mu.Unlock()
+	select {
+	case <-time.After(d):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (h handlers) Start(ctx context.Context, req *connect.Request[runnerv1.StartRequest]) (*connect.Response[runnerv1.StartResponse], error) {
 	s := h.s
+	if err := s.pause(ctx, func(k Knobs) time.Duration { return k.StartDelay }); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	l, err := s.active(req.Msg.GetLease())
@@ -202,6 +217,9 @@ func (h handlers) Heartbeat(_ context.Context, req *connect.Request[runnerv1.Hea
 	s := h.s
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.knobs.HeartbeatFail {
+		return nil, rpcError(connect.CodeUnavailable, "UNAVAILABLE")
+	}
 	l, err := s.active(req.Msg.GetLease())
 	if err != nil {
 		return nil, err
@@ -229,6 +247,9 @@ func (h handlers) EndStep(_ context.Context, req *connect.Request[runnerv1.EndSt
 	s := h.s
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.knobs.EndStepFail {
+		return nil, rpcError(connect.CodeUnavailable, "UNAVAILABLE")
+	}
 	l, err := s.active(req.Msg.GetLease())
 	if err != nil {
 		return nil, err
