@@ -145,6 +145,18 @@ func (r *Running) Stop() error {
 	}
 }
 
+func (r *Running) Ended(t testing.TB, within time.Duration) error {
+	t.Helper()
+	select {
+	case err := <-r.done:
+		r.done <- err
+		return err
+	case <-time.After(within):
+		t.Fatalf("the runner still runs after %s", within)
+		return nil
+	}
+}
+
 func (r *Running) Next(t testing.TB, within time.Duration) executor.Outcome {
 	t.Helper()
 	select {
