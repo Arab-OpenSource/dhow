@@ -9,12 +9,13 @@ import (
 )
 
 const (
-	configDirName   = "containers"
-	storageDirName  = "storage"
-	runrootDirName  = "run"
-	seccompFileName = "seccomp.json"
-	mountsFileName  = "mounts.conf"
-	traverseDirMode = 0o711
+	configDirName           = "containers"
+	storageDirName          = "storage"
+	runrootDirName          = "run"
+	seccompFileName         = "seccomp.json"
+	mountsFileName          = "mounts.conf"
+	intermediateMountpoints = "intermediate-mountpoint-*"
+	traverseDirMode         = 0o711
 )
 
 const containersConfTemplate = `[containers]
@@ -126,6 +127,19 @@ func writeFile(path string, body []byte) error {
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		return fmt.Errorf("install %s: %w", path, err)
+	}
+	return nil
+}
+
+func (d *Driver) closeRunroot() error {
+	dirs, err := filepath.Glob(filepath.Join(d.paths.runrootDir, intermediateMountpoints))
+	if err != nil {
+		return fmt.Errorf("find the intermediate mountpoints: %w", err)
+	}
+	for _, dir := range dirs {
+		if err := os.Chmod(dir, traverseDirMode); err != nil {
+			return fmt.Errorf("stop other users from listing %s: %w", dir, err)
+		}
 	}
 	return nil
 }
