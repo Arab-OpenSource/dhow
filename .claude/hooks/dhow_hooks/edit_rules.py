@@ -43,6 +43,10 @@ BASE_COLUMNS = (
     (re.compile(r'(?i)"IsDeleted"\s+boolean\s+NOT\s+NULL\s+DEFAULT\s+false'), '"IsDeleted" boolean NOT NULL DEFAULT false'),
 )
 SQL_TABLE_HEAD = re.compile(r"(?i)\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?([^\s(]+)\s*\(")
+PARTITIONED_ID = re.compile(r'(?i)"Id"\s+uuid\s+NOT\s+NULL\s+DEFAULT\s+uuidv7\(\)')
+PARTITIONED_KEY = re.compile(r'(?i)\bPRIMARY\s+KEY\s*\(\s*"Id"\s*,\s*"[A-Z][A-Za-z0-9]*"')
+PARTITION_BY = re.compile(r"(?i)^\s*PARTITION\s+BY\b")
+FORMAT_IDENTIFIER = re.compile(r"^(%I\.)?%I$")
 SQL_TIMESTAMP_NO_TZ = re.compile(r"(?i)\btimestamp\b(?!\s*(?:\(\d+\))?\s*with\s+time\s+zone)")
 SQL_VARCHAR = re.compile(r"(?i)\b(varchar|character\s+varying)\b")
 SQL_TRANSLATED_COLUMN = re.compile(r'(?m)^\s*"([A-Z][A-Za-z0-9]*[a-z0-9](?:Ar|En))"\s+[A-Za-z]')
@@ -352,7 +356,7 @@ def check_sql(rel, added, old, **_):
         return None
     text = "\n".join(new_lines(added, old))
     for m in SQL_CREATE_TABLE.finditer(text):
-        if not QUOTED_PASCAL.match(m.group(1)):
+        if not QUOTED_PASCAL.match(m.group(1)) and not FORMAT_IDENTIFIER.match(m.group(1)):
             return f"{rel}: table names are quoted PascalCase (\"Projects\"), not {m.group(1)}."
     for m in SQL_COLUMN.finditer(text):
         return f"{rel}: column names are quoted PascalCase (\"CreatedAt\"), not {m.group(1)}."
@@ -365,19 +369,30 @@ def table_bodies(text):
         while i < len(text) and depth:
             depth += {"(": 1, ")": -1}.get(text[i], 0)
             i += 1
-        yield m.group(1), text[m.start():i], text[m.end():i]
+        end = text.find(";", i)
+        trailer = text[i:] if end < 0 else text[i:end]
+        yield m.group(1), text[m.start():i], text[m.end():i], trailer
+
+
+def partitioned_id(body, trailer):
+    return PARTITION_BY.search(trailer) is not None and PARTITIONED_ID.search(body) is not None and \
+        PARTITIONED_KEY.search(body) is not None
 
 
 def check_migration_rules(rel, added, old, **_):
     if not MIGRATION_SQL.search(rel):
         return None
-    for name, statement, body in table_bodies(added):
+    for name, statement, body, trailer in table_bodies(added):
         if name in BASE_COLUMN_TABLE_ALLOWLIST or statement in old:
             continue
-        for pattern, wanted in BASE_COLUMNS:
+        for index, (pattern, wanted) in enumerate(BASE_COLUMNS):
+            if index == 0 and partitioned_id(body, trailer):
+                continue
             if not pattern.search(body):
                 return (f"{rel}: table {name} is missing the base column `{wanted}`. Every table has \"Id\", "
-                        "\"CreatedAt\", \"UpdatedAt\" and \"IsDeleted\" (only \"Instance\" is exempt).")
+                        "\"CreatedAt\", \"UpdatedAt\" and \"IsDeleted\" (only \"Instance\" is exempt). A table with "
+                        "PARTITION BY may instead declare `\"Id\" uuid NOT NULL DEFAULT uuidv7()` and a composite "
+                        "`PRIMARY KEY (\"Id\", \"<PartitionColumn>\")`, because Postgres needs the partition key in the primary key.")
     text = "\n".join(new_lines(added, old))
     if SQL_TIMESTAMP_NO_TZ.search(text):
         return f"{rel}: use timestamptz (UTC), never timestamp without time zone."

@@ -408,6 +408,40 @@ class DatabaseRules(unittest.TestCase):
     def test_base_column_types_are_checked(self):
         self.assertIn("uuidv7", edit(self.MIGRATION, GOOD_TABLE.replace("uuid PRIMARY KEY DEFAULT uuidv7()", "bigserial PRIMARY KEY")))
 
+    PARTITIONED = (
+        'CREATE TABLE "LogChunks" (\n'
+        '    "Id" uuid NOT NULL DEFAULT uuidv7(),\n'
+        '    "CreatedAt" timestamptz NOT NULL DEFAULT now(),\n'
+        '    "UpdatedAt" timestamptz NOT NULL DEFAULT now(),\n'
+        '    "IsDeleted" boolean NOT NULL DEFAULT false,\n'
+        '    "Data" bytea NOT NULL,\n'
+        '    PRIMARY KEY ("Id", "CreatedAt")\n'
+        ') PARTITION BY RANGE ("CreatedAt");\n'
+    )
+
+    def test_partitioned_table_may_use_a_composite_key_starting_with_id(self):
+        self.assertIsNone(edit(self.MIGRATION, self.PARTITIONED))
+        self.assertIsNone(edit(self.MIGRATION, self.PARTITIONED.replace(") PARTITION", ")\nPARTITION")))
+
+    def test_composite_key_without_partition_by_is_refused(self):
+        plain = self.PARTITIONED.replace(' PARTITION BY RANGE ("CreatedAt")', "")
+        self.assertIn("uuidv7", edit(self.MIGRATION, plain))
+        later = plain + 'CREATE TABLE "Other" (\n    "Id" uuid PRIMARY KEY DEFAULT uuidv7()\n) PARTITION BY RANGE ("Id");\n'
+        self.assertIn("LogChunks", edit(self.MIGRATION, later))
+
+    def test_partitioned_table_still_needs_id_first_in_the_key_and_the_other_base_columns(self):
+        self.assertIn("uuidv7", edit(self.MIGRATION, self.PARTITIONED.replace('("Id", "CreatedAt")', '("CreatedAt", "Id")')))
+        self.assertIn("uuidv7", edit(self.MIGRATION, self.PARTITIONED.replace("uuid NOT NULL DEFAULT uuidv7()", "uuid NOT NULL")))
+        no_flag = self.PARTITIONED.replace('    "IsDeleted" boolean NOT NULL DEFAULT false,\n', "")
+        self.assertIn("IsDeleted", edit(self.MIGRATION, no_flag))
+
+    def test_dynamic_partition_names_are_format_identifiers(self):
+        ddl = "EXECUTE format('CREATE TABLE %I.%I PARTITION OF %s FOR VALUES FROM (%L) TO (%L)', a, b, c, d, e);\n"
+        self.assertIsNone(edit(self.MIGRATION, ddl))
+        self.assertIsNone(edit(self.MIGRATION, ddl.replace("%I.%I", "%I")))
+        self.assertIn("PascalCase", edit(self.MIGRATION, ddl.replace("%I.%I", "%s")))
+        self.assertIn("PascalCase", edit(self.MIGRATION, ddl.replace("%I.%I", "log_chunks_x")))
+
     def test_translation_tables_follow_the_same_rule(self):
         translations = GOOD_TABLE.replace("Projects", "ProjectTranslations").replace('"Name" text NOT NULL', '"Locale" text NOT NULL')
         self.assertIsNone(edit(self.MIGRATION, translations))
