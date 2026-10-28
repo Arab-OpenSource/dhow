@@ -203,7 +203,7 @@ func TestAPostgresRestartMidJobDoesNotLoseIt(t *testing.T) {
 	name := uniqueName("postgres-restart")
 	id := newJob(t, name, jobStep{Name: "ticks", Run: tickScript(name, 30)})
 	waitTicks(t, name, 2, 3*time.Minute)
-	require.NoError(t, restartPostgres())
+	require.NoError(t, restartPostgres(shared.stack.dbURL))
 	d := shared.api.waitJob(t, id, 4*time.Minute, finished)
 	assert.Equal(t, "succeeded", d.Job.State)
 	assert.Equal(t, 1, d.Job.AttemptCount)

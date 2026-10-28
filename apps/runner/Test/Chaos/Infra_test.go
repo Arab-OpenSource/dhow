@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 const (
@@ -106,20 +108,31 @@ func trustRegistry(home, caPath string) error {
 	return nil
 }
 
-func startPostgres(port, password string) error {
+func startPostgres(port, password, url string) error {
 	_, _ = podman("rm", "--force", pgContainer)
 	if _, err := podman("run", "--detach", "--name", pgContainer, "--publish", "127.0.0.1:"+port+":5432",
 		"--env", "POSTGRES_PASSWORD="+password, "--env", "POSTGRES_DB=dhow", postgresImage); err != nil {
 		return err
 	}
-	return waitPostgres()
+	return waitPostgres(url)
 }
 
-func waitPostgres() error {
+func pingPostgres(url string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	conn, err := pgx.Connect(ctx, url)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = conn.Close(context.Background()) }()
+	return conn.Ping(ctx)
+}
+
+func waitPostgres(url string) error {
 	deadline := time.Now().Add(2 * time.Minute)
 	var last error
 	for time.Now().Before(deadline) {
-		if _, last = podman("exec", pgContainer, "pg_isready", "-U", "postgres", "-d", "dhow"); last == nil {
+		if last = pingPostgres(url); last == nil {
 			return nil
 		}
 		time.Sleep(time.Second)
@@ -141,11 +154,11 @@ func containerReport(name string) string {
 	return "state: " + state + "\nlogs:\n" + string(logs)
 }
 
-func restartPostgres() error {
+func restartPostgres(url string) error {
 	if _, err := podman("restart", "--time", "1", pgContainer); err != nil {
 		return err
 	}
-	return waitPostgres()
+	return waitPostgres(url)
 }
 
 func startRegistry(certs string) error {

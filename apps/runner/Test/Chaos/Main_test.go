@@ -81,11 +81,11 @@ func setUpServices(s *stack, work, certs, caPath string, cleanups *[]func()) err
 		return err
 	}
 	pgPassword := randomHex(16)
-	if err := startPostgres(pgPort, pgPassword); err != nil {
+	s.dbURL = "postgres://postgres:" + pgPassword + "@127.0.0.1:" + pgPort + "/dhow?sslmode=disable"
+	if err := startPostgres(pgPort, pgPassword, s.dbURL); err != nil {
 		return err
 	}
 	*cleanups = append(*cleanups, func() { _, _ = podman("rm", "--force", pgContainer) })
-	s.dbURL = "postgres://postgres:" + pgPassword + "@127.0.0.1:" + pgPort + "/dhow?sslmode=disable"
 	if err := startRegistry(certs); err != nil {
 		return err
 	}
