@@ -47,7 +47,7 @@ export const Tabs = <T extends string>(props: ITabsProps<T>) => {
       ref={listRef}
       role="tablist"
       aria-label={label}
-      className="flex gap-1 overflow-x-auto rounded-md border border-line bg-surface-inset p-1"
+      className="flex min-h-fit shrink-0 gap-1 overflow-x-auto rounded-md border border-line bg-surface-inset p-1"
     >
       {tabs.map((tab) => {
         const selected = tab.id === value;
