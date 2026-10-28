@@ -29,6 +29,7 @@ var (
 	oidcAuthorize     = limitedRoute{"/oidc/authorize", map[string]string{"Provider": "corp"}}
 	oidcCallback      = limitedRoute{"/oidc/callback", map[string]string{"Provider": "corp", "Code": "c", "State": "s"}}
 	passkeyOptions    = limitedRoute{"/sessions/passkey-options", nil}
+	setup             = limitedRoute{"/setup", map[string]string{"SetupToken": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "OwnerName": "O", "Email": "o@example.com", "Password": "correct horse battery staple", "OrganizationName": "O", "OrganizationSlug": "o"}}
 )
 
 func limitedEnv(t *testing.T, configure func(*config.Config)) *apptest.Env {
@@ -78,12 +79,12 @@ func TestTheRateLimitedRoutesArePublicAndMatchThePlan(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []string{
 		"POST /invitations/preview", "POST /invitations/accept", "POST /oidc/authorize", "POST /oidc/callback",
-		"POST /sessions/passkey-options",
+		"POST /sessions/passkey-options", "POST /setup",
 	}, got)
 }
 
 func TestEveryLimitedRouteAnswers429AtTheLimit(t *testing.T) {
-	for _, r := range []limitedRoute{invitationPreview, invitationAccept, oidcAuthorize, oidcCallback, passkeyOptions} {
+	for _, r := range []limitedRoute{invitationPreview, invitationAccept, oidcAuthorize, oidcCallback, passkeyOptions, setup} {
 		t.Run(r.path, func(t *testing.T) {
 			env := limitedEnv(t, nil)
 			for i := range testPublicLimit {

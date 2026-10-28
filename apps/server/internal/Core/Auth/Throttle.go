@@ -1,6 +1,10 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	ratelimit "github.com/Arab-OpenSource/dhow/apps/server/internal/Core/RateLimit"
+)
 
 const maxShift = 30
 
@@ -18,6 +22,6 @@ func LockDuration(failures, free int, base, maxLock time.Duration) time.Duration
 
 func AccountThrottleKey(emailHash string) string { return "account:" + emailHash }
 
-func IPThrottleKey(ip string) string { return "ip:" + ip }
+func IPThrottleKey(ip string) string { return "ip:" + ratelimit.NetworkOf(ip) }
 
 func MfaThrottleKey(userID string) string { return "mfa:" + userID }

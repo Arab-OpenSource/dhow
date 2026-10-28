@@ -71,6 +71,9 @@ func (s *Service) ChangeRole(ctx context.Context, org, target uuid.UUID, role st
 		if err := checkRoleChange(self.Effective, fresh, next); err != nil {
 			return err
 		}
+		if fresh.Direct == policy.RoleOwner && !owner {
+			return apperrors.Conflict()
+		}
 		if fresh.Direct == policy.RoleOwner && next != policy.RoleOwner {
 			if err := protectLastOwner(ctx, q, org, target, fresh.Direct); err != nil {
 				return err
@@ -115,6 +118,9 @@ func (s *Service) RemoveMember(ctx context.Context, org, target uuid.UUID) (mode
 	if !policy.CanManage(actor, current.Direct) {
 		return models.MemberChange{}, apperrors.RoleNotAllowed()
 	}
+	if current.Direct == policy.RoleOwner {
+		return models.MemberChange{}, apperrors.ValidationFailed(detail(fieldUserID, messageOwnerRemoval))
+	}
 	now := s.now()
 	var revoked int64
 	var role policy.Role
@@ -133,8 +139,8 @@ func (s *Service) RemoveMember(ctx context.Context, org, target uuid.UUID) (mode
 		if !policy.CanManage(self.Effective, fresh.Direct) {
 			return apperrors.RoleNotAllowed()
 		}
-		if err := protectLastOwner(ctx, q, org, target, fresh.Direct); err != nil {
-			return err
+		if fresh.Direct == policy.RoleOwner {
+			return apperrors.ValidationFailed(detail(fieldUserID, messageOwnerRemoval))
 		}
 		role = fresh.Direct
 		if err := detach(ctx, q, org, target, now); err != nil {

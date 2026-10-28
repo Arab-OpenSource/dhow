@@ -21,10 +21,14 @@ type Deps struct {
 	Log     *slog.Logger
 }
 
-const limitInvitation = "invitation"
+const (
+	limitInvitation = "invitation"
+	limitSetup      = "setup"
+)
 
 func RateLimited() []ratelimit.Route {
 	return []ratelimit.Route{
+		{Method: http.MethodPost, Path: "/setup", Group: limitSetup},
 		{Method: http.MethodPost, Path: "/invitations/preview", Group: limitInvitation},
 		{Method: http.MethodPost, Path: "/invitations/accept", Group: limitInvitation},
 	}

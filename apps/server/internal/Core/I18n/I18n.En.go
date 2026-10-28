@@ -149,4 +149,5 @@ var enMessages = map[string]string{ //nolint:gosec // This is a message catalog,
 	"errors.rateLimited":                "Too many requests in a row. Wait a little and try again.",
 	"errors.tooManyStreams":             "Too many live logs are open at once. Close some and try again.",
 	"errors.invitationSendLimit":        "This invitation got a new link too many times. Revoke it and send a new invitation.",
+	"errors.ownerRemoval":               "To remove an owner, change their role first. That needs your current factor.",
 }

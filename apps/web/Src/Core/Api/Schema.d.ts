@@ -75,7 +75,7 @@ export interface paths {
         put?: never;
         /**
          * Create the first owner and organization
-         * @description Works only while no owner exists. The setup token is the one logged at boot as `${PUBLIC_URL}/setup#<token>`, is valid for one hour and is single use. The request is atomic: two concurrent calls can never both succeed. The response sets no session: sign in afterwards.
+         * @description Works only while no owner exists. The setup token is the one logged at boot as `${PUBLIC_URL}/setup#<token>`, is valid for one hour and is single use. The request is atomic: two concurrent calls can never both succeed. The response sets no session: sign in afterwards. Limited per client network with `DHOW_RATE_LIMIT_PUBLIC` requests per 10 minutes; above it the answer is 429 `RATE_LIMITED` with `Retry-After`.
          */
         post: operations["setupInstance"];
         delete?: never;

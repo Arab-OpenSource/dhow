@@ -149,4 +149,5 @@ var arMessages = map[string]string{ //nolint:gosec // This is a message catalog,
 	"errors.rateLimited":                "طلبات كتير ورا بعض. استنى شوية وجرّب تاني.",
 	"errors.tooManyStreams":             "فاتح logs حية كتير في نفس الوقت. اقفل شوية منهم وجرّب تاني.",
 	"errors.invitationSendLimit":        "الدعوة دي اتعملها رابط جديد كتير. الغيها وابعت دعوة جديدة.",
+	"errors.ownerRemoval":               "عشان تشيل صاحب مؤسسة، غيّر دوره الأول، وده محتاج تأكيد هويتك.",
 }

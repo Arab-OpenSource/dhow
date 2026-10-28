@@ -145,6 +145,13 @@ export const MemberRemoveCard = ({ organizationId, actor, member, onRemoved }: I
     },
   });
   if (!canManage(actor, member.Role)) return null;
+  if (member.Role === 'owner') {
+    return (
+      <Card title={t('member.remove.title')} icon="trash" padded>
+        <p className="m-0 text-body-sm text-secondary">{t('member.remove.ownerFirst', { name: member.Name })}</p>
+      </Card>
+    );
+  }
 
   return (
     <Card title={t('member.remove.title')} icon="trash" padded>

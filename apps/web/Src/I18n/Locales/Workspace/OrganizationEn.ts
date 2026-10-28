@@ -49,6 +49,7 @@ export const OrganizationEn: Record<keyof typeof OrganizationAr, string> = {
   'member.remove.action': 'Remove {name}',
   'member.remove.confirm': 'Confirm and remove',
   'member.remove.done': '{name} was removed from the organization.',
+  'member.remove.ownerFirst': '{name} is an owner. Change their role above first, which needs your current factor, and then you can remove them.',
   'member.mfa.title': 'Two-step verification',
   'member.mfa.state': 'Second step: {state}',
   'member.mfa.reset': 'Reset two-step verification',
