@@ -50,6 +50,9 @@ func setUp() ([]func(), error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := os.Chmod(work, 0o711); err != nil {
+		return nil, err
+	}
 	_, _ = fmt.Fprintln(os.Stderr, "chaos work dir:", work)
 	s := &stack{work: work, bin: bin, secretKey: randomHex(32), runnerDir: filepath.Join(work, "runner")}
 	if err := os.MkdirAll(s.runnerDir, 0o700); err != nil {
