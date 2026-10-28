@@ -77,3 +77,23 @@ func TestMfaResetNeedsAStrictlyHigherRole(t *testing.T) {
 		assert.Equal(t, c.want, policy.CanResetMfa(c.actor, c.target, c.instanceOwner), "%s resets %s (instance owner %v)", c.actor, c.target, c.instanceOwner)
 	}
 }
+
+func TestJobActionsFollowTheRoleRanks(t *testing.T) {
+	jobActions := []policy.Action{policy.JobRead, policy.JobCreate, policy.JobCancel}
+	for _, low := range policy.Roles() {
+		for _, high := range policy.Roles() {
+			if policy.Rank(high) <= policy.Rank(low) {
+				continue
+			}
+			for _, a := range jobActions {
+				if policy.Allows(low, a) {
+					assert.True(t, policy.Allows(high, a), "%s may %s, so %s must too", low, a, high)
+				}
+			}
+		}
+	}
+	raised := policy.Effective(policy.RoleViewer, policy.RoleAdmin)
+	assert.True(t, policy.Allows(raised, policy.JobCreate), "a team binding to admin lets a viewer create jobs")
+	assert.False(t, policy.Allows(policy.Effective(policy.RoleViewer, policy.RoleDeveloper), policy.JobCancel))
+	assert.True(t, policy.Allows(policy.Effective(policy.RoleDeveloper, policy.RoleMaintainer), policy.JobCancel))
+}
