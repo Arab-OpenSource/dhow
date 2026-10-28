@@ -1,5 +1,6 @@
 import { JobsAr } from '@/I18n/Locales/Workspace/JobsAr';
 import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
+import { RunnersAr } from '@/I18n/Locales/Workspace/RunnersAr';
 
 export const WorkspaceAr = {
   'palette.label': 'الأوامر',
@@ -401,4 +402,5 @@ export const WorkspaceAr = {
   'audit.action.auth.api_token_revoked': 'اتلغى مفتاح API',
   ...OrganizationAr,
   ...JobsAr,
+  ...RunnersAr,
 } as const;

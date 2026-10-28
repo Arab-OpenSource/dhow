@@ -4,7 +4,9 @@ Registration turns a one-time token into a runner identity: a pair of keys that 
 
 ## 1. Create a registration token
 
-An organization owner or admin creates it from the runners page, or with the API:
+An organization owner or admin creates it in the dashboard: open **Runners** in the side menu and choose **Add a runner**. Pick the labels, how many machines the token may register (1 to 50) and how long it stays valid (1, 6 or 24 hours). The next screen shows the token once, next to the exact `dhow-runner register` command for your server and the command that starts the service. Copy the token before you close it: the dashboard never shows it again, and a lost token is revoked from the **Registration tokens** list on the same page.
+
+With the API:
 
 ```sh
 curl -X POST https://dhow.example.com/api/v1/organizations/<org-id>/runner-registration-tokens \
@@ -34,6 +36,20 @@ sudo -u dhow-runner dhow-runner register --url https://dhow.example.com --token-
 The runner prints its runner ID, its organization and its labels. It saved the identity in `$DHOW_RUNNER_STATE_DIR/identity` with mode `0600`, together with the server address and the server's signing key, which every later job grant is checked against.
 
 If the server uses a private CA, set `DHOW_RUNNER_CA_FILE` before registering. If the runner reaches the server on a separate runner listener (`DHOW_RUNNER_LISTEN_ADDR` on the server), set `--url` to that listener and `DHOW_RUNNER_SERVER_ORIGIN` to the server's public address (`DHOW_PUBLIC_URL`), because the runner's signatures name the public origin.
+
+## Manage runners in the dashboard
+
+**Runners** lists every runner of the organization with its state, labels and last-seen time. Owners, admins, maintainers and developers can open it; only owners and admins can change anything.
+
+| State | Meaning |
+|---|---|
+| Online | Seen in the last two minutes, and takes new jobs. |
+| Offline | Active, but not seen in the last two minutes. Check the service and its network path to the server. |
+| Paused | Takes no new jobs and finishes the ones it started. **Resume** lets it take jobs again. |
+| Paused: copied identity | Dhow paused it because one identity was used from several machines ([copying a runner](#copying-a-runner)). Resume it only if you are sure it runs on one machine. |
+| Revoked | Cut off for good. Register the machine again with a new token. |
+
+Open a runner to see its OS and architecture, version, capacity, isolation levels, capability labels and identity key version, to rename it or change its labels, to pause or resume it, and to revoke it.
 
 ## When it fails
 
