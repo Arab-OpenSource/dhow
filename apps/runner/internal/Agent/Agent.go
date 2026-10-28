@@ -40,10 +40,12 @@ type Stdio struct {
 }
 
 type Agent struct {
-	conn    *wire.Conn
-	harden  func() error
-	mu      sync.Mutex
-	current *process
+	conn     *wire.Conn
+	harden   func() error
+	mu       sync.Mutex
+	current  *process
+	stopping bool
+	busy     bool
 }
 
 func Run(ctx context.Context, o Options) error {
@@ -80,10 +82,12 @@ func hello() *agentv1.Frame {
 }
 
 func (a *Agent) loop(ctx context.Context) error {
+	var steps sync.WaitGroup
+	defer steps.Wait()
 	for {
 		frame, err := a.conn.Read()
 		if err != nil {
-			a.killCurrent(unix.SIGKILL)
+			a.stop()
 			if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 				return ErrChannelClosed
 			}
@@ -91,13 +95,21 @@ func (a *Agent) loop(ctx context.Context) error {
 		}
 		switch body := frame.GetBody().(type) {
 		case *agentv1.Frame_RunStep:
-			if err := a.runStep(ctx, body.RunStep); err != nil {
-				return err
+			if !a.claim() {
+				if err := a.conn.Write(stepExit(body.RunStep.GetIndex(), 1, 0, agentv1.StepFailure_STEP_FAILURE_START_FAILED)); err != nil {
+					return err
+				}
+				continue
 			}
+			step := body.RunStep
+			steps.Go(func() {
+				defer a.release()
+				_ = a.runStep(ctx, step)
+			})
 		case *agentv1.Frame_Signal:
 			a.killCurrent(signalOf(body.Signal.GetSignal()))
 		case *agentv1.Frame_Shutdown:
-			a.killCurrent(unix.SIGKILL)
+			a.stop()
 			return nil
 		case *agentv1.Frame_AddMask:
 		default:
@@ -151,6 +163,33 @@ func dialUnix(ctx context.Context, path string) (io.ReadWriteCloser, error) {
 func (a *Agent) setCurrent(p *process) {
 	a.mu.Lock()
 	a.current = p
+	stopping := a.stopping
+	a.mu.Unlock()
+	if stopping {
+		p.signal(unix.SIGKILL)
+	}
+}
+
+func (a *Agent) stop() {
+	a.mu.Lock()
+	a.stopping = true
+	a.mu.Unlock()
+	a.killCurrent(unix.SIGKILL)
+}
+
+func (a *Agent) claim() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.busy {
+		return false
+	}
+	a.busy = true
+	return true
+}
+
+func (a *Agent) release() {
+	a.mu.Lock()
+	a.busy = false
 	a.mu.Unlock()
 }
 

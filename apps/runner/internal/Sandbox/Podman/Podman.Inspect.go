@@ -15,9 +15,10 @@ var ErrPolicyMismatch = errors.New("the created sandbox does not match the requi
 
 type inspection struct {
 	State struct {
-		Running   bool   `json:"Running"`
-		OOMKilled bool   `json:"OOMKilled"`
-		Status    string `json:"Status"`
+		Running    bool   `json:"Running"`
+		OOMKilled  bool   `json:"OOMKilled"`
+		Status     string `json:"Status"`
+		CgroupPath string `json:"CgroupPath"`
 	} `json:"State"`
 	EffectiveCaps []string `json:"EffectiveCaps"`
 	BoundingCaps  []string `json:"BoundingCaps"`

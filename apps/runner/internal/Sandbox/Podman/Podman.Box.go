@@ -59,6 +59,10 @@ func (b *box) Start(ctx context.Context) error {
 	if _, err := b.d.runner().run(ctx, "start", "--", b.name); err != nil {
 		return err
 	}
+	if err := b.enforced(ctx); err != nil {
+		_ = b.Kill(ctx)
+		return fmt.Errorf("%w: %w", sandbox.ErrSandbox, err)
+	}
 	conn, err := b.accept(ctx)
 	if err != nil {
 		return err

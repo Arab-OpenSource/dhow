@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"sort"
 	"sync"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 
@@ -127,7 +128,7 @@ func exitStatus(err error) (int32, int32) {
 	}
 	var ee *exec.ExitError
 	if errors.As(err, &ee) {
-		ws, ok := ee.Sys().(unix.WaitStatus)
+		ws, ok := ee.Sys().(syscall.WaitStatus)
 		if ok && ws.Signaled() {
 			sig := int32(ws.Signal()) //nolint:gosec // Signal numbers are below 64.
 			return 128 + sig, sig

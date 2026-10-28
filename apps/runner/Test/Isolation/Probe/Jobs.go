@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -65,9 +66,10 @@ func foundIn(name, dir, token string) result {
 }
 
 func processes(token string) result {
+	self := "/proc/" + strconv.Itoa(os.Getpid()) + "/cmdline"
 	paths, _ := filepath.Glob("/proc/[0-9]*/cmdline")
 	for _, p := range paths {
-		if containsToken(p, token) {
+		if p != self && containsToken(p, token) {
 			return escaped("the other job's processes", "%s is visible", p)
 		}
 	}

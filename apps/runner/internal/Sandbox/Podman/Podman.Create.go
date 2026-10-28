@@ -51,6 +51,7 @@ func createArgs(spec sandbox.PrepareSpec, l layout, seccompFile string) []string
 		"--ipc=private",
 		"--uts=private",
 		"--cgroupns=private",
+		"--cgroups=split",
 		"--pid=private",
 		"--network=none",
 		"--no-hosts",
