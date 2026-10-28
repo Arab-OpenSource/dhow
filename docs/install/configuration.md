@@ -72,7 +72,7 @@ Each id in `DHOW_OIDC_PROVIDERS` reads the variables below, with the id in upper
 | Variable | Required | Default | Purpose and validation |
 |---|---|---|---|
 | `DHOW_OIDC_<ID>_TYPE` | No | `oidc` | `oidc` for any OpenID Connect provider (Google, Keycloak, Entra ID, Authentik, ...). `github` for GitHub, which speaks OAuth 2.0 without OpenID Connect. |
-| `DHOW_OIDC_<ID>_ISSUER` | With `oidc` | `https://github.com` for `github` | The issuer URL, exactly as the provider's `/.well-known/openid-configuration` reports it. `https://` only, or `http://` with `DHOW_DEV=true`, without credentials, a query or a fragment. For GitHub Enterprise Server, the server's URL. |
+| `DHOW_OIDC_<ID>_ISSUER` | With `oidc` | `https://github.com` for `github` | The issuer URL, exactly as the provider's `/.well-known/openid-configuration` reports it. `https://` only, or `http://` with `DHOW_DEV=true`, without credentials, a query or a fragment. For GitHub Enterprise Server, the server's URL. Two providers cannot share an issuer (compared without case in the host and without a trailing `/`), because linked identities are keyed by issuer. |
 | `DHOW_OIDC_<ID>_CLIENT_ID` | Yes | none | The client id registered at the provider. |
 | `DHOW_OIDC_<ID>_CLIENT_SECRET` | Yes | none | The client secret. Like other secrets it may come from `DHOW_OIDC_<ID>_CLIENT_SECRET_FILE` or the systemd credential `dhow-oidc-<id>-client-secret`, see [Secrets in files](#secrets-in-files), and placeholder values are refused. It is never logged or returned. |
 | `DHOW_OIDC_<ID>_NAME` | No | the id, or `GitHub` | The button label on the sign-in page, at most 40 characters. |

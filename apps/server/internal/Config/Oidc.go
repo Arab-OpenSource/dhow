@@ -87,10 +87,34 @@ func loadOIDCProviders(getenv func(string) string, dev bool) ([]OIDCProvider, er
 		}
 		out = append(out, p)
 	}
+	errs = append(errs, sharedIssuers(out)...)
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
 	}
 	return out, nil
+}
+
+func sharedIssuers(providers []OIDCProvider) []error {
+	var errs []error
+	owner := map[string]string{}
+	for _, p := range providers {
+		key := normalizedIssuer(p.Issuer)
+		if first, taken := owner[key]; taken {
+			errs = append(errs, fmt.Errorf("%s and %s: share the issuer %s, and identities are keyed by issuer, so each provider needs its own",
+				OIDCEnvName(first, oidcSuffixIssuer), OIDCEnvName(p.ID, oidcSuffixIssuer), p.Issuer))
+			continue
+		}
+		owner[key] = p.ID
+	}
+	return errs
+}
+
+func normalizedIssuer(issuer string) string {
+	u, err := url.Parse(issuer)
+	if err != nil {
+		return issuer
+	}
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host) + strings.TrimSuffix(u.EscapedPath(), "/")
 }
 
 func loadOIDCProvider(getenv func(string) string, id string, dev bool) (OIDCProvider, error) {

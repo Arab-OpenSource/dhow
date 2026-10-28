@@ -125,3 +125,47 @@ func TestOIDCIssuerAllowsHTTPOnlyInDev(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "http://localhost:8180/realms/dhow", cfg.OIDCProviders[0].Issuer)
 }
+
+func TestOIDCProvidersMustNotShareAnIssuer(t *testing.T) {
+	provider := func(id, issuer string) map[string]string {
+		return map[string]string{
+			config.OIDCEnvName(id, "_ISSUER"): issuer, config.OIDCEnvName(id, "_CLIENT_ID"): id + "-client",
+			config.OIDCEnvName(id, "_CLIENT_SECRET"): oidcTestSecret,
+		}
+	}
+	tests := []struct {
+		name    string
+		a, b    string
+		refused bool
+	}{
+		{"the same issuer", "https://sso.example.com/realms/staff", "https://sso.example.com/realms/staff", true},
+		{"a trailing slash", "https://sso.example.com/realms/staff", "https://sso.example.com/realms/staff/", true},
+		{"another case in the host", "https://sso.example.com/realms/staff", "https://SSO.Example.com/realms/staff", true},
+		{"another realm", "https://sso.example.com/realms/staff", "https://sso.example.com/realms/guests", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vars := map[string]string{config.EnvOIDCProviders: "corp,second"}
+			for k, v := range provider("corp", tt.a) {
+				vars[k] = v
+			}
+			for k, v := range provider("second", tt.b) {
+				vars[k] = v
+			}
+			_, err := config.Load(env(withOIDC(vars)))
+			if !tt.refused {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "DHOW_OIDC_CORP_ISSUER and DHOW_OIDC_SECOND_ISSUER")
+		})
+	}
+	github := withOIDC(map[string]string{
+		config.EnvOIDCProviders: "one,two", "DHOW_OIDC_ONE_TYPE": "github", "DHOW_OIDC_TWO_TYPE": "github",
+		"DHOW_OIDC_ONE_CLIENT_ID": "a", "DHOW_OIDC_ONE_CLIENT_SECRET": oidcTestSecret,
+		"DHOW_OIDC_TWO_CLIENT_ID": "b", "DHOW_OIDC_TWO_CLIENT_SECRET": oidcTestSecret,
+	})
+	_, err := config.Load(env(github))
+	assert.Error(t, err, "two GitHub providers on github.com share an issuer too")
+}
