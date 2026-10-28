@@ -2,6 +2,7 @@ name: Installer
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - apps/server/internal/Core/Installer/**
       - apps/server/internal/Config/**
@@ -24,6 +25,7 @@ concurrency:
 
 jobs:
   scripts:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Scripts and the systemd unit
     runs-on: ubuntu-24.04
     steps:
@@ -40,6 +42,7 @@ jobs:
           grep -Eq 'exposure level for dhow.service: [0-9.]+ (OK|SAFE|PERFECT)' rating.txt
 
   build:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Build dhow-server
     runs-on: ubuntu-24.04
     steps:
