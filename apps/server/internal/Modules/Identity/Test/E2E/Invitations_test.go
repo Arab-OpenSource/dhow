@@ -218,7 +218,7 @@ func TestInvitationEmailIsFailSafe(t *testing.T) {
 	assert.Equal(t, "mailed@example.com", msgs[0].To)
 	assert.Contains(t, msgs[0].Body, sent.Link)
 	assert.Contains(t, msgs[0].Subject, "Dhow Co")
-	assert.Contains(t, msgs[0].Body, "Viewer")
+	assert.Contains(t, msgs[0].Body, "مشاهد", "the role is named in the inviter's language")
 
 	mail.FailNext(true)
 	failed := owner.MustInvite(org, "bounced@example.com", "viewer")

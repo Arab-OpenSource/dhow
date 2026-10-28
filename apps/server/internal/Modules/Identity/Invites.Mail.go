@@ -19,16 +19,11 @@ const (
 	mailDateLayout   = "2006-01-02 15:04"
 )
 
-func roleLabel(role string) string {
-	if role == "" {
-		return role
-	}
-	return strings.ToUpper(role[:1]) + role[1:]
-}
+func roleLabel(locale i18n.Locale, role string) string { return i18n.Translate(locale, "role."+role) }
 
 func inviteMessage(locale i18n.Locale, to, inviter, org, role, link string, expires time.Time) mailer.Message {
 	r := strings.NewReplacer(
-		"{inviter}", inviter, "{organization}", org, "{role}", roleLabel(role), "{link}", link,
+		"{inviter}", inviter, "{organization}", org, "{role}", roleLabel(locale, role), "{link}", link,
 		"{expires}", expires.UTC().Format(mailDateLayout),
 	)
 	subject := strings.NewReplacer("\r", " ", "\n", " ").Replace(r.Replace(i18n.Translate(locale, keyInviteSubject)))
