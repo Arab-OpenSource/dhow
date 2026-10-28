@@ -1,4 +1,6 @@
+import { factorMethods } from '@/Core/Auth/Factor';
 import { passkeysSupported } from '@/Core/Auth/WebAuthn';
+import { useMfaStatus } from '@/Core/Auth/useMfaStatus';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Button } from '@/Core/Ui/Button';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
@@ -6,8 +8,7 @@ import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
 import { FactorsCard } from '@/Modules/Mfa/Components/FactorsCard';
 import { PasskeysCard } from '@/Modules/Mfa/Components/PasskeysCard';
-import { useMfaStatus, usePasskeys } from '@/Modules/Mfa/Hooks/useMfa';
-import { factorMethods } from '@/Modules/Mfa/Types/Factor';
+import { usePasskeys } from '@/Modules/Mfa/Hooks/useMfa';
 
 export interface IMfaSectionProps {
   onSetUpTotp: () => void;

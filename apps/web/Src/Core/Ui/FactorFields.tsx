@@ -1,10 +1,9 @@
+import type { IFactorDraft, TFactorMethod } from '@/Core/Auth/Factor';
 import { Button } from '@/Core/Ui/Button';
 import { Field } from '@/Core/Ui/Field';
 import { Input } from '@/Core/Ui/Input';
 import { PasswordInput } from '@/Core/Ui/PasswordInput';
 import { useT } from '@/I18n/useT';
-import type { TFactorMethod } from '@/Modules/Mfa/Api/MfaApi';
-import type { IFactorDraft } from '@/Modules/Mfa/Types/Factor';
 
 export interface IFactorFieldsProps {
   methods: readonly TFactorMethod[];

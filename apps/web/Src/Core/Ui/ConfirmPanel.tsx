@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
 
+import type { TFactorMethod } from '@/Core/Auth/Factor';
 import { formatClock } from '@/Core/Format/TimeFormat';
+import type { IFactorAction } from '@/Core/Hooks/useFactorAction';
 import { Button } from '@/Core/Ui/Button';
-import { InlineAlert } from '@/Core/Ui/InlineAlert';
+import { FactorFields } from '@/Core/Ui/FactorFields';
 import type { TIconName } from '@/Core/Ui/Icons';
+import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { useT } from '@/I18n/useT';
-import type { TFactorMethod } from '@/Modules/Mfa/Api/MfaApi';
-import { FactorFields } from '@/Modules/Mfa/Components/FactorFields';
-import type { IFactorAction } from '@/Modules/Mfa/Hooks/useFactorAction';
 
 export interface IConfirmPanelProps<TResult> {
   question: string;

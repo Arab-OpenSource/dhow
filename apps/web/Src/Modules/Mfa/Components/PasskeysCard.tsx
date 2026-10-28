@@ -1,12 +1,13 @@
+import type { TFactorMethod } from '@/Core/Auth/Factor';
 import { passkeysSupported } from '@/Core/Auth/WebAuthn';
 import { Button } from '@/Core/Ui/Button';
 import { Card } from '@/Core/Ui/Card';
+import { ConfirmPanel } from '@/Core/Ui/ConfirmPanel';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Rows } from '@/Core/Ui/Row';
 import { useT } from '@/I18n/useT';
-import type { TFactorMethod, TPasskey } from '@/Modules/Mfa/Api/MfaApi';
+import type { TPasskey } from '@/Modules/Mfa/Api/MfaApi';
 import { AddPasskeyPanel } from '@/Modules/Mfa/Components/AddPasskeyPanel';
-import { ConfirmPanel } from '@/Modules/Mfa/Components/ConfirmPanel';
 import { PasskeyRow } from '@/Modules/Mfa/Components/PasskeyRow';
 import { RecoveryCodes } from '@/Modules/Mfa/Components/RecoveryCodes';
 import { usePasskeysCard } from '@/Modules/Mfa/Hooks/usePasskeysCard';

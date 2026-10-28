@@ -1,10 +1,11 @@
 import { useState } from 'react';
 
+import type { TFactorMethod } from '@/Core/Auth/Factor';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
+import { useFactorAction, type IFactorAction } from '@/Core/Hooks/useFactorAction';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { useT } from '@/I18n/useT';
-import { removePasskey, renamePasskey, type TAddPasskeyResult, type TFactorMethod } from '@/Modules/Mfa/Api/MfaApi';
-import { useFactorAction, type IFactorAction } from '@/Modules/Mfa/Hooks/useFactorAction';
+import { removePasskey, renamePasskey, type TAddPasskeyResult } from '@/Modules/Mfa/Api/MfaApi';
 import { useRefreshMfa } from '@/Modules/Mfa/Hooks/useMfa';
 
 export interface IPasskeysCard {

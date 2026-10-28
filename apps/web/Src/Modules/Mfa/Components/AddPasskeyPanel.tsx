@@ -1,11 +1,12 @@
 import { useState } from 'react';
 
+import type { TFactorMethod } from '@/Core/Auth/Factor';
+import { useFactorAction } from '@/Core/Hooks/useFactorAction';
+import { ConfirmPanel } from '@/Core/Ui/ConfirmPanel';
 import { Field } from '@/Core/Ui/Field';
 import { Input } from '@/Core/Ui/Input';
 import { useT } from '@/I18n/useT';
-import { addPasskey, type TAddPasskeyResult, type TFactorMethod } from '@/Modules/Mfa/Api/MfaApi';
-import { ConfirmPanel } from '@/Modules/Mfa/Components/ConfirmPanel';
-import { useFactorAction } from '@/Modules/Mfa/Hooks/useFactorAction';
+import { addPasskey, type TAddPasskeyResult } from '@/Modules/Mfa/Api/MfaApi';
 
 export interface IAddPasskeyPanelProps {
   methods: readonly TFactorMethod[];

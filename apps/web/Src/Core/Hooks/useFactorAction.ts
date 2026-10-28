@@ -1,12 +1,11 @@
 import { useState } from 'react';
 
 import { isApiError } from '@/Core/Api/ApiError';
+import { firstDraft, passkeyFactor, typedFactor, type IFactorDraft, type TCurrentFactor, type TFactorMethod } from '@/Core/Auth/Factor';
 import { PasskeyCancelled } from '@/Core/Auth/WebAuthn';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { useCountdown, type ICountdown } from '@/Core/Hooks/useCountdown';
 import { useT } from '@/I18n/useT';
-import { passkeyFactor, type TCurrentFactor, type TFactorMethod } from '@/Modules/Mfa/Api/MfaApi';
-import { firstDraft, typedFactor, type IFactorDraft } from '@/Modules/Mfa/Types/Factor';
 
 export interface IFactorAction<TResult> {
   Draft: IFactorDraft;
