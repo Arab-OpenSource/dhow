@@ -3,6 +3,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { Ar } from '@/I18n/Locales/Ar';
+import { En } from '@/I18n/Locales/En';
 import { AuditAr } from '@/I18n/Locales/Workspace/AuditAr';
 import { AuditEn } from '@/I18n/Locales/Workspace/AuditEn';
 import { actionGroup, AUDIT_ACTIONS } from '@/Modules/Audit/Types/AuditActions';
@@ -31,6 +33,16 @@ describe('the audit action catalog', () => {
       (action) => !(action in AUDIT_ACTIONS) || !(`audit.action.${action}` in AuditAr) || !(`audit.action.${action}` in AuditEn),
     );
     expect(missing).toEqual([]);
+  });
+
+  it('keeps every action label in the audit catalogs, so no other catalog overrides one', () => {
+    for (const [full, audit] of [
+      [Ar, AuditAr],
+      [En, AuditEn],
+    ] as const) {
+      const labels = Object.entries(full).filter(([key]) => key.startsWith('audit.action.'));
+      expect(labels).toEqual(Object.entries(audit).filter(([key]) => key.startsWith('audit.action.')));
+    }
   });
 
   it('has no entry the server never writes', () => {
