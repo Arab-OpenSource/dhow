@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"strings"
 	"sync"
 	"testing"
 
@@ -22,6 +23,7 @@ type fakeResolver struct {
 func (f *fakeResolver) LookupNetIP(_ context.Context, _, host string) ([]netip.Addr, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	host = strings.TrimSuffix(host, ".")
 	queue := f.answers[host]
 	if len(queue) == 0 {
 		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}

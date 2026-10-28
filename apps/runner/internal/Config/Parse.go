@@ -24,6 +24,12 @@ var (
 	ErrBadBool      = errors.New("must be true or false")
 	ErrBadLevel     = errors.New("must be debug, info, warn or error")
 	ErrBadPrefix    = errors.New("must be a comma separated list of CIDR prefixes")
+	ErrBroadPrefix  = errors.New("is broader than /8 for IPv4 or /7 for IPv6, which would open most of the network to jobs")
+)
+
+const (
+	minIPv4PrefixBits = 8
+	minIPv6PrefixBits = 7
 )
 
 var sizeUnits = []struct {
@@ -220,6 +226,13 @@ func parseLevel(v string) (slog.Level, error) {
 	}
 }
 
+func minPrefixBits(p netip.Prefix) int {
+	if p.Addr().Is4() {
+		return minIPv4PrefixBits
+	}
+	return minIPv6PrefixBits
+}
+
 func parsePrefixes(v string) ([]netip.Prefix, error) {
 	if strings.TrimSpace(v) == "" {
 		return nil, nil
@@ -229,6 +242,9 @@ func parsePrefixes(v string) ([]netip.Prefix, error) {
 		p, err := netip.ParsePrefix(strings.TrimSpace(part))
 		if err != nil {
 			return nil, fmt.Errorf("%q %w", part, ErrBadPrefix)
+		}
+		if p.Bits() < minPrefixBits(p) {
+			return nil, fmt.Errorf("%q %w", part, ErrBroadPrefix)
 		}
 		out = append(out, p.Masked())
 	}

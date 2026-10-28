@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -173,4 +174,58 @@ func FuzzProxyRequest(f *testing.F) {
 		_ = client.Close()
 		<-done
 	})
+}
+
+func TestTheReporterNeverHoldsMoreThanItsCap(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	var lines []string
+	r := NewReporter(func() time.Time { return now }, func(l string) { lines = append(lines, l) })
+	for i := range 10 * maxReported {
+		r.Report(Decision{Host: "h" + strconv.Itoa(i) + ".example.com", Port: 443, Reason: "not in the job's network.egress list"})
+	}
+	assert.LessOrEqual(t, len(r.seen), maxReported)
+	assert.Len(t, lines, maxReported+1, "one line per distinct decision up to the cap, then one summary line")
+	now = now.Add(2 * time.Minute)
+	r.Report(Decision{Host: "late.example.com", Port: 443, Reason: "x"})
+	assert.LessOrEqual(t, len(r.seen), maxReported)
+	assert.Contains(t, lines[len(lines)-1], "late.example.com", "old entries expire, so new decisions show again")
+}
+
+func TestCloudCredentialEndpointsStayDeniedEvenInsideAnOperatorRange(t *testing.T) {
+	p, err := New(Options{
+		Allow: []string{"x.example.com"},
+		AllowPrivate: []netip.Prefix{
+			netip.MustParsePrefix("100.64.0.0/10"), netip.MustParsePrefix("169.254.0.0/16"),
+			netip.MustParsePrefix("fc00::/7"), netip.MustParsePrefix("192.0.0.0/24"),
+		},
+	})
+	require.NoError(t, err)
+	for _, a := range []string{
+		"169.254.169.254", "169.254.170.2", "169.254.170.23", "fd00:ec2::254", "fd00:ec2::23",
+		"168.63.129.16", "100.100.100.200", "192.0.0.192", "fd20:ce::254", "fd00:c1::a9fe:a9fe", "::ffff:168.63.129.16",
+	} {
+		assert.Equal(t, "a cloud metadata address", p.ranges.denial(netip.MustParseAddr(a)), a)
+	}
+	for _, a := range []string{"::1.2.3.4", "2002:a00:1::1", "2001:0:a00:1::1", "64:ff9b:1::a00:1", "fec0::1", "100::1"} {
+		assert.NotEmpty(t, blockedOnly().denial(netip.MustParseAddr(a)), a)
+	}
+}
+
+func blockedOnly() ranges { return ranges{blocked: blockedPrefixes()} }
+
+func TestNamesAreLookedUpRooted(t *testing.T) {
+	var asked []string
+	p, err := New(Options{Allow: []string{"x.example.com"}, Resolver: resolverFunc(func(host string) {
+		asked = append(asked, host)
+	})})
+	require.NoError(t, err)
+	_, _, _ = p.dial(context.Background(), "x.example.com", 443)
+	assert.Equal(t, []string{"x.example.com."}, asked, "a rooted name skips the host's search domains")
+}
+
+type resolverFunc func(host string)
+
+func (f resolverFunc) LookupNetIP(_ context.Context, _, host string) ([]netip.Addr, error) {
+	f(host)
+	return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
 }

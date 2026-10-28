@@ -116,11 +116,13 @@ func (p *Proxy) forward(ctx context.Context, c net.Conn, br *bufio.Reader, req *
 	req.Close = true
 	req.RequestURI = ""
 	_ = upstream.SetWriteDeadline(time.Now().Add(p.o.Idle))
+	_ = c.SetReadDeadline(time.Now().Add(p.o.Idle))
 	if err := req.Write(upstream); err != nil {
 		refuse(c, statusBadGateway, "the request could not be sent upstream")
 		return
 	}
 	_ = upstream.SetWriteDeadline(time.Time{})
+	_ = c.SetReadDeadline(time.Time{})
 	p.splice(c, br, upstream)
 }
 

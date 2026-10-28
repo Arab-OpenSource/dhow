@@ -20,7 +20,6 @@ func TestParseEgressAcceptsHostsPortsAndWildcards(t *testing.T) {
 		{"*.github.com", jobspec.EgressRule{Host: "github.com", Wildcard: true}},
 		{"*.github.com:22", jobspec.EgressRule{Host: "github.com", Wildcard: true, Port: 22}},
 		{"xn--mgbh0fb.xn--wgbh1c", jobspec.EgressRule{Host: "xn--mgbh0fb.xn--wgbh1c"}},
-		{"localhost", jobspec.EgressRule{Host: "localhost"}},
 		{"a-b.c1", jobspec.EgressRule{Host: "a-b.c1"}},
 	}
 	for _, tt := range tests {
@@ -36,6 +35,9 @@ func TestParseEgressRefusesWhatCouldBeAnAddressOrAmbiguous(t *testing.T) {
 		want  error
 	}{
 		{"", jobspec.ErrEgressEmpty},
+		{"localhost", jobspec.ErrEgressSingle},
+		{"*.com", jobspec.ErrEgressSingle},
+		{"kubernetes:443", jobspec.ErrEgressSingle},
 		{strings.Repeat("a", 300), jobspec.ErrEgressTooLong},
 		{"1.2.3.4", jobspec.ErrEgressIP},
 		{"2130706433", jobspec.ErrEgressIP},

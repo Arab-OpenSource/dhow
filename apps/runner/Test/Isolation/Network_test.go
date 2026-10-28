@@ -29,6 +29,7 @@ type testResolver struct {
 func (r *testResolver) LookupNetIP(_ context.Context, _, host string) ([]netip.Addr, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	host = strings.TrimSuffix(host, ".")
 	queue := r.answers[host]
 	if len(queue) == 0 {
 		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}

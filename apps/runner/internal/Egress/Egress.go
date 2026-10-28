@@ -19,6 +19,8 @@ const (
 	DefaultDialTimeout   = 10 * time.Second
 	DefaultHeaderTimeout = 30 * time.Second
 	maxHeaderBytes       = 16 << 10
+	acceptBackoff        = 5 * time.Millisecond
+	maxAcceptBackoff     = time.Second
 )
 
 var ErrNoRules = errors.New("the job has no egress allowlist, so it gets no proxy")
@@ -86,6 +88,7 @@ func (p *Proxy) Serve(ctx context.Context, ln net.Listener) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	slots := make(chan struct{}, p.o.MaxConns)
+	var backoff time.Duration
 	var live sync.WaitGroup
 	defer live.Wait()
 	go func() {
@@ -98,8 +101,15 @@ func (p *Proxy) Serve(ctx context.Context, ln net.Listener) error {
 			if ctx.Err() != nil || errors.Is(err, net.ErrClosed) {
 				return nil
 			}
-			return fmt.Errorf("accept an egress connection: %w", err)
+			backoff = min(max(2*backoff, acceptBackoff), maxAcceptBackoff)
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(backoff):
+			}
+			continue
 		}
+		backoff = 0
 		select {
 		case slots <- struct{}{}:
 			live.Go(func() {
@@ -132,7 +142,7 @@ func (p *Proxy) decide(host string, port int, tunnel bool) (string, string) {
 func (p *Proxy) dial(ctx context.Context, name string, port int) (net.Conn, string, int) {
 	lctx, cancel := context.WithTimeout(ctx, p.o.DialTimeout)
 	defer cancel()
-	addrs, err := p.o.Resolver.LookupNetIP(lctx, "ip", name)
+	addrs, err := p.o.Resolver.LookupNetIP(lctx, "ip", name+".")
 	if err != nil || len(addrs) == 0 {
 		return nil, "the name did not resolve", statusBadGateway
 	}

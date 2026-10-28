@@ -251,3 +251,18 @@ func TestDetectMachine(t *testing.T) {
 	require.NoError(t, err)
 	assert.Positive(t, free)
 }
+
+func TestEgressRangesThatOpenMostOfTheNetworkAreRefused(t *testing.T) {
+	m := big8()
+	m.DiskFree = func(string) (int64, error) { return 100 << 30, nil }
+	for _, broad := range []string{"0.0.0.0/0", "::/0", "8.0.0.0/7", "fc00::/6"} {
+		e := base(t)
+		e[config.EnvEgressAllowPrivate] = broad
+		_, err := load(t, e, false, m)
+		assert.ErrorIs(t, err, config.ErrBroadPrefix, broad)
+	}
+	e := base(t)
+	e[config.EnvEgressAllowPrivate] = "10.0.0.0/8,fc00::/7,192.168.10.5/32"
+	_, err := load(t, e, false, m)
+	assert.NoError(t, err)
+}

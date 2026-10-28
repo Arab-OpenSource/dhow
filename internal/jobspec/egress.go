@@ -20,6 +20,7 @@ var (
 	ErrEgressPort     = errors.New("an egress port must be a number from 1 to 65535 without leading zeros")
 	ErrEgressIP       = errors.New("an egress entry must name a host, not an IP address")
 	ErrEgressHostname = errors.New("an egress host must be lowercase ASCII labels (punycode for other scripts)")
+	ErrEgressSingle   = errors.New("an egress host needs at least two labels, so a bare name or a whole top-level domain is refused")
 )
 
 type EgressRule struct {
@@ -50,6 +51,9 @@ func ParseEgress(entry string) (EgressRule, error) {
 	}
 	if err := checkHostname(host); err != nil {
 		return EgressRule{}, err
+	}
+	if !strings.Contains(host, ".") {
+		return EgressRule{}, ErrEgressSingle
 	}
 	rule.Host = host
 	return rule, nil
