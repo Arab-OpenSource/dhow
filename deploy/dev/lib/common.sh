@@ -87,6 +87,16 @@ fetch() {
   curl --proto '=https' --tlsv1.2 -fsSL "$@"
 }
 
+download() {
+  local out=$1 url=$2
+  printf 'Downloading %s\n' "$url"
+  if [[ -t 2 ]]; then
+    curl --proto '=https' --tlsv1.2 -fSL --progress-bar -o "$out" "$url"
+  else
+    fetch -o "$out" "$url"
+  fi
+}
+
 on_wsl() {
   local release=
   [[ -n ${WSL_DISTRO_NAME:-} || -n ${WSL_INTEROP:-} ]] && return 0
