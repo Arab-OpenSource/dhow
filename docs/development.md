@@ -5,6 +5,39 @@ This page gets you from a fresh clone to a running server, the web app with live
 > [!WARNING]
 > Everything here runs with `DHOW_DEV=true`: plain HTTP and a database connection without TLS. It is for your own machine only. Never set it on a server or anything other people can reach.
 
+## The setup script
+
+One script prepares the whole machine. It installs what is missing, asks only for the settings that are yours to choose, and generates every secret itself.
+
+**Linux and macOS:**
+
+```sh
+git clone https://github.com/Khaymah/dhow.git
+cd dhow
+make dev-setup
+```
+
+**Windows**, in PowerShell from a clone or a downloaded copy of `deploy/dev/setup.ps1`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\dev\setup.ps1
+```
+
+On Windows the script installs WSL2 with Ubuntu 24.04 if it is missing (create your Linux user when it opens, then run the script again), clones the repository into `~/src/dhow` inside it, and runs the Linux script there.
+
+What the script does, asking before anything that needs `sudo` or changes your system:
+
+| Step | What happens |
+|---|---|
+| Tools | Checks Git, Make, curl and Python 3, and installs them with `apt` or `dnf` (on macOS, the Xcode Command Line Tools). Installs Go and Node.js LTS when missing or too old: with Homebrew on macOS, otherwise from go.dev and nodejs.org into `~/.local/share/dhow-dev`, each archive checked against the checksum its site publishes. Then pnpm at the version `apps/web/package.json` names. |
+| PostgreSQL 18 | `container` runs it in Docker or Podman, `native` installs it from the PostgreSQL project's repository (Debian, Ubuntu, Fedora, RHEL family) or Homebrew (macOS), and `url` uses a database you already have. It refuses anything older than 18. |
+| Questions | The server port (8080), the PostgreSQL port (5432), and whether to send email through an SMTP server (host, port, TLS mode, user, password typed hidden, sender). |
+| Generated | `DHOW_SECRET_KEY` (32 random bytes) and a random password for the `dhow` database user. |
+| Written | `.env.dev`, mode 600, ignored by Git. Run the script again to change a setting: it keeps the secret key and the database password unless you ask for new ones. |
+| Last | Builds the web app, offers to add the new tools to `PATH` in your shell profile, and prints the next commands. |
+
+Options: `--yes` takes every default without asking, `--db=container|native|url` picks the database, `--db-url=` and `--test-db-url=` give one, `--port=` and `--db-port=` set the ports, `--skip-web` skips the web build, and `--check` only reports which tools are there. With `make`, pass them as `make dev-setup SETUP_ARGS="--db=native"`. The [quick start](#quick-start) below does the same steps by hand.
+
 ## What you need
 
 | Tool | Why | Notes |
@@ -16,7 +49,7 @@ This page gets you from a fresh clone to a running server, the web app with live
 | Python 3 | `make check` runs the tests of the Claude Code hooks | Any Python 3. |
 | GNU Make and a POSIX shell | The `make` targets | Already there on Linux and macOS, and in WSL2. |
 
-**Windows:** work inside WSL2 with Ubuntu 24.04 or newer, and clone the repository into the Linux file system (`~/src/dhow`), not under `/mnt/c`, which is much slower. Everything on this page then works as on Linux, and the browser on Windows reaches `http://localhost:8080` in WSL2.
+**Windows:** the [setup script](#the-setup-script) prepares WSL2 for you. By hand: work inside WSL2 with Ubuntu 24.04 or newer, and clone the repository into the Linux file system (`~/src/dhow`), not under `/mnt/c`, which is much slower. Everything on this page then works as on Linux, and the browser on Windows reaches `http://localhost:8080` in WSL2.
 
 ## Quick start
 

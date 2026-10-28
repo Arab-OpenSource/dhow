@@ -55,7 +55,8 @@
 
 ### دليل التطوير المحلي (`feat/zealous-galileo-wnw3fx`)
 
-- اتعمل: `docs/development.md` وأهداف `make dev-*` (القسم 8 في سجل اليوم). مستقل عن M2.6 وM3.6.
+- اتعمل: `docs/development.md` وأهداف `make dev-*`، وسكربتات التجهيز `deploy/dev/setup.sh` و`setup.ps1` (القسم 8 في سجل اليوم). مستقل عن M2.6 وM3.6.
+- لسه: `setup.ps1` ماتجرّبش على Windows حقيقي (مفيش WSL2 في الـ CI)، ومحتاج تجربة من Sabry أو أي حد عنده Windows.
 - بعد دمج M3.6: قسم الـ runner في الدليل يتحدّث (الـ sandbox شغّال بدل «بيرفض يبدأ»، و`make runner-isolation`).
 
 ## اللي لسه في M3 (بالترتيب)

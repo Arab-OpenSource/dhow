@@ -111,6 +111,10 @@ DEV_DB_VOLUME   := dhow-dev-pgdata
 DEV_DB_PASSWORD := dhow-dev-only
 DEV_DB_URL      := postgres://dhow:$(DEV_DB_PASSWORD)@127.0.0.1:$(DEV_DB_PORT)
 
+.PHONY: dev-setup
+dev-setup: ## Install what development needs, ask for your settings and generate secrets (SETUP_ARGS="--help" for options)
+	bash deploy/dev/setup.sh $(SETUP_ARGS)
+
 .PHONY: dev-env
 dev-env: ## Write .env.dev once: DHOW_DEV, a fresh secret key and the local database URLs
 	@if [ -f $(DEV_ENV) ]; then echo "$(DEV_ENV) already exists; delete it to make a new one"; exit 0; fi; \
