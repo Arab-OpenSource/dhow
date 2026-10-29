@@ -250,7 +250,7 @@ The first boot does three things:
 - `/metrics` exposes Prometheus metrics: queue depth, lease latency, job and deployment duration and outcome, runner health and API latency.
 - OpenTelemetry traces cover the path from trigger to deployment to job.
 - Logs are structured JSON with request and trace IDs. Logs are redacted by default.
-- Health endpoints: `/health/live` (process) and `/health/ready` (database, object store, migrations up to date).
+- Health endpoints: `/health/live` (process) and `/health/ready` (database, object store, migrations up to date, today's job log partition, and the last instance settings reload).
 
 ## 15. High availability and scale
 

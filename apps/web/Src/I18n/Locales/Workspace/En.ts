@@ -47,6 +47,7 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'status.check.database': 'Database',
   'status.check.migrations': 'Database migrations',
   'status.check.log_partitions': 'Today\'s log storage',
+  'status.check.settings': 'Settings reload',
   'status.state.live': 'Running',
   'status.state.failed': 'Failed',
   'status.summary.ok.title': 'The server is healthy',
@@ -152,6 +153,10 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'checkDetail.log_partitions.fix1': 'Open the server log and look for "job log partition maintenance failed". It names the cause.',
   'checkDetail.log_partitions.fix2': 'Make sure the database is not read-only and that the server\'s database user may create tables.',
   'checkDetail.log_partitions.fix3': 'Restart the server. It prepares today and the next three days when it starts.',
+  'checkDetail.settings.means': 'The server reads its settings from the database whenever they change. This check makes sure the last read worked, so the server never runs on old settings without telling you.',
+  'checkDetail.settings.fix1': 'Open the server log and look for "instance settings were not reloaded". It names the setting that failed.',
+  'checkDetail.settings.fix2': 'If a saved value is not valid, fix it in the database. If the database connection dropped, make sure the database is running.',
+  'checkDetail.settings.fix3': 'The server retries on its own at least every 30 seconds, and this check turns healthy after the first successful read.',
 
   'pager.label': 'Page navigation',
   'pager.previous': 'Previous page',

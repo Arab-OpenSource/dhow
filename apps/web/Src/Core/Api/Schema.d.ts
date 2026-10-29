@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * Readiness probe
-         * @description Returns 200 when the database is reachable and fully migrated and today's job log partition exists, otherwise 503.
+         * @description Returns 200 when the database is reachable and fully migrated, today's job log partition exists, and the last reload of the instance settings succeeded, otherwise 503. A failed settings reload is retried with a bounded backoff, and the `settings` check recovers on the next successful reload.
          */
         get: operations["getReadiness"];
         put?: never;
@@ -1946,7 +1946,7 @@ export interface components {
         };
         HealthCheck: {
             /** @enum {string} */
-            Name: "database" | "migrations" | "log_partitions";
+            Name: "database" | "migrations" | "log_partitions" | "settings";
             Ok: boolean;
         };
         Meta: {

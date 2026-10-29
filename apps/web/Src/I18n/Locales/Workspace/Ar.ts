@@ -46,6 +46,7 @@ export const WorkspaceAr = {
   'status.check.database': 'قاعدة البيانات',
   'status.check.migrations': 'تحديثات قاعدة البيانات',
   'status.check.log_partitions': 'مكان سجلات التشغيل لليوم',
+  'status.check.settings': 'تحميل إعدادات السيرفر',
   'status.state.live': 'يعمل',
   'status.state.failed': 'فشل',
   'status.summary.ok.title': 'السيرفر يعمل جيدًا',
@@ -151,6 +152,10 @@ export const WorkspaceAr = {
   'checkDetail.log_partitions.fix1': 'افتح سجل السيرفر وابحث عن رسالة فشل تجهيز أجزاء السجلات، وستجد فيها السبب.',
   'checkDetail.log_partitions.fix2': 'تأكد أن قاعدة البيانات ليست للقراءة فقط، وأن مستخدم السيرفر يستطيع إنشاء الجداول.',
   'checkDetail.log_partitions.fix3': 'أعد تشغيل السيرفر، فهو يجهّز أجزاء اليوم والأيام الثلاثة التالية عند بدء التشغيل.',
+  'checkDetail.settings.means': 'يقرأ السيرفر إعداداته من قاعدة البيانات عند كل تغيير. يتأكد هذا الفحص أن آخر قراءة نجحت، حتى لا يعمل السيرفر بإعدادات قديمة.',
+  'checkDetail.settings.fix1': 'افتح سجل السيرفر وابحث عن رسالة فشل تحميل الإعدادات، وستجد فيها الإعداد الذي فشل.',
+  'checkDetail.settings.fix2': 'إذا كانت قيمة محفوظة غير صالحة، فأصلحها في قاعدة البيانات. وإذا انقطع الاتصال، فتأكد أن قاعدة البيانات تعمل.',
+  'checkDetail.settings.fix3': 'يعيد السيرفر المحاولة وحده كل 30 ثانية على الأكثر، ويعود هذا الفحص سليمًا بعد أول قراءة ناجحة.',
 
   'pager.label': 'التنقّل بين الصفحات',
   'pager.previous': 'الصفحة السابقة',

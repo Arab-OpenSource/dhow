@@ -18,6 +18,7 @@ const (
 	Database      HealthCheckName = "database"
 	LogPartitions HealthCheckName = "log_partitions"
 	Migrations    HealthCheckName = "migrations"
+	Settings      HealthCheckName = "settings"
 )
 
 // Valid indicates whether the value is a known member of the HealthCheckName enum.
@@ -28,6 +29,8 @@ func (e HealthCheckName) Valid() bool {
 	case LogPartitions:
 		return true
 	case Migrations:
+		return true
+	case Settings:
 		return true
 	default:
 		return false

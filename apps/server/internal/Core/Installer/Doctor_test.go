@@ -243,3 +243,33 @@ func TestDoctorCountsSignInProvidersFromTheEnvironmentButNeverShowsTheirSecrets(
 	assert.NotContains(t, out.String(), "corp-client-credential")
 	assert.NotContains(t, out.String(), "Sign-in providers: 7")
 }
+
+func TestDoctorReportsAFailedSettingsReloadWithItsOwnAdvice(t *testing.T) {
+	tests := []struct {
+		name string
+		ok   bool
+		want Severity
+	}{
+		{"the last reload succeeded", true, SeverityOK},
+		{"the last reload failed", false, SeverityFail},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := debianHost()
+			body := fmt.Sprintf(`{"Success":%t,"Data":{"Status":"ok","Checks":[{"Name":"database","Ok":true},{"Name":"settings","Ok":%t}]}}`, tt.ok, tt.ok)
+			f.httpFn = func(Probe) (ProbeResult, error) { return ProbeResult{Status: 200, Body: []byte(body)}, nil }
+			findings := doctorFor(f, Answers{Mode: ModeNative, ListenAddr: DefaultListen}).health(context.Background())
+			var got *Finding
+			for i := range findings {
+				if strings.HasSuffix(findings[i].Title, ": settings") {
+					got = &findings[i]
+				}
+			}
+			require.NotNil(t, got)
+			assert.Equal(t, tt.want, got.Severity)
+			if !tt.ok {
+				assert.Contains(t, got.Advice, "instance settings were not reloaded")
+			}
+		})
+	}
+}

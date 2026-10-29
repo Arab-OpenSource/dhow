@@ -134,3 +134,29 @@ func randomKey(t *testing.T) []byte {
 	require.NoError(t, err)
 	return key
 }
+
+func TestAFailedReloadFailsReadinessUntilTheNextSuccessfulReload(t *testing.T) {
+	env := apptest.New(t)
+	ready := func() apptest.Response { return env.Do(apptest.Request{Method: http.MethodGet, Path: "/health/ready"}) }
+	res := ready()
+	require.Equal(t, http.StatusOK, res.Status, string(res.Raw))
+	assert.Contains(t, string(res.Raw), `{"Name":"settings","Ok":true}`)
+
+	_, err := env.Pool.Exec(t.Context(), `INSERT INTO "InstanceSettings" ("Group", "Value") VALUES ('logs', '{"RetentionDays": 0}'::jsonb)`)
+	require.NoError(t, err)
+	_, err = env.Pool.Exec(t.Context(), `SELECT pg_notify('dhow_settings_changed', '')`)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return ready().Status == http.StatusServiceUnavailable }, 5*time.Second, 20*time.Millisecond,
+		"stale settings never keep serving as ready")
+	res = ready()
+	assert.Contains(t, string(res.Raw), `{"Name":"settings","Ok":false}`)
+	assert.NotContains(t, string(res.Raw), "RETENTION", "the response names the check without internal details")
+	assert.Equal(t, 30, env.Wired.Settings.Current().Values.Logs.RetentionDays, "the previous values stay in effect")
+
+	_, err = env.Pool.Exec(t.Context(), `UPDATE "InstanceSettings" SET "Value" = '{"RetentionDays": 9}'::jsonb WHERE "Group" = 'logs'`)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool { return ready().Status == http.StatusOK }, 10*time.Second, 50*time.Millisecond,
+		"the retry picks up the fixed value without another notification")
+	assert.Contains(t, string(ready().Raw), `{"Name":"settings","Ok":true}`)
+	assert.Equal(t, 9, env.Wired.Settings.Current().Values.Logs.RetentionDays)
+}

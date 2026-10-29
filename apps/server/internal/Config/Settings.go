@@ -1,8 +1,16 @@
 package config
 
-import settingspec "github.com/Khaymah/dhow/apps/server/internal/Config/Settings"
+import (
+	"time"
 
-const InstanceSettingsSealLabel = "dhow/instance-settings/v1"
+	settingspec "github.com/Khaymah/dhow/apps/server/internal/Config/Settings"
+)
+
+const (
+	InstanceSettingsSealLabel = "dhow/instance-settings/v1"
+	SettingsReloadRetryMin    = time.Second
+	SettingsReloadRetryMax    = 30 * time.Second
+)
 
 func loadSettings(getenv func(string) string) (settingspec.Raw, []error) {
 	raw, fieldErrs := settingspec.FromEnv(getenv, func(k settingspec.Key) (string, error) {

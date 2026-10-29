@@ -10,6 +10,7 @@ var enMessages = map[Key]string{ //nolint:gosec // User-facing text that names s
 	KeyAdviceReinstall:       "Run dhow-server install again; it keeps your secrets and data.",
 	KeyAdviceRenew:           "Renew the certificate on your TLS terminator.",
 	KeyAdviceSecrets:         "Restore the file from your backup. A new secret key cannot decrypt data stored with the old one, so doctor never generates one.",
+	KeyAdviceSettings:        "The server could not reload its instance settings and keeps retrying. Look for \"instance settings were not reloaded\" in the service log to see why: journalctl -u dhow -n 100",
 	KeyAfterInstall:          "Your answers (without secrets) are in %s. Run dhow-server doctor at any time to check the install, and run the installer of a newer release to upgrade.",
 	KeyApplyFix:              "Apply the fix \"%s\"?",
 	KeyAskBreached:           "Check new passwords against known breaches with the Have I Been Pwned range API? Only the first 5 characters of the password's SHA-1 leave this server. Answer no on hosts without internet access.",
