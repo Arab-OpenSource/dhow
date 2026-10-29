@@ -141,6 +141,10 @@ func Load(getenv func(string) string, o Options) (Config, error) {
 
 func (c Config) IdentityPath() string { return filepath.Join(c.StateDir, IdentityFileName) }
 
+func (c Config) PendingIdentityPath() string { return filepath.Join(c.StateDir, PendingFileName) }
+
+func (c Config) LockPath() string { return filepath.Join(c.StateDir, LockFileName) }
+
 func (c Config) JournalPath() string { return filepath.Join(c.StateDir, JournalFileName) }
 
 func (c Config) AttemptsDir() string { return filepath.Join(c.StateDir, AttemptsDirName) }

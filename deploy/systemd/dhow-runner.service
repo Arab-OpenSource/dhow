@@ -1,0 +1,45 @@
+[Unit]
+Description=Dhow runner
+Documentation=https://github.com/Khaymah/dhow/blob/main/docs/runner/install.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+User=dhow-runner
+Group=dhow-runner
+ExecStart=/usr/local/bin/dhow-runner run
+EnvironmentFile=/etc/dhow-runner/runner.env
+Restart=on-failure
+RestartSec=10s
+TimeoutStopSec=60s
+StateDirectory=dhow-runner
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/dhow-runner
+
+Delegate=yes
+KillMode=control-group
+MemorySwapMax=0
+LimitCORE=0
+
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_SYS_ADMIN CAP_SYS_PTRACE
+AmbientCapabilities=
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dhow-runner
+InaccessiblePaths=-/usr/bin/sudo -/usr/bin/su -/usr/bin/pkexec -/usr/bin/passwd -/usr/bin/chsh -/usr/bin/chfn -/usr/bin/newgrp -/usr/bin/gpasswd -/usr/bin/mount -/usr/bin/umount
+ProtectHome=yes
+PrivateTmp=yes
+ProtectProc=invisible
+PrivateIPC=yes
+ProtectKernelModules=yes
+ProtectClock=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RemoveIPC=yes
+KeyringMode=private
+SystemCallFilter=~@clock @module @obsolete @raw-io @swap
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

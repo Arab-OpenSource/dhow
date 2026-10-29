@@ -57,7 +57,7 @@
 
 | الشغل | الـ branch | الـ PR | اللي فاضل |
 |---|---|---|---|
-| متابعات بعد السهولة: فشل تحميل الإعدادات ظاهر، ومسار الصفحة بالاسم، وصيغ الجمع، والفلتر بأكتر من حالة، وفرق العضو | `fix/followups-after-usability` | PR التحديث ده | المراجعة والدمج |
+| M3.10 الجزء أ: أرشيفات الـ runner، ووحدة systemd (5.2 MEDIUM)، و`rotate-keys`، و`get.sh --component runner` (ADR-0065) | `feat/runner-packaging` | لسه | الـ PR، والـ CI (الـ suites تحت الوحدة والـ smoke محتاجين cgroup v2)، والمراجعة الأمنية |
 
 M2.6 وM3.6 والتطوير المحلي وإصلاحات مراجعة M3.6 وتغيير الاسم وM3.7 وتجهيز Windows وM3.9 اتدمجوا في 2026-10-28، ومن #35 لـ #55 اتدمجوا في 2026-10-28 و2026-10-29.
 
@@ -75,7 +75,7 @@ M3.12 (الشرائح خلصت)          M3.13 في الآخر
 | المرحلة | المحتوى |
 |---|---|
 | M3.8 | gVisor كـ spike بشروط go/no-go، ولو فشل يتأجّل على الـ host بـ ADR |
-| M3.10 | تغليف الـ runner: أرشيفات موقّعة، وsystemd، و`install` و`doctor` و`rotate-keys`، و`get.sh --component runner` |
+| M3.10 | الجزء أ على `feat/runner-packaging` (الأرشيفات والوحدة و`rotate-keys` و`get.sh`). الجزء ب: `install` و`doctor` و`uninstall` والـ engine المشترك و`make vm-test` |
 | M3.11 | driver الـ Kubernetes والـ Helm chart، و`make helm-e2e` على kind |
 | M3.12 | خلص (#39، #44، #48، #50) |
 | M3.13 | fuzz إضافي، ومراجعة تهديدات الـ runner plane، و`deploy/m3-demo/run.sh` لشرط الخلاص |

@@ -21,7 +21,7 @@ bash get.sh
 3. With [cosign](https://docs.sigstore.dev/) installed, checks that the release workflow of this repository signed `SHA256SUMS`, keyless. Without cosign, it warns and prints the `cosign verify-blob` command to run yourself.
 4. Checks the archive against `SHA256SUMS`, extracts `dhow-server`, and runs `dhow-server install` with every other argument, through `sudo` when you are not root. The temporary directory is removed afterwards.
 
-So `bash get.sh --version 1.2.3 --answers answers.yaml --yes` installs a pinned version without questions. You can also download and verify a release by hand as in [Install the binary with systemd](binary-systemd.md#1-download-and-verify-a-release), and run `./dhow-server install` from it.
+So `bash get.sh --version 1.2.3 --answers answers.yaml --yes` installs a pinned version without questions. `--component runner` fetches the runner archive of the same release instead, with the same checks, and installs `dhow-runner` and its unit ([Install a runner](../runner/install.md)). `DHOW_DOWNLOAD_URL` points the downloads at a mirror of the release files (`https://` only). With a mirror, or with `DHOW_REPO` set, cosign is required: the signature is the only thing that ties a mirror's files to this repository's release workflow, so without cosign `get.sh` stops. `--insecure-skip-signature` skips the check with a loud warning, for a mirror you control and trust; never use it otherwise. You can also download and verify a release by hand as in [Install the binary with systemd](binary-systemd.md#1-download-and-verify-a-release), and run `./dhow-server install` from it.
 
 ## Supported systems
 

@@ -70,12 +70,14 @@ type Knobs struct {
 	StartDelay          time.Duration
 	HeartbeatFail       bool
 	EndStepFail         bool
+	RotateLoseReply     bool
 }
 
 type runnerRecord struct {
 	id, org    string
 	signing    ed25519.PublicKey
 	encryption []byte
+	keyVersion int32
 }
 
 type Server struct {
@@ -184,6 +186,15 @@ func (s *Server) RequestCancel(leaseID string) {
 	if l := s.leases[leaseID]; l != nil {
 		l.Cancel = true
 	}
+}
+
+func (s *Server) RunnerKey() (ed25519.PublicKey, []byte, int32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.runner == nil {
+		return nil, nil, 0
+	}
+	return s.runner.signing, s.runner.encryption, s.runner.keyVersion
 }
 
 func (s *Server) RunnerID() string {
