@@ -67,6 +67,9 @@ func (h handlers) Authenticate(_ context.Context, req *connect.Request[runnerv1.
 	if !ed25519.Verify(s.runner.signing, runnersig.AuthMessage(Origin, 1, raw), req.Msg.GetSignature()) {
 		return nil, rpcError(connect.CodeUnauthenticated, "INVALID_RUNNER_CREDENTIALS")
 	}
+	if s.runner.revoked {
+		return nil, rpcError(connect.CodePermissionDenied, "RUNNER_REVOKED")
+	}
 	s.nonces[string(raw)] = true
 	token := make([]byte, 32)
 	_, _ = rand.Read(token)
@@ -99,6 +102,22 @@ func (h handlers) RotateKeys(_ context.Context, req *connect.Request[runnerv1.Ro
 		return nil, rpcError(connect.CodeUnavailable, "UNAVAILABLE")
 	}
 	return connect.NewResponse(&runnerv1.RotateKeysResponse{KeyVersion: s.runner.keyVersion}), nil
+}
+
+func (h handlers) Revoke(_ context.Context, req *connect.Request[runnerv1.RevokeRequest]) (*connect.Response[runnerv1.RevokeResponse], error) {
+	s := h.s
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	expiry, ok := s.sessions[strings.TrimPrefix(req.Header().Get("Authorization"), "Bearer ")]
+	if !ok || time.Now().After(expiry) || s.runner == nil {
+		return nil, rpcError(connect.CodeUnauthenticated, "UNAUTHENTICATED")
+	}
+	if !ed25519.Verify(s.runner.signing, runnersig.RevokeMessage(Origin, s.runner.id, s.runner.keyVersion), req.Msg.GetSignature()) {
+		return nil, rpcError(connect.CodeUnauthenticated, "INVALID_RUNNER_CREDENTIALS")
+	}
+	s.runner.revoked = true
+	s.sessions = map[string]time.Time{}
+	return connect.NewResponse(&runnerv1.RevokeResponse{}), nil
 }
 
 func (h handlers) Lease(ctx context.Context, req *connect.Request[runnerv1.LeaseRequest]) (*connect.Response[runnerv1.LeaseResponse], error) {

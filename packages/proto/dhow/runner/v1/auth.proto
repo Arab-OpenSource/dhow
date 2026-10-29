@@ -9,6 +9,7 @@ service AuthService {
   rpc Challenge(ChallengeRequest) returns (ChallengeResponse);
   rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
   rpc RotateKeys(RotateKeysRequest) returns (RotateKeysResponse);
+  rpc Revoke(RevokeRequest) returns (RevokeResponse);
 }
 
 message AuthChallenge {
@@ -51,3 +52,9 @@ message RotateKeysRequest {
 message RotateKeysResponse {
   int32 key_version = 1;
 }
+
+message RevokeRequest {
+  bytes signature = 1;
+}
+
+message RevokeResponse {}

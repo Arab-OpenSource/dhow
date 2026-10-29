@@ -446,6 +446,86 @@ func (x *RotateKeysResponse) GetKeyVersion() int32 {
 	return 0
 }
 
+type RevokeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Signature     []byte                 `protobuf:"bytes,1,opt,name=signature,proto3" json:"signature,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeRequest) Reset() {
+	*x = RevokeRequest{}
+	mi := &file_dhow_runner_v1_auth_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeRequest) ProtoMessage() {}
+
+func (x *RevokeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dhow_runner_v1_auth_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeRequest.ProtoReflect.Descriptor instead.
+func (*RevokeRequest) Descriptor() ([]byte, []int) {
+	return file_dhow_runner_v1_auth_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *RevokeRequest) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+type RevokeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeResponse) Reset() {
+	*x = RevokeResponse{}
+	mi := &file_dhow_runner_v1_auth_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeResponse) ProtoMessage() {}
+
+func (x *RevokeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dhow_runner_v1_auth_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeResponse.ProtoReflect.Descriptor instead.
+func (*RevokeResponse) Descriptor() ([]byte, []int) {
+	return file_dhow_runner_v1_auth_proto_rawDescGZIP(), []int{9}
+}
+
 var File_dhow_runner_v1_auth_proto protoreflect.FileDescriptor
 
 const file_dhow_runner_v1_auth_proto_rawDesc = "" +
@@ -477,12 +557,16 @@ const file_dhow_runner_v1_auth_proto_rawDesc = "" +
 	"\x11new_key_signature\x18\x04 \x01(\fR\x0fnewKeySignature\"5\n" +
 	"\x12RotateKeysResponse\x12\x1f\n" +
 	"\vkey_version\x18\x01 \x01(\x05R\n" +
-	"keyVersion2\x8f\x02\n" +
+	"keyVersion\"-\n" +
+	"\rRevokeRequest\x12\x1c\n" +
+	"\tsignature\x18\x01 \x01(\fR\tsignature\"\x10\n" +
+	"\x0eRevokeResponse2\xd8\x02\n" +
 	"\vAuthService\x12P\n" +
 	"\tChallenge\x12 .dhow.runner.v1.ChallengeRequest\x1a!.dhow.runner.v1.ChallengeResponse\x12Y\n" +
 	"\fAuthenticate\x12#.dhow.runner.v1.AuthenticateRequest\x1a$.dhow.runner.v1.AuthenticateResponse\x12S\n" +
 	"\n" +
-	"RotateKeys\x12!.dhow.runner.v1.RotateKeysRequest\x1a\".dhow.runner.v1.RotateKeysResponseB\xc0\x01\n" +
+	"RotateKeys\x12!.dhow.runner.v1.RotateKeysRequest\x1a\".dhow.runner.v1.RotateKeysResponse\x12G\n" +
+	"\x06Revoke\x12\x1d.dhow.runner.v1.RevokeRequest\x1a\x1e.dhow.runner.v1.RevokeResponseB\xc0\x01\n" +
 	"\x12com.dhow.runner.v1B\tAuthProtoP\x01ZEgithub.com/Khaymah/dhow/packages/proto/gen/go/dhow/runner/v1;runnerv1\xa2\x02\x03DRX\xaa\x02\x0eDhow.Runner.V1\xca\x02\x0eDhow\\Runner\\V1\xe2\x02\x1aDhow\\Runner\\V1\\GPBMetadata\xea\x02\x10Dhow::Runner::V1b\x06proto3"
 
 var (
@@ -497,7 +581,7 @@ func file_dhow_runner_v1_auth_proto_rawDescGZIP() []byte {
 	return file_dhow_runner_v1_auth_proto_rawDescData
 }
 
-var file_dhow_runner_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_dhow_runner_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_dhow_runner_v1_auth_proto_goTypes = []any{
 	(*AuthChallenge)(nil),         // 0: dhow.runner.v1.AuthChallenge
 	(*IssuedChallenge)(nil),       // 1: dhow.runner.v1.IssuedChallenge
@@ -507,26 +591,30 @@ var file_dhow_runner_v1_auth_proto_goTypes = []any{
 	(*AuthenticateResponse)(nil),  // 5: dhow.runner.v1.AuthenticateResponse
 	(*RotateKeysRequest)(nil),     // 6: dhow.runner.v1.RotateKeysRequest
 	(*RotateKeysResponse)(nil),    // 7: dhow.runner.v1.RotateKeysResponse
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
-	(*RunnerRef)(nil),             // 9: dhow.runner.v1.RunnerRef
+	(*RevokeRequest)(nil),         // 8: dhow.runner.v1.RevokeRequest
+	(*RevokeResponse)(nil),        // 9: dhow.runner.v1.RevokeResponse
+	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
+	(*RunnerRef)(nil),             // 11: dhow.runner.v1.RunnerRef
 }
 var file_dhow_runner_v1_auth_proto_depIdxs = []int32{
-	8, // 0: dhow.runner.v1.AuthChallenge.expires_at:type_name -> google.protobuf.Timestamp
-	9, // 1: dhow.runner.v1.ChallengeRequest.runner:type_name -> dhow.runner.v1.RunnerRef
-	1, // 2: dhow.runner.v1.ChallengeResponse.challenge:type_name -> dhow.runner.v1.IssuedChallenge
-	9, // 3: dhow.runner.v1.AuthenticateRequest.runner:type_name -> dhow.runner.v1.RunnerRef
-	1, // 4: dhow.runner.v1.AuthenticateRequest.challenge:type_name -> dhow.runner.v1.IssuedChallenge
-	2, // 5: dhow.runner.v1.AuthService.Challenge:input_type -> dhow.runner.v1.ChallengeRequest
-	4, // 6: dhow.runner.v1.AuthService.Authenticate:input_type -> dhow.runner.v1.AuthenticateRequest
-	6, // 7: dhow.runner.v1.AuthService.RotateKeys:input_type -> dhow.runner.v1.RotateKeysRequest
-	3, // 8: dhow.runner.v1.AuthService.Challenge:output_type -> dhow.runner.v1.ChallengeResponse
-	5, // 9: dhow.runner.v1.AuthService.Authenticate:output_type -> dhow.runner.v1.AuthenticateResponse
-	7, // 10: dhow.runner.v1.AuthService.RotateKeys:output_type -> dhow.runner.v1.RotateKeysResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	10, // 0: dhow.runner.v1.AuthChallenge.expires_at:type_name -> google.protobuf.Timestamp
+	11, // 1: dhow.runner.v1.ChallengeRequest.runner:type_name -> dhow.runner.v1.RunnerRef
+	1,  // 2: dhow.runner.v1.ChallengeResponse.challenge:type_name -> dhow.runner.v1.IssuedChallenge
+	11, // 3: dhow.runner.v1.AuthenticateRequest.runner:type_name -> dhow.runner.v1.RunnerRef
+	1,  // 4: dhow.runner.v1.AuthenticateRequest.challenge:type_name -> dhow.runner.v1.IssuedChallenge
+	2,  // 5: dhow.runner.v1.AuthService.Challenge:input_type -> dhow.runner.v1.ChallengeRequest
+	4,  // 6: dhow.runner.v1.AuthService.Authenticate:input_type -> dhow.runner.v1.AuthenticateRequest
+	6,  // 7: dhow.runner.v1.AuthService.RotateKeys:input_type -> dhow.runner.v1.RotateKeysRequest
+	8,  // 8: dhow.runner.v1.AuthService.Revoke:input_type -> dhow.runner.v1.RevokeRequest
+	3,  // 9: dhow.runner.v1.AuthService.Challenge:output_type -> dhow.runner.v1.ChallengeResponse
+	5,  // 10: dhow.runner.v1.AuthService.Authenticate:output_type -> dhow.runner.v1.AuthenticateResponse
+	7,  // 11: dhow.runner.v1.AuthService.RotateKeys:output_type -> dhow.runner.v1.RotateKeysResponse
+	9,  // 12: dhow.runner.v1.AuthService.Revoke:output_type -> dhow.runner.v1.RevokeResponse
+	9,  // [9:13] is the sub-list for method output_type
+	5,  // [5:9] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dhow_runner_v1_auth_proto_init() }
@@ -541,7 +629,7 @@ func file_dhow_runner_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dhow_runner_v1_auth_proto_rawDesc), len(file_dhow_runner_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

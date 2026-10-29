@@ -111,3 +111,8 @@ func (c *Client) Append(ctx context.Context, ref *runnerv1.LeaseRef, chunks []*r
 func (c *Client) RotateKeys(ctx context.Context, req *runnerv1.RotateKeysRequest) (*runnerv1.RotateKeysResponse, error) {
 	return call(ctx, c, config.RPCTimeout, c.auth.RotateKeys, req)
 }
+
+func (c *Client) Revoke(ctx context.Context, signature []byte) error {
+	_, err := call(ctx, c, config.RPCTimeout, c.auth.Revoke, &runnerv1.RevokeRequest{Signature: signature})
+	return err
+}
