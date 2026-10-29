@@ -22,7 +22,7 @@ const TOTP = { TotpEnabled: true, RecoveryCodesRemaining: 10, Passkeys: [] };
 const mount = (settings: TSettingsFixture, replies: ISettingsReplies = {}, options: IBackendOptions = {}) => {
   const state: ISettingsBackend = { settings, puts: [], tests: 0 };
   const backend = startBackend({ ...options, instanceOwner: true, routes: [settingsRoute(state, replies)] });
-  const view = renderWithProviders(<SettingsBody />);
+  const view = renderWithProviders(<SettingsBody onAddProvider={() => undefined} onEditProvider={() => undefined} />);
   return { ...backend, ...view, settings: state };
 };
 

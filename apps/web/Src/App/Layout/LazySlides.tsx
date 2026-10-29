@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { isThemeEditSlide, type TSlideId } from '@/App/Panels';
+import { isThemeEditSlide, oidcOf, type TSlideId } from '@/App/Panels';
 import { lazyComponent, type IPreloadable, type TLazyComponent } from '@/Core/Ui/LazyComponent';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
@@ -40,9 +40,12 @@ const MemberRemoveBody = lazyComponent(() =>
   import('@/Modules/Organization/Components/MemberRemoveBody').then((module) => module.MemberRemoveBody),
 );
 const LeaveBody = lazyComponent(() => import('@/Modules/Organization/Components/LeaveBody').then((module) => module.LeaveBody));
+const OidcProviderBody = lazyComponent(() =>
+  import('@/Modules/Settings/Components/OidcProviderBody').then((module) => module.OidcProviderBody),
+);
 const RunnerNewBody = lazyComponent(() => import('@/Modules/Runners/Components/RunnerNewBody').then((module) => module.RunnerNewBody));
 
-type TSlidePart = Exclude<TSlideId, `theme-edit-${string}`>;
+type TSlidePart = Exclude<TSlideId, `theme-edit-${string}` | `oidc-edit-${string}`>;
 
 const PARTS: Record<TSlidePart, readonly IPreloadable[]> = {
   'theme-edit': [ThemeEditorBody, ThemeEditorFooter],
@@ -57,13 +60,19 @@ const PARTS: Record<TSlidePart, readonly IPreloadable[]> = {
   'runner-new': [RunnerNewBody],
   'member-remove': [MemberRemoveBody],
   'organization-leave': [LeaveBody],
+  'oidc-new': [OidcProviderBody],
+};
+
+const partOf = (id: TSlideId): TSlidePart => {
+  if (isThemeEditSlide(id)) return 'theme-edit';
+  if (oidcOf(id) !== null) return 'oidc-new';
+  return id as TSlidePart;
 };
 
 const preloadAll = (components: readonly IPreloadable[]): Promise<void> =>
   Promise.all(components.map((component) => component.preload())).then(() => undefined);
 
-export const preloadSlide = (id: TSlideId): Promise<void> =>
-  preloadAll(PARTS[isThemeEditSlide(id) ? 'theme-edit' : (id as TSlidePart)]);
+export const preloadSlide = (id: TSlideId): Promise<void> => preloadAll(PARTS[partOf(id)]);
 
 export const preloadAllSlides = (): Promise<void> => preloadAll(Object.values(PARTS).flat());
 
@@ -104,5 +113,6 @@ export const LazyInviteFooter = withNothing(InviteFooter);
 export const LazyTransferBody = withSkeleton(TransferBody);
 export const LazyTeamNewBody = withSkeleton(TeamNewBody);
 export const LazyRunnerNewBody = withSkeleton(RunnerNewBody);
+export const LazyOidcProviderBody = withSkeleton(OidcProviderBody);
 export const LazyMemberRemoveBody = withSkeleton(MemberRemoveBody);
 export const LazyLeaveBody = withSkeleton(LeaveBody);

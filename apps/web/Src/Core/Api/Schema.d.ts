@@ -1576,6 +1576,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instance/settings/oidc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The sign-in providers, where they come from and how many accounts use each
+         * @description Needs `instance.settings.manage`. When `DHOW_OIDC_PROVIDERS` is set in the environment, every provider comes from the environment (`Source: env`, `Locked: true`) and the dashboard cannot change them; providers saved in the database are then unused and only counted in `IgnoredStored`. Otherwise the providers come from the database. A client secret never comes back: it is `{Set, Saved, Locked, Env}` only. `LinkedIdentities` counts the accounts linked to the provider, and `OnlySignInUsers` counts the accounts that can sign in with nothing else, so removing or disabling the provider would lock them out.
+         */
+        get: operations["getOidcSettings"];
+        put?: never;
+        /**
+         * Add a sign-in provider
+         * @description Needs `instance.settings.manage`, a second factor on the caller's account and a fresh `CurrentFactor`. The `Id` is part of the callback URL and of linked accounts, so it never changes later. Providers from the environment answer `409 SETTING_LOCKED_BY_ENV`, an `Id` in use answers `409 OIDC_PROVIDER_EXISTS`, an eleventh provider answers `409 OIDC_PROVIDER_LIMIT`, an `Id` whose old linked accounts use another issuer answers `409 OIDC_PROVIDER_LINKED`, and a bad value answers `400 SETTING_INVALID` with the field and the reason.
+         */
+        post: operations["createOidcProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/oidc/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check that the server can reach an identity provider
+         * @description Needs `instance.settings.manage`. For `oidc`, fetches the discovery document of `Issuer`, checks that its endpoints use https, and fetches the signing keys. For `github`, calls the API of `Issuer`. The client secret is never sent anywhere. Five tests per user in ten minutes (`429 RATE_LIMITED` after that). An issuer that is not valid, or that points at a link-local or cloud metadata address, answers `400 SETTING_INVALID`. The reason for a failed check is in the server log, never in the response.
+         */
+        post: operations["testOidcProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/oidc/{providerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change a sign-in provider
+         * @description Same rules as `POST /instance/settings/oidc`, with the provider's `Version` (`409 SETTING_CHANGED` when stale). Send only the fields you change. `Type` and `Issuer` cannot change once accounts are linked to the provider (`409 OIDC_PROVIDER_LINKED`): add a new provider instead. For `ClientSecret`, leave it out to keep it, send a value to replace it, or send "" to clear it, which turns the provider off. Turning off a provider that some accounts need to sign in answers `409 OIDC_PROVIDER_ONLY_SIGN_IN` with the number of accounts in `Details`.
+         */
+        put: operations["updateOidcProvider"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/oidc/{providerId}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove a sign-in provider
+         * @description Needs `instance.settings.manage` and a fresh `CurrentFactor`, with the provider's `Version`. The provider is soft deleted: accounts linked to it keep the link, see it on their account page and can unlink it. When some accounts can sign in with nothing else, the server refuses with `409 OIDC_PROVIDER_ONLY_SIGN_IN` and the number of accounts in `Details`. Sessions that are already open stay open.
+         */
+        post: operations["removeOidcProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1716,6 +1800,106 @@ export interface components {
         MailTestResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["MailTest"];
         };
+        /**
+         * @description `oidc` for any OpenID Connect provider, Google included; `github` for GitHub or GitHub Enterprise Server.
+         * @enum {string}
+         */
+        OidcProviderType: "oidc" | "github";
+        OidcProviderSetting: {
+            Id: string;
+            Type: components["schemas"]["OidcProviderType"];
+            Name: string;
+            Issuer: string;
+            ClientId: string;
+            ClientSecret: components["schemas"]["SecretSetting"];
+            AllowedDomains: string[];
+            /** @description False when the client secret is cleared. The sign-in page shows enabled providers only. */
+            Enabled: boolean;
+            /** Format: int64 */
+            Version: number;
+            /** Format: int64 */
+            LinkedIdentities: number;
+            /**
+             * Format: int64
+             * @description Accounts that can sign in only with this provider.
+             */
+            OnlySignInUsers: number;
+            /** @description The redirect URL to register at the identity provider. */
+            CallbackUrl: string;
+            /** Format: date-time */
+            UpdatedAt?: string;
+        };
+        OidcSettings: {
+            Source: components["schemas"]["SettingSource"];
+            /** @description True when `DHOW_OIDC_PROVIDERS` is set. The whole list then comes from the environment. */
+            Locked: boolean;
+            /** @example DHOW_OIDC_PROVIDERS */
+            Env: string;
+            /** @description The callback URL without the provider id, such as `https://dhow.example.com/oidc/callback/`. */
+            CallbackBase: string;
+            MaxProviders: number;
+            /**
+             * Format: int64
+             * @description Providers saved in the database that are unused because the environment sets the list.
+             */
+            IgnoredStored: number;
+            Providers: components["schemas"]["OidcProviderSetting"][];
+        };
+        OidcSettingsResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["OidcSettings"];
+        };
+        CreateOidcProviderRequest: {
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+            Id: string;
+            Type: components["schemas"]["OidcProviderType"];
+            /** @description The label on the sign-in button, at most 40 characters. Empty takes the id, or GitHub. */
+            Name?: string;
+            /** @description Required for `oidc`. Empty for `github` means https://github.com. */
+            Issuer?: string;
+            ClientId: string;
+            /** Format: password */
+            ClientSecret: string;
+            AllowedDomains?: string[];
+        };
+        UpdateOidcProviderRequest: {
+            /** Format: int64 */
+            Version: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+            Type?: components["schemas"]["OidcProviderType"];
+            Name?: string;
+            Issuer?: string;
+            ClientId?: string;
+            /**
+             * Format: password
+             * @description Leave out to keep the secret, send a value to replace it, or send "" to clear it and turn the provider off.
+             */
+            ClientSecret?: string;
+            AllowedDomains?: string[];
+        };
+        RemoveOidcProviderRequest: {
+            /** Format: int64 */
+            Version: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+        };
+        TestOidcProviderRequest: {
+            Type: components["schemas"]["OidcProviderType"];
+            Issuer?: string;
+        };
+        OidcTestCheck: {
+            /**
+             * @description `discovery`: the server reached the issuer and read its discovery document. `endpoints`: every endpoint in it uses https. `keys`: the signing keys were fetched. `api`: the GitHub API answered.
+             * @enum {string}
+             */
+            Check: "discovery" | "endpoints" | "keys" | "api";
+            Passed: boolean;
+        };
+        OidcTest: {
+            Passed: boolean;
+            Checks: components["schemas"]["OidcTestCheck"][];
+        };
+        OidcTestResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["OidcTest"];
+        };
         Envelope: {
             Success: boolean;
             /**
@@ -1740,7 +1924,7 @@ export interface components {
         };
         ErrorDetail: {
             /**
-             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`, `SETTING_INVALID`, `MAIL_NOT_CONFIGURED` or `MAIL_TEST_FAILED`.
+             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`, `SETTING_INVALID`, `MAIL_NOT_CONFIGURED`, `MAIL_TEST_FAILED`, `OIDC_PROVIDER_EXISTS`, `OIDC_PROVIDER_LIMIT`, `OIDC_PROVIDER_LINKED` or `OIDC_PROVIDER_ONLY_SIGN_IN`.
              * @example INTERNAL
              */
             Code: string;
@@ -2760,6 +2944,7 @@ export interface components {
         };
     };
     parameters: {
+        ProviderId: string;
         Id: string;
         RunnerId: string;
         TokenId: string;
@@ -5075,6 +5260,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstanceSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getOidcSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sign-in providers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createOidcProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOidcProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Every provider, after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    testOidcProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestOidcProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Which checks passed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcTestResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateOidcProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOidcProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Every provider, after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    removeOidcProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: components["parameters"]["ProviderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveOidcProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Every provider, after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OidcSettingsResponse"];
                 };
             };
             default: components["responses"]["Error"];

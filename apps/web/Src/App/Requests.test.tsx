@@ -130,12 +130,12 @@ describe('API requests per page', () => {
     );
   });
 
-  it('opens /system/settings cold as the server owner with one settings request', async () => {
+  it('opens /system/settings cold as the server owner with one request per settings list', async () => {
     const backend = startBackend({ instanceOwner: true, routes: [settingsRoute({ settings: settingsFixture(), puts: [], tests: 0 })] });
     const client = createQueryClient({ retry: false });
     render(<App router={createAppRouter(createMemoryHistory({ initialEntries: ['/system/settings'] }))} queryClient={client} />);
     await screen.findByRole('heading', { level: 1, name: Ar['shell.nav.systemSettings'] });
-    const expected = [...SHELL, 'GET /api/v1/instance/settings'];
+    const expected = [...SHELL, 'GET /api/v1/instance/settings', 'GET /api/v1/instance/settings/oidc'];
     await settle(client, backend.calls, expected);
 
     expect(repeated(backend.calls)).toEqual([]);

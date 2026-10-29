@@ -3,6 +3,7 @@ import {
   LazyInviteFooter,
   LazyLeaveBody,
   LazyMemberRemoveBody,
+  LazyOidcProviderBody,
   LazyOrganizationNewBody,
   LazyOrganizationTokenNewBody,
   LazyPasswordBody,
@@ -16,7 +17,7 @@ import {
   LazyTotpFooter,
   LazyTransferBody,
 } from '@/App/Layout/LazySlides';
-import { themeOf, type TSlideId, type TStaticSlideId } from '@/App/Panels';
+import { oidcOf, themeOf, type TSlideId, type TStaticSlideId } from '@/App/Panels';
 import type { ICustomTheme } from '@/Core/Theme/ThemeTokens';
 import type { ISlide } from '@/Core/Ui/SlideStack';
 import type { TTranslate } from '@/I18n/I18nContext';
@@ -89,6 +90,11 @@ const BUILDERS: Record<Exclude<TStaticSlideId, 'theme-edit'>, TBuilder> = {
     subtitle: <span>{t('organization.leave.subtitle')}</span>,
     children: <LazyLeaveBody onLeft={openHome} onCancel={close} />,
   }),
+  'oidc-new': ({ t, close }) => ({
+    title: t('settings.oidc.new.title'),
+    subtitle: <span>{t('settings.oidc.new.subtitle')}</span>,
+    children: <LazyOidcProviderBody onDone={close} />,
+  }),
   'account-token-new': ({ t, close }) => ({
     title: t('tokens.slide.title'),
     subtitle: <span>{t('tokens.slide.subtitle')}</span>,
@@ -109,8 +115,17 @@ const themeEditSlide = (id: TSlideId, { t, close, draftName, customThemes }: ISl
   };
 };
 
+const oidcEditSlide = (id: TSlideId, providerId: string, { t, close }: ISlideContext): ISlide => ({
+  id,
+  title: t('settings.oidc.edit.title', { name: providerId }),
+  subtitle: <span>{t('settings.oidc.edit.subtitle')}</span>,
+  children: <LazyOidcProviderBody providerId={providerId} onDone={close} />,
+});
+
 export const buildSlide = (id: TSlideId, context: ISlideContext): ISlide => {
   if (id === 'theme-edit' || themeOf(id) !== null) return themeEditSlide(id, context);
+  const providerId = oidcOf(id);
+  if (providerId !== null) return oidcEditSlide(id, providerId, context);
   const builder = Object.hasOwn(BUILDERS, id) ? BUILDERS[id as keyof typeof BUILDERS] : undefined;
   return builder ? { id, ...builder(context) } : themeEditSlide(id, context);
 };

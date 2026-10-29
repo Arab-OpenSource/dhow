@@ -3,6 +3,7 @@ import { HomeEn } from '@/I18n/Locales/Workspace/HomeEn';
 import { JobsEn } from '@/I18n/Locales/Workspace/JobsEn';
 import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
 import { OrgPagesEn } from '@/I18n/Locales/Workspace/OrgPagesEn';
+import { OidcSettingsEn } from '@/I18n/Locales/Workspace/OidcSettingsEn';
 import { PagesEn } from '@/I18n/Locales/Workspace/PagesEn';
 import { RunnersEn } from '@/I18n/Locales/Workspace/RunnersEn';
 import { SettingsEn } from '@/I18n/Locales/Workspace/SettingsEn';
@@ -382,4 +383,5 @@ export const WorkspaceEn: TWorkspaceMessages = {
   ...HomeEn,
   ...OrgPagesEn,
   ...SettingsEn,
+  ...OidcSettingsEn,
 };

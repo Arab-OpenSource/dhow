@@ -116,7 +116,7 @@ export const SettingsCard = ({ spec, settings, state, onRetry, footer, emptyNote
         )}
         {Confirming && settings !== undefined ? (
           <SettingsConfirm
-            confirm={spec.Confirm}
+            confirm={t(spec.Confirm)}
             save={save}
             onSaved={(saved) => {
               client.setQueryData(INSTANCE_SETTINGS_KEY, saved);
