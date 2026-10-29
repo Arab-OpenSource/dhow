@@ -60,7 +60,7 @@ func checkSMTPHost(host string) *FieldError {
 	if len(host) > SMTPHostMaxLength || strings.ContainsAny(host, " \t\r\n/:@") {
 		return &FieldError{Env: EnvSMTPHost, Rule: RuleSMTPHost, Message: "must be a host name or an IP address without a port"}
 	}
-	if BlockedSMTPHost(host) {
+	if BlockedHost(host) {
 		return &FieldError{Env: EnvSMTPHost, Rule: RuleSMTPHostBlocked, Message: "must not be a link-local or cloud metadata address"}
 	}
 	return nil

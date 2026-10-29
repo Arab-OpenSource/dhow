@@ -137,20 +137,13 @@ func parseBool(v string) (bool, error) {
 	return b, nil
 }
 
-var placeholderMarkers = []string{
-	"change", "replace", "example", "placeholder", "secret", "password", "default", "dummy",
-}
-
 func parseSecretKey(v string) ([]byte, error) {
 	v = strings.TrimSpace(v)
 	if v == "" {
 		return nil, fmt.Errorf("is required; generate one with `openssl rand -hex %d`", MinSecretKeyBytes)
 	}
-	lower := strings.ToLower(v)
-	for _, m := range placeholderMarkers {
-		if strings.Contains(lower, m) {
-			return nil, errors.New("looks like a placeholder; generate a random key")
-		}
+	if settingspec.LooksLikePlaceholder(v) {
+		return nil, errors.New("looks like a placeholder; generate a random key")
 	}
 	key, err := decodeKey(v)
 	if err != nil {

@@ -33,7 +33,7 @@ func TestTheSMTPHostRefusesLinkLocalAndMetadataButKeepsLocalRelays(t *testing.T)
 		{"metadata.example.com", false},
 	}
 	for _, tt := range tests {
-		assert.Equal(t, tt.blocked, settingspec.BlockedSMTPHost(tt.host), tt.host)
+		assert.Equal(t, tt.blocked, settingspec.BlockedHost(tt.host), tt.host)
 		if tt.blocked && settingspec.ValidateValue(settingspec.EnvSMTPHost, tt.host) == nil {
 			assert.Contains(t, tt.host, ":", "a host without a colon is refused by the shared validator: %s", tt.host)
 		}

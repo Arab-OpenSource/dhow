@@ -28,7 +28,7 @@ func normalHost(host string) string {
 	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
 }
 
-func BlockedSMTPHost(host string) bool {
+func BlockedHost(host string) bool {
 	h := normalHost(strings.Trim(host, "[]"))
 	if slices.Contains(metadataNames, h) {
 		return true
