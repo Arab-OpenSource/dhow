@@ -10,6 +10,7 @@ import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Pager } from '@/Core/Ui/Pager';
 import { Rows } from '@/Core/Ui/Row';
 import { Skeleton } from '@/Core/Ui/Skeleton';
+import { useI18n } from '@/I18n/useI18n';
 import { useT } from '@/I18n/useT';
 import type { TJobState } from '@/Modules/Jobs/Api/JobsApi';
 import { JobFilter } from '@/Modules/Jobs/Components/JobFilter';
@@ -46,6 +47,7 @@ const StuckAlert = ({ organizationId, onShow }: { organizationId: string; onShow
 
 const JobsContent = ({ organizationId, onOpenJob, filter, onFilterChange }: IJobsBodyProps & { organizationId: string }) => {
   const t = useT();
+  const { Locale } = useI18n();
   const errorText = useApiErrorText();
   const [Page, setPage] = useState(1);
   const [OwnFilter, setOwnFilter] = useState<readonly TJobState[]>(filter ?? NO_FILTER);
@@ -99,7 +101,7 @@ const JobsContent = ({ organizationId, onOpenJob, filter, onFilterChange }: IJob
             text={unfiltered ? t('jobs.empty.about') : t('jobs.empty.filtered')}
             action={
               unfiltered ? (
-                <a href={JOBS_GUIDE_URL} target="_blank" rel="noreferrer" className="text-label-sm text-primary underline underline-offset-4">
+                <a href={JOBS_GUIDE_URL[Locale]} target="_blank" rel="noreferrer" className="text-label-sm text-primary underline underline-offset-4">
                   {t('jobs.empty.guide')}
                 </a>
               ) : (

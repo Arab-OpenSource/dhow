@@ -11,6 +11,7 @@ import { jobFixture, jobsFixture, jobsRoute, type IJobsBackend } from '@/Core/Te
 import { findPage } from '@/Core/Testing/Pages';
 import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
+import { JOBS_GUIDE_URL } from '@/Modules/Jobs/Types/JobStates';
 
 const mount = async (jobs: IJobsBackend, role = 'owner') => {
   const backend = startBackend({ role, routes: [jobsRoute(jobs)] });
@@ -30,7 +31,7 @@ describe('the jobs page', () => {
     expect(await within(dialog).findByText(Ar['jobs.empty.title'])).toBeInTheDocument();
     expect(within(dialog).getByText(Ar['jobs.empty.about'])).toBeInTheDocument();
     const guide = within(dialog).getByRole('link', { name: Ar['jobs.empty.guide'] });
-    expect(guide).toHaveAttribute('href', 'https://github.com/Khaymah/dhow/blob/main/docs/guides/jobs.md#create-a-job-through-the-api');
+    expect(guide).toHaveAttribute('href', JOBS_GUIDE_URL.ar);
     expect(guide).toHaveAttribute('rel', 'noreferrer');
     expect(dialog.textContent).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
     expect(dialog.textContent).not.toContain('/api/v1');

@@ -1,5 +1,6 @@
 import type { TRole } from '@/Core/Auth/AuthTypes';
 import type { TStatus } from '@/Core/Ui/StatusDot';
+import type { TLocale } from '@/I18n/Locale';
 import type { TJob, TJobAttemptState, TJobState } from '@/Modules/Jobs/Api/JobsApi';
 
 export const JOB_STATES: readonly TJobState[] = [
@@ -28,7 +29,10 @@ const STATUS: Record<TJobState, TStatus> = {
 
 export const NO_MATCHING_RUNNER = 'NO_MATCHING_RUNNER';
 
-export const JOBS_GUIDE_URL = 'https://github.com/Khaymah/dhow/blob/main/docs/guides/jobs.md#create-a-job-through-the-api';
+export const JOBS_GUIDE_URL: Record<TLocale, string> = {
+  ar: 'https://github.com/Khaymah/dhow/blob/main/docs/guides/jobs.md#إنشاء-تشغيل-عبر-api',
+  en: 'https://github.com/Khaymah/dhow/blob/main/docs/en/guides/jobs.md#create-a-job-through-the-api',
+};
 
 export const FAILURE_REASONS = [
   'CANCELED',
