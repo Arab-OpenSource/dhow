@@ -10,6 +10,7 @@ import { backendFailure, startBackend } from '@/Core/Testing/Backend';
 import { FakeEventSource, installFakeEventSource } from '@/Core/Testing/FakeEventSource';
 import { attemptFixture, JOB_ID, jobFixture, jobsRoute, TEST_IMAGE, type IJobsBackend } from '@/Core/Testing/JobsBackend';
 import { findPage } from '@/Core/Testing/Pages';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const mount = async (jobs: IJobsBackend, role = 'owner') => {
@@ -74,7 +75,7 @@ describe('the job page', () => {
     expect(within(dialog).getByText('kubectl apply -f k8s/')).toBeInTheDocument();
     expect(within(dialog).getByText(Ar['jobs.spec.mutating'])).toBeInTheDocument();
     expect(within(dialog).getByText('registry.npmjs.org')).toBeInTheDocument();
-    expect(within(dialog).getByText(Ar['jobs.spec.cpuValue'].replace('{n}', '2'))).toBeInTheDocument();
+    expect(within(dialog).getByText(arText('jobs.spec.cpuValue', { n: 2 }))).toBeInTheDocument();
     expect(within(dialog).getByText(Ar['jobs.size.mib'].replace('{n}', '512'))).toBeInTheDocument();
   });
 

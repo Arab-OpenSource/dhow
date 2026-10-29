@@ -80,9 +80,18 @@ SELECT u."Id" AS "UserId", u."Name", u."Email", m."Role", m."CreatedAt" AS "Join
        EXISTS (SELECT 1 FROM "TotpFactors" t
                WHERE t."UserId" = u."Id" AND t."ConfirmedAt" IS NOT NULL AND NOT t."IsDeleted") AS "HasTotp",
        EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted") AS "HasPasskey",
-       u."MfaResetAt"
+       u."MfaResetAt",
+       COALESCE(teams."Ids", '{}')::uuid[] AS "TeamIds",
+       COALESCE(teams."Names", '{}')::text[] AS "TeamNames"
 FROM "Memberships" m
 JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted"
+LEFT JOIN LATERAL (
+    SELECT array_agg(t."Id" ORDER BY lower(t."Name"), t."Id") AS "Ids",
+           array_agg(t."Name" ORDER BY lower(t."Name"), t."Id") AS "Names"
+    FROM "TeamMembers" tm
+    JOIN "Teams" t ON t."Id" = tm."TeamId" AND t."OrganizationId" = tm."OrganizationId" AND NOT t."IsDeleted"
+    WHERE tm."UserId" = m."UserId" AND tm."OrganizationId" = m."OrganizationId" AND NOT tm."IsDeleted"
+) teams ON true
 WHERE m."OrganizationId" = @organization_id AND NOT m."IsDeleted"
 ORDER BY m."CreatedAt", u."Id"
 LIMIT @page_limit OFFSET @page_offset;

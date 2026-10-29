@@ -4,6 +4,7 @@ import { isApiError } from '@/Core/Api/ApiError';
 import { canReadAudit } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
+import { useCrumbTitle } from '@/Core/Hooks/useCrumbTitle';
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Badge } from '@/Core/Ui/Badge';
 import { Button } from '@/Core/Ui/Button';
@@ -127,6 +128,9 @@ const Loaded = ({ organizationId, eventId }: IAuditEventBodyProps & { organizati
   const errorText = useApiErrorText();
   const event = useAuditEvent(organizationId, eventId);
   const actors = useActors(organizationId);
+  const action = event.data?.Action;
+  const key = action === undefined ? null : actionKey(action);
+  useCrumbTitle(eventId, action === undefined ? undefined : key === null ? action : t(key));
 
   if (isApiError(event.error) && event.error.Status === 404) {
     return (

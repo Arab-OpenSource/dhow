@@ -9,6 +9,7 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { overviewFixture, startBackend, type IOverviewFixture } from '@/Core/Testing/Backend';
 import { gate, type TGateMode } from '@/Core/Testing/Gate';
 import { jobFixture, jobsRoute } from '@/Core/Testing/JobsBackend';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const BUSY = overviewFixture({
@@ -63,7 +64,7 @@ describe('the home page', () => {
 
   it('shows the stuck banner, the numbers and the counters when there is work', async () => {
     await mount({ overview: BUSY });
-    const banner = await screen.findByText(Ar['home.stuck.title.few'].replace('{count}', '3'));
+    const banner = await screen.findByText(arText('home.stuck.title', { count: 3 }));
     expect(banner.closest('[role="status"]')).toHaveTextContent(Ar['home.stuck.fix.manager']);
     expect(within(main()).getByRole('link', { name: new RegExp(Ar['home.stat.queued']) })).toHaveTextContent('4');
 
@@ -71,7 +72,7 @@ describe('the home page', () => {
     expect(jobs).toHaveTextContent('4');
     expect(jobs).toHaveAttribute('data-tone', 'warn');
     expect(within(menu()).getByLabelText(Ar['shell.count.runners'].replace('{count}', '1'))).toHaveTextContent('1');
-    expect(within(menu()).getByLabelText(Ar['shell.count.invitations'].replace('{count}', '2'))).toHaveTextContent('2');
+    expect(within(menu()).getByLabelText(arText('shell.count.invitations', { count: 2 }))).toHaveTextContent('2');
     expect(within(bottom()).getByRole('link', { name: new RegExp(Ar['shell.nav.jobs']) }).querySelector('[data-dot="warn"]')).not.toBeNull();
     expect(menuLink(Ar['shell.nav.home']).querySelector('[aria-label]')).toBeNull();
   });
@@ -86,7 +87,7 @@ describe('the home page', () => {
   it('hides the counters a role may not read', async () => {
     await mount({ overview: BUSY, role: 'developer' });
     await within(menu()).findByLabelText(Ar['shell.count.runners'].replace('{count}', '1'));
-    expect(within(menu()).queryByLabelText(Ar['shell.count.invitations'].replace('{count}', '2'))).not.toBeInTheDocument();
+    expect(within(menu()).queryByLabelText(arText('shell.count.invitations', { count: 2 }))).not.toBeInTheDocument();
   });
 
   it('gives a viewer the jobs numbers only and sends them to the waiting jobs', async () => {
@@ -101,14 +102,36 @@ describe('the home page', () => {
     });
   });
 
+  it('opens both failed states from the failed tile, and still opens a single state', async () => {
+    const { user, router, calls } = await mount({ overview: BUSY });
+    const failed = await within(main()).findByRole('link', { name: new RegExp(Ar['home.stat.failed']) });
+    expect(failed).toHaveAttribute('href', '/jobs?state=failed,timed_out');
+    await user.click(failed);
+    await screen.findByRole('heading', { level: 1, name: Ar['jobs.title'] });
+    expect(router.state.location.search).toEqual({ state: 'failed,timed_out' });
+    const filter = screen.getByRole('group', { name: Ar['jobs.filter.label'] });
+    expect(within(filter).getByRole('button', { name: Ar['jobs.state.failed'] })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(filter).getByRole('button', { name: Ar['jobs.state.timed_out'] })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(filter).getByRole('button', { name: Ar['jobs.filter.all'] })).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => {
+      const lists = calls.map((call) => new URL(call.url)).filter((url) => url.pathname.endsWith('/jobs'));
+      expect(lists.some((url) => url.searchParams.getAll('State').join() === 'failed,timed_out')).toBe(true);
+    });
+
+    await user.click(within(filter).getByRole('button', { name: Ar['jobs.state.failed'] }));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ state: 'timed_out' });
+    });
+  });
+
   it('opens the jobs page filtered from a number', async () => {
     const { user, router } = await mount({ overview: BUSY });
     await user.click(await within(main()).findByRole('link', { name: new RegExp(Ar['home.stat.queued']) }));
     await screen.findByRole('heading', { level: 1, name: Ar['jobs.title'] });
     expect(router.state.location.href).toBe('/jobs?state=queued');
-    const filter = screen.getByRole('radiogroup', { name: Ar['jobs.filter.label'] });
-    expect(within(filter).getByRole('radio', { name: Ar['jobs.state.queued'] })).toHaveAttribute('aria-checked', 'true');
-    await user.click(within(filter).getByRole('radio', { name: Ar['jobs.filter.all'] }));
+    const filter = screen.getByRole('group', { name: Ar['jobs.filter.label'] });
+    expect(within(filter).getByRole('button', { name: Ar['jobs.state.queued'] })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(filter).getByRole('button', { name: Ar['jobs.filter.all'] }));
     await waitFor(() => {
       expect(router.state.location.href).toBe('/jobs');
     });

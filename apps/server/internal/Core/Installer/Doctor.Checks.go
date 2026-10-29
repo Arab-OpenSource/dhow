@@ -150,6 +150,8 @@ type envelope struct {
 	Data json.RawMessage
 }
 
+const readyCheckSettings = "settings"
+
 type readyData struct {
 	Status string
 	Checks []struct {
@@ -182,6 +184,9 @@ func (d Doctor) health(ctx context.Context) []Finding {
 			continue
 		}
 		f := Finding{Severity: SeverityFail, Title: title, Advice: d.M.T(KeyAdviceLogs)}
+		if c.Name == readyCheckSettings {
+			f.Advice = d.M.T(KeyAdviceSettings)
+		}
 		if c.Name == "database" && d.A.Mode == ModeNative && d.A.Database.Mode == DatabaseInstall {
 			svc := d.Det.Distro.PostgresService()
 			fix := CommandStep(d.Sys, d.M.T(KeyFixPostgres, svc), nil, []Command{

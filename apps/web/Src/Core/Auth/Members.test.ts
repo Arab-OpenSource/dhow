@@ -10,6 +10,7 @@ const member = (index: number): TMember => ({
   Role: 'developer',
   EffectiveRole: 'developer',
   JoinedAt: '2026-10-01T08:00:00Z',
+  Teams: [],
 });
 
 const cachedPage = (page: number, limit: number, total: number): IPage<TMember> => {

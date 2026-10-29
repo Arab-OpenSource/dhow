@@ -33,7 +33,10 @@ const (
 	contextPrefix  = "instance-settings:"
 )
 
-var ErrUndecryptable = errors.New("cannot be decrypted with the current DHOW_SECRET_KEY")
+var (
+	ErrUndecryptable = errors.New("cannot be decrypted with the current DHOW_SECRET_KEY")
+	ErrReloadFailed  = errors.New("the last instance settings reload failed, so this instance may serve stale settings")
+)
 
 type DB interface {
 	sqlc.DBTX
@@ -128,6 +131,7 @@ type Options struct {
 	Listen    Listener
 	Log       *slog.Logger
 	Now       func() time.Time
+	Wait      func(ctx context.Context, d time.Duration) bool
 }
 
 type Store struct {
@@ -139,6 +143,8 @@ type Store struct {
 	listen   Listener
 	log      *slog.Logger
 	now      func() time.Time
+	wait     func(ctx context.Context, d time.Duration) bool
+	failed   atomic.Bool
 	mu       sync.Mutex
 	watchers []func(*Snapshot)
 	current  atomic.Pointer[Snapshot]
@@ -153,10 +159,14 @@ func New(o Options) (*Store, error) {
 	if now == nil {
 		now = time.Now
 	}
+	wait := o.Wait
+	if wait == nil {
+		wait = sleep
+	}
 	env := o.Env.Clone()
 	s := &Store{
 		db: o.DB, sealer: sealer, env: env, envOIDC: append([]settingspec.OIDCProvider(nil), o.EnvOIDC...), dev: o.Dev,
-		listen: o.Listen, log: o.Log, now: now,
+		listen: o.Listen, log: o.Log, now: now, wait: wait,
 	}
 	snap, err := s.build(map[settingspec.Group]Stored{}, s.emptyOidc())
 	if err != nil && s.db == nil {
@@ -181,6 +191,17 @@ func (s *Store) Load(ctx context.Context) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	err := s.load(ctx)
+	if err != nil && ctx.Err() == nil {
+		s.failed.Store(true)
+	}
+	if err == nil {
+		s.failed.Store(false)
+	}
+	return err
+}
+
+func (s *Store) load(ctx context.Context) error {
 	q := sqlc.New(s.db)
 	stored, err := s.read(ctx, q)
 	if err != nil {
@@ -196,12 +217,6 @@ func (s *Store) Load(ctx context.Context) error {
 	}
 	s.publish(snap)
 	return nil
-}
-
-func (s *Store) Reload(ctx context.Context) {
-	if err := s.Load(ctx); err != nil {
-		s.log.ErrorContext(ctx, "instance settings were not reloaded; the previous values stay in effect", "error", err)
-	}
 }
 
 func (s *Store) read(ctx context.Context, q *sqlc.Queries) (map[settingspec.Group]Stored, error) {

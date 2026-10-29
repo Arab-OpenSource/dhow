@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { backendFailure } from '@/Core/Testing/Backend';
 import { envelope, meBody, ORG_ID, stubFetch, USER_ID } from '@/Core/Testing/Fetch';
 import { renderWithProviders } from '@/Core/Testing/Render';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 import { TokenNewBody } from '@/Modules/Tokens/Components/TokenNewBody';
 import { TokensCard } from '@/Modules/Tokens/Components/TokensCard';
@@ -100,7 +101,7 @@ describe('creating an API token', () => {
     await user.type(await screen.findByLabelText(Ar['tokens.form.name']), '  CI  ');
     const scopes = screen.getByRole('group', { name: Ar['tokens.form.scopes'] });
     await user.click(within(scopes).getByRole('checkbox', { name: new RegExp(Ar['scope.runner.manage']) }));
-    await user.click(screen.getByRole('radio', { name: Ar['tokens.form.days'].replace('{count}', '90') }));
+    await user.click(screen.getByRole('radio', { name: arText('tokens.form.days', { count: 90 }) }));
     await user.type(screen.getByLabelText(Ar['factor.method.password']), 'correct horse battery staple');
     await user.click(screen.getByRole('button', { name: Ar['tokens.form.submit'] }));
     expect(await screen.findByText(VALUE)).toBeInTheDocument();

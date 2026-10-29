@@ -45,7 +45,7 @@ export const AdminAr = {
   'orgTokens.subtitle': 'كل المفاتيح التي أنشأها أعضاء المؤسسة.',
   'orgTokens.lead': 'كل مفتاح يعمل بصلاحياته وبدور صاحبه في المؤسسة. ألغِ أي مفتاح لا تعرفه أو لم يعد مستخدمًا.',
   'orgTokens.list': 'المفاتيح',
-  'orgTokens.count': '{count} مفتاح فعّال',
+  'orgTokens.count': '{count, plural, zero {لا توجد مفاتيح فعّالة} one {مفتاح فعّال واحد} two {مفتاحان فعّالان} few {{count} مفاتيح فعّالة} many {{count} مفتاحًا فعّالًا} other {{count} مفتاح فعّال}}',
   'orgTokens.scopes': 'الصلاحيات',
   'orgTokens.created': 'تاريخ الإنشاء',
   'orgTokens.lastUsed': 'آخر استخدام',

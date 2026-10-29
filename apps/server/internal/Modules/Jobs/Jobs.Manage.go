@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
@@ -136,18 +135,15 @@ func (s *Service) insert(ctx context.Context, p auth.Principal, org uuid.UUID, n
 	return models.Detail{Job: jobOf(row), Spec: spec, Attempts: []models.Attempt{}}, nil
 }
 
-func (s *Service) List(ctx context.Context, org uuid.UUID, state *string, page, limit int) ([]models.Job, int64, error) {
+func (s *Service) List(ctx context.Context, org uuid.UUID, states []string, page, limit int) ([]models.Job, int64, error) {
 	q := s.queries()
-	filter := pgtype.Text{}
-	if state != nil {
-		filter = pgtype.Text{String: *state, Valid: true}
-	}
-	total, err := q.CountJobs(ctx, sqlc.CountJobsParams{OrganizationID: org, State: filter})
+	filter := nonNil(states)
+	total, err := q.CountJobs(ctx, sqlc.CountJobsParams{OrganizationID: org, States: filter})
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := q.ListJobs(ctx, sqlc.ListJobsParams{
-		OrganizationID: org, State: filter, PageLimit: int32(limit), PageOffset: int32((page - 1) * limit), //nolint:gosec // limit and page are bounded by response.PageParams.
+		OrganizationID: org, States: filter, PageLimit: int32(limit), PageOffset: int32((page - 1) * limit), //nolint:gosec // limit and page are bounded by response.PageParams.
 	})
 	if err != nil {
 		return nil, 0, err

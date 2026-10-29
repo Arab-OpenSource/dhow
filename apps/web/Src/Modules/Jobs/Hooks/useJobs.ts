@@ -19,11 +19,11 @@ const anyActive = (page: IPage<TJob> | undefined): boolean => page?.Items.some((
 export const useJobs = (
   organizationId: string,
   page: number,
-  state: TJobState | null,
+  states: readonly TJobState[],
 ): UseQueryResult<IPage<TJob>, ApiError> =>
   useQuery<IPage<TJob>, ApiError>({
-    queryKey: [...JOBS_QUERY_KEY, 'list', organizationId, page, state],
-    queryFn: () => listJobs(organizationId, page, JOBS_PAGE_SIZE, state),
+    queryKey: [...JOBS_QUERY_KEY, 'list', organizationId, page, states],
+    queryFn: () => listJobs(organizationId, page, JOBS_PAGE_SIZE, states),
     placeholderData: keepPreviousData,
     refetchInterval: (query) => (anyActive(query.state.data) ? LIST_REFRESH_MS : false),
   });
@@ -31,14 +31,14 @@ export const useJobs = (
 export const useRecentJobs = (organizationId: string): UseQueryResult<IPage<TJob>, ApiError> =>
   useQuery<IPage<TJob>, ApiError>({
     queryKey: [...JOBS_QUERY_KEY, 'recent', organizationId],
-    queryFn: () => listJobs(organizationId, 1, RECENT_JOBS_LIMIT, null),
+    queryFn: () => listJobs(organizationId, 1, RECENT_JOBS_LIMIT, []),
     refetchInterval: (query) => (anyActive(query.state.data) ? LIST_REFRESH_MS : false),
   });
 
 export const useWaitingJobs = (organizationId: string): UseQueryResult<IPage<TJob>, ApiError> =>
   useQuery<IPage<TJob>, ApiError>({
     queryKey: [...JOBS_QUERY_KEY, 'waiting', organizationId],
-    queryFn: () => listJobs(organizationId, 1, WAITING_LIMIT, 'queued'),
+    queryFn: () => listJobs(organizationId, 1, WAITING_LIMIT, ['queued']),
     refetchInterval: (query) => (anyActive(query.state.data) ? LIST_REFRESH_MS : false),
   });
 

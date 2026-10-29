@@ -26,7 +26,7 @@ Pick a member to open their details (`/org/members/<id>`):
 - **On screens 1280px wide and up,** the details open beside the list. The selected row is highlighted, and the list keeps its place and page while you move between members.
 - **On smaller screens,** the details take the whole page, with **All members** at the top to go back.
 
-The details show the role (and the higher role a team grants, if any), the second step (owners and admins only) and the join date. Owners and admins can also:
+The details show the role (and the higher role a team grants, if any), the second step (owners and admins only), the member's teams, each a link to the team, and the join date. The teams come with the members list (`Teams` on each member), so opening a member sends no extra request. Owners and admins can also:
 
 - **Change the role** from a list. Giving or taking the owner role asks for your current factor. The member is signed out everywhere so the new role applies at once.
 - **Reset the second step** of a member who lost every factor and recovery code.

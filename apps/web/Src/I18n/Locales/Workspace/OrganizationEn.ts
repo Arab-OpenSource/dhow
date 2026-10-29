@@ -81,7 +81,7 @@ export const OrganizationEn: Record<keyof typeof OrganizationAr, string> = {
   'team.members.remove': 'Remove {name} from the team',
   'team.members.added': '{name} joined the team.',
   'team.members.removed': '{name} left the team.',
-  'team.revoked': '{count} sessions ended because an effective role changed.',
+  'team.revoked': '{count, plural, one {1 session ended because an effective role changed.} other {{count} sessions ended because an effective role changed.}}',
   'team.delete': 'Delete the team',
   'team.delete.about': 'Members stay in the organization with their own roles.',
   'team.delete.confirm': 'Yes, delete the team',

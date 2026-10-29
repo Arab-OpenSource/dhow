@@ -1,4 +1,5 @@
 import { isApiError } from '@/Core/Api/ApiError';
+import { useCrumbTitle } from '@/Core/Hooks/useCrumbTitle';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Badge } from '@/Core/Ui/Badge';
 import { Button } from '@/Core/Ui/Button';
@@ -53,6 +54,7 @@ const Loaded = ({ organizationId, runnerId, manager }: IRunnerBodyProps & { orga
   const t = useT();
   const errorText = useApiErrorText();
   const runner = useRunner(organizationId, runnerId);
+  useCrumbTitle(runnerId, runner.data?.Name);
 
   if (isApiError(runner.error) && runner.error.Status === 404) {
     return (

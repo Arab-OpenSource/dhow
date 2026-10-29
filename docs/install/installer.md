@@ -166,7 +166,7 @@ install_packages: false
 - The binary, the unit and the configuration exist, and the unit matches the one shipped with this release.
 - Ownership `root:root` and the modes in [What it writes](#what-it-writes).
 - The secret key and the database URL are present and pass the same checks as at boot. Doctor never generates a new secret key, because a new key cannot read the old data.
-- The service is enabled and running, and `/api/v1/health/ready` reports the database and the migrations as ready. It also says whether the first owner still has to be created.
+- The service is enabled and running, and `/api/v1/health/ready` reports the database, the migrations, today's job log partition and the last settings reload as ready. It also says whether the first owner still has to be created.
 - `DHOW_TRUSTED_PROXIES`: not `0.0.0.0/0` or `::/0`, no very large public range, and it includes `127.0.0.1` when the proxy runs on this host.
 - Through the public URL: the proxy answers, the TLS certificate has at least 21 days left, the proxy passes `Origin` (a request with your origin is not refused with `CSRF_FAILED`, one with a foreign origin is), and the client address reaches Dhow (a probe request shows up in the log with a `client_ip` that is not the proxy's). For nginx it also checks that the site sets `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`. These checks are skipped with proxy `none`.
 - CPU cores and memory against the [hardware requirements](../requirements.md): below the minimum is a failure, below the recommended size a warning.
