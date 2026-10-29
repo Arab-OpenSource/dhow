@@ -18,6 +18,7 @@ import (
 const (
 	fieldUserID        = "UserId"
 	fieldRole          = "Role"
+	fieldStatus        = "Status"
 	fieldCurrentFactor = "CurrentFactor"
 	fieldSlug          = "Slug"
 	fieldDescription   = "Description"

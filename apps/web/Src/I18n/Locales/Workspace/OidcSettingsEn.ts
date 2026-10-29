@@ -11,6 +11,9 @@ export const OidcSettingsEn: Record<keyof typeof OidcSettingsAr, string> = {
   'settings.oidc.locked': 'Set by environment variables',
   'settings.oidc.lockedAbout': 'The whole list comes from environment variables. Change them and restart the server, or remove this variable to manage providers here:',
   'settings.oidc.ignored': 'Some providers saved in the database are unused now. Count: {count}.',
+  'settings.oidc.stranded': 'Some members can’t sign in with their provider now',
+  'settings.oidc.strandedAbout':
+    'Some accounts are linked to providers saved in the database, and those providers are off because the list comes from environment variables. Accounts: {count}. Add those providers to the variable with the same id, or remove the variable to use the saved list again.',
   'settings.oidc.linked': 'Linked accounts: {count}',
   'settings.oidc.off': 'Off',
   'settings.oidc.offAbout': 'Add the client secret to turn it on.',

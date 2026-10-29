@@ -55,6 +55,26 @@ func (q *Queries) CountOidcProviders(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countStrandedIdentities = `-- name: CountStrandedIdentities :one
+SELECT count(DISTINCT p."ProviderId")::bigint AS "Providers", count(i."Id")::bigint AS "Identities"
+FROM "OidcProviders" p
+JOIN "UserIdentities" i ON i."Provider" = p."ProviderId" AND NOT i."IsDeleted"
+JOIN "Users" u ON u."Id" = i."UserId" AND NOT u."IsDeleted"
+WHERE NOT p."IsDeleted" AND NOT (p."ProviderId" = ANY ($1::text[]))
+`
+
+type CountStrandedIdentitiesRow struct {
+	Providers  int64
+	Identities int64
+}
+
+func (q *Queries) CountStrandedIdentities(ctx context.Context, active []string) (CountStrandedIdentitiesRow, error) {
+	row := q.db.QueryRow(ctx, countStrandedIdentities, active)
+	var i CountStrandedIdentitiesRow
+	err := row.Scan(&i.Providers, &i.Identities)
+	return i, err
+}
+
 const countUsersOnlyOnProvider = `-- name: CountUsersOnlyOnProvider :one
 SELECT count(*)
 FROM "Users" u

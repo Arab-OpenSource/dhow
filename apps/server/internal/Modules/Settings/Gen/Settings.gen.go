@@ -345,6 +345,9 @@ type OidcSettings struct {
 	// Env Example: DHOW_OIDC_PROVIDERS
 	Env string `json:"Env"`
 
+	// IgnoredLinkedIdentities Accounts linked to those unused providers, counting only providers whose id the environment list does not reuse. They cannot sign in with that provider while `DHOW_OIDC_PROVIDERS` is set. Zero when not locked.
+	IgnoredLinkedIdentities int64 `json:"IgnoredLinkedIdentities"`
+
 	// IgnoredStored Providers saved in the database that are unused because the environment sets the list.
 	IgnoredStored int64 `json:"IgnoredStored"`
 

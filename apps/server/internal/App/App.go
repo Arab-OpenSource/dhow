@@ -93,12 +93,16 @@ func (o Options) guard() *auth.Guard {
 	if csrf == nil {
 		csrf = auth.NewCSRF(o.Config.SecretKey)
 	}
+	var members auth.MembershipToucher
+	if o.Session != nil {
+		members = o.Session
+	}
 	var tokenResolver auth.TokenResolver
 	if o.Tokens != nil {
 		tokenResolver = o.Tokens
 	}
 	return auth.NewGuard(auth.GuardOptions{
-		Resolver: resolver, Tokens: tokenResolver, APITokens: o.APITokens, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now,
+		Resolver: resolver, Members: members, Tokens: tokenResolver, APITokens: o.APITokens, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now,
 		Instance: o.Instance,
 	})
 }

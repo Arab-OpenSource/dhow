@@ -55,12 +55,17 @@ type ResolvedToken struct {
 	Locale          string
 }
 
+type MembershipToucher interface {
+	TouchMembership(ctx context.Context, user, org uuid.UUID, now time.Time) error
+}
+
 type TokenResolver interface {
 	ResolveToken(ctx context.Context, tokenHash []byte, now time.Time) (ResolvedToken, error)
 }
 
 type GuardOptions struct {
 	Resolver  Resolver
+	Members   MembershipToucher
 	Tokens    TokenResolver
 	APITokens *APITokens
 	CSRF      *CSRF
@@ -72,6 +77,7 @@ type GuardOptions struct {
 
 type Guard struct {
 	resolver  Resolver
+	members   MembershipToucher
 	tokens    TokenResolver
 	apiTokens *APITokens
 	csrf      *CSRF
@@ -91,7 +97,7 @@ func NewGuard(o GuardOptions) *Guard {
 		instance = func() policy.InstanceSettings { return policy.InstanceSettings{} }
 	}
 	return &Guard{
-		resolver: o.Resolver, tokens: o.Tokens, apiTokens: o.APITokens, csrf: o.CSRF, origin: OriginOf(o.PublicURL),
+		resolver: o.Resolver, members: o.Members, tokens: o.Tokens, apiTokens: o.APITokens, csrf: o.CSRF, origin: OriginOf(o.PublicURL),
 		instance: instance, log: o.Log, now: now,
 	}
 }
@@ -199,7 +205,26 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 	if ae := g.permit(principal.Subject, rule.Action, resource); ae != nil {
 		return ctx, ae
 	}
+	if resource.OrganizationID != uuid.Nil {
+		g.touchMembership(ctx, principal.Subject, resource.OrganizationID)
+	}
 	return WithPrincipal(ctx, principal), nil
+}
+
+func (g *Guard) touchMembership(ctx context.Context, s policy.Subject, org uuid.UUID) {
+	if g.members == nil {
+		return
+	}
+	now := g.now()
+	for _, m := range s.Memberships {
+		if m.OrganizationID != org || now.Sub(m.LastSeenAt) < config.MembershipTouchInterval {
+			continue
+		}
+		if err := g.members.TouchMembership(ctx, s.UserID, org, now); err != nil {
+			g.log.WarnContext(ctx, "touch membership failed", "error", err)
+		}
+		return
+	}
 }
 
 func (g *Guard) permit(s policy.Subject, action policy.Action, resource policy.Resource) *apperrors.AppError {

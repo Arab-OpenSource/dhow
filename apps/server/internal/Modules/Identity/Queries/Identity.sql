@@ -82,7 +82,8 @@ SELECT u."Id" AS "UserId", u."Name", u."Email", m."Role", m."CreatedAt" AS "Join
        EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted") AS "HasPasskey",
        u."MfaResetAt",
        COALESCE(teams."Ids", '{}')::uuid[] AS "TeamIds",
-       COALESCE(teams."Names", '{}')::text[] AS "TeamNames"
+       COALESCE(teams."Names", '{}')::text[] AS "TeamNames",
+       m."LastSeenAt" AS "LastActiveAt"
 FROM "Memberships" m
 JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted"
 LEFT JOIN LATERAL (

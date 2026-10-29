@@ -30,6 +30,7 @@ type OidcView struct {
 	Linked        map[string]int64
 	OnlySignIn    map[string]int64
 	IgnoredStored int64
+	IgnoredLinked int64
 }
 
 func (s *Service) oidcView(ctx context.Context, snap *instancesettings.Snapshot) (OidcView, error) {
@@ -43,8 +44,7 @@ func (s *Service) oidcView(ctx context.Context, snap *instancesettings.Snapshot)
 		view.Linked[c.Provider] = c.Identities
 	}
 	if snap.Oidc.Locked() {
-		view.IgnoredStored, err = q.CountOidcProviders(ctx)
-		return view, err
+		return s.lockedView(ctx, q, view)
 	}
 	enabled := []string{}
 	for _, p := range snap.Oidc.Providers {
@@ -68,6 +68,23 @@ func (s *Service) oidcView(ctx context.Context, snap *instancesettings.Snapshot)
 		}
 		view.OnlySignIn[p.Config.ID] = n
 	}
+	return view, nil
+}
+
+func (s *Service) lockedView(ctx context.Context, q *sqlc.Queries, view OidcView) (OidcView, error) {
+	stored, err := q.CountOidcProviders(ctx)
+	if err != nil {
+		return OidcView{}, err
+	}
+	active := make([]string, 0, len(view.Snapshot.Oidc.Providers))
+	for _, p := range view.Snapshot.Oidc.Providers {
+		active = append(active, p.Config.ID)
+	}
+	stranded, err := q.CountStrandedIdentities(ctx, active)
+	if err != nil {
+		return OidcView{}, err
+	}
+	view.IgnoredStored, view.IgnoredLinked = stored, stranded.Identities
 	return view, nil
 }
 

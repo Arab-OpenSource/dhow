@@ -24,7 +24,8 @@ func oidcToGen(v OidcView) gen.OidcSettings {
 	o := v.Snapshot.Oidc
 	out := gen.OidcSettings{
 		Source: gen.SettingSource(o.Source), Locked: o.Locked(), Env: config.EnvOIDCProviders, CallbackBase: v.CallbackBase,
-		MaxProviders: oidcMaxProviders, IgnoredStored: v.IgnoredStored, Providers: make([]gen.OidcProviderSetting, 0, len(o.Providers)),
+		MaxProviders: oidcMaxProviders, IgnoredStored: v.IgnoredStored,
+		IgnoredLinkedIdentities: v.IgnoredLinked, Providers: make([]gen.OidcProviderSetting, 0, len(o.Providers)),
 	}
 	for _, p := range o.Providers {
 		c := p.Config

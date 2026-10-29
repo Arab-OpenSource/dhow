@@ -220,6 +220,7 @@ type Membership struct {
 	UserId         uuid.UUID
 	OrganizationId uuid.UUID
 	Role           string
+	LastSeenAt     *time.Time
 }
 
 type OidcFlow struct {

@@ -323,6 +323,8 @@ type fakeDB struct {
 	err       error
 	stored    map[string]bool
 	providers int64
+	stranded  Stranded
+	active    *[]string
 }
 
 func (d fakeDB) ServerMajor(context.Context, string) (int, error) { return d.major, d.err }
@@ -332,6 +334,13 @@ func (d fakeDB) StoredSettings(context.Context, string) (map[string]bool, error)
 }
 
 func (d fakeDB) StoredProviders(context.Context, string) (int64, error) { return d.providers, d.err }
+
+func (d fakeDB) StrandedIdentities(_ context.Context, _ string, active []string) (Stranded, error) {
+	if d.active != nil {
+		*d.active = active
+	}
+	return d.stranded, d.err
+}
 
 func fsMode(p uint32) fs.FileMode { return fs.FileMode(p) }
 
