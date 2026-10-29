@@ -8,6 +8,9 @@ import {
   LazyOrganizationsBody,
   LazyOrganizationSlide,
   LazyOrganizationSubtitle,
+  LazyOrganizationTokenNewBody,
+  LazyOrganizationTokensBody,
+  LazyOrganizationTokensFooter,
   LazyTeamBody,
   LazyTeamNewBody,
   LazyTransferBody,
@@ -33,6 +36,9 @@ const organizationSlide = (id: TFrameId, { t, navigation }: IFrameContext): ISli
       onTransfer={() => {
         navigation.pushFrame('organization-transfer');
       }}
+      onTokens={() => {
+        navigation.pushFrame('organization-tokens');
+      }}
       onLeft={navigation.closeAll}
     />
   ),
@@ -43,6 +49,9 @@ const organizationSlide = (id: TFrameId, { t, navigation }: IFrameContext): ISli
       }}
       onAudit={() => {
         navigation.pushFrame('audit');
+      }}
+      onTokens={() => {
+        navigation.pushFrame('organization-tokens');
       }}
     />
   ),
@@ -120,6 +129,26 @@ export const buildOrganizationSlide = (id: TFrameId, context: IFrameContext): IS
       title: t('organization.transfer.title'),
       subtitle: <span>{t('organization.transfer.subtitle')}</span>,
       children: <LazyTransferBody onDone={navigation.popFrame} />,
+    };
+  }
+  if (id === 'organization-tokens') {
+    const onNew = () => {
+      navigation.pushFrame('organization-token-new');
+    };
+    return {
+      id,
+      title: t('orgTokens.title'),
+      subtitle: <span>{t('orgTokens.subtitle')}</span>,
+      children: <LazyOrganizationTokensBody onNew={onNew} />,
+      footer: <LazyOrganizationTokensFooter onNew={onNew} />,
+    };
+  }
+  if (id === 'organization-token-new') {
+    return {
+      id,
+      title: t('tokens.slide.title'),
+      subtitle: <span>{t('orgTokens.new.subtitle')}</span>,
+      children: <LazyOrganizationTokenNewBody onDone={navigation.popFrame} />,
     };
   }
   if (id === 'team-new') {

@@ -6,7 +6,9 @@ export type TApiToken = components['schemas']['ApiToken'];
 export type TApiTokenScope = components['schemas']['ApiTokenScope'];
 export type TCreatedApiToken = components['schemas']['CreatedApiToken'];
 
-export const TOKENS_QUERY_KEY = ['api-tokens', 'mine'] as const;
+export const ALL_TOKENS_QUERY_KEY = ['api-tokens'] as const;
+export const TOKENS_QUERY_KEY = [...ALL_TOKENS_QUERY_KEY, 'mine'] as const;
+export const organizationTokensKey = (organizationId: string) => [...ALL_TOKENS_QUERY_KEY, 'organization', organizationId] as const;
 
 export interface ICreateTokenInput {
   OrganizationId: string;
@@ -27,3 +29,11 @@ export const createToken = (input: ICreateTokenInput, factor: TCurrentFactor): P
 
 export const revokeMyToken = (id: string): Promise<TApiToken> =>
   request(() => ApiClient.POST('/me/api-tokens/{id}/revoke', { params: { path: { id } } }));
+
+export const listOrganizationTokens = (organizationId: string): Promise<TApiToken[]> =>
+  request(() => ApiClient.GET('/organizations/{id}/api-tokens', { params: { path: { id: organizationId } } }));
+
+export const revokeOrganizationToken = (organizationId: string, tokenId: string): Promise<TApiToken> =>
+  request(() =>
+    ApiClient.POST('/organizations/{id}/api-tokens/{tokenId}/revoke', { params: { path: { id: organizationId, tokenId } } }),
+  );

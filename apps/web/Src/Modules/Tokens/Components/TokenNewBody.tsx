@@ -12,17 +12,17 @@ import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Input } from '@/Core/Ui/Input';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
-import { createToken, TOKENS_QUERY_KEY, type TApiTokenScope, type TCreatedApiToken } from '@/Modules/Tokens/Api/TokensApi';
+import { ALL_TOKENS_QUERY_KEY, createToken, type TApiTokenScope, type TCreatedApiToken } from '@/Modules/Tokens/Api/TokensApi';
 import { TokenCreated } from '@/Modules/Tokens/Components/TokenCreated';
 import { TokenFields } from '@/Modules/Tokens/Components/TokenFields';
 import { DEFAULT_EXPIRY_DAYS, scopesFor, TOKEN_NAME_MAX, type TExpiry } from '@/Modules/Tokens/Types/Scopes';
 
 export interface ITokenNewBodyProps {
   onDone: () => void;
+  organizationId?: string;
 }
 
-
-export const TokenNewBody = ({ onDone }: ITokenNewBodyProps) => {
+export const TokenNewBody = ({ onDone, organizationId: fixed }: ITokenNewBodyProps) => {
   const t = useT();
   const client = useQueryClient();
   const me = useMe();
@@ -34,8 +34,9 @@ export const TokenNewBody = ({ onDone }: ITokenNewBodyProps) => {
   const [Scopes, setScopes] = useState<TApiTokenScope[]>(['org.read']);
   const [Problem, setProblem] = useState<string | null>(null);
   const [Created, setCreated] = useState<TCreatedApiToken | null>(null);
-  const memberships = me.data?.Memberships ?? [];
-  const organizationId = Organization ?? current?.OrganizationId ?? null;
+  const all = me.data?.Memberships ?? [];
+  const memberships = fixed === undefined ? all : all.filter((item) => item.OrganizationId === fixed);
+  const organizationId = fixed ?? Organization ?? current?.OrganizationId ?? null;
   const membership = memberships.find((item) => item.OrganizationId === organizationId);
   const allowed = membership ? scopesFor(membership.Role) : [];
   const chosen = Scopes.filter((scope) => allowed.includes(scope));
@@ -46,7 +47,7 @@ export const TokenNewBody = ({ onDone }: ITokenNewBodyProps) => {
       { OrganizationId: organizationId, Name: Name.trim(), Scopes: chosen, ExpiresInDays: Number(Expiry) },
       await factor(),
     );
-    await client.invalidateQueries({ queryKey: TOKENS_QUERY_KEY });
+    await client.invalidateQueries({ queryKey: ALL_TOKENS_QUERY_KEY });
     return created;
   });
 

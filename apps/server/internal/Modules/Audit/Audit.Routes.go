@@ -23,6 +23,7 @@ func Policies() []policy.Rule {
 	return []policy.Rule{
 		policy.Organization(http.MethodGet, "/organizations/{id}/audit-events", policy.AuditRead, "id").AllowTokens(),
 		policy.Organization(http.MethodGet, "/organizations/{id}/audit-events/verify", policy.AuditRead, "id").AllowTokens(),
+		policy.Organization(http.MethodGet, "/organizations/{id}/audit-events/{eventId}", policy.AuditRead, "id").AllowTokens(),
 	}
 }
 

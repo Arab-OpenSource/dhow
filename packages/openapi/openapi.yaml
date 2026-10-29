@@ -1716,7 +1716,10 @@ paths:
       operationId: listAuditEvents
       tags: [audit]
       summary: List the audit events of an organization
-      description: Needs `audit.read`. Newest first. A caller who is not a member gets 404.
+      description: >-
+        Needs `audit.read`. Newest first. A caller who is not a member gets 404. Every filter is optional and they
+        combine with AND; `Meta.Total` counts the matching events. A `From` later than `To`, or an unknown `Category`,
+        is `VALIDATION_FAILED`.
       security:
         - SessionCookie: []
         - ApiToken: []
@@ -1724,6 +1727,11 @@ paths:
         - $ref: "#/components/parameters/Id"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/AuditCategory"
+        - $ref: "#/components/parameters/AuditAction"
+        - $ref: "#/components/parameters/AuditActor"
+        - $ref: "#/components/parameters/AuditFrom"
+        - $ref: "#/components/parameters/AuditTo"
       responses:
         "200":
           description: A page of audit events.
@@ -1731,6 +1739,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuditEventListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/audit-events/{eventId}:
+    get:
+      operationId: getAuditEvent
+      tags: [audit]
+      summary: Read one audit event of an organization
+      description: Needs `audit.read`. An event of another organization, or an unknown id, is 404.
+      security:
+        - SessionCookie: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: The audit event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventResponse"
         default:
           $ref: "#/components/responses/Error"
   /organizations/{id}/audit-events/verify:
@@ -2126,6 +2155,53 @@ components:
       schema:
         type: string
         format: uuid
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AuditCategory:
+      name: Category
+      in: query
+      required: false
+      description: Only events whose action starts with this category, such as `auth` for `auth.login`.
+      schema:
+        $ref: "#/components/schemas/AuditCategory"
+    AuditAction:
+      name: Action
+      in: query
+      required: false
+      description: Only events with exactly this action.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    AuditActor:
+      name: ActorUserId
+      in: query
+      required: false
+      description: Only events done by this user.
+      schema:
+        type: string
+        format: uuid
+    AuditFrom:
+      name: From
+      in: query
+      required: false
+      description: Only events at or after this time.
+      schema:
+        type: string
+        format: date-time
+    AuditTo:
+      name: To
+      in: query
+      required: false
+      description: Only events before this time.
+      schema:
+        type: string
+        format: date-time
     JobId:
       name: jobId
       in: path
@@ -2677,6 +2753,16 @@ components:
           additionalProperties:
             type: string
           description: Context of the event. Never contains a secret.
+    AuditCategory:
+      type: string
+      enum: [auth, identity, runner, job, system]
+    AuditEventResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/AuditEvent"
     AuditEventListResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"
