@@ -96,7 +96,7 @@ func TestEveryLimitedRouteAnswers429AtTheLimit(t *testing.T) {
 			}
 			res := hit(env, r, "", nil)
 			assertLimited(t, res)
-			assert.Equal(t, "طلبات كتير ورا بعض. استنى شوية وجرّب تاني.", res.Error.Message)
+			assert.Equal(t, "طلبات كثيرة متتالية. انتظر قليلًا وحاول مرة أخرى.", res.Error.Message)
 			en := hit(env, r, "", map[string]string{"Accept-Language": "en"})
 			assertLimited(t, en)
 			assert.Equal(t, "Too many requests in a row. Wait a little and try again.", en.Error.Message)

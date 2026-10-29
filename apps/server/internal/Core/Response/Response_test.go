@@ -66,7 +66,7 @@ func TestError(t *testing.T) {
 		wantStatus int
 		want       string
 	}{
-		{"arabic by default", "", apperrors.NotFound(), http.StatusNotFound, `{"Success":false,"Error":{"Code":"NOT_FOUND","Message":"المورد المطلوب مش موجود."}}`},
+		{"arabic by default", "", apperrors.NotFound(), http.StatusNotFound, `{"Success":false,"Error":{"Code":"NOT_FOUND","Message":"المورد المطلوب غير موجود."}}`},
 		{"english", "en", apperrors.NotFound(), http.StatusNotFound, `{"Success":false,"Error":{"Code":"NOT_FOUND","Message":"The requested resource does not exist."}}`},
 		{
 			"details are translated", "en",

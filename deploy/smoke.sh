@@ -422,7 +422,7 @@ expect "the OIDC routes answer 429 within the limit of 20 per 10 minutes" test "
 expect "a forged X-Forwarded-For does not escape the limit" test "$limited" -ne 0
 expect "the 429 is RATE_LIMITED" grep -q '"Code":"RATE_LIMITED"' "$work/rl.body"
 expect "the 429 carries Retry-After" has_header "$work/rl.head" Retry-After '[0-9]'
-expect "the 429 message is in Arabic by default" grep -q 'استنى شوية' "$work/rl.body"
+expect "the 429 message is in Arabic by default" grep -q 'انتظر قليلًا' "$work/rl.body"
 status=$(api "$work/rl-en" POST /api/v1/oidc/callback '{"Provider":"google","Code":"x","State":"y"}' "${origin[@]}" --header 'Accept-Language: en')
 expect "the callback shares the OIDC counter" test "$status" = 429
 expect "the 429 message is in English with Accept-Language: en" grep -q 'Wait a little and try again' "$work/rl-en.body"

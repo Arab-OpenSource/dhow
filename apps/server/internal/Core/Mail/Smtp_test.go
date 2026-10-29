@@ -174,7 +174,7 @@ func sender(t *testing.T, f *fakeServer, mode string, user, pass string, pool *x
 }
 
 var message = mailer.Message{
-	To: "ali@future.dev", Subject: "منى دعتك لـ Future Solution", Body: "Open https://dhow.example.com/invite#token\nIt works once.",
+	To: "ali@future.dev", Subject: "منى تدعوك إلى Future Solution", Body: "Open https://dhow.example.com/invite#token\nIt works once.",
 }
 
 func decodedBody(t *testing.T, data string) string {

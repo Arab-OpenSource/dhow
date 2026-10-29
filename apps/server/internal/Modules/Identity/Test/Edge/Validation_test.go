@@ -114,7 +114,7 @@ func TestErrorMessagesFollowAcceptLanguage(t *testing.T) {
 	env := apptest.New(t)
 	for lang, want := range map[string]string{
 		"en": "The email or password is not correct.",
-		"ar": "الإيميل أو كلمة السر مش صح.",
+		"ar": "البريد الإلكتروني أو كلمة السر غير صحيحة.",
 	} {
 		res := env.Do(apptest.Request{
 			Method: http.MethodPost, Path: "/sessions", Headers: map[string]string{"Origin": apptest.PublicOrigin, "Accept-Language": lang},

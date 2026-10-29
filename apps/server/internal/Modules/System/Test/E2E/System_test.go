@@ -119,7 +119,7 @@ func TestMetaErrorFollowsAcceptLanguage(t *testing.T) {
 		headers map[string]string
 		want    string
 	}{
-		{"arabic by default", nil, "حصل خطأ غير متوقع. حاول تاني بعد شوية."},
+		{"arabic by default", nil, "حدث خطأ غير متوقع. حاول مرة أخرى بعد قليل."},
 		{"english", map[string]string{"Accept-Language": "en-US,en;q=0.9"}, "Something went wrong. Try again later."},
 	}
 	for _, tt := range tests {
