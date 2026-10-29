@@ -53,6 +53,8 @@ const (
 	KeySourceDatabase        Key = "source.database"
 	KeySourceDefault         Key = "source.default"
 	KeySourceUnknown         Key = "source.unknown"
+	KeyCheckProviders        Key = "check.providers"
+	KeyCheckProvidersUnknown Key = "check.providersUnknown"
 	KeyCheckTrusted          Key = "check.trusted"
 	KeyCheckUnit             Key = "check.unit"
 	KeyChoose                Key = "choose"

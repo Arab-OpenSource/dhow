@@ -53,6 +53,8 @@ var arMessages = map[Key]string{ //nolint:gosec // User-facing text that names s
 	KeySourceDatabase:        "قاعدة البيانات (من لوحة التحكم)",
 	KeySourceDefault:         "القيمة الافتراضية",
 	KeySourceUnknown:         "قاعدة البيانات أو القيمة الافتراضية (لم نتمكن من قراءة قاعدة البيانات من هنا)",
+	KeyCheckProviders:        "مزوّدو الدخول: %d، والمصدر %s",
+	KeyCheckProvidersUnknown: "مزوّدو الدخول من قاعدة البيانات (لم نتمكن من قراءة قاعدة البيانات من هنا)",
 	KeyCheckTrusted:          "DHOW_TRUSTED_PROXIES",
 	KeyCheckUnit:             "ملف systemd مطابق لهذا الإصدار",
 	KeyChoose:                "الرقم",

@@ -319,9 +319,10 @@ func liveHost(base *fakeSys) *fakeSys {
 }
 
 type fakeDB struct {
-	major  int
-	err    error
-	stored map[string]bool
+	major     int
+	err       error
+	stored    map[string]bool
+	providers int64
 }
 
 func (d fakeDB) ServerMajor(context.Context, string) (int, error) { return d.major, d.err }
@@ -329,6 +330,8 @@ func (d fakeDB) ServerMajor(context.Context, string) (int, error) { return d.maj
 func (d fakeDB) StoredSettings(context.Context, string) (map[string]bool, error) {
 	return d.stored, d.err
 }
+
+func (d fakeDB) StoredProviders(context.Context, string) (int64, error) { return d.providers, d.err }
 
 func fsMode(p uint32) fs.FileMode { return fs.FileMode(p) }
 

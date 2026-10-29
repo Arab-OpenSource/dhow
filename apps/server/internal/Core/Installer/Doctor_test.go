@@ -206,7 +206,8 @@ func TestDoctorShowsWhereEachSettingComesFromButNeverItsValue(t *testing.T) {
 		db   fakeDB
 		want []string
 	}{
-		{"the database answers", fakeDB{stored: map[string]bool{"DHOW_SMTP_HOST": true, "DHOW_LOG_RETENTION_DAYS": true}}, []string{
+		{"the database answers", fakeDB{stored: map[string]bool{"DHOW_SMTP_HOST": true, "DHOW_LOG_RETENTION_DAYS": true}, providers: 2}, []string{
+			"Sign-in providers: 2, from the database",
 			"DHOW_BREACHED_PASSWORD_CHECK comes from the environment",
 			"DHOW_SMTP_PASSWORD comes from the environment",
 			"DHOW_SMTP_HOST comes from the database",
@@ -214,6 +215,7 @@ func TestDoctorShowsWhereEachSettingComesFromButNeverItsValue(t *testing.T) {
 			"DHOW_RATE_LIMIT_PUBLIC comes from the default",
 		}},
 		{"the database is unreachable", fakeDB{err: errors.New("connection refused")}, []string{
+			"Sign-in providers come from the database (the database could not be read from here)",
 			"DHOW_BREACHED_PASSWORD_CHECK comes from the environment",
 			"DHOW_SMTP_HOST comes from the database or the default",
 		}},
@@ -229,4 +231,15 @@ func TestDoctorShowsWhereEachSettingComesFromButNeverItsValue(t *testing.T) {
 			assert.NotContains(t, out.String(), "relay-credential-in-env")
 		})
 	}
+}
+
+func TestDoctorCountsSignInProvidersFromTheEnvironmentButNeverShowsTheirSecrets(t *testing.T) {
+	f, _ := installedHost(t)
+	f.put(EnvFilePath, f.content(EnvFilePath)+"DHOW_OIDC_PROVIDERS=google,corp\nDHOW_OIDC_CORP_CLIENT_SECRET=corp-client-credential\n", 0o600)
+	app, out := newApp(f, "")
+	app.DB = fakeDB{providers: 7}
+	_ = app.Doctor(context.Background(), DoctorOptions{})
+	assert.Contains(t, out.String(), "Sign-in providers: 2, from the environment")
+	assert.NotContains(t, out.String(), "corp-client-credential")
+	assert.NotContains(t, out.String(), "Sign-in providers: 7")
 }
