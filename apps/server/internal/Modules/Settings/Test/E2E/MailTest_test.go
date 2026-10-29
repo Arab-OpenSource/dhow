@@ -8,11 +8,13 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 )
 
 type sink struct {
@@ -102,7 +104,8 @@ func sendTest(c *apptest.Client) apptest.Response {
 }
 
 func TestTheTestEmailGoesToTheOwnerThroughTheSettingsInEffect(t *testing.T) {
-	env := apptest.New(t)
+	start := time.Now().UTC().Truncate(config.MailTestWindow)
+	env := apptest.NewWithOptions(t, apptest.Options{Clock: apptest.NewClock(start)})
 	owner, _, fresh := ownerWithTotp(t, env)
 
 	off := sendTest(owner)
