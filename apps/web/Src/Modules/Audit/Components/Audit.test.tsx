@@ -1,11 +1,12 @@
 import { createMemoryHistory } from '@tanstack/react-router';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from '@/App/App';
 import { createAppRouter } from '@/App/Router';
 import { createQueryClient } from '@/Core/Api/QueryClient';
+import { usePaletteStore } from '@/Core/Store/usePaletteStore';
 import { auditFixture, backendFailure, membersFixture, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { envelope, USER_ID } from '@/Core/Testing/Fetch';
 import { findPage } from '@/Core/Testing/Pages';
@@ -200,6 +201,10 @@ describe('who can open the audit log', () => {
 });
 
 describe('names and addresses in the audit log', () => {
+  beforeEach(() => {
+    usePaletteStore.setState({ Open: false });
+  });
+
   it('isolates the actor name and the address so an Arabic name keeps its place in English text', async () => {
     const members = membersFixture().map((member) => (member.UserId === USER_ID ? { ...member, Name: 'صبري داود' } : member));
     const { dialog } = await mount({ members, audit: auditFixture(3) });
@@ -209,7 +214,7 @@ describe('names and addresses in the audit log', () => {
     expect(within(first).getByText('صبري داود').tagName).toBe('BDI');
     expect(within(first).getByText('203.0.113.1').tagName).toBe('BDI');
     expect(within(first).getByText('صبري داود').nextSibling?.textContent).toBe(' · ');
-  }, 15_000);
+  });
 
   it('isolates the actor, the address and the ids on the event page', async () => {
     const members = membersFixture().map((member) => (member.UserId === USER_ID ? { ...member, Name: 'صبري داود' } : member));
@@ -231,5 +236,5 @@ describe('names and addresses in the audit log', () => {
     expect(within(page).getByText(event.Ip).tagName).toBe('BDI');
     expect(within(page).getByText(event.Id).tagName).toBe('BDI');
     expect(within(page).getByText(event.TargetId).tagName).toBe('BDI');
-  }, 15_000);
+  });
 });
