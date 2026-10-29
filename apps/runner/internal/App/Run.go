@@ -66,8 +66,7 @@ func runRun(ctx context.Context, args []string, env Env) error {
 		return err
 	}
 	log := newLogger(env.Stdio.Err, cfg.LogLevel)
-	id, err := identity.Load(cfg.IdentityPath())
-	if err != nil {
+	if _, err := identity.Load(cfg.IdentityPath()); err != nil {
 		return err
 	}
 	lock, err := config.LockState(cfg.LockPath())
@@ -75,6 +74,10 @@ func runRun(ctx context.Context, args []string, env Env) error {
 		return err
 	}
 	defer func() { _ = lock.Release() }()
+	id, err := identity.Load(cfg.IdentityPath())
+	if err != nil {
+		return err
+	}
 	driver, err := newDriver(ctx, cfg, log)
 	if err != nil {
 		return err

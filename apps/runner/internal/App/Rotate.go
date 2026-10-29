@@ -89,8 +89,7 @@ func (r Rotation) defaults() Rotation {
 
 func (r Rotation) Run(ctx context.Context) (Rotated, error) {
 	r = r.defaults()
-	current, err := identity.Load(r.Config.IdentityPath())
-	if err != nil {
+	if _, err := identity.Load(r.Config.IdentityPath()); err != nil {
 		return Rotated{}, err
 	}
 	lock, err := config.LockState(r.Config.LockPath())
@@ -101,6 +100,10 @@ func (r Rotation) Run(ctx context.Context) (Rotated, error) {
 		return Rotated{}, err
 	}
 	defer func() { _ = lock.Release() }()
+	current, err := identity.Load(r.Config.IdentityPath())
+	if err != nil {
+		return Rotated{}, err
+	}
 	if err := identity.RemoveStaleTemps(r.Config.StateDir); err != nil {
 		return Rotated{}, err
 	}
