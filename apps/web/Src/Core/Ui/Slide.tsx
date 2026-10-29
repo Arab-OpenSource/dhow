@@ -99,9 +99,11 @@ const SlideHeader = ({ slide, index, total, trail, top, onBack, onCloseAll, onCr
         ) : null}
         {top ? <Dialog.Title asChild>{heading}</Dialog.Title> : heading}
         <div className="ms-auto flex items-center gap-2">
-          <span className="rounded-pill border border-line bg-wash px-2.5 text-caption font-medium whitespace-nowrap text-secondary">
-            {t('slides.level', { current: index + 1, total })}
-          </span>
+          {total > 1 ? (
+            <span className="rounded-pill border border-line bg-wash px-2.5 text-caption font-medium whitespace-nowrap text-secondary">
+              {t('slides.level', { current: index + 1, total })}
+            </span>
+          ) : null}
           <IconButton icon="close" size="sm" label={t('slides.closeAll')} onClick={onCloseAll} />
         </div>
       </div>

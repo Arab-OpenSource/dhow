@@ -1,0 +1,44 @@
+import { lazyPage } from '@/App/Navigation/LazyPage';
+import { member } from '@/App/Navigation/Gates';
+import {
+  canManageMembers,
+  canManageRunners,
+  canManageTokens,
+  canReadAudit,
+  canReadMembers,
+  canReadRunners,
+} from '@/Core/Auth/AuthTypes';
+
+export const SHELL_PAGES = {
+  home: lazyPage(() => import('@/Modules/System/Pages/WorkspacePage').then((module) => module.WorkspacePage)),
+  jobs: lazyPage(() => import('@/App/Pages/JobsPage').then((module) => module.JobsPage), member),
+  job: lazyPage(() => import('@/App/Pages/JobPage').then((module) => module.JobPage), member),
+  runners: lazyPage(() => import('@/App/Pages/RunnersPage').then((module) => module.RunnersPage), canReadRunners),
+  runnerTokens: lazyPage(
+    () => import('@/App/Pages/RunnerTokensPage').then((module) => module.RunnerTokensPage),
+    canManageRunners,
+  ),
+  runner: lazyPage(() => import('@/App/Pages/RunnerPage').then((module) => module.RunnerPage), canReadRunners),
+  members: lazyPage(() => import('@/App/Pages/MembersPage').then((module) => module.MembersPage), canReadMembers),
+  member: lazyPage(() => import('@/App/Pages/MemberPage').then((module) => module.MemberPage), canManageMembers),
+  teams: lazyPage(() => import('@/App/Pages/TeamsPage').then((module) => module.TeamsPage), canReadMembers),
+  team: lazyPage(() => import('@/App/Pages/TeamPage').then((module) => module.TeamPage), canReadMembers),
+  invitations: lazyPage(
+    () => import('@/App/Pages/InvitationsPage').then((module) => module.InvitationsPage),
+    canManageMembers,
+  ),
+  apiKeys: lazyPage(() => import('@/App/Pages/ApiKeysPage').then((module) => module.ApiKeysPage), canManageTokens),
+  orgSettings: lazyPage(
+    () => import('@/App/Pages/OrgSettingsPage').then((module) => module.OrgSettingsPage),
+    member,
+  ),
+  audit: lazyPage(() => import('@/App/Pages/AuditPage').then((module) => module.AuditPage), canReadAudit),
+  auditEvent: lazyPage(() => import('@/App/Pages/AuditEventPage').then((module) => module.AuditEventPage), canReadAudit),
+  system: lazyPage(() => import('@/App/Pages/SystemPage').then((module) => module.SystemPage)),
+  check: lazyPage(() => import('@/App/Pages/CheckPage').then((module) => module.CheckPage)),
+  profile: lazyPage(() => import('@/App/Pages/ProfilePage').then((module) => module.ProfilePage)),
+  security: lazyPage(() => import('@/App/Pages/SecurityPage').then((module) => module.SecurityPage)),
+  preferences: lazyPage(() => import('@/App/Pages/PreferencesPage').then((module) => module.PreferencesPage)),
+  organizations: lazyPage(() => import('@/App/Pages/OrganizationsPage').then((module) => module.OrganizationsPage)),
+  notifications: lazyPage(() => import('@/App/Pages/NotificationsPage').then((module) => module.NotificationsPage)),
+};

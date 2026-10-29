@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 import type { TMe } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useMfaStatus } from '@/Core/Auth/useMfaStatus';
@@ -10,16 +8,12 @@ import { Row, Rows } from '@/Core/Ui/Row';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { Summary } from '@/Core/Ui/Summary';
 import { useT } from '@/I18n/useT';
-import { IdentitiesCard } from '@/Modules/Session/Components/IdentitiesCard';
-import { SessionsCard } from '@/Modules/Session/Components/SessionsCard';
 
-export interface IAccountBodyProps {
+export interface IAccountPartProps {
   me: TMe;
-  security?: ReactNode;
-  tokens?: ReactNode;
 }
 
-const SecuritySummary = ({ me }: { me: TMe }) => {
+export const SecuritySummary = ({ me }: IAccountPartProps) => {
   const t = useT();
   const time = useRelativeTime();
   const status = useMfaStatus();
@@ -34,31 +28,24 @@ const SecuritySummary = ({ me }: { me: TMe }) => {
   return <Summary tone="ok" icon="shield" title={t('account.summary.strong.title')} sub={session} />;
 };
 
-export const AccountBody = ({ me, security, tokens }: IAccountBodyProps) => {
+export const ProfileCard = ({ me }: IAccountPartProps) => {
   const t = useT();
   const membership = useCurrentMembership();
 
   return (
-    <>
-      <SecuritySummary me={me} />
-      <Card title={t('account.profile.title')} icon="user">
-        <Rows label={t('account.profile.title')}>
-          <Row title={me.User.Name} sub={t('account.profile.name')} />
-          <Row title={me.User.Email} sub={t('account.profile.email')} mono />
-          <Row title={t(`language.${me.User.Locale}`)} sub={t('account.profile.language')} />
-          {membership ? (
-            <Row
-              title={membership.OrganizationName}
-              sub={t('account.profile.organization')}
-              end={<Badge tone="mute">{t(`role.${membership.Role}`)}</Badge>}
-            />
-          ) : null}
-        </Rows>
-      </Card>
-      {security}
-      <IdentitiesCard />
-      {tokens}
-      <SessionsCard />
-    </>
+    <Card title={t('account.profile.title')} icon="user">
+      <Rows label={t('account.profile.title')}>
+        <Row title={me.User.Name} sub={t('account.profile.name')} />
+        <Row title={me.User.Email} sub={t('account.profile.email')} mono />
+        <Row title={t(`language.${me.User.Locale}`)} sub={t('account.profile.language')} />
+        {membership ? (
+          <Row
+            title={membership.OrganizationName}
+            sub={t('account.profile.organization')}
+            end={<Badge tone="mute">{t(`role.${membership.Role}`)}</Badge>}
+          />
+        ) : null}
+      </Rows>
+    </Card>
   );
 };

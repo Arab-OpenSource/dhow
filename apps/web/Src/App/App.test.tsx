@@ -36,8 +36,8 @@ describe('app shell', () => {
     expect(document.documentElement.lang).toBe('ar');
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(screen.getByRole('heading', { level: 1, name: Ar['home.title'] })).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: Ar['shell.nav.label'] })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: Ar['shell.nav.home'] })).toHaveAttribute('aria-current', 'page');
+    const nav = screen.getByRole('navigation', { name: Ar['shell.nav.label'] });
+    expect(within(nav).getByRole('link', { name: Ar['shell.nav.home'] })).toHaveAttribute('aria-current', 'page');
   });
 
   it('has a skip link that moves focus to the main area', async () => {
@@ -58,48 +58,59 @@ describe('app shell', () => {
     expect(await screen.findByRole('combobox', { name: Ar['palette.label'] })).toHaveFocus();
   });
 
-  it('runs a palette command and puts the panel in the URL', async () => {
+  it('runs a palette command and opens its page', async () => {
     const { router, user } = await renderApp();
     await user.keyboard('{Control>}k{/Control}');
-    await user.type(await screen.findByRole('combobox'), Ar['notifications.title']);
+    await user.type(await screen.findByRole('combobox'), Ar['palette.command.notifications']);
     await user.keyboard('{Enter}');
-    expect(await screen.findByRole('dialog', { name: Ar['notifications.title'] })).toBeInTheDocument();
-    expect(router.state.location.href).toBe('/?stack=notifications');
+    expect(await screen.findByRole('heading', { level: 1, name: Ar['notifications.title'] })).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/notifications');
+  });
+
+  it('runs a create command and opens its slide over the right page', async () => {
+    const { router, user } = await renderApp();
+    await user.keyboard('{Control>}k{/Control}');
+    await user.type(await screen.findByRole('combobox'), Ar['palette.command.password']);
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('dialog', { name: Ar['password.slide.title'] })).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/account/security?slide=account-password');
+    expect(screen.getByRole('heading', { level: 1, name: Ar['shell.nav.security'], hidden: true })).toBeInTheDocument();
   });
 });
 
 describe('slides in the URL', () => {
-  it('opens a deep-linked panel on first render and focuses inside it', async () => {
-    await renderApp('/?stack=notifications');
-    const dialog = await screen.findByRole('dialog', { name: Ar['notifications.title'] });
-    expect(within(dialog).getByText(Ar['notifications.empty'])).toBeInTheDocument();
+  it('opens a deep-linked slide over its page on first render and focuses inside it', async () => {
+    await renderApp('/account/security?slide=account-password');
+    const dialog = await screen.findByRole('dialog', { name: Ar['password.slide.title'] });
+    expect(await within(dialog).findByLabelText(Ar['password.current'])).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: Ar['shell.nav.security'], hidden: true })).toBeInTheDocument();
     await waitFor(() => {
       expect(dialog).toContainElement(document.activeElement as HTMLElement);
     });
   });
 
-  it('closes with Escape, drops the param and returns focus to the opener', async () => {
-    const { router, user } = await renderApp();
-    const bell = screen.getByRole('button', { name: Ar['shell.notifications'] });
-    await user.click(bell);
-    await screen.findByRole('dialog');
-    expect(router.state.location.href).toBe('/?stack=notifications');
+  it('closes with Escape, drops the param, stays on the page and returns focus to the opener', async () => {
+    const { router, user } = await renderApp('/account/security');
+    const opener = await screen.findByRole('button', { name: Ar['account.password.change'] });
+    await user.click(opener);
+    await screen.findByRole('dialog', { name: Ar['password.slide.title'] });
+    expect(router.state.location.href).toBe('/account/security?slide=account-password');
     await user.keyboard('{Escape}');
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-    expect(router.state.location.href).toBe('/');
+    expect(router.state.location.href).toBe('/account/security');
     await waitFor(() => {
-      expect(bell).toHaveFocus();
+      expect(opener).toHaveFocus();
     });
   });
 
   it('keeps an unknown slide closed, says so in a toast and cleans the URL', async () => {
-    const { router } = await renderApp('/?stack=does-not-exist');
+    const { router } = await renderApp('/jobs?slide=does-not-exist');
     expect(await screen.findByText(Ar['toast.unknownPanel.title'])).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(router.state.location.href).toBe('/');
+      expect(router.state.location.href).toBe('/jobs');
     });
   });
 });
@@ -111,7 +122,7 @@ describe('language switch', () => {
     expect(document.documentElement.dir).toBe('ltr');
     expect(document.documentElement.lang).toBe('en');
     expect(screen.getByRole('heading', { level: 1, name: En['home.title'] })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: En['shell.nav.home'] })).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: En['shell.nav.label'] })).getByRole('link', { name: En['shell.nav.home'] })).toBeInTheDocument();
     expect(window.localStorage.getItem('dhow.lang')).toBe('en');
     await user.click(screen.getByRole('button', { name: En['shell.language.switch'].replace('{language}', En['language.ar']) }));
     expect(document.documentElement.dir).toBe('rtl');
@@ -132,16 +143,15 @@ describe('unknown routes', () => {
 describe('system module in the shell', () => {
   it('opens server status from the Home list and shows the build', async () => {
     const { router, user } = await renderApp();
-    await user.click(screen.getByRole('button', { name: new RegExp(Ar['status.title']) }));
-    const dialog = await screen.findByRole('dialog', { name: Ar['status.title'] });
-    expect(await within(dialog).findByText('v0.1.0')).toBeInTheDocument();
-    expect(router.state.location.href).toBe('/?stack=system-status');
+    await user.click(screen.getByRole('button', { name: new RegExp(Ar['home.status.sub']) }));
+    expect(await screen.findByRole('heading', { level: 1, name: Ar['status.title'] })).toBeInTheDocument();
+    expect(await screen.findByText('v0.1.0')).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/system');
   });
 
   it('opens server status from a deep link', async () => {
-    await renderApp('/?stack=system-status');
-    const dialog = await screen.findByRole('dialog', { name: Ar['status.title'] });
-    expect(await within(dialog).findByText('2e39188')).toBeInTheDocument();
+    await renderApp('/system');
+    expect(await screen.findByText('2e39188')).toBeInTheDocument();
   });
 
   it('shows the first-time setup banner when the server says setup is pending', async () => {

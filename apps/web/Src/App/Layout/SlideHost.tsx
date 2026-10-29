@@ -1,30 +1,38 @@
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useEffectEvent, useState } from 'react';
 
-import { buildSlide } from '@/App/Layout/FrameSlides';
-import { useShellNavigation } from '@/App/Layout/useShellNavigation';
-import { isThemeEditFrame, themeOf } from '@/App/Panels';
+import { buildSlide } from '@/App/Layout/SlideCatalog';
+import { useSlide } from '@/App/Navigation/useSlide';
+import { isThemeEditSlide, slideAllowed, themeOf, type TSlideId } from '@/App/Panels';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
+import type { ICustomTheme } from '@/Core/Theme/ThemeTokens';
 import { useThemeStore } from '@/Core/Theme/useThemeStore';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { SlideStack } from '@/Core/Ui/SlideStack';
 import { useT } from '@/I18n/useT';
 
+const themeMissing = (slide: TSlideId | null, themes: readonly ICustomTheme[]): boolean => {
+  const themeId = slide === null ? null : themeOf(slide);
+  return themeId !== null && !themes.some((theme) => theme.Id === themeId);
+};
+
 export const SlideHost = () => {
   const t = useT();
-  const navigation = useShellNavigation();
+  const navigate = useNavigate();
+  const { slide, invalid, close, discard } = useSlide();
   const role = useCurrentMembership()?.Role;
   const draftName = useThemeStore((state) => state.Draft?.Name);
   const customThemes = useThemeStore((state) => state.CustomThemes);
   const DiscardDraft = useThemeStore((state) => state.DiscardDraft);
   const Push = useToastStore((state) => state.Push);
-  const { stack, invalidStack } = navigation;
-  const editing = stack.some(isThemeEditFrame);
-  const [missingOnLoad] = useState(() =>
-    stack.some((id) => {
-      const themeId = themeOf(id);
-      return themeId !== null && !customThemes.some((theme) => theme.Id === themeId);
-    }),
-  );
+  const [Seen, setSeen] = useState<TSlideId | null>(null);
+  const [Missing, setMissing] = useState(false);
+  if (slide !== Seen) {
+    setSeen(slide);
+    setMissing(themeMissing(slide, customThemes));
+  }
+  const refused = slide !== null && !slideAllowed(slide, role);
+  const editing = slide !== null && isThemeEditSlide(slide);
 
   const rejectLink = useEffectEvent(() => {
     Push({
@@ -33,7 +41,7 @@ export const SlideHost = () => {
       Title: t('toast.unknownPanel.title'),
       Detail: t('toast.unknownPanel.detail'),
     });
-    navigation.discardStack();
+    discard();
   });
 
   useEffect(() => {
@@ -41,20 +49,26 @@ export const SlideHost = () => {
   }, [editing, DiscardDraft]);
 
   useEffect(() => {
-    if (invalidStack || missingOnLoad) rejectLink();
-  }, [invalidStack, missingOnLoad]);
+    if (invalid || Missing || refused) rejectLink();
+  }, [invalid, Missing, refused]);
 
-  const slides = stack.map((id) => buildSlide(id, { t, navigation, draftName, customThemes, role }));
+  const slides =
+    slide === null || refused || Missing
+      ? []
+      : [
+          buildSlide(slide, {
+            t,
+            close,
+            draftName,
+            customThemes,
+            openTeam: (teamId) => {
+              void navigate({ to: '/org/teams/$teamId', params: { teamId } });
+            },
+            openOrganization: () => {
+              void navigate({ to: '/org/members' });
+            },
+          }),
+        ];
 
-  return (
-    <SlideStack
-      slides={slides}
-      onPop={navigation.popFrame}
-      onCloseAll={navigation.closeAll}
-      onJump={(index, source) => {
-        navigation.jumpTo(index);
-        if (source === 'slide') Push({ Id: 'slides-returned', Accent: 'live', Title: t('slides.returned.title') });
-      }}
-    />
-  );
+  return <SlideStack slides={slides} onPop={close} onCloseAll={close} onJump={close} />;
 };

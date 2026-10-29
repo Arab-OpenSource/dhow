@@ -13,28 +13,41 @@ import { Ar } from '@/I18n/Locales/Ar';
 const orgTokens = (_request: Request, url: URL) =>
   /\/organizations\/[^/]+\/api-tokens$/.test(url.pathname) ? envelope({ Success: true, Data: [] }) : undefined;
 
-const mount = async (role: string) => {
+const mount = async (role: string, url = '/org/settings') => {
   startBackend({ role, routes: [orgTokens] });
-  const router = createAppRouter(createMemoryHistory({ initialEntries: ['/?stack=organization'] }));
+  const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['organization.title'] });
-  return { router, user, dialog };
+  const nav = await screen.findByRole('navigation', { name: Ar['shell.nav.label'] }, { timeout: 5000 });
+  return { router, user, nav };
 };
 
-describe('reaching the organization API tokens', () => {
-  it('opens from the organization footer for an admin', async () => {
-    const { dialog, user, router } = await mount('admin');
-    await user.click(await within(dialog).findByRole('button', { name: Ar['organization.tokens'] }));
-    expect(await screen.findByText(Ar['orgTokens.empty'])).toBeInTheDocument();
+describe('reaching the organization API keys', () => {
+  it('opens from the side menu for an admin, with a new-key slide over the page', async () => {
+    const { nav, user, router } = await mount('admin', '/');
+    await user.click(within(nav).getByRole('link', { name: Ar['shell.nav.apiKeys'] }));
+    expect(await screen.findByText(Ar['orgTokens.empty'], {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/org/api-keys');
+    const [action] = screen.getAllByRole('button', { name: Ar['tokens.new'] });
+    await user.click(action ?? document.body);
+    expect(await screen.findByRole('dialog', { name: Ar['tokens.slide.title'] }, { timeout: 5000 })).toBeInTheDocument();
     await waitFor(() => {
-      expect(router.state.location.search).toEqual({ stack: 'organization,organization-tokens' });
+      expect(router.state.location.href).toBe('/org/api-keys?slide=organization-token-new');
+    });
+  });
+
+  it('opens from the organization settings for an admin', async () => {
+    const { user, router } = await mount('admin');
+    await user.click(await screen.findByRole('button', { name: Ar['organization.tokens.open'] }, { timeout: 5000 }));
+    await waitFor(() => {
+      expect(router.state.location.href).toBe('/org/api-keys');
     });
   });
 
   it('stays out of sight for a developer', async () => {
-    const { dialog } = await mount('developer');
-    await within(dialog).findByRole('tablist');
-    expect(within(dialog).queryByRole('button', { name: Ar['organization.tokens'] })).not.toBeInTheDocument();
+    const { nav } = await mount('developer');
+    await screen.findByRole('heading', { level: 1, name: Ar['shell.nav.orgSettings'] });
+    expect(within(nav).queryByRole('link', { name: Ar['shell.nav.apiKeys'] })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: Ar['organization.tokens.open'] })).not.toBeInTheDocument();
   });
 });

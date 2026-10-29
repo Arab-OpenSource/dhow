@@ -2,13 +2,7 @@ import { AdminEn } from '@/I18n/Locales/Workspace/AdminEn';
 import type { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
 
 export const OrganizationEn: Record<keyof typeof OrganizationAr, string> = {
-  'organization.tabs': 'Organization sections',
-  'organization.tab.members': 'Members',
-  'organization.tab.teams': 'Teams',
-  'organization.tab.invitations': 'Invitations',
-  'organization.tab.settings': 'Settings',
   'organization.invite': 'Invite a member',
-  'organization.audit': 'Audit log',
   'organization.leave.title': 'Leave the organization',
   'organization.leave.about': 'You lose access to everything in it at once. Only a new invitation brings you back.',
   'organization.leave.action': 'Leave {name}',

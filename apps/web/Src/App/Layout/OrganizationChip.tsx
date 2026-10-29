@@ -1,5 +1,5 @@
-import { preloadFrame } from '@/App/Layout/LazyFrames';
-import { useShellNavigation } from '@/App/Layout/useShellNavigation';
+import { useNavigate, useRouter } from '@tanstack/react-router';
+
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { cx } from '@/Core/Ui/ClassNames';
 import { Icon } from '@/Core/Ui/Icon';
@@ -9,15 +9,15 @@ export interface IOrganizationChipProps {
   className?: string;
 }
 
-const preloadOrganization = () => {
-  void preloadFrame('organizations');
-};
-
 export const OrganizationChip = ({ className }: IOrganizationChipProps) => {
   const t = useT();
-  const { openStack } = useShellNavigation();
+  const navigate = useNavigate();
+  const router = useRouter();
   const membership = useCurrentMembership();
   if (membership === undefined) return null;
+  const preloadOrganization = () => {
+    void router.preloadRoute({ to: '/organizations' }).catch(() => undefined);
+  };
 
   return (
     <button
@@ -26,7 +26,7 @@ export const OrganizationChip = ({ className }: IOrganizationChipProps) => {
       onFocus={preloadOrganization}
       aria-label={t('shell.organization.switch', { name: membership.OrganizationName })}
       onClick={() => {
-        openStack(['organizations']);
+        void navigate({ to: '/organizations' });
       }}
       className={cx(
         'flex min-w-0 max-w-full cursor-pointer items-center gap-2 rounded-sm border border-line bg-transparent px-2.5 py-1.5',

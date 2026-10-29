@@ -1,145 +1,70 @@
-import { defaultStringifySearch } from '@tanstack/react-router';
-
+import { canManageMembers, canManageRunners, canManageTokens, type TRole } from '@/Core/Auth/AuthTypes';
 import { isCustomThemeId } from '@/Core/Theme/ThemeIds';
-import { isCheckName, type TCheckName } from '@/Modules/System/Types/SystemTypes';
 
-export const STACK_SEPARATOR = ',';
-export const MAX_STACK_DEPTH = 6;
-export const UNKNOWN_STACK = 'unknown';
+export const UNKNOWN_SLIDE = 'unknown';
 
-const STATIC_FRAMES = [
-  'system-status',
-  'notifications',
-  'appearance',
-  'theme-edit',
-  'account',
+const STATIC_SLIDES = [
+  'runner-new',
+  'organization-invite',
+  'organization-transfer',
+  'organization-token-new',
+  'organization-new',
+  'team-new',
   'account-password',
   'account-totp',
   'account-token-new',
-  'audit',
-  'jobs',
-  'organization',
-  'organization-tokens',
-  'organization-token-new',
-  'organizations',
-  'organization-new',
-  'organization-invite',
-  'organization-transfer',
-  'team-new',
-  'runners',
-  'runner-new',
+  'theme-edit',
 ] as const;
-const CHECK_PREFIX = 'check-';
 const THEME_EDIT_PREFIX = 'theme-edit-';
-const MEMBER_PREFIX = 'member-';
-const TEAM_PREFIX = 'team-';
-const AUDIT_EVENT_PREFIX = 'audit-event-';
-const JOB_PREFIX = 'job-';
-const RUNNER_PREFIX = 'runner-';
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export type TStaticFrameId = (typeof STATIC_FRAMES)[number];
-export type TCheckFrameId = `check-${TCheckName}`;
-export type TThemeEditFrameId = `theme-edit-${string}`;
-export type TMemberFrameId = `member-${string}`;
-export type TTeamFrameId = `team-${string}`;
-export type TAuditEventFrameId = `audit-event-${string}`;
-export type TJobFrameId = `job-${string}`;
-export type TRunnerFrameId = `runner-${string}`;
-export type TFrameId =
-  | TStaticFrameId
-  | TCheckFrameId
-  | TThemeEditFrameId
-  | TMemberFrameId
-  | TTeamFrameId
-  | TAuditEventFrameId
-  | TJobFrameId
-  | TRunnerFrameId;
+export type TStaticSlideId = (typeof STATIC_SLIDES)[number];
+export type TThemeEditSlideId = `theme-edit-${string}`;
+export type TSlideId = TStaticSlideId | TThemeEditSlideId;
 
 export interface IShellSearch {
-  stack?: TFrameId[] | typeof UNKNOWN_STACK;
+  slide?: TSlideId | typeof UNKNOWN_SLIDE;
+  stack?: string;
 }
 
-export const checkFrame = (name: TCheckName): TCheckFrameId => `${CHECK_PREFIX}${name}`;
-export const themeEditFrame = (id: string): TThemeEditFrameId => `${THEME_EDIT_PREFIX}${id}`;
-export const memberFrame = (id: string): TMemberFrameId => `${MEMBER_PREFIX}${id}`;
-export const teamFrame = (id: string): TTeamFrameId => `${TEAM_PREFIX}${id}`;
-export const auditEventFrame = (id: string): TAuditEventFrameId => `${AUDIT_EVENT_PREFIX}${id}`;
-export const jobFrame = (id: string): TJobFrameId => `${JOB_PREFIX}${id}`;
-export const runnerFrame = (id: string): TRunnerFrameId => `${RUNNER_PREFIX}${id}`;
+export const themeEditSlide = (id: string): TThemeEditSlideId => `${THEME_EDIT_PREFIX}${id}`;
 
-export const isFrameId = (value: unknown): value is TFrameId => {
+export const isSlideId = (value: unknown): value is TSlideId => {
   if (typeof value !== 'string') return false;
-  if (STATIC_FRAMES.some((id) => id === value)) return true;
-  if (value.startsWith(CHECK_PREFIX)) return isCheckName(value.slice(CHECK_PREFIX.length));
-  if (value.startsWith(THEME_EDIT_PREFIX)) return isCustomThemeId(value.slice(THEME_EDIT_PREFIX.length));
-  if (value.startsWith(MEMBER_PREFIX)) return UUID.test(value.slice(MEMBER_PREFIX.length));
-  if (value.startsWith(TEAM_PREFIX)) return UUID.test(value.slice(TEAM_PREFIX.length));
-  if (value.startsWith(AUDIT_EVENT_PREFIX)) return UUID.test(value.slice(AUDIT_EVENT_PREFIX.length));
-  if (value.startsWith(JOB_PREFIX)) return UUID.test(value.slice(JOB_PREFIX.length));
-  if (value.startsWith(RUNNER_PREFIX)) return UUID.test(value.slice(RUNNER_PREFIX.length));
-  return false;
+  if (STATIC_SLIDES.some((id) => id === value)) return true;
+  return value.startsWith(THEME_EDIT_PREFIX) && isCustomThemeId(value.slice(THEME_EDIT_PREFIX.length));
 };
 
-export const memberOf = (id: TFrameId): string | null => {
-  const rest = id.startsWith(MEMBER_PREFIX) ? id.slice(MEMBER_PREFIX.length) : '';
-  return UUID.test(rest) ? rest : null;
-};
-
-export const teamOf = (id: TFrameId): string | null => {
-  const rest = id.startsWith(TEAM_PREFIX) ? id.slice(TEAM_PREFIX.length) : '';
-  return UUID.test(rest) ? rest : null;
-};
-
-export const auditEventOf = (id: TFrameId): string | null => {
-  const rest = id.startsWith(AUDIT_EVENT_PREFIX) ? id.slice(AUDIT_EVENT_PREFIX.length) : '';
-  return UUID.test(rest) ? rest : null;
-};
-
-export const jobOf = (id: TFrameId): string | null => {
-  const rest = id.startsWith(JOB_PREFIX) ? id.slice(JOB_PREFIX.length) : '';
-  return UUID.test(rest) ? rest : null;
-};
-
-export const runnerOf = (id: TFrameId): string | null => {
-  const rest = id.startsWith(RUNNER_PREFIX) ? id.slice(RUNNER_PREFIX.length) : '';
-  return UUID.test(rest) ? rest : null;
-};
-
-export const checkOf = (id: TFrameId): TCheckName | null => {
-  const name = id.startsWith(CHECK_PREFIX) ? id.slice(CHECK_PREFIX.length) : '';
-  return isCheckName(name) ? name : null;
-};
-
-export const themeOf = (id: TFrameId): string | null =>
+export const themeOf = (id: TSlideId): string | null =>
   id.startsWith(THEME_EDIT_PREFIX) ? id.slice(THEME_EDIT_PREFIX.length) : null;
 
-export const isThemeEditFrame = (id: TFrameId): boolean => id === 'theme-edit' || id.startsWith(THEME_EDIT_PREFIX);
+export const isThemeEditSlide = (id: TSlideId): boolean => id === 'theme-edit' || id.startsWith(THEME_EDIT_PREFIX);
 
-export const parseStack = (raw: unknown): TFrameId[] | null => {
-  const parts: unknown[] | null =
-    typeof raw === 'string' ? raw.split(STACK_SEPARATOR) : Array.isArray(raw) ? raw : null;
-  if (parts === null || parts.length === 0 || parts.length > MAX_STACK_DEPTH || new Set(parts).size !== parts.length) {
-    return null;
-  }
-  const frames = parts.filter(isFrameId);
-  if (frames.length !== parts.length) return null;
-  return frames.filter(isThemeEditFrame).length > 1 ? null : frames;
+const SLIDE_GATES: Partial<Record<TStaticSlideId, (role: TRole | undefined) => boolean>> = {
+  'runner-new': canManageRunners,
+  'organization-invite': canManageMembers,
+  'team-new': canManageMembers,
+  'organization-token-new': canManageTokens,
+  'organization-transfer': (role) => role === 'owner',
+};
+
+const isStaticSlide = (id: TSlideId): id is TStaticSlideId => STATIC_SLIDES.some((slide) => slide === id);
+
+export const slideAllowed = (id: TSlideId, role: TRole | undefined): boolean => {
+  const gate = isStaticSlide(id) ? SLIDE_GATES[id] : undefined;
+  return gate === undefined || gate(role);
+};
+
+const legacyStack = (raw: unknown): string | undefined => {
+  if (raw === undefined || raw === '') return undefined;
+  if (Array.isArray(raw)) return raw.map(String).join(',');
+  return typeof raw === 'string' ? raw : JSON.stringify(raw);
 };
 
 export const parseShellSearch = (search: Record<string, unknown>): IShellSearch => {
-  const raw = search.stack;
-  if (raw === undefined || raw === '') return {};
-  return { stack: parseStack(raw) ?? UNKNOWN_STACK };
-};
-
-const framesOf = (stack: unknown): TFrameId[] => parseStack(stack) ?? [];
-
-export const stringifyShellSearch = (search: Record<string, unknown>): string => {
-  const { stack, ...rest } = search;
-  const base = defaultStringifySearch(rest);
-  const frames = framesOf(stack);
-  if (frames.length === 0) return base;
-  const part = `stack=${frames.join(STACK_SEPARATOR)}`;
-  return base === '' ? `?${part}` : `${base}&${part}`;
+  const result: IShellSearch = {};
+  const stack = legacyStack(search.stack);
+  if (stack !== undefined) result.stack = stack;
+  const raw = search.slide;
+  if (raw !== undefined && raw !== '') result.slide = isSlideId(raw) ? raw : UNKNOWN_SLIDE;
+  return result;
 };

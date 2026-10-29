@@ -11,7 +11,7 @@ export interface ITopBarProps {
 }
 
 export const TopBar = ({ start, searchLabel, shortcut, onSearch, children }: ITopBarProps) => (
-  <header className="flex h-topbar flex-none items-center gap-4 bg-canvas px-gutter">
+  <header className="flex h-topbar flex-none items-center gap-4 border-b border-line bg-canvas px-gutter max-md:gap-2">
     {start}
     <button
       type="button"

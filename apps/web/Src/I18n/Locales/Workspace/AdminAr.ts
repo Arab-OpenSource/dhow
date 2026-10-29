@@ -57,7 +57,6 @@ export const AdminAr = {
   'orgTokens.loading': 'جارٍ تحميل مفاتيح API',
   'orgTokens.empty': 'لا توجد مفاتيح API في هذه المؤسسة بعد.',
   'orgTokens.new.subtitle': 'المفتاح لهذه المؤسسة. اختر الصلاحيات والمدة.',
-  'organization.tokens': 'مفاتيح API',
   'organization.tokens.title': 'مفاتيح API للمؤسسة',
   'organization.tokens.about': 'راجع كل المفاتيح التي أنشأها الأعضاء، وألغِ ما لا تحتاجه.',
   'organization.tokens.open': 'افتح مفاتيح API',

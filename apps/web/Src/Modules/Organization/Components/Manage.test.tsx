@@ -12,8 +12,8 @@ import { useToastStore } from '@/Core/Store/useToastStore';
 import { membersFixture, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { envelope, meBody, ORG_ID } from '@/Core/Testing/Fetch';
 import { INVITE_LINK, orgBackend, TEAM_ID } from '@/Core/Testing/OrgBackend';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
-import { useOrganizationTabStore } from '@/Modules/Organization/Store/useOrganizationTabStore';
 
 const HANA = '0198a000-0000-7000-8000-0000000000b3';
 const MONA = '0198a000-0000-7000-8000-0000000000b2';
@@ -25,7 +25,7 @@ const open = async (url: string, title: string, options: IBackendOptions = {}, e
   const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: title });
+  const dialog = url.includes('?slide=') ? await screen.findByRole('dialog', { name: title }, { timeout: 5000 }) : await findPage(title);
   return { ...backend, org, router, user, dialog };
 };
 
@@ -36,13 +36,12 @@ const bodyOf = async (calls: Request[], method: string, suffix: string): Promise
 
 afterEach(() => {
   useToastStore.setState({ Toasts: [] });
-  useOrganizationTabStore.setState({ Tab: 'members' });
   useOrganizationStore.setState({ CurrentId: null });
 });
 
 describe('inviting a member', () => {
   it('offers only roles up to the inviter, then shows the link once and says no email went out', async () => {
-    const { user, dialog, calls } = await open('/?stack=organization,organization-invite', Ar['invite.title'], { role: 'admin' });
+    const { user, dialog, calls } = await open('/org/members?slide=organization-invite', Ar['invite.title'], { role: 'admin' });
     const roles = within(dialog).getByRole('radiogroup', { name: Ar['invite.role'] });
     expect(within(roles).queryByRole('radio', { name: new RegExp(Ar['role.owner']) })).not.toBeInTheDocument();
     expect(within(roles).getAllByRole('radio')).toHaveLength(4);
@@ -55,7 +54,7 @@ describe('inviting a member', () => {
   });
 
   it('refuses a malformed email without calling the server', async () => {
-    const { user, dialog, calls } = await open('/?stack=organization,organization-invite', Ar['invite.title']);
+    const { user, dialog, calls } = await open('/org/members?slide=organization-invite', Ar['invite.title']);
     await user.type(within(dialog).getByLabelText(Ar['invite.email']), 'not-an-email');
     await user.click(within(dialog).getByRole('button', { name: Ar['invite.create'] }));
     expect(await within(dialog).findByText(Ar['form.error.email'])).toBeInTheDocument();
@@ -63,15 +62,14 @@ describe('inviting a member', () => {
   });
 
   it('says when the email was sent', async () => {
-    const { user, dialog } = await open('/?stack=organization,organization-invite', Ar['invite.title'], {}, 'sent');
+    const { user, dialog } = await open('/org/members?slide=organization-invite', Ar['invite.title'], {}, 'sent');
     await user.type(within(dialog).getByLabelText(Ar['invite.email']), 'new@future.dev');
     await user.click(within(dialog).getByRole('button', { name: Ar['invite.create'] }));
     expect(await within(dialog).findByText(Ar['invite.email.sent'].replace('{email}', 'new@future.dev'))).toBeInTheDocument();
   });
 
   it('lists open invitations, revokes one and makes a new link for another', async () => {
-    useOrganizationTabStore.setState({ Tab: 'invitations' });
-    const { user, dialog, calls } = await open('/?stack=organization', Ar['organization.title']);
+    const { user, dialog, calls } = await open('/org/invitations', Ar['shell.nav.invitations']);
     const list = await within(dialog).findByRole('list', { name: Ar['invitations.title'] });
     expect(list).toHaveTextContent('ali@future.dev');
     expect(list).toHaveTextContent(Ar['invitations.expires'].replace('{when}', formatDateTime('2026-11-03T08:00:00Z', 'ar')));
@@ -83,9 +81,9 @@ describe('inviting a member', () => {
   });
 });
 
-describe('a member slide', () => {
+describe('a member page', () => {
   it('changes a role and says the sessions ended', async () => {
-    const { user, dialog, calls } = await open(`/?stack=organization,member-${HANA}`, Ar['organization.tab.members']);
+    const { user, dialog, calls } = await open(`/org/members/${HANA}`, Ar['shell.crumb.member']);
     const roles = await within(dialog).findByRole('radiogroup', { name: Ar['member.role.title'] });
     await user.click(within(roles).getByRole('radio', { name: new RegExp(Ar['role.maintainer']) }));
     await user.click(within(dialog).getByRole('button', { name: Ar['member.role.save'] }));
@@ -96,7 +94,7 @@ describe('a member slide', () => {
   });
 
   it('asks for a current factor before granting the owner role', async () => {
-    const { user, dialog, calls } = await open(`/?stack=organization,member-${HANA}`, Ar['organization.tab.members']);
+    const { user, dialog, calls } = await open(`/org/members/${HANA}`, Ar['shell.crumb.member']);
     const roles = await within(dialog).findByRole('radiogroup', { name: Ar['member.role.title'] });
     await user.click(within(roles).getByRole('radio', { name: new RegExp(Ar['role.owner']) }));
     await user.click(within(dialog).getByRole('button', { name: Ar['member.role.save'] }));
@@ -111,7 +109,7 @@ describe('a member slide', () => {
   });
 
   it('resets a lost second factor after the actor confirms', async () => {
-    const { user, dialog, calls } = await open(`/?stack=organization,member-${MONA}`, Ar['organization.tab.members']);
+    const { user, dialog, calls } = await open(`/org/members/${MONA}`, Ar['shell.crumb.member']);
     await user.click(await within(dialog).findByRole('button', { name: Ar['member.mfa.reset'] }));
     await user.type(await within(dialog).findByLabelText(Ar['factor.method.password']), 'correct horse battery staple');
     await user.click(within(dialog).getAllByRole('button', { name: Ar['member.mfa.reset'] }).at(-1) ?? dialog);
@@ -128,21 +126,21 @@ describe('a member slide', () => {
       ...membersFixture(),
       { UserId: coOwner, Name: 'Laila Owner', Email: 'laila@future.dev', Role: 'owner', EffectiveRole: 'owner', JoinedAt: '2026-10-06T08:00:00Z', Mfa: 'totp' },
     ];
-    const { dialog } = await open(`/?stack=organization,member-${coOwner}`, Ar['organization.tab.members'], { members });
+    const { dialog } = await open(`/org/members/${coOwner}`, Ar['shell.crumb.member'], { members });
     expect(await within(dialog).findByText(Ar['member.remove.ownerFirst'].replace('{name}', 'Laila Owner'))).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: Ar['member.remove.action'].replace('{name}', 'Laila Owner') })).not.toBeInTheDocument();
   });
 
   it('points to My account on your own member slide', async () => {
     const owner = '0198a000-0000-7000-8000-0000000000b1';
-    const { dialog } = await open(`/?stack=organization,member-${owner}`, Ar['organization.tab.members'], { role: 'admin' });
+    const { dialog } = await open(`/org/members/${owner}`, Ar['shell.crumb.member'], { role: 'admin' });
     expect(await within(dialog).findByText(Ar['member.self'])).toBeInTheDocument();
   });
 });
 
 describe('teams', () => {
   it('opens a team, raises its role and reports the ended sessions', async () => {
-    const { user, dialog, calls } = await open(`/?stack=organization,team-${TEAM_ID}`, Ar['organization.tab.teams']);
+    const { user, dialog, calls } = await open(`/org/teams/${TEAM_ID}`, Ar['shell.crumb.team']);
     const roles = await within(dialog).findByRole('radiogroup', { name: Ar['team.role'] });
     expect(within(dialog).getByText('Hana Samir')).toBeInTheDocument();
     await user.click(within(roles).getByRole('radio', { name: new RegExp(Ar['role.admin']) }));
@@ -154,8 +152,7 @@ describe('teams', () => {
   });
 
   it('lists teams with their organization role', async () => {
-    useOrganizationTabStore.setState({ Tab: 'teams' });
-    const { dialog } = await open('/?stack=organization', Ar['organization.title']);
+    const { dialog } = await open('/org/teams', Ar['shell.nav.teams']);
     const list = await within(dialog).findByRole('list', { name: Ar['teams.title'] });
     expect(list).toHaveTextContent('Backend');
     expect(list).toHaveTextContent(Ar['teams.roleIn'].replace('{role}', Ar['role.developer']));
@@ -175,7 +172,7 @@ describe('switching and leaving organizations', () => {
   });
 
   it('switches through the organization chip and remembers the choice', async () => {
-    const { user, dialog } = await open('/?stack=organizations', Ar['organizations.title'], twoOrgs());
+    const { user, dialog } = await open('/organizations', Ar['organizations.title'], twoOrgs());
     expect(within(dialog).getByText(Ar['organizations.current'])).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: /Sweets Store/ }));
     await waitFor(() => {
@@ -187,8 +184,7 @@ describe('switching and leaving organizations', () => {
   });
 
   it('leaves after a confirmation', async () => {
-    useOrganizationTabStore.setState({ Tab: 'settings' });
-    const { user, dialog, calls } = await open('/?stack=organization', Ar['organization.title'], { role: 'developer' });
+    const { user, dialog, calls } = await open('/org/settings', Ar['shell.nav.orgSettings'], { role: 'developer' });
     await user.click(await within(dialog).findByRole('button', { name: Ar['organization.leave.action'].replace('{name}', 'Future Solution') }));
     await user.click(within(dialog).getByRole('button', { name: Ar['organization.leave.confirm'] }));
     await waitFor(() => {
@@ -197,7 +193,7 @@ describe('switching and leaving organizations', () => {
   });
 
   it('hands the ownership over with a factor', async () => {
-    const { user, dialog, calls } = await open('/?stack=organization,organization-transfer', Ar['organization.transfer.title']);
+    const { user, dialog, calls } = await open('/org/settings?slide=organization-transfer', Ar['organization.transfer.title']);
     await user.click(await within(dialog).findByRole('radio', { name: /Mona Adel/ }));
     await user.type(await within(dialog).findByLabelText(Ar['factor.method.password']), 'correct horse battery staple');
     await user.click(within(dialog).getByRole('button', { name: Ar['organization.transfer.action'] }));
@@ -227,7 +223,7 @@ describe('the second-step reset banner', () => {
     render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
     expect(await screen.findByText(Ar['mfaReset.banner.title'])).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: Ar['mfaReset.banner.action'] }));
-    expect(await screen.findByRole('dialog', { name: Ar['account.title'] })).toBeInTheDocument();
+    expect(await findPage(Ar['shell.nav.security'])).toBeInTheDocument();
     expect(backend.state.signedIn).toBe(true);
   });
 });

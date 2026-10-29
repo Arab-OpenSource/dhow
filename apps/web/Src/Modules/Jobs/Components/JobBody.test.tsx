@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/react-router';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -9,14 +9,15 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { backendFailure, startBackend } from '@/Core/Testing/Backend';
 import { FakeEventSource, installFakeEventSource } from '@/Core/Testing/FakeEventSource';
 import { attemptFixture, JOB_ID, jobFixture, jobsRoute, TEST_IMAGE, type IJobsBackend } from '@/Core/Testing/JobsBackend';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const mount = async (jobs: IJobsBackend, role = 'owner') => {
   const backend = startBackend({ role, routes: [jobsRoute(jobs)] });
-  const router = createAppRouter(createMemoryHistory({ initialEntries: [`/?stack=jobs,job-${JOB_ID}`] }));
+  const router = createAppRouter(createMemoryHistory({ initialEntries: [`/jobs/${JOB_ID}`] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['jobs.detail.title'] }, { timeout: 5000 });
+  const dialog = await findPage(Ar['jobs.detail.title']);
   return { ...backend, router, user, dialog };
 };
 
@@ -29,7 +30,7 @@ beforeEach(() => {
   installFakeEventSource();
 });
 
-describe('the job slide', () => {
+describe('the job page', () => {
   it('shows a skeleton, then the job', async () => {
     let release: (() => void) | undefined;
     const gate = new Promise<void>((resolve) => {

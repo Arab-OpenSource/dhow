@@ -54,12 +54,15 @@ describe('the UI glossary (ADR-0034)', () => {
     expect(withParentheses).toEqual(['status.build.commit']);
   });
 
-  it('names the shell sections with the glossary terms', () => {
+  it('names the shell sections and groups with the terms of ADR-0059', () => {
     expect(Ar['shell.nav.home']).toBe('الرئيسية');
+    expect(Ar['shell.nav.jobs']).toBe('التشغيلات');
     expect(Ar['shell.nav.runners']).toBe('أجهزة التشغيل');
-    expect(Ar['shell.nav.team']).toBe('الفريق');
+    expect(Ar['shell.nav.members']).toBe('الأعضاء');
+    expect(Ar['shell.nav.orgSettings']).toBe('إعدادات المؤسسة');
     expect(Ar['shell.nav.audit']).toBe('سجل الأحداث');
-    expect(Ar['shell.nav.settings']).toBe('الإعدادات');
+    expect(Ar['shell.nav.system']).toBe('حالة السيرفر');
+    expect([Ar['shell.group.run'], Ar['shell.group.org'], Ar['shell.group.watch']]).toEqual(['التشغيل', 'المؤسسة', 'المتابعة']);
     expect(Ar['appearance.title']).toBe('المظهر والألوان');
     expect(En['shell.nav.home']).toBe('Home');
     expect(En['shell.nav.runners']).toBe('Runners');
@@ -71,9 +74,8 @@ describe('the UI glossary (ADR-0034)', () => {
     for (const text of Object.values(En)) expect(text.toLowerCase()).not.toContain('workspace');
   });
 
-  it('says the coming-soon tooltip in both languages', () => {
-    expect(Ar['shell.soon']).toBe('قريبًا');
-    expect(En['shell.soon']).toBe('Coming soon');
+  it('keeps projects out of the shell until M4', () => {
+    expect(Object.keys(Ar).filter((key) => key.startsWith('shell.') && /project|soon/i.test(key))).toEqual([]);
   });
 });
 

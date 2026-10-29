@@ -2,8 +2,8 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  lazyRouteComponent,
   redirect,
+  type RouteComponent,
   type RouterHistory,
 } from '@tanstack/react-router';
 
@@ -11,7 +11,9 @@ import { preloadShell } from '@/App/Layout/LazyShell';
 import { NotFoundPage } from '@/App/Layout/NotFoundPage';
 import { RootLayout } from '@/App/Layout/RootLayout';
 import { ShellGate } from '@/App/Layout/ShellGate';
-import { parseShellSearch, stringifyShellSearch, UNKNOWN_STACK } from '@/App/Panels';
+import { legacyStackHref } from '@/App/LegacyLinks';
+import { SHELL_PAGES } from '@/App/Navigation/ShellPages';
+import { parseShellSearch } from '@/App/Panels';
 import { LoginRoute, preloadLoginPage } from '@/App/Routes/LoginRoute';
 import { InviteRoute, preloadInvitePage } from '@/App/Routes/InviteRoute';
 import { OidcCallbackRoute, preloadOidcCallbackPage } from '@/App/Routes/OidcCallbackRoute';
@@ -30,23 +32,41 @@ const shellRoute = createRoute({
   id: 'shell',
   component: ShellGate,
   validateSearch: parseShellSearch,
-  loaderDeps: ({ search }) => ({ stack: search.stack }),
+  beforeLoad: ({ search }) => {
+    if (search.stack !== undefined) throw redirect({ href: legacyStackHref(search.stack), replace: true });
+  },
+  loaderDeps: ({ search }) => ({ slide: search.slide }),
   loader: ({ deps }) => {
-    preloadShell(deps.stack === undefined || deps.stack === UNKNOWN_STACK ? [] : deps.stack);
+    preloadShell(deps);
   },
 });
 
-const workspaceRoute = createRoute({
-  getParentRoute: () => shellRoute,
-  path: '/',
-  component: lazyRouteComponent(() => import('@/Modules/System/Pages/WorkspacePage'), 'WorkspacePage'),
-});
+const page = <TPath extends string>(path: TPath, component: RouteComponent) =>
+  createRoute({ getParentRoute: () => shellRoute, path, component });
 
-const shellNotFoundRoute = createRoute({
-  getParentRoute: () => shellRoute,
-  path: '$',
-  component: NotFoundPage,
-});
+const workspaceRoute = page('/', SHELL_PAGES.home);
+const jobsRoute = page('jobs', SHELL_PAGES.jobs);
+const jobRoute = page('jobs/$jobId', SHELL_PAGES.job);
+const runnersRoute = page('runners', SHELL_PAGES.runners);
+const runnerTokensRoute = page('runners/tokens', SHELL_PAGES.runnerTokens);
+const runnerRoute = page('runners/$runnerId', SHELL_PAGES.runner);
+const membersRoute = page('org/members', SHELL_PAGES.members);
+const memberRoute = page('org/members/$memberId', SHELL_PAGES.member);
+const teamsRoute = page('org/teams', SHELL_PAGES.teams);
+const teamRoute = page('org/teams/$teamId', SHELL_PAGES.team);
+const invitationsRoute = page('org/invitations', SHELL_PAGES.invitations);
+const apiKeysRoute = page('org/api-keys', SHELL_PAGES.apiKeys);
+const orgSettingsRoute = page('org/settings', SHELL_PAGES.orgSettings);
+const auditRoute = page('audit', SHELL_PAGES.audit);
+const auditEventRoute = page('audit/$eventId', SHELL_PAGES.auditEvent);
+const systemRoute = page('system', SHELL_PAGES.system);
+const checkRoute = page('system/checks/$check', SHELL_PAGES.check);
+const profileRoute = page('account/profile', SHELL_PAGES.profile);
+const securityRoute = page('account/security', SHELL_PAGES.security);
+const preferencesRoute = page('account/preferences', SHELL_PAGES.preferences);
+const organizationsRoute = page('organizations', SHELL_PAGES.organizations);
+const notificationsRoute = page('notifications', SHELL_PAGES.notifications);
+const shellNotFoundRoute = page('$', NotFoundPage);
 
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -90,12 +110,35 @@ const oidcCallbackRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  shellRoute.addChildren([workspaceRoute, shellNotFoundRoute]),
+  shellRoute.addChildren([
+    workspaceRoute,
+    jobsRoute,
+    jobRoute,
+    runnersRoute,
+    runnerTokensRoute,
+    runnerRoute,
+    membersRoute,
+    memberRoute,
+    teamsRoute,
+    teamRoute,
+    invitationsRoute,
+    apiKeysRoute,
+    orgSettingsRoute,
+    auditRoute,
+    auditEventRoute,
+    systemRoute,
+    checkRoute,
+    profileRoute,
+    securityRoute,
+    preferencesRoute,
+    organizationsRoute,
+    notificationsRoute,
+    shellNotFoundRoute,
+  ]),
   setupRoute,
   inviteRoute,
   loginRoute,
   oidcCallbackRoute,
 ]);
 
-export const createAppRouter = (history?: RouterHistory) =>
-  createRouter({ routeTree, history, stringifySearch: stringifyShellSearch });
+export const createAppRouter = (history?: RouterHistory) => createRouter({ routeTree, history });

@@ -9,26 +9,24 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { backendFailure, membersFixture, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { envelope } from '@/Core/Testing/Fetch';
 import { useToastStore } from '@/Core/Store/useToastStore';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
-import { useOrganizationTabStore } from '@/Modules/Organization/Store/useOrganizationTabStore';
 
-const mount = async (options: IBackendOptions = {}, url = '/?stack=organization', tab: 'members' | 'settings' = 'members') => {
-  useOrganizationTabStore.setState({ Tab: tab });
+const mount = async (options: IBackendOptions = {}, url = '/org/members', title: string = Ar['shell.nav.members']) => {
   const backend = startBackend(options);
   const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['organization.title'] });
+  const dialog = await findPage(title);
   return { ...backend, router, user, dialog };
 };
 
 const save = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: Ar['organization.save'] }));
 
-const settings = (options: IBackendOptions = {}) => mount(options, '/?stack=organization', 'settings');
+const settings = (options: IBackendOptions = {}) => mount(options, '/org/settings', Ar['shell.nav.orgSettings']);
 
 afterEach(() => {
   useToastStore.setState({ Toasts: [] });
-  useOrganizationTabStore.setState({ Tab: 'members' });
 });
 
 describe('the organization in the shell', () => {
@@ -43,17 +41,19 @@ describe('the organization in the shell', () => {
     const [chip] = chips;
     if (!chip) throw new Error('the organization chip is missing');
     await user.click(chip);
-    expect(await screen.findByRole('dialog', { name: Ar['organizations.title'] })).toBeInTheDocument();
-    expect(router.state.location.href).toBe('/?stack=organizations');
+    expect(await findPage(Ar['organizations.title'])).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/organizations');
   });
 
-  it('opens from the Team link in the side menu', async () => {
+  it('opens the members from the side menu', async () => {
     startBackend();
     const router = createAppRouter(createMemoryHistory({ initialEntries: ['/'] }));
     const user = userEvent.setup();
     render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-    await user.click(await screen.findByRole('link', { name: Ar['shell.nav.team'] }));
-    expect(await screen.findByRole('dialog', { name: Ar['organization.title'] })).toBeInTheDocument();
+    const nav = await screen.findByRole('navigation', { name: Ar['shell.nav.label'] }, { timeout: 5000 });
+    await user.click(within(nav).getByRole('link', { name: Ar['shell.nav.members'] }));
+    expect(await findPage(Ar['shell.nav.members'])).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/org/members');
   });
 });
 
@@ -164,16 +164,6 @@ describe('the members list', () => {
     expect(rows[2]).toHaveTextContent(Ar['members.mfa.none']);
   });
 
-  it('keeps the tabs whole and pinned above a long settings tab', async () => {
-    const { dialog } = await settings();
-    await within(dialog).findByLabelText(Ar['organization.name']);
-    const list = within(dialog).getByRole('tablist', { name: Ar['organization.tabs'] });
-    expect(list).toHaveClass('min-h-fit', 'shrink-0');
-    expect(list.closest('[data-slide-pinned]')).toHaveClass('sticky');
-    expect(list.closest('.overflow-auto')).toHaveClass('auto-rows-max');
-    expect(within(list).getByRole('tab', { name: Ar['organization.tab.settings'] })).toHaveAttribute('aria-selected', 'true');
-  });
-
   it('shows the list read-only to a developer, without the invite button or the second-step state', async () => {
     const { dialog } = await mount({ role: 'developer', members: membersFixture().map((member) => ({ ...member, Mfa: undefined })) });
     const list = await within(dialog).findByRole('list', { name: Ar['members.title'] });
@@ -202,9 +192,10 @@ describe('the members list', () => {
     expect(pages).toContain('2');
   });
 
-  it('says the list is not for viewers and does not ask for it', async () => {
-    const { dialog, calls } = await mount({ role: 'viewer' });
-    expect(await within(dialog).findByText(Ar['members.forbidden'])).toBeInTheDocument();
+  it('is not a page for viewers and does not ask for the list', async () => {
+    const { calls } = startBackend({ role: 'viewer' });
+    render(<App router={createAppRouter(createMemoryHistory({ initialEntries: ['/org/members'] }))} queryClient={createQueryClient({ retry: false })} />);
+    expect(await screen.findByText(Ar['notFound.text'], {}, { timeout: 5000 })).toBeInTheDocument();
     expect(calls.some((call) => call.url.endsWith('/members'))).toBe(false);
   });
 

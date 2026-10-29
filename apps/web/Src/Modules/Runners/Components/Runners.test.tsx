@@ -5,6 +5,7 @@ import { backendFailure } from '@/Core/Testing/Backend';
 import { envelope, meBody, ORG_ID, stubFetch, USER_ID } from '@/Core/Testing/Fetch';
 import { renderWithProviders } from '@/Core/Testing/Render';
 import { Ar } from '@/I18n/Locales/Ar';
+import { RegistrationTokensCard } from '@/Modules/Runners/Components/RegistrationTokensCard';
 import { RunnersBody, RunnersFooter } from '@/Modules/Runners/Components/RunnersBody';
 
 const RUNNER_ID = '0198a000-0000-7000-8000-0000000000e1';
@@ -53,7 +54,7 @@ interface IBackend {
   revokeToken?: () => Response;
 }
 
-const mount = ({ role = 'owner', runners = () => page([runner()]), tokens = () => page([token()]), revokeToken }: IBackend = {}) => {
+const mount = ({ role = 'owner', runners = () => page([runner()]), tokens = () => page([token()]), revokeToken }: IBackend = {}, withTokens = false) => {
   const { calls } = stubFetch((request) => {
     const p = path(request);
     if (p.endsWith('/me')) return envelope(meBody(role));
@@ -67,6 +68,7 @@ const mount = ({ role = 'owner', runners = () => page([runner()]), tokens = () =
   const view = renderWithProviders(
     <>
       <RunnersBody onOpenRunner={onOpenRunner} onAddRunner={onAddRunner} />
+      {withTokens ? <RegistrationTokensCard organizationId={ORG_ID} /> : null}
       <footer>
         <RunnersFooter onAddRunner={onAddRunner} />
       </footer>
@@ -75,7 +77,7 @@ const mount = ({ role = 'owner', runners = () => page([runner()]), tokens = () =
   return { ...view, calls, onOpenRunner, onAddRunner };
 };
 
-describe('the runners slide', () => {
+describe('the runners list', () => {
   it('shows a skeleton while the runners load', async () => {
     mount({ runners: () => new Promise<Response>(() => undefined) });
     expect(await screen.findByRole('status', { name: Ar['runners.loading'] })).toBeInTheDocument();
@@ -121,6 +123,13 @@ describe('the runners slide', () => {
     expect(calls.some((call) => path(call).endsWith('/runner-registration-tokens'))).toBe(false);
   });
 
+  it('leaves the registration tokens to their own page, even for an owner', async () => {
+    const { calls } = mount();
+    expect(await screen.findByRole('list', { name: Ar['runners.list.title'] })).toBeInTheDocument();
+    expect(screen.queryByText(Ar['runners.tokens.title'])).not.toBeInTheDocument();
+    expect(calls.some((call) => path(call).endsWith('/runner-registration-tokens'))).toBe(false);
+  });
+
   it('keeps viewers out without asking the server', async () => {
     const { calls } = mount({ role: 'viewer' });
     expect(await screen.findByText(Ar['runners.forbidden'])).toBeInTheDocument();
@@ -130,7 +139,7 @@ describe('the runners slide', () => {
 
 describe('the registration tokens card', () => {
   it('lists the tokens without any secret', async () => {
-    mount({ tokens: () => page([token(), token({ Id: '0198a000-0000-7000-8000-0000000000f2', Description: '', Status: 'used_up', Uses: 2 })]) });
+    mount({ tokens: () => page([token(), token({ Id: '0198a000-0000-7000-8000-0000000000f2', Description: '', Status: 'used_up', Uses: 2 })]) }, true);
     const list = await screen.findByRole('list', { name: Ar['runners.tokens.title'] });
     const [active, used] = within(list).getAllByRole('listitem');
     expect(within(active ?? list).getByText(Ar['runners.token.status.active'])).toBeInTheDocument();
@@ -140,17 +149,17 @@ describe('the registration tokens card', () => {
   });
 
   it('shows an empty list and a loading error', async () => {
-    mount({ tokens: () => page([]) });
+    mount({ tokens: () => page([]) }, true);
     expect(await screen.findByText(Ar['runners.tokens.empty'])).toBeInTheDocument();
   });
 
   it('shows the error when the tokens cannot load', async () => {
-    mount({ tokens: () => backendFailure('INTERNAL', 'وقع خطأ في السيرفر.', 500) });
+    mount({ tokens: () => backendFailure('INTERNAL', 'وقع خطأ في السيرفر.', 500) }, true);
     expect(await screen.findByText(Ar['runners.tokens.error'])).toBeInTheDocument();
   });
 
   it('revokes a token only after asking', async () => {
-    const { user, calls } = mount({ revokeToken: () => envelope({ Success: true, Data: token({ Status: 'revoked' }) }) });
+    const { user, calls } = mount({ revokeToken: () => envelope({ Success: true, Data: token({ Status: 'revoked' }) }) }, true);
     await user.click(await screen.findByRole('button', { name: Ar['runners.token.revoke.aria'].replace('{name}', 'Build box') }));
     expect(calls.filter((call) => call.method === 'POST')).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: Ar['runners.token.revoke.confirm'] }));

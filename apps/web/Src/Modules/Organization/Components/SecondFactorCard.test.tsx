@@ -11,8 +11,8 @@ import { useToastStore } from '@/Core/Store/useToastStore';
 import { startBackend, type IBackendOptions, type TRouteHandler } from '@/Core/Testing/Backend';
 import { envelope, meBody, ORG_ID } from '@/Core/Testing/Fetch';
 import { GOOD_CODE } from '@/Core/Testing/MfaBackend';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
-import { useOrganizationTabStore } from '@/Modules/Organization/Store/useOrganizationTabStore';
 
 const RULE_PATH = `/api/v1/organizations/${ORG_ID}/second-factor-rule`;
 const SINCE = '2026-10-20T08:00:00Z';
@@ -35,12 +35,11 @@ const ruleBackend = (initial: 'off' | 'admins' | 'everyone') => {
 };
 
 const mountSettings = async (options: IBackendOptions) => {
-  useOrganizationTabStore.setState({ Tab: 'settings' });
   const backend = startBackend(options);
-  const router = createAppRouter(createMemoryHistory({ initialEntries: ['/?stack=organization'] }));
+  const router = createAppRouter(createMemoryHistory({ initialEntries: ['/org/settings'] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['organization.title'] });
+  const dialog = await findPage(Ar['shell.nav.orgSettings']);
   return { ...backend, user, dialog };
 };
 
@@ -52,7 +51,6 @@ const meWithDue = (due: string): TRouteHandler => (request, url) => {
 
 afterEach(() => {
   useToastStore.setState({ Toasts: [] });
-  useOrganizationTabStore.setState({ Tab: 'members' });
 });
 
 describe('the second-step rule of the organization', () => {
@@ -128,7 +126,7 @@ describe('the second-step deadline banner', () => {
     expect(banner).not.toBeNull();
     expect(within(banner as HTMLElement).getByText(Ar['secondFactor.banner.before'].replace('{date}', formatDateTime(due, 'ar')))).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: Ar['secondFactor.banner.action'] }));
-    expect(await screen.findByRole('dialog', { name: Ar['account.title'] })).toBeInTheDocument();
+    expect(await findPage(Ar['shell.nav.security'])).toBeInTheDocument();
   });
 
   it('turns into an alert after the deadline', async () => {

@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState, type ReactNode } from 'react';
 
 import { PageError, PageLoading } from '@/App/Layout/PageStates';
-import type { TFrameId } from '@/App/Panels';
+import { isSlideId, type IShellSearch } from '@/App/Panels';
 import { lazyComponent } from '@/Core/Ui/LazyComponent';
 import { documentLocale } from '@/I18n/Locale';
 import { useCatalogStore } from '@/I18n/useCatalogStore';
@@ -10,11 +10,11 @@ import { loadWorkspaceMessages } from '@/I18n/WorkspaceCatalog';
 
 const AppShell = lazyComponent(() => import('@/App/Layout/AppShell').then((module) => module.AppShell));
 
-export const preloadShell = (stack: readonly TFrameId[]): void => {
+export const preloadShell = ({ slide }: IShellSearch): void => {
   void AppShell.preload();
   void loadWorkspaceMessages(documentLocale()).catch(() => undefined);
-  if (stack.length === 0) return;
-  void import('@/App/Layout/ShellParts').then((parts) => parts.preloadStack(stack));
+  if (!isSlideId(slide)) return;
+  void import('@/App/Layout/ShellParts').then((parts) => parts.preloadSlideParts(slide));
 };
 
 const WorkspaceMessages = ({ children }: { children: ReactNode }) => {

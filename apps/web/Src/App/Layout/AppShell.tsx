@@ -2,10 +2,11 @@ import { Outlet } from '@tanstack/react-router';
 
 import { AccountBanners } from '@/App/Layout/AccountBanners';
 import { LazyCommandPalette, LazySlideHost, preloadShellParts } from '@/App/Layout/ShellParts';
+import { ShellBottomBar } from '@/App/Layout/ShellBottomBar';
 import { ShellMenu } from '@/App/Layout/ShellMenu';
 import { ShellTopBar } from '@/App/Layout/ShellTopBar';
 import { useCommandItems } from '@/App/Layout/useCommandItems';
-import { useShellNavigation } from '@/App/Layout/useShellNavigation';
+import { useSlide } from '@/App/Navigation/useSlide';
 import { useMe } from '@/Core/Auth/useMe';
 import { useHotkey } from '@/Core/Hooks/useHotkey';
 import { useIdleCallback } from '@/Core/Hooks/useIdleCallback';
@@ -25,8 +26,8 @@ export const AppShell = () => {
 
   const me = useMe();
   usePreferencesSync(me.data?.Memberships.map((membership) => membership.OrganizationId) ?? []);
-  const { stack, invalidStack } = useShellNavigation();
-  const slidesWanted = useLatch(stack.length > 0 || invalidStack);
+  const { slide, invalid } = useSlide();
+  const slidesWanted = useLatch(slide !== null || invalid);
   const paletteWanted = useLatch(PaletteOpen);
 
   useHotkey('k', TogglePalette);
@@ -34,7 +35,7 @@ export const AppShell = () => {
 
   return (
     <TooltipProvider>
-      <div className="flex h-dvh bg-canvas max-md:flex-col">
+      <div className="flex h-dvh bg-canvas">
         <a
           href="#main"
           onClick={(event) => {
@@ -54,6 +55,7 @@ export const AppShell = () => {
             <Outlet />
           </main>
         </div>
+        <ShellBottomBar />
         {slidesWanted ? <LazySlideHost /> : null}
         {paletteWanted ? (
           <LazyCommandPalette

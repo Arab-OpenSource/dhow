@@ -8,6 +8,7 @@ import { createAppRouter } from '@/App/Router';
 import { createQueryClient } from '@/Core/Api/QueryClient';
 import { auditFixture, backendFailure, startBackend, type IBackendOptions, type TRouteHandler } from '@/Core/Testing/Backend';
 import { envelope, SESSION_ID } from '@/Core/Testing/Fetch';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const MONA = '0198a000-0000-7000-8000-0000000000b2';
@@ -26,12 +27,12 @@ const found = oneEvent((id) => {
   return event ? envelope({ Success: true, Data: { ...event, Data: { Via: 'api_token', ViaId: 'tok-1', Reason: 'rotation' } } }) : undefined;
 });
 
-const mount = async (options: IBackendOptions = {}, url = '/?stack=audit', title: string = Ar['audit.title']) => {
+const mount = async (options: IBackendOptions = {}, url = '/audit', title: string = Ar['audit.title']) => {
   const backend = startBackend({ audit: EVENTS, ...options });
   const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: title });
+  const dialog = await findPage(title);
   return { ...backend, router, user, dialog };
 };
 
@@ -93,9 +94,9 @@ describe('an audit event in detail', () => {
     const [first] = within(list).getAllByRole('button');
     if (first === undefined) throw new Error('no row');
     await user.click(first);
-    const detail = await screen.findByRole('dialog', { name: Ar['audit.detail.title'] });
+    const detail = await findPage(Ar['audit.detail.title']);
     await waitFor(() => {
-      expect(router.state.location.search).toEqual({ stack: `audit,audit-event-${FIRST}` });
+      expect(router.state.location.pathname).toBe(`/audit/${FIRST}`);
     });
     expect(await within(detail).findByRole('heading', { name: Ar['audit.action.auth.login'] })).toBeInTheDocument();
     const facts = within(detail).getByText(Ar['audit.detail.who']).closest('dl');
@@ -112,7 +113,7 @@ describe('an audit event in detail', () => {
   it('shows a loading state, then says when the event is not in this organization', async () => {
     await mount(
       { routes: [oneEvent(() => backendFailure('NOT_FOUND', 'x', 404))] },
-      `/?stack=audit,audit-event-${FIRST}`,
+      `/audit/${FIRST}`,
       Ar['audit.detail.title'],
     );
     expect(await screen.findByText(Ar['audit.detail.missing'])).toBeInTheDocument();
@@ -122,7 +123,7 @@ describe('an audit event in detail', () => {
     let failing = true;
     const { user } = await mount(
       { routes: [oneEvent((id) => (failing ? backendFailure('INTERNAL', 'حدث خطأ في السيرفر.', 500) : found(new Request(`http://x/audit-events/${id}`), new URL(`http://x/audit-events/${id}`))))] },
-      `/?stack=audit,audit-event-${FIRST}`,
+      `/audit/${FIRST}`,
       Ar['audit.detail.title'],
     );
     expect(await screen.findByText(Ar['audit.detail.error'])).toBeInTheDocument();

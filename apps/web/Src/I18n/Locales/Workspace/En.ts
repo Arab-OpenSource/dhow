@@ -1,6 +1,7 @@
 import { AuditEn } from '@/I18n/Locales/Workspace/AuditEn';
 import { JobsEn } from '@/I18n/Locales/Workspace/JobsEn';
 import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
+import { PagesEn } from '@/I18n/Locales/Workspace/PagesEn';
 import { RunnersEn } from '@/I18n/Locales/Workspace/RunnersEn';
 import type { TWorkspaceMessages } from '@/I18n/Messages';
 
@@ -9,7 +10,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'palette.placeholder': 'Type a page or an action',
   'palette.empty': 'Nothing matches. Try another word.',
   'palette.kind.page': 'Page',
-  'palette.kind.panel': 'Slide',
   'palette.kind.action': 'Action',
   'palette.command.home': 'Go to Home',
   'palette.command.systemStatus': 'Open server status',
@@ -27,7 +27,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'slides.back': 'Go back one',
   'slides.closeAll': 'Close all slides',
   'slides.level': '{current} of {total}',
-  'slides.returned.title': 'Back to the previous slide',
 
   'notifications.title': 'Notifications',
   'notifications.empty': 'No new notifications.',
@@ -59,7 +58,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'status.summary.setup.title': 'The server is running, but setup is not done',
   'status.summary.setup.sub': 'Finish first-time setup so you can get started.',
 
-  'palette.command.appearance': 'Change the colour theme',
   'palette.command.createTheme': 'Create a colour theme',
   'appearance.title': 'Appearance',
   'appearance.subtitle': 'Your choice is saved for you only. An admin can set the organization default.',
@@ -166,7 +164,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'palette.command.password': 'Change password',
   'palette.command.signOut': 'Sign out',
 
-  'account.title': 'My account',
   'account.error.title': 'We could not load your account',
   'account.summary.strong.title': 'Your account has two-step verification',
   'account.summary.weak.title': 'Turn on two-step verification',
@@ -293,9 +290,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'audit.verify.broken.title': 'The chain is broken',
   'audit.verify.broken.sub': 'Checked {count} events, and the break starts at this event:',
 
-  'palette.command.organization': 'Open the organization and its members',
-  'organization.title': 'Organization',
-  'organization.subtitle': 'Members, teams, invitations and settings.',
   'organization.card.title': 'Organization details',
   'organization.name': 'Organization name',
   'organization.slug': 'Short link name',
@@ -387,4 +381,5 @@ export const WorkspaceEn: TWorkspaceMessages = {
   ...OrganizationEn,
   ...JobsEn,
   ...RunnersEn,
+  ...PagesEn,
 };
