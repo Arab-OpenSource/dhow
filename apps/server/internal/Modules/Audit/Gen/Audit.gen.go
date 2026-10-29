@@ -17,6 +17,36 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AuditCategory.
+const (
+	Auth     AuditCategory = "auth"
+	Identity AuditCategory = "identity"
+	Job      AuditCategory = "job"
+	Runner   AuditCategory = "runner"
+	System   AuditCategory = "system"
+)
+
+// Valid indicates whether the value is a known member of the AuditCategory enum.
+func (e AuditCategory) Valid() bool {
+	switch e {
+	case Auth:
+		return true
+	case Identity:
+		return true
+	case Job:
+		return true
+	case Runner:
+		return true
+	case System:
+		return true
+	default:
+		return false
+	}
+}
+
+// AuditCategory defines model for AuditCategory.
+type AuditCategory string
+
 // AuditEvent defines model for AuditEvent.
 type AuditEvent struct {
 	// Action Example: auth.login
@@ -37,6 +67,19 @@ type AuditEvent struct {
 type AuditEventListResponse struct {
 	Data  *[]AuditEvent `json:"Data,omitempty"`
 	Error *ErrorDetail  `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// AuditEventResponse defines model for AuditEventResponse.
+type AuditEventResponse struct {
+	Data  *AuditEvent  `json:"Data,omitempty"`
+	Error *ErrorDetail `json:"Error,omitempty"`
 
 	// Message An i18n key such as `system.meta.loaded`. The client translates it.
 	//
@@ -117,6 +160,21 @@ type PageMeta struct {
 	Total int `json:"Total"`
 }
 
+// AuditAction defines model for AuditAction.
+type AuditAction = string
+
+// AuditActor defines model for AuditActor.
+type AuditActor = openapi_types.UUID
+
+// AuditFrom defines model for AuditFrom.
+type AuditFrom = time.Time
+
+// AuditTo defines model for AuditTo.
+type AuditTo = time.Time
+
+// EventId defines model for EventId.
+type EventId = openapi_types.UUID
+
 // Id defines model for Id.
 type Id = openapi_types.UUID
 
@@ -133,6 +191,21 @@ type Error = ErrorResponse
 type ListAuditEventsParams struct {
 	Page  *Page  `form:"Page,omitempty" json:"Page,omitempty"`
 	Limit *Limit `form:"Limit,omitempty" json:"Limit,omitempty"`
+
+	// Category Only events whose action starts with this category, such as `auth` for `auth.login`.
+	Category *AuditCategory `form:"Category,omitempty" json:"Category,omitempty"`
+
+	// Action Only events with exactly this action.
+	Action *AuditAction `form:"Action,omitempty" json:"Action,omitempty"`
+
+	// ActorUserId Only events done by this user.
+	ActorUserId *AuditActor `form:"ActorUserId,omitempty" json:"ActorUserId,omitempty"`
+
+	// From Only events at or after this time.
+	From *AuditFrom `form:"From,omitempty" json:"From,omitempty"`
+
+	// To Only events before this time.
+	To *AuditTo `form:"To,omitempty" json:"To,omitempty"`
 }
 
 // ServerInterface represents all server handlers.
@@ -143,6 +216,9 @@ type ServerInterface interface {
 	// VerifyAuditChain Verify the hash chain of an organization's audit log
 	// (GET /organizations/{id}/audit-events/verify)
 	VerifyAuditChain(w http.ResponseWriter, r *http.Request, id Id)
+	// GetAuditEvent Read one audit event of an organization
+	// (GET /organizations/{id}/audit-events/{eventId})
+	GetAuditEvent(w http.ResponseWriter, r *http.Request, id Id, eventId EventId)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -158,6 +234,12 @@ func (_ Unimplemented) ListAuditEvents(w http.ResponseWriter, r *http.Request, i
 // VerifyAuditChain Verify the hash chain of an organization's audit log
 // (GET /organizations/{id}/audit-events/verify)
 func (_ Unimplemented) VerifyAuditChain(w http.ResponseWriter, r *http.Request, id Id) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetAuditEvent Read one audit event of an organization
+// (GET /organizations/{id}/audit-events/{eventId})
+func (_ Unimplemented) GetAuditEvent(w http.ResponseWriter, r *http.Request, id Id, eventId EventId) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -214,6 +296,71 @@ func (siw *ServerInterfaceWrapper) ListAuditEvents(w http.ResponseWriter, r *htt
 		return
 	}
 
+	// ------------- Optional query parameter "Category" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "Category", r.URL.Query(), &params.Category, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "Category"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Category", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "Action" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "Action", r.URL.Query(), &params.Action, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "Action"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Action", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ActorUserId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ActorUserId", r.URL.Query(), &params.ActorUserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ActorUserId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ActorUserId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "From" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "From", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "From"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "From", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "To" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "To", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "To"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "To", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListAuditEvents(w, r, id, params)
 	}))
@@ -242,6 +389,41 @@ func (siw *ServerInterfaceWrapper) VerifyAuditChain(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.VerifyAuditChain(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetAuditEvent operation middleware
+func (siw *ServerInterfaceWrapper) GetAuditEvent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "eventId" -------------
+	var eventId EventId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "eventId", chi.URLParam(r, "eventId"), &eventId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "eventId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetAuditEvent(w, r, id, eventId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -368,6 +550,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/organizations/{id}/audit-events", wrapper.ListAuditEvents)
 	})
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/organizations/{id}/audit-events/{eventId}", wrapper.GetAuditEvent)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/organizations/{id}/audit-events/verify", wrapper.VerifyAuditChain)
 	})
 
@@ -455,6 +640,46 @@ func (response VerifyAuditChaindefaultJSONResponse) VisitVerifyAuditChainRespons
 	return err
 }
 
+type GetAuditEventRequestObject struct {
+	Id      Id      `json:"id"`
+	EventId EventId `json:"eventId"`
+}
+
+type GetAuditEventResponseObject interface {
+	VisitGetAuditEventResponse(w http.ResponseWriter) error
+}
+
+type GetAuditEvent200JSONResponse AuditEventResponse
+
+func (response GetAuditEvent200JSONResponse) VisitGetAuditEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetAuditEventdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response GetAuditEventdefaultJSONResponse) VisitGetAuditEventResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// ListAuditEvents List the audit events of an organization
@@ -463,6 +688,9 @@ type StrictServerInterface interface {
 	// VerifyAuditChain Verify the hash chain of an organization's audit log
 	// (GET /organizations/{id}/audit-events/verify)
 	VerifyAuditChain(ctx context.Context, request VerifyAuditChainRequestObject) (VerifyAuditChainResponseObject, error)
+	// GetAuditEvent Read one audit event of an organization
+	// (GET /organizations/{id}/audit-events/{eventId})
+	GetAuditEvent(ctx context.Context, request GetAuditEventRequestObject) (GetAuditEventResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -550,6 +778,33 @@ func (sh *strictHandler) VerifyAuditChain(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(VerifyAuditChainResponseObject); ok {
 		if err := validResponse.VisitVerifyAuditChainResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetAuditEvent operation middleware
+func (sh *strictHandler) GetAuditEvent(w http.ResponseWriter, r *http.Request, id Id, eventId EventId) {
+	var request GetAuditEventRequestObject
+
+	request.Id = id
+	request.EventId = eventId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetAuditEvent(ctx, request.(GetAuditEventRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetAuditEvent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetAuditEventResponseObject); ok {
+		if err := validResponse.VisitGetAuditEventResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

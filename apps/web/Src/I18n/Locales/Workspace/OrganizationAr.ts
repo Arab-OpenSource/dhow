@@ -1,3 +1,5 @@
+import { AdminAr } from '@/I18n/Locales/Workspace/AdminAr';
+
 export const OrganizationAr = {
   'organization.tabs': 'أقسام المؤسسة',
   'organization.tab.members': 'الأعضاء',
@@ -168,4 +170,5 @@ export const OrganizationAr = {
   'palette.command.invite': 'ادعي عضو',
   'team.error.name': 'اكتب اسم الفريق.',
   'team.error.description': 'الوصف أطول من 500 حرف.',
+  ...AdminAr,
 } as const;

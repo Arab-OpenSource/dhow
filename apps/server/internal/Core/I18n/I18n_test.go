@@ -39,7 +39,7 @@ func TestCatalogsCoverTheSameKeys(t *testing.T) {
 		"identity.setup.completed", "identity.organization.loaded", "identity.organization.updated", "identity.members.listed",
 		"session.login.succeeded", "session.logout.succeeded", "session.me.loaded", "session.list.loaded",
 		"session.revoke.succeeded", "session.revokeOthers.succeeded", "session.password.changed",
-		"audit.events.listed", "audit.chain.verified",
+		"audit.events.listed", "audit.chain.verified", "audit.event.loaded",
 		"errors.mfaChallengeExpired",
 		"errors.invalidMfaCode",
 		"errors.invalidCurrentFactor",

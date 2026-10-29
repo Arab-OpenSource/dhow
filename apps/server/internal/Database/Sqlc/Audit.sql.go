@@ -10,19 +10,81 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countAuditEvents = `-- name: CountAuditEvents :one
 SELECT count(*)
 FROM "AuditEvents"
 WHERE "OrganizationId" = $1
+  AND ($2::text IS NULL OR starts_with("Action", $2::text || '.'))
+  AND ($3::text IS NULL OR "Action" = $3::text)
+  AND ($4::uuid IS NULL OR "ActorUserId" = $4::uuid)
+  AND ($5::timestamptz IS NULL OR "CreatedAt" >= $5::timestamptz)
+  AND ($6::timestamptz IS NULL OR "CreatedAt" < $6::timestamptz)
 `
 
-func (q *Queries) CountAuditEvents(ctx context.Context, organizationID *uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countAuditEvents, organizationID)
+type CountAuditEventsParams struct {
+	OrganizationID *uuid.UUID
+	Category       pgtype.Text
+	Action         pgtype.Text
+	ActorUserID    *uuid.UUID
+	FromTime       *time.Time
+	ToTime         *time.Time
+}
+
+func (q *Queries) CountAuditEvents(ctx context.Context, arg CountAuditEventsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countAuditEvents,
+		arg.OrganizationID,
+		arg.Category,
+		arg.Action,
+		arg.ActorUserID,
+		arg.FromTime,
+		arg.ToTime,
+	)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const getAuditEvent = `-- name: GetAuditEvent :one
+SELECT "Id", "CreatedAt", "OrganizationId", "ActorUserId", "Action", "TargetType", "TargetId", "Ip", "Data"
+FROM "AuditEvents"
+WHERE "OrganizationId" = $1 AND "Id" = $2
+`
+
+type GetAuditEventParams struct {
+	OrganizationID *uuid.UUID
+	ID             uuid.UUID
+}
+
+type GetAuditEventRow struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	OrganizationId *uuid.UUID
+	ActorUserId    *uuid.UUID
+	Action         string
+	TargetType     string
+	TargetId       string
+	Ip             string
+	Data           []byte
+}
+
+func (q *Queries) GetAuditEvent(ctx context.Context, arg GetAuditEventParams) (GetAuditEventRow, error) {
+	row := q.db.QueryRow(ctx, getAuditEvent, arg.OrganizationID, arg.ID)
+	var i GetAuditEventRow
+	err := row.Scan(
+		&i.Id,
+		&i.CreatedAt,
+		&i.OrganizationId,
+		&i.ActorUserId,
+		&i.Action,
+		&i.TargetType,
+		&i.TargetId,
+		&i.Ip,
+		&i.Data,
+	)
+	return i, err
 }
 
 const getLastAuditHash = `-- name: GetLastAuditHash :one
@@ -82,12 +144,22 @@ const listAuditEvents = `-- name: ListAuditEvents :many
 SELECT "Id", "CreatedAt", "OrganizationId", "ActorUserId", "Action", "TargetType", "TargetId", "Ip", "Data"
 FROM "AuditEvents"
 WHERE "OrganizationId" = $1
+  AND ($2::text IS NULL OR starts_with("Action", $2::text || '.'))
+  AND ($3::text IS NULL OR "Action" = $3::text)
+  AND ($4::uuid IS NULL OR "ActorUserId" = $4::uuid)
+  AND ($5::timestamptz IS NULL OR "CreatedAt" >= $5::timestamptz)
+  AND ($6::timestamptz IS NULL OR "CreatedAt" < $6::timestamptz)
 ORDER BY "Seq" DESC
-LIMIT $3 OFFSET $2
+LIMIT $8 OFFSET $7
 `
 
 type ListAuditEventsParams struct {
 	OrganizationID *uuid.UUID
+	Category       pgtype.Text
+	Action         pgtype.Text
+	ActorUserID    *uuid.UUID
+	FromTime       *time.Time
+	ToTime         *time.Time
 	PageOffset     int32
 	PageLimit      int32
 }
@@ -105,7 +177,16 @@ type ListAuditEventsRow struct {
 }
 
 func (q *Queries) ListAuditEvents(ctx context.Context, arg ListAuditEventsParams) ([]ListAuditEventsRow, error) {
-	rows, err := q.db.Query(ctx, listAuditEvents, arg.OrganizationID, arg.PageOffset, arg.PageLimit)
+	rows, err := q.db.Query(ctx, listAuditEvents,
+		arg.OrganizationID,
+		arg.Category,
+		arg.Action,
+		arg.ActorUserID,
+		arg.FromTime,
+		arg.ToTime,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

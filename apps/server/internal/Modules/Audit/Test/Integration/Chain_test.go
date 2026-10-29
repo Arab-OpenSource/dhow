@@ -292,7 +292,7 @@ func TestSecretLookingKeysNeverReachTheLog(t *testing.T) {
 		},
 	}})
 	require.NoError(t, err)
-	events, total, err := f.service.List(context.Background(), f.org, 1, 10)
+	events, total, err := f.service.List(context.Background(), f.org, models.Filter{}, 1, 10)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, total)
 	assert.Equal(t, map[string]string{"Reason": "ok", "EmailDigest": "d41d8cd9"}, events[0].Data)
@@ -312,16 +312,16 @@ func TestListIsNewestFirstAndPaged(t *testing.T) {
 	}
 	f.record(t, "test.other", other)
 
-	first, total, err := f.service.List(context.Background(), f.org, 1, 3)
+	first, total, err := f.service.List(context.Background(), f.org, models.Filter{}, 1, 3)
 	require.NoError(t, err)
 	assert.EqualValues(t, 7, total, "the count only covers this organization")
 	require.Len(t, first, 3)
 	assert.Equal(t, "test.event6", first[0].Action)
-	last, _, err := f.service.List(context.Background(), f.org, 3, 3)
+	last, _, err := f.service.List(context.Background(), f.org, models.Filter{}, 3, 3)
 	require.NoError(t, err)
 	require.Len(t, last, 1)
 	assert.Equal(t, "test.event0", last[0].Action)
-	beyond, _, err := f.service.List(context.Background(), f.org, 9, 3)
+	beyond, _, err := f.service.List(context.Background(), f.org, models.Filter{}, 9, 3)
 	require.NoError(t, err)
 	assert.Empty(t, beyond)
 	for _, e := range first {
