@@ -26,7 +26,7 @@ func sample(t *testing.T) *identity.Identity {
 	require.NoError(t, err)
 	return &identity.Identity{
 		Keys: keys, RunnerID: uuid.NewString(), OrganizationID: uuid.NewString(), ServerURL: "https://dhow.example.com",
-		ServerOrigin: "https://dhow.example.com", ServerSigningKey: server, ServerKeyVersion: 1, Labels: []string{"dhow.os=linux"},
+		ServerOrigin: "https://dhow.example.com", ServerSigningKey: server, ServerKeyVersion: 1, KeyVersion: 1, Labels: []string{"dhow.os=linux"},
 	}
 }
 
@@ -71,7 +71,7 @@ func TestLoadRefusesOpenPermissionsAndDamage(t *testing.T) {
 	assert.ErrorIs(t, err, identity.ErrCorrupt)
 	_, err = identity.Parse([]byte("not json"))
 	assert.ErrorIs(t, err, identity.ErrCorrupt)
-	_, err = identity.Parse([]byte(`{"Version":2}`))
+	_, err = identity.Parse([]byte(`{"Version":3}`))
 	assert.ErrorIs(t, err, identity.ErrUnsupportedV)
 }
 

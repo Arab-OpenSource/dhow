@@ -23,7 +23,7 @@ bash get.sh
 3. إذا كان [cosign](https://docs.sigstore.dev/) مثبّتًا، يتأكد أن workflow الإصدار في هذا المستودع وقّع `SHA256SUMS` بلا مفتاح. بدون cosign، يحذّرك ويطبع أمر `cosign verify-blob` لتشغّله بنفسك.
 4. يفحص الأرشيف مقابل `SHA256SUMS`، ويستخرج `dhow-server`، ويشغّل `dhow-server install` مع كل المعاملات الأخرى، عبر `sudo` إذا لم تكن root. ثم يحذف المجلد المؤقت.
 
-لذلك الأمر `bash get.sh --version 1.2.3 --answers answers.yaml --yes` يثبّت إصدارًا محددًا بلا أسئلة. يمكنك أيضًا تنزيل إصدار والتحقق منه يدويًا كما في [تثبيت الملف التنفيذي مع systemd](binary-systemd.md#1-تنزيل-إصدار-والتحقق-منه)، ثم تشغيل `./dhow-server install` منه.
+لذلك الأمر `bash get.sh --version 1.2.3 --answers answers.yaml --yes` يثبّت إصدارًا محددًا بلا أسئلة. الخيار `--component runner` يجلب بدلًا من ذلك أرشيف جهاز التشغيل (runner) من الإصدار نفسه، بالفحوص نفسها، ويثبّت `dhow-runner` وخدمته ([ثبّت جهاز تشغيل](../runner/install.md)). المتغير `DHOW_DOWNLOAD_URL` يجعل التنزيل من مرآة (mirror) لملفات الإصدار (`https://` فقط). مع مرآة، أو مع ضبط `DHOW_REPO`، يصبح cosign إلزاميًا: التوقيع هو الشيء الوحيد الذي يربط ملفات المرآة بـ workflow الإصدار في هذا المستودع، لذلك يتوقف `get.sh` بدون cosign. الخيار `--insecure-skip-signature` يتخطى الفحص مع تحذير واضح، لمرآة تتحكم فيها وتثق بها. لا تستخدمه في غير ذلك أبدًا. يمكنك أيضًا تنزيل إصدار والتحقق منه يدويًا كما في [تثبيت الملف التنفيذي مع systemd](binary-systemd.md#1-تنزيل-إصدار-والتحقق-منه)، ثم تشغيل `./dhow-server install` منه.
 
 ## الأنظمة المدعومة
 

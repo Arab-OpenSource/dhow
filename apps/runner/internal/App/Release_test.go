@@ -26,7 +26,7 @@ func TestAReleaseBuildRefusesToRunWithoutARealDriver(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, identity.Save(filepath.Join(dir, config.IdentityFileName), &identity.Identity{
 		Keys: keys, RunnerID: uuid.NewString(), OrganizationID: uuid.NewString(), ServerURL: "https://d.example.com",
-		ServerOrigin: "https://d.example.com", ServerSigningKey: server, ServerKeyVersion: 1,
+		ServerOrigin: "https://d.example.com", ServerSigningKey: server, ServerKeyVersion: 1, KeyVersion: 1,
 	}))
 	_, err = cli(t, map[string]string{config.EnvStateDir: dir, config.EnvDriver: config.DriverKubernetes}, "", "run")
 	assert.ErrorIs(t, err, app.ErrDriverMissing)

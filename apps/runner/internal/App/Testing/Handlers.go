@@ -8,6 +8,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -34,7 +35,9 @@ func (h handlers) Register(_ context.Context, req *connect.Request[runnerv1.Regi
 	if !runnersig.Verify(m.GetSigningPublicKey(), msg, m.GetProof()) {
 		return nil, rpcError(connect.CodeInvalidArgument, "VALIDATION_FAILED: Proof")
 	}
-	s.runner = &runnerRecord{id: uuid.NewString(), org: s.OrgID, signing: m.GetSigningPublicKey(), encryption: m.GetEncryptionPublicKey()}
+	s.runner = &runnerRecord{
+		id: uuid.NewString(), org: s.OrgID, signing: m.GetSigningPublicKey(), encryption: m.GetEncryptionPublicKey(), keyVersion: 1,
+	}
 	return connect.NewResponse(&runnerv1.RegisterResponse{
 		RunnerId: s.runner.id, OrganizationId: s.OrgID, Labels: []string{"dhow.os=" + m.GetOs()},
 		ServerSigningPublicKey: s.SigningKey(), ServerKeyVersion: 1,
@@ -72,8 +75,30 @@ func (h handlers) Authenticate(_ context.Context, req *connect.Request[runnerv1.
 	return connect.NewResponse(&runnerv1.AuthenticateResponse{AccessToken: access, ExpiresInSeconds: int32(sessionTTL / time.Second)}), nil
 }
 
-func (h handlers) RotateKeys(context.Context, *connect.Request[runnerv1.RotateKeysRequest]) (*connect.Response[runnerv1.RotateKeysResponse], error) {
-	return nil, rpcError(connect.CodeUnimplemented, "UNIMPLEMENTED")
+func (h handlers) RotateKeys(_ context.Context, req *connect.Request[runnerv1.RotateKeysRequest]) (*connect.Response[runnerv1.RotateKeysResponse], error) {
+	s := h.s
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	expiry, ok := s.sessions[strings.TrimPrefix(req.Header().Get("Authorization"), "Bearer ")]
+	if !ok || time.Now().After(expiry) || s.runner == nil {
+		return nil, rpcError(connect.CodeUnauthenticated, "UNAUTHENTICATED")
+	}
+	m := req.Msg
+	newSigning := ed25519.PublicKey(m.GetNewSigningPublicKey())
+	if len(newSigning) != ed25519.PublicKeySize || bytes.Equal(newSigning, s.runner.signing) {
+		return nil, rpcError(connect.CodeInvalidArgument, "VALIDATION_FAILED: NewSigningPublicKey")
+	}
+	msg := runnersig.RotateMessage(Origin, s.runner.id, s.runner.keyVersion, newSigning, m.GetNewEncryptionPublicKey())
+	if !ed25519.Verify(s.runner.signing, msg, m.GetOldKeySignature()) || !ed25519.Verify(newSigning, msg, m.GetNewKeySignature()) {
+		return nil, rpcError(connect.CodeUnauthenticated, "INVALID_RUNNER_CREDENTIALS")
+	}
+	s.runner.signing, s.runner.encryption = newSigning, m.GetNewEncryptionPublicKey()
+	s.runner.keyVersion++
+	s.sessions = map[string]time.Time{}
+	if s.knobs.RotateLoseReply {
+		return nil, rpcError(connect.CodeUnavailable, "UNAVAILABLE")
+	}
+	return connect.NewResponse(&runnerv1.RotateKeysResponse{KeyVersion: s.runner.keyVersion}), nil
 }
 
 func (h handlers) Lease(ctx context.Context, req *connect.Request[runnerv1.LeaseRequest]) (*connect.Response[runnerv1.LeaseResponse], error) {

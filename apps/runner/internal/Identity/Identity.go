@@ -16,7 +16,11 @@ import (
 	"github.com/Khaymah/dhow/internal/runnersig"
 )
 
-const fileVersion = 1
+const (
+	fileVersion      = 2
+	firstFileVersion = 1
+	FirstKeyVersion  = 1
+)
 
 var (
 	ErrExists        = errors.New("this runner is already registered; remove the state directory to register it again")
@@ -40,6 +44,7 @@ type Identity struct {
 	ServerOrigin     string
 	ServerSigningKey ed25519.PublicKey
 	ServerKeyVersion int32
+	KeyVersion       int32
 	Labels           []string
 }
 
@@ -51,6 +56,7 @@ type fileFormat struct {
 	ServerOrigin     string   `json:"ServerOrigin"`
 	ServerSigningKey []byte   `json:"ServerSigningKey"`
 	ServerKeyVersion int32    `json:"ServerKeyVersion"`
+	KeyVersion       int32    `json:"KeyVersion"`
 	SigningSeed      []byte   `json:"SigningSeed"`
 	EncryptionKey    []byte   `json:"EncryptionKey"`
 	Labels           []string `json:"Labels"`
@@ -111,7 +117,7 @@ func Save(path string, id *Identity) error {
 	raw, err := json.Marshal(fileFormat{
 		Version: fileVersion, RunnerID: id.RunnerID, OrganizationID: id.OrganizationID, ServerURL: id.ServerURL,
 		ServerOrigin: id.ServerOrigin, ServerSigningKey: id.ServerSigningKey, ServerKeyVersion: id.ServerKeyVersion,
-		SigningSeed: id.Signing.Seed(), EncryptionKey: encryption, Labels: id.Labels,
+		KeyVersion: id.KeyVersion, SigningSeed: id.Signing.Seed(), EncryptionKey: encryption, Labels: id.Labels,
 	})
 	if err != nil {
 		return fmt.Errorf("encode the identity: %w", err)
@@ -139,7 +145,11 @@ func Parse(raw []byte) (*Identity, error) {
 	if err := json.Unmarshal(raw, &f); err != nil {
 		return nil, ErrCorrupt
 	}
-	if f.Version != fileVersion {
+	switch f.Version {
+	case firstFileVersion:
+		f.KeyVersion = FirstKeyVersion
+	case fileVersion:
+	default:
 		return nil, ErrUnsupportedV
 	}
 	if len(f.SigningSeed) != ed25519.SeedSize {
@@ -152,7 +162,8 @@ func Parse(raw []byte) (*Identity, error) {
 	id := &Identity{
 		Keys:     Keys{Signing: ed25519.NewKeyFromSeed(f.SigningSeed), Encryption: enc},
 		RunnerID: f.RunnerID, OrganizationID: f.OrganizationID, ServerURL: f.ServerURL, ServerOrigin: f.ServerOrigin,
-		ServerSigningKey: ed25519.PublicKey(f.ServerSigningKey), ServerKeyVersion: f.ServerKeyVersion, Labels: f.Labels,
+		ServerSigningKey: ed25519.PublicKey(f.ServerSigningKey), ServerKeyVersion: f.ServerKeyVersion, KeyVersion: f.KeyVersion,
+		Labels: f.Labels,
 	}
 	if err := id.validate(); err != nil {
 		return nil, err
@@ -172,6 +183,9 @@ func (i *Identity) validate() error {
 	}
 	if len(i.ServerSigningKey) != ed25519.PublicKeySize || i.ServerKeyVersion < 1 {
 		return ErrServerKey
+	}
+	if i.KeyVersion < 1 {
+		return fmt.Errorf("%w: key version", ErrCorrupt)
 	}
 	if len(i.Signing) != ed25519.PrivateKeySize || i.Encryption == nil {
 		return fmt.Errorf("%w: keys", ErrCorrupt)

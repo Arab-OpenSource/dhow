@@ -15,6 +15,8 @@ const (
 const (
 	DefaultStateDir  = "/var/lib/dhow-runner"
 	IdentityFileName = "identity"
+	PendingFileName  = "identity.pending"
+	LockFileName     = "lock"
 	JournalFileName  = "journal"
 	AttemptsDirName  = "attempts"
 	SpillFileName    = "logs.spill"

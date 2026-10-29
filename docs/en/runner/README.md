@@ -6,8 +6,9 @@ A runner is the `dhow-runner` process that takes jobs from a Dhow server and run
 
 | Guide | What it covers |
 |---|---|
-| [Install a runner](install.md) | Building or downloading the binary, the user and directories it needs, and a systemd unit |
+| [Install a runner](install.md) | `get.sh --component runner` or a release archive, the user and directories it needs, and the hardened systemd unit |
 | [Register a runner](register.md) | Creating a registration token and turning it into a runner identity |
+| [Rotate a runner's keys](keys.md) | When and how to replace the runner's key pairs, and why a crash in the middle is safe |
 | [Run a runner](run.md) | Starting it, what it does with each job, and what happens when the network or the runner fails |
 | [Runner configuration](configuration.md) | Every `DHOW_RUNNER_*` variable, its default and its limits |
 

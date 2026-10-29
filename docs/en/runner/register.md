@@ -69,4 +69,8 @@ Open a runner to see its OS and architecture, version, capacity, isolation level
 
 Never copy a state directory to a second host. Two runners with one identity keep replacing each other's session, and after three replacements in ten minutes Dhow disables the runner as a suspected clone. Register each host with its own token.
 
+## Rotating the keys
+
+`dhow-runner rotate-keys` replaces both key pairs and keeps the runner's ID, labels and history. Run it at least once a year, and whenever the state directory may have been read by someone else. See [Rotate a runner's keys](keys.md).
+
 Next: [run the runner](run.md).
