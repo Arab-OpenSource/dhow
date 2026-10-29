@@ -8,6 +8,7 @@ import { App } from '@/App/App';
 import { createAppRouter } from '@/App/Router';
 import { createQueryClient } from '@/Core/Api/QueryClient';
 import { auditFixture, startBackend } from '@/Core/Testing/Backend';
+import { settingsFixture, settingsRoute } from '@/Core/Testing/SettingsBackend';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { Ar } from '@/I18n/Locales/Ar';
 
@@ -127,6 +128,18 @@ describe('API requests per page', () => {
     expect(view.calls.map(requestOf).filter((call) => call.startsWith(JOBS) || call.startsWith(RUNNERS) || call.startsWith(AUDIT))).toEqual(
       expect.arrayContaining(own.filter((endpoint) => endpoint !== MEMBERS).map((endpoint) => `${endpoint}?Page=1&Limit=5`)),
     );
+  });
+
+  it('opens /system/settings cold as the server owner with one settings request', async () => {
+    const backend = startBackend({ instanceOwner: true, routes: [settingsRoute({ settings: settingsFixture(), puts: [], tests: 0 })] });
+    const client = createQueryClient({ retry: false });
+    render(<App router={createAppRouter(createMemoryHistory({ initialEntries: ['/system/settings'] }))} queryClient={client} />);
+    await screen.findByRole('heading', { level: 1, name: Ar['shell.nav.systemSettings'] });
+    const expected = [...SHELL, 'GET /api/v1/instance/settings'];
+    await settle(client, backend.calls, expected);
+
+    expect(repeated(backend.calls)).toEqual([]);
+    expect([...new Set(backend.calls.map(endpointOf))].sort()).toEqual([...expected].sort());
   });
 
   it('shares one overview request between the home and the sidebar counters', async () => {

@@ -7,6 +7,7 @@ export const AuditAr = {
   'audit.action.auth.sessions_revoked_others': 'إخراج كل الأجهزة الأخرى',
   'audit.action.identity.organization.updated': 'تعديل بيانات المؤسسة',
   'audit.action.system.instance.setupCompleted': 'إكمال الإعداد الأول',
+  'audit.action.system.settings.changed': 'تغيير إعدادات السيرفر',
   'audit.action.auth.mfa_pending': 'كلمة سر صحيحة بانتظار الخطوة الثانية',
   'audit.action.auth.mfa_failed': 'فشل الخطوة الثانية',
   'audit.action.auth.recovery_code_used': 'استخدام كود طوارئ',

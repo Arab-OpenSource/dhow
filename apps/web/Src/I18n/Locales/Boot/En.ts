@@ -15,6 +15,7 @@ export const BootEn: TBootMessages = {
   'shell.nav.orgSettings': 'Organization settings',
   'shell.nav.audit': 'Audit log',
   'shell.nav.system': 'Server status',
+  'shell.nav.systemSettings': 'Server settings',
   'shell.nav.profile': 'Profile',
   'shell.nav.security': 'Security',
   'shell.nav.preferences': 'Preferences',

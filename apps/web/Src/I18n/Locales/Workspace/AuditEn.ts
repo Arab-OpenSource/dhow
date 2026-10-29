@@ -9,6 +9,7 @@ export const AuditEn: Record<keyof typeof AuditAr, string> = {
   'audit.action.auth.sessions_revoked_others': 'Every other device was ended',
   'audit.action.identity.organization.updated': 'Organization details changed',
   'audit.action.system.instance.setupCompleted': 'First-time setup completed',
+  'audit.action.system.settings.changed': 'Server settings changed',
   'audit.action.auth.mfa_pending': 'Password accepted, second step pending',
   'audit.action.auth.mfa_failed': 'Failed second step',
   'audit.action.auth.recovery_code_used': 'Recovery code used',

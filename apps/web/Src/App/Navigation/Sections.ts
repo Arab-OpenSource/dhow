@@ -1,4 +1,4 @@
-import { anyone, member, type TGate } from '@/App/Navigation/Gates';
+import { anyone, instanceOwner, member, type TGate } from '@/App/Navigation/Gates';
 import {
   canManageMembers,
   canManageRunners,
@@ -25,6 +25,7 @@ export type TSectionId =
   | 'orgSettings'
   | 'audit'
   | 'system'
+  | 'systemSettings'
   | 'profile'
   | 'security'
   | 'preferences'
@@ -43,6 +44,7 @@ export type TSectionPath =
   | '/org/settings'
   | '/audit'
   | '/system'
+  | '/system/settings'
   | '/account/profile'
   | '/account/security'
   | '/account/preferences'
@@ -142,6 +144,15 @@ export const SECTIONS: readonly ISection[] = [
     allow: canReadAudit,
   },
   { id: 'system', path: '/system', label: 'shell.nav.system', icon: 'shield', group: 'watch', menu: true, detailAllow: anyone, allow: anyone },
+  {
+    id: 'systemSettings',
+    path: '/system/settings',
+    label: 'shell.nav.systemSettings',
+    icon: 'settings',
+    group: 'watch',
+    menu: true,
+    allow: instanceOwner,
+  },
   { id: 'profile', path: '/account/profile', label: 'shell.nav.profile', icon: 'user', group: 'account', menu: false, allow: anyone },
   { id: 'security', path: '/account/security', label: 'shell.nav.security', icon: 'shield', group: 'account', menu: false, allow: anyone },
   { id: 'preferences', path: '/account/preferences', label: 'shell.nav.preferences', icon: 'settings', group: 'account', menu: false, allow: anyone },
@@ -174,5 +185,5 @@ export const matchSection = (pathname: string): ISectionMatch | null => {
   return best;
 };
 
-export const visibleSections = (role: TRole | undefined, group: TGroupId): ISection[] =>
-  SECTIONS.filter((section) => section.group === group && section.allow(role));
+export const visibleSections = (role: TRole | undefined, group: TGroupId, owner = false): ISection[] =>
+  SECTIONS.filter((section) => section.group === group && section.allow(role, owner));

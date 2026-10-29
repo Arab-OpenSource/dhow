@@ -13,6 +13,7 @@ export const BootAr = {
   'shell.nav.orgSettings': 'إعدادات المؤسسة',
   'shell.nav.audit': 'سجل الأحداث',
   'shell.nav.system': 'حالة السيرفر',
+  'shell.nav.systemSettings': 'إعدادات السيرفر',
   'shell.nav.profile': 'الملف الشخصي',
   'shell.nav.security': 'الأمان',
   'shell.nav.preferences': 'التفضيلات',

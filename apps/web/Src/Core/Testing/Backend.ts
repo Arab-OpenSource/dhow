@@ -141,6 +141,7 @@ export interface IBackendOptions {
   tokens?: unknown[];
   preferences?: IPreferencesFixture;
   overview?: (role: string) => IOverviewFixture;
+  instanceOwner?: boolean;
 }
 
 export interface IBackendState {
@@ -185,7 +186,7 @@ export const startBackend = (options: IBackendOptions = {}) => {
     }
     if (pathname.endsWith('/health/ready')) return envelope(READY_BODY);
     if (pathname.endsWith('/me') && request.method === 'GET') {
-      return state.signedIn ? envelope(meBody(state.role, state.csrf, state.orgName)) : envelope(UNAUTHENTICATED_BODY, 401);
+      return state.signedIn ? envelope(meBody(state.role, state.csrf, state.orgName, options.instanceOwner ?? false)) : envelope(UNAUTHENTICATED_BODY, 401);
     }
     const access = await accessReply(request, pathname, options, state);
     if (access) return access;

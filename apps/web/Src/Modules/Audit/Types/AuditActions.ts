@@ -59,6 +59,7 @@ export const AUDIT_ACTIONS: Readonly<Record<string, IAuditAction>> = {
   'job.created': { Icon: 'queue', Bad: false },
   'job.cancel_requested': { Icon: 'queue', Bad: false },
   'system.instance.setupCompleted': { Icon: 'shield', Bad: false },
+  'system.settings.changed': { Icon: 'settings', Bad: false },
 };
 
 const GROUPS = ['auth', 'identity', 'runner', 'job', 'system'] as const;

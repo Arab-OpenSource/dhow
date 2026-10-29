@@ -1,5 +1,5 @@
 import { lazyPage } from '@/App/Navigation/LazyPage';
-import { member } from '@/App/Navigation/Gates';
+import { instanceOwner, member } from '@/App/Navigation/Gates';
 import {
   canManageMembers,
   canManageRunners,
@@ -35,6 +35,10 @@ export const SHELL_PAGES = {
   audit: lazyPage(() => import('@/App/Pages/AuditPage').then((module) => module.AuditPage), canReadAudit),
   auditEvent: lazyPage(() => import('@/App/Pages/AuditEventPage').then((module) => module.AuditEventPage), canReadAudit),
   system: lazyPage(() => import('@/App/Pages/SystemPage').then((module) => module.SystemPage)),
+  systemSettings: lazyPage(
+    () => import('@/App/Pages/SystemSettingsPage').then((module) => module.SystemSettingsPage),
+    instanceOwner,
+  ),
   check: lazyPage(() => import('@/App/Pages/CheckPage').then((module) => module.CheckPage)),
   profile: lazyPage(() => import('@/App/Pages/ProfilePage').then((module) => module.ProfilePage)),
   security: lazyPage(() => import('@/App/Pages/SecurityPage').then((module) => module.SecurityPage)),

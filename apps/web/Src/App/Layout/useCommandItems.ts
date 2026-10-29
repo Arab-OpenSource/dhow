@@ -4,7 +4,7 @@ import type { TGate } from '@/App/Navigation/Gates';
 import { SECTIONS, type TSectionId, type TSectionPath } from '@/App/Navigation/Sections';
 import type { TSlideId } from '@/App/Panels';
 import { canManageMembers, canManageRunners, canManageTokens } from '@/Core/Auth/AuthTypes';
-import { useCurrentMembership } from '@/Core/Auth/useMe';
+import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { useSignOut } from '@/Core/Auth/useSignOut';
 import type { ICommandItem } from '@/Core/Ui/CommandPalette';
 import type { TIconName } from '@/Core/Ui/Icons';
@@ -29,6 +29,7 @@ const PAGE_COMMANDS: Record<TSectionId, TMessageKey> = {
   orgSettings: 'palette.command.orgSettings',
   audit: 'palette.command.audit',
   system: 'palette.command.systemStatus',
+  systemSettings: 'palette.command.systemSettings',
   profile: 'palette.command.account',
   security: 'palette.command.security',
   preferences: 'palette.command.preferences',
@@ -68,8 +69,9 @@ export const useCommandItems = (): ICommands => {
   const navigate = useNavigate();
   const { SignOut } = useSignOut();
   const role = useCurrentMembership()?.Role;
+  const owner = useMe().data?.InstanceOwner === true;
   const target = otherLocale(Locale);
-  const pages = SECTIONS.filter((section) => section.allow(role));
+  const pages = SECTIONS.filter((section) => section.allow(role, owner));
   const creates = CREATE_COMMANDS.filter((command) => command.allow === undefined || command.allow(role));
 
   const items: ICommandItem[] = [
