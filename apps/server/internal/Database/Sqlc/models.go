@@ -86,6 +86,18 @@ type Instance struct {
 	SetupCompletedAt *time.Time
 }
 
+type InstanceSetting struct {
+	Id        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	IsDeleted bool
+	Group     string
+	Value     []byte
+	Secrets   []byte
+	Version   int64
+	UpdatedBy *uuid.UUID
+}
+
 type Invitation struct {
 	Id               uuid.UUID
 	CreatedAt        time.Time
@@ -154,6 +166,7 @@ type JobAttempt struct {
 	LogBytes           int64
 	LogTruncatedAt     *time.Time
 	LateResultLoggedAt *time.Time
+	LogMaxBytes        pgtype.Int8
 }
 
 type Lease struct {

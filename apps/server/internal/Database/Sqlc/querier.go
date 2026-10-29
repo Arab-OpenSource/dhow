@@ -93,6 +93,7 @@ type Querier interface {
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertAuthChallenge(ctx context.Context, arg InsertAuthChallengeParams) (uuid.UUID, error)
 	InsertIdentity(ctx context.Context, arg InsertIdentityParams) (InsertIdentityRow, error)
+	InsertInstanceSetting(ctx context.Context, arg InsertInstanceSettingParams) (int64, error)
 	InsertInvitation(ctx context.Context, arg InsertInvitationParams) (uuid.UUID, error)
 	InsertJob(ctx context.Context, arg InsertJobParams) (Job, error)
 	InsertLease(ctx context.Context, arg InsertLeaseParams) (Lease, error)
@@ -121,6 +122,7 @@ type Querier interface {
 	ListActiveUserSessions(ctx context.Context, arg ListActiveUserSessionsParams) ([]ListActiveUserSessionsRow, error)
 	ListApiTokens(ctx context.Context, arg ListApiTokensParams) ([]ListApiTokensRow, error)
 	ListAuditEvents(ctx context.Context, arg ListAuditEventsParams) ([]ListAuditEventsRow, error)
+	ListInstanceSettings(ctx context.Context) ([]ListInstanceSettingsRow, error)
 	ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams) ([]JobAttempt, error)
 	ListJobSteps(ctx context.Context, arg ListJobStepsParams) ([]AttemptStep, error)
 	ListJobs(ctx context.Context, arg ListJobsParams) ([]ListJobsRow, error)
@@ -140,10 +142,12 @@ type Querier interface {
 	ListUserRoles(ctx context.Context, userID uuid.UUID) ([]ListUserRolesRow, error)
 	ListenJobsQueued(ctx context.Context) error
 	ListenLogAppended(ctx context.Context) error
+	ListenSettingsChanged(ctx context.Context) error
 	LockActiveLease(ctx context.Context, arg LockActiveLeaseParams) (LockActiveLeaseRow, error)
 	LockAttemptLog(ctx context.Context, id uuid.UUID) (LockAttemptLogRow, error)
 	LockAuditChain(ctx context.Context, chainKey string) error
 	LockInstance(ctx context.Context) (*time.Time, error)
+	LockInstanceSetting(ctx context.Context, groupName string) (LockInstanceSettingRow, error)
 	LockJob(ctx context.Context, arg LockJobParams) (Job, error)
 	LockJobByID(ctx context.Context, id uuid.UUID) (Job, error)
 	LockLeaseForCompletion(ctx context.Context, arg LockLeaseForCompletionParams) (LockLeaseForCompletionRow, error)
@@ -176,6 +180,7 @@ type Querier interface {
 	NextFencingToken(ctx context.Context) (int64, error)
 	NotifyJobsQueued(ctx context.Context, organizationID string) error
 	NotifyLogAppended(ctx context.Context, payload string) error
+	NotifySettingsChanged(ctx context.Context, groupName string) error
 	PeekPendingTotp(ctx context.Context, arg PeekPendingTotpParams) (PeekPendingTotpRow, error)
 	PickCanceledUnstartedLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
 	PickExpiredLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
@@ -249,6 +254,7 @@ type Querier interface {
 	TryLockLogPartitions(ctx context.Context) (bool, error)
 	TryRetentionLock(ctx context.Context, lockKey int64) (bool, error)
 	UnreadableLogPartitions(ctx context.Context) ([]string, error)
+	UpdateInstanceSetting(ctx context.Context, arg UpdateInstanceSettingParams) (int64, error)
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
 	UpdateRunner(ctx context.Context, arg UpdateRunnerParams) (Runner, error)
 	UpdateRunnerThrottle(ctx context.Context, arg UpdateRunnerThrottleParams) error

@@ -205,7 +205,7 @@ type Envelope struct {
 
 // ErrorDetail defines model for ErrorDetail.
 type ErrorDetail struct {
-	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS` or `SECOND_FACTOR_REQUIRED`.
+	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`, `SETTING_INVALID`, `MAIL_NOT_CONFIGURED` or `MAIL_TEST_FAILED`.
 	//
 	// Example: INTERNAL
 	Code    string              `json:"Code"`
@@ -323,10 +323,13 @@ type LoginResult struct {
 // Me defines model for Me.
 type Me struct {
 	// CanCreateOrganizations True when this user may call `POST /organizations`.
-	CanCreateOrganizations bool             `json:"CanCreateOrganizations"`
-	CsrfToken              string           `json:"CsrfToken"`
-	ExpiresAt              time.Time        `json:"ExpiresAt"`
-	Memberships            []MembershipView `json:"Memberships"`
+	CanCreateOrganizations bool      `json:"CanCreateOrganizations"`
+	CsrfToken              string    `json:"CsrfToken"`
+	ExpiresAt              time.Time `json:"ExpiresAt"`
+
+	// InstanceOwner True when this user owns the server and may manage its settings (`instance.settings.manage`).
+	InstanceOwner bool             `json:"InstanceOwner"`
+	Memberships   []MembershipView `json:"Memberships"`
 
 	// MfaReenrollRequired An admin reset this user's second factor, and a new one is not set up yet.
 	MfaReenrollRequired bool               `json:"MfaReenrollRequired"`

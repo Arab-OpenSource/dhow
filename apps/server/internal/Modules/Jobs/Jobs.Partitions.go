@@ -35,7 +35,7 @@ func (s *Service) MaintainLogPartitions(ctx context.Context) (PartitionResult, e
 		if err != nil {
 			return fmt.Errorf("create log partitions: %w", err)
 		}
-		dropped, err := q.DropLogPartitions(ctx, int32(s.logs.RetentionDays)) //nolint:gosec // The config bounds retention to 3650 days.
+		dropped, err := q.DropLogPartitions(ctx, int32(s.limits().RetentionDays)) //nolint:gosec // The config bounds retention to 3650 days.
 		if err != nil {
 			return fmt.Errorf("drop expired log partitions: %w", err)
 		}

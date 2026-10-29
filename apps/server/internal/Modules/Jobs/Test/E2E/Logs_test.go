@@ -208,7 +208,8 @@ func TestAppendRefusesMalformedChunks(t *testing.T) {
 
 func TestTheCapTruncatesOnceWithOneSystemLine(t *testing.T) {
 	w := setup(t, apptest.NewWithOptions(t, apptest.Options{Profile: func(c *config.Config) {
-		c.Logs = config.Logs{MaxBytes: config.LogMaxBytesMin, RetentionDays: 30, MaxStreams: 10}
+		c.Logs = config.Logs{MaxStreams: 10}
+		c.SetEnvSetting(config.EnvJobLogMaxBytes, strconv.Itoa(config.LogMaxBytesMin))
 	}}))
 	id, r, g := w.running(t)
 	block := strings.Repeat("z", config.LogChunkMaxBytes)

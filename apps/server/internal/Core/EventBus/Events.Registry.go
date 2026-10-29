@@ -4,6 +4,7 @@ import "github.com/google/uuid"
 
 const (
 	SystemInstanceSetupCompleted = "system.instance.setupCompleted"
+	SystemSettingsChanged        = "system.settings.changed"
 
 	IdentityOrganizationUpdated = "identity.organization.updated"
 
@@ -66,6 +67,7 @@ const (
 func AuditedEvents() []string {
 	return []string{
 		SystemInstanceSetupCompleted,
+		SystemSettingsChanged,
 		IdentityOrganizationUpdated,
 		IdentityOrganizationCreated,
 		IdentityOwnershipTransferred,

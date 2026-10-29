@@ -43,6 +43,7 @@ type Options struct {
 	Reads           sqlc.DBTX
 	ReadWait        time.Duration
 	Logs            config.Logs
+	LogSettings     func() config.LogSettings
 	StreamWriteWait time.Duration
 	Log             *slog.Logger
 }
@@ -56,6 +57,7 @@ type Service struct {
 	hub      *hub
 	maxPolls int
 	logs     config.Logs
+	limits   func() config.LogSettings
 	streams  *streamLimiter
 	wait     time.Duration
 	reads    sqlc.DBTX
@@ -90,12 +92,16 @@ func NewService(o Options) *Service {
 	if readWait <= 0 {
 		readWait = config.LogReadWait
 	}
+	limits := o.LogSettings
+	if limits == nil {
+		limits = config.DefaultLogSettings
+	}
 	var reads sqlc.DBTX = o.DB
 	if o.Reads != nil {
 		reads = o.Reads
 	}
 	return &Service{
-		db: o.DB, keys: o.Keys, secrets: secrets, bus: o.Bus, log: o.Log, maxPolls: maxPolls, logs: logs, wait: wait,
+		db: o.DB, keys: o.Keys, secrets: secrets, bus: o.Bus, log: o.Log, maxPolls: maxPolls, logs: logs, limits: limits, wait: wait,
 		reads: reads, readWait: readWait, streams: newStreamLimiter(logs),
 		readRate: newRateLimiter(config.LogReadBurst, config.LogReadRefill),
 		openRate: newRateLimiter(config.LogStreamOpenBurst, config.LogStreamOpenRefill),
@@ -106,12 +112,6 @@ func NewService(o Options) *Service {
 
 func logsOrDefault(l config.Logs) config.Logs {
 	d := config.DefaultLogs()
-	if l.MaxBytes <= 0 {
-		l.MaxBytes = d.MaxBytes
-	}
-	if l.RetentionDays <= 0 {
-		l.RetentionDays = d.RetentionDays
-	}
 	if l.MaxStreams <= 0 {
 		l.MaxStreams = d.MaxStreams
 	}

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,9 +19,9 @@ import (
 	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
 	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
 	oidcauth "github.com/Khaymah/dhow/apps/server/internal/Core/Oidc"
-	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
 	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
+	instancesettings "github.com/Khaymah/dhow/apps/server/internal/Core/Settings"
 	retention "github.com/Khaymah/dhow/apps/server/internal/Database/Retention"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 	alerts "github.com/Khaymah/dhow/apps/server/internal/Modules/Alerts"
@@ -31,6 +32,7 @@ import (
 	preferences "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences"
 	runners "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Khaymah/dhow/apps/server/internal/Modules/Session"
+	settings "github.com/Khaymah/dhow/apps/server/internal/Modules/Settings"
 	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
 	systemmodels "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Models"
 	tokens "github.com/Khaymah/dhow/apps/server/internal/Modules/Tokens"
@@ -49,6 +51,7 @@ type Infra struct {
 	Now        func() time.Time
 	Web        http.Handler
 	Mailer     mailer.Sender
+	MailTLS    *tls.Config
 
 	LogStreamWriteWait time.Duration
 	LogReadWait        time.Duration
@@ -64,6 +67,7 @@ type Wired struct {
 	LogPool       *pgxpool.Pool
 	Retention     *retention.Runner
 	Alerts        *alerts.Service
+	Settings      *instancesettings.Store
 }
 
 func (w *Wired) Close() {
@@ -84,14 +88,11 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	if err != nil {
 		return nil, err
 	}
-	breach := in.Breach
-	if breach == nil {
-		breach = auth.NoBreachCheck{}
-		if in.Config.BreachedPasswordCheck {
-			breach = auth.NewHIBP(config.BreachedRangeURL, config.BreachedCheckTimeout, nil)
-		}
+	store, err := settingsStore(ctx, in)
+	if err != nil {
+		return nil, err
 	}
-	passwords := auth.NewPasswordPolicy(breach, in.Log, config.PasswordMinLength, config.PasswordMaxLength)
+	passwords := passwordsFor(in, store)
 	csrf := auth.NewCSRF(in.Config.SecretKey)
 	sealer, err := appcrypto.NewSealer(in.Config.SecretKey, config.TotpSealLabel)
 	if err != nil {
@@ -114,18 +115,17 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		return nil, err
 	}
 	bus := eventbus.New(in.Log)
-	limits := in.Config.RateLimits.WithDefaults()
+	limits := func() config.RateLimits { return store.Current().Values.RateLimits }
 	limiter := ratelimit.NewPostgres(in.Pool, in.Now)
-	instance := policy.InstanceSettings{AnyUserCreatesOrganizations: in.Config.AnyUserCreatesOrganizations}
 
 	auditService := audit.NewService(in.Pool, in.Log, in.Now)
 	audit.Subscribe(bus, auditService)
 	sessionService := session.NewService(session.Options{
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, CSRF: csrf, Sealer: sealer, Recovery: recovery, WebAuthn: passkeys,
-		Bus: bus, Instance: instance, Log: in.Log, Now: in.Now,
+		Bus: bus, Instance: store.Instance, Log: in.Log, Now: in.Now,
 		Oidc: external.providers, OidcKey: external.oidcKey, CallbackBase: in.Config.PublicURL.String() + config.OidcCallbackPath,
 	})
-	mail := mailerFor(in)
+	mail := mailerFor(in, store)
 	alertsService := alertsFor(in, mail, bus)
 	identityService := identity.NewService(identity.Options{
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, Bus: bus, Factors: sessionService, Mailer: mail,
@@ -140,7 +140,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		DB: in.Pool, Tokens: external.apiTokens, Factors: sessionService, Bus: bus, Log: in.Log, Now: in.Now,
 	})
 	gate := runnerauth.NewGate(runnerauth.GateOptions{Verifier: runnersService, Log: in.Log, Now: in.Now})
-	jobsService, logPool, err := buildJobs(ctx, in, runnerKeys, bus)
+	jobsService, logPool, err := buildJobs(ctx, in, runnerKeys, bus, store)
 	if err != nil {
 		return nil, err
 	}
@@ -163,12 +163,16 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Gate:      gate,
 		CSRF:      csrf,
 		APITokens: external.apiTokens,
-		Limits:    ratelimit.NewPerClient(limiter, limits.Public, config.RateLimitPublicWindow, in.Log),
-		Now:       in.Now,
-		Web:       in.Web,
+		Limits:    ratelimit.NewLivePerClient(limiter, func() int { return limits().Public }, config.RateLimitPublicWindow, in.Log),
+		Settings: settings.NewService(settings.Options{
+			Store: store, DB: in.Pool, Factors: sessionService, Bus: bus, Mailer: mail, Limiter: limiter, Log: in.Log, Now: in.Now,
+		}),
+		Instance: store.Instance,
+		Now:      in.Now,
+		Web:      in.Web,
 	}
 	wired := &Wired{
-		Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool,
+		Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool, Settings: store,
 		Retention: retention.New(retention.Options{Pool: in.Pool, Log: in.Log, Now: in.Now}),
 		Alerts:    alertsService,
 	}
@@ -178,7 +182,9 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	return wired, nil
 }
 
-func buildJobs(ctx context.Context, in Infra, keys *runnerauth.Keys, bus *eventbus.Bus) (*jobs.Service, *pgxpool.Pool, error) {
+func buildJobs(
+	ctx context.Context, in Infra, keys *runnerauth.Keys, bus *eventbus.Bus, store *instancesettings.Store,
+) (*jobs.Service, *pgxpool.Pool, error) {
 	logPool, err := logReadPool(ctx, in.Pool, in.Config.Logs)
 	if err != nil {
 		return nil, nil, err
@@ -187,6 +193,7 @@ func buildJobs(ctx context.Context, in Infra, keys *runnerauth.Keys, bus *eventb
 		DB: in.Pool, Keys: keys, Secrets: in.Secrets, Bus: bus, Listen: listener(in.Pool),
 		MaxPolls: in.Config.RunnerMaxPolls, Logs: in.Config.Logs, StreamWriteWait: in.LogStreamWriteWait,
 		ReadWait: in.LogReadWait, Log: in.Log,
+		LogSettings: func() config.LogSettings { return store.Current().Values.Logs },
 	}
 	if logPool != nil {
 		opts.Reads = logPool
@@ -255,16 +262,33 @@ func alertsFor(in Infra, mail mailer.Sender, bus *eventbus.Bus) *alerts.Service 
 	return service
 }
 
-func mailerFor(in Infra) mailer.Sender {
+func mailerFor(in Infra, store *instancesettings.Store) mailer.Sender {
 	if in.Mailer != nil {
 		return in.Mailer
 	}
-	cfg := in.Config
-	if !cfg.SMTP.Enabled() {
-		return mailer.Disabled{}
+	return instancesettings.NewMailer(store, in.MailTLS, in.Now)
+}
+
+func passwordsFor(in Infra, store *instancesettings.Store) *auth.PasswordPolicy {
+	var breach auth.BreachChecker = auth.NewHIBP(config.BreachedRangeURL, config.BreachedCheckTimeout, nil)
+	if in.Breach != nil {
+		breach = in.Breach
 	}
-	return mailer.NewSMTP(mailer.SMTPOptions{
-		Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, From: cfg.SMTP.From,
-		TLS: cfg.SMTP.TLS, Timeout: config.MailTimeout, Now: in.Now,
-	})
+	return auth.NewPasswordPolicy(instancesettings.NewBreach(store, breach), in.Log, config.PasswordMinLength, config.PasswordMaxLength)
+}
+
+func settingsStore(ctx context.Context, in Infra) (*instancesettings.Store, error) {
+	opts := instancesettings.Options{SecretKey: in.Config.SecretKey, Env: in.Config.Settings, Log: in.Log, Now: in.Now}
+	if in.Pool != nil {
+		opts.DB = in.Pool
+		opts.Listen = instancesettings.Listener(listener(in.Pool))
+	}
+	store, err := instancesettings.New(opts)
+	if err != nil {
+		return nil, fmt.Errorf("invalid instance settings:\n%w", err)
+	}
+	if err := store.Load(ctx); err != nil {
+		return nil, fmt.Errorf("invalid instance settings:\n%w", err)
+	}
+	return store, nil
 }

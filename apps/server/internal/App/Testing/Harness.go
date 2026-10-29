@@ -174,7 +174,7 @@ func NewWithOptions(t *testing.T, o Options) *Env {
 	publicURL, err := url.Parse(PublicOrigin)
 	require.NoError(t, err)
 	cfg := config.Config{
-		SecretKey: secret, PublicURL: publicURL, ListenAddr: config.DefaultListenAddr, BreachedPasswordCheck: true,
+		SecretKey: secret, PublicURL: publicURL, ListenAddr: config.DefaultListenAddr,
 	}
 	if o.Profile != nil {
 		o.Profile(&cfg)

@@ -56,6 +56,8 @@ func Run(ctx context.Context) error {
 		return err
 	}
 	defer wired.Close()
+	stopSettings := StartSettings(ctx, wired.Settings)
+	defer stopSettings()
 	setupURL, created, err := wired.Identity.EnsureSetupToken(ctx)
 	if err != nil {
 		return fmt.Errorf("prepare first-run setup: %w", err)

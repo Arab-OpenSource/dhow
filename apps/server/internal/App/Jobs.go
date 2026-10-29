@@ -6,8 +6,19 @@ import (
 	"log/slog"
 	"sync"
 
+	instancesettings "github.com/Khaymah/dhow/apps/server/internal/Core/Settings"
 	jobs "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs"
 )
+
+func StartSettings(ctx context.Context, store *instancesettings.Store) func() {
+	bgCtx, cancel := context.WithCancel(ctx)
+	var background sync.WaitGroup
+	background.Go(func() { store.Run(bgCtx) })
+	return func() {
+		cancel()
+		background.Wait()
+	}
+}
 
 func StartJobs(ctx context.Context, j *jobs.Service, log *slog.Logger) (func(), error) {
 	parts, err := j.MaintainLogPartitions(ctx)

@@ -18,7 +18,8 @@ import (
 func limitedInvites(t *testing.T, perUser, perOrg int) (*apptest.Env, *apptest.Client, uuid.UUID) {
 	t.Helper()
 	env := apptest.NewWithOptions(t, apptest.Options{Mailer: &apptest.FakeMailer{}, Profile: func(c *config.Config) {
-		c.RateLimits.InvitesUser, c.RateLimits.InvitesOrg = perUser, perOrg
+		c.SetEnvSetting(config.EnvRateLimitInvitesUser, strconv.Itoa(perUser))
+		c.SetEnvSetting(config.EnvRateLimitInvitesOrg, strconv.Itoa(perOrg))
 	}})
 	owner, d := env.SetupAndLogin()
 	return env, owner, env.OrganizationID(d.OrgSlug)

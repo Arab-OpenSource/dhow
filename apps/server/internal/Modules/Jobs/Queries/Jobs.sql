@@ -105,8 +105,8 @@ FOR UPDATE SKIP LOCKED;
 SELECT nextval('"FencingTokens"')::bigint;
 
 -- name: InsertAttempt :one
-INSERT INTO "JobAttempts" ("Id", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken")
-VALUES (@id, @job_id, @organization_id, @runner_id, @number, @fencing_token)
+INSERT INTO "JobAttempts" ("Id", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "LogMaxBytes")
+VALUES (@id, @job_id, @organization_id, @runner_id, @number, @fencing_token, @log_max_bytes)
 RETURNING *;
 
 -- name: InsertLease :one

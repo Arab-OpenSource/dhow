@@ -1,6 +1,6 @@
 -- name: LockAttemptLog :one
 SELECT "Id", "JobId", "OrganizationId", "State", "LastSeq", "LogBytes", ("LogTruncatedAt" IS NOT NULL)::boolean AS "Truncated",
-       ("LateResultLoggedAt" IS NOT NULL)::boolean AS "LateResultLogged"
+       ("LateResultLoggedAt" IS NOT NULL)::boolean AS "LateResultLogged", "LogMaxBytes"
 FROM "JobAttempts"
 WHERE "Id" = @id
 FOR UPDATE;

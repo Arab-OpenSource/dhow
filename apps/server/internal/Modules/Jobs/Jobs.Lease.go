@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -207,7 +208,7 @@ func (s *Service) grant(ctx context.Context, q *sqlc.Queries, p runnerauth.Princ
 	}
 	if _, err := q.InsertAttempt(ctx, sqlc.InsertAttemptParams{
 		ID: attemptID, JobID: job.Id, OrganizationID: job.OrganizationId, RunnerID: p.RunnerID,
-		Number: job.AttemptCount + 1, FencingToken: fencing,
+		Number: job.AttemptCount + 1, FencingToken: fencing, LogMaxBytes: pgtype.Int8{Int64: s.limits().JobLogMaxBytes, Valid: true},
 	}); err != nil {
 		return nil, err
 	}

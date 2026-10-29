@@ -277,7 +277,7 @@ UPDATE "JobAttempts"
 SET "State" = $1, "FailureReason" = $2, "ExitCode" = $3::integer,
     "CompletionDigest" = $4::bytea, "FinishedAt" = now(), "UpdatedAt" = now()
 WHERE "Id" = $5 AND "State" IN ('leased', 'running')
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt", "LogMaxBytes"
 `
 
 type FinishAttemptParams struct {
@@ -319,6 +319,7 @@ func (q *Queries) FinishAttempt(ctx context.Context, arg FinishAttemptParams) (J
 		&i.LogBytes,
 		&i.LogTruncatedAt,
 		&i.LateResultLoggedAt,
+		&i.LogMaxBytes,
 	)
 	return i, err
 }
@@ -462,9 +463,9 @@ func (q *Queries) GetLeaseAttempt(ctx context.Context, id uuid.UUID) (GetLeaseAt
 }
 
 const insertAttempt = `-- name: InsertAttempt :one
-INSERT INTO "JobAttempts" ("Id", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken")
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt"
+INSERT INTO "JobAttempts" ("Id", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "LogMaxBytes")
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt", "LogMaxBytes"
 `
 
 type InsertAttemptParams struct {
@@ -474,6 +475,7 @@ type InsertAttemptParams struct {
 	RunnerID       uuid.UUID
 	Number         int32
 	FencingToken   int64
+	LogMaxBytes    pgtype.Int8
 }
 
 func (q *Queries) InsertAttempt(ctx context.Context, arg InsertAttemptParams) (JobAttempt, error) {
@@ -484,6 +486,7 @@ func (q *Queries) InsertAttempt(ctx context.Context, arg InsertAttemptParams) (J
 		arg.RunnerID,
 		arg.Number,
 		arg.FencingToken,
+		arg.LogMaxBytes,
 	)
 	var i JobAttempt
 	err := row.Scan(
@@ -508,6 +511,7 @@ func (q *Queries) InsertAttempt(ctx context.Context, arg InsertAttemptParams) (J
 		&i.LogBytes,
 		&i.LogTruncatedAt,
 		&i.LateResultLoggedAt,
+		&i.LogMaxBytes,
 	)
 	return i, err
 }
@@ -679,7 +683,7 @@ func (q *Queries) JobCancelRequestedAt(ctx context.Context, id uuid.UUID) (*time
 }
 
 const listJobAttempts = `-- name: ListJobAttempts :many
-SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt"
+SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt", "LogMaxBytes"
 FROM "JobAttempts"
 WHERE "JobId" = $1 AND "OrganizationId" = $2 AND NOT "IsDeleted"
 ORDER BY "Number"
@@ -721,6 +725,7 @@ func (q *Queries) ListJobAttempts(ctx context.Context, arg ListJobAttemptsParams
 			&i.LogBytes,
 			&i.LogTruncatedAt,
 			&i.LateResultLoggedAt,
+			&i.LogMaxBytes,
 		); err != nil {
 			return nil, err
 		}
@@ -1375,7 +1380,7 @@ const startAttempt = `-- name: StartAttempt :one
 UPDATE "JobAttempts"
 SET "State" = 'running', "StartedAt" = now(), "UpdatedAt" = now()
 WHERE "Id" = $1 AND "State" = 'leased'
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "JobId", "OrganizationId", "RunnerId", "Number", "FencingToken", "State", "FailureReason", "ExitCode", "LeasedAt", "StartedAt", "FinishedAt", "MutationStartedAt", "CompletionDigest", "LastSeq", "LogBytes", "LogTruncatedAt", "LateResultLoggedAt", "LogMaxBytes"
 `
 
 func (q *Queries) StartAttempt(ctx context.Context, id uuid.UUID) (JobAttempt, error) {
@@ -1403,6 +1408,7 @@ func (q *Queries) StartAttempt(ctx context.Context, id uuid.UUID) (JobAttempt, e
 		&i.LogBytes,
 		&i.LogTruncatedAt,
 		&i.LateResultLoggedAt,
+		&i.LogMaxBytes,
 	)
 	return i, err
 }
