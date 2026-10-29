@@ -1,6 +1,8 @@
+[العربية](../../install/configuration.md)
+
 # Configuration
 
-Dhow has two kinds of settings ([ADR-0063](../../Plan/ADR/0063-instance-settings-in-the-database.md)):
+Dhow has two kinds of settings ([ADR-0063](../../../Plan/ADR/0063-instance-settings-in-the-database.md)):
 
 - **Server variables** are what the server needs before it reaches the database, or what belongs to one machine: the database, the secret key, the public address, listeners, proxies and per-instance capacity. They live only in the environment.
 - **Dashboard settings** are mail, who may create organizations, the breached-password check, rate limits and log limits. The instance owner changes them on **Server settings** (`/system/settings`) without a restart. Each one can still be set by an environment variable, and then the variable wins and locks it. See [Who wins](#who-wins) and the guide [Server settings](../guides/instance-settings.md).

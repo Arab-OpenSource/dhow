@@ -1,6 +1,8 @@
+[العربية](../../install/compose.md)
+
 # Install with Docker Compose
 
-This is the default install method ([ADR-0024](../../Plan/ADR/0024-install-methods.md)). It starts Dhow and its own PostgreSQL 18 on one host, with secure defaults and no manual secret handling. For other methods and the requirements they share, see [Choose an install method](README.md).
+This is the default install method ([ADR-0024](../../../Plan/ADR/0024-install-methods.md)). It starts Dhow and its own PostgreSQL 18 on one host, with secure defaults and no manual secret handling. For other methods and the requirements they share, see [Choose an install method](README.md).
 
 ## Requirements
 

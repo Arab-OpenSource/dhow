@@ -1,3 +1,5 @@
+[العربية](../install.md)
+
 # Install Dhow
 
 The install guides moved to [docs/install/](install/README.md):

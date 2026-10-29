@@ -1,3 +1,5 @@
+[العربية](../../install/reverse-proxy.md)
+
 # Put Dhow behind a reverse proxy
 
 Dhow speaks plain HTTP and expects a reverse proxy in front of it to terminate TLS. This page has complete configurations for [nginx](#nginx-with-certbot), [Caddy](#caddy) and [Traefik](#traefik-in-the-compose-stack), explains [`DHOW_TRUSTED_PROXIES`](#trusted-proxies), and shows [how to check the result](#verify-the-setup).
@@ -327,7 +329,7 @@ Caddy and Traefik replace the `X-Forwarded-For` they receive from untrusted send
 
 ## How these configurations are tested
 
-`make proxy-check` builds the Dhow image and runs [`deploy/proxy-check/run.sh`](../../deploy/proxy-check/run.sh). It needs Docker, `curl` and `openssl`, and the free local ports 18443, 18080 and 18081. For each of nginx, nginx behind a second proxy that stands in for Cloudflare, Caddy and Traefik, it starts PostgreSQL 18 with TLS and Dhow with `DHOW_PUBLIC_URL=https://dhow.example.com:18443`, behind the configuration files shown on this page. nginx uses a self-signed certificate, Caddy its internal CA, and Traefik a certificate it gets over ACME from a local [Pebble](https://github.com/letsencrypt/pebble) server. Then it checks, through the proxy:
+`make proxy-check` builds the Dhow image and runs [`deploy/proxy-check/run.sh`](../../../deploy/proxy-check/run.sh). It needs Docker, `curl` and `openssl`, and the free local ports 18443, 18080 and 18081. For each of nginx, nginx behind a second proxy that stands in for Cloudflare, Caddy and Traefik, it starts PostgreSQL 18 with TLS and Dhow with `DHOW_PUBLIC_URL=https://dhow.example.com:18443`, behind the configuration files shown on this page. nginx uses a self-signed certificate, Caddy its internal CA, and Traefik a certificate it gets over ACME from a local [Pebble](https://github.com/letsencrypt/pebble) server. Then it checks, through the proxy:
 
 - `/api/v1/health/ready` over verified TLS, one HSTS header, and the HTTP to HTTPS redirect.
 - `POST /api/v1/setup` from a foreign `Origin` is `CSRF_FAILED`, and the real setup with the right `Origin` succeeds.

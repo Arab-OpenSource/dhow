@@ -1,3 +1,5 @@
+[العربية](../../install/binary-systemd.md)
+
 # Install the binary with systemd
 
 This page installs Dhow by hand as one binary run by a hardened systemd unit, without Docker. The [interactive installer](installer.md) does the same steps for you and checks them afterwards; read this page to know what it does, or to install on a host it does not support.
@@ -105,7 +107,7 @@ journalctl -u dhow | grep setup_url
 
 ## What the unit does
 
-[`deploy/systemd/dhow.service`](../../deploy/systemd/dhow.service) is the same file the installer writes. `systemd-analyze security dhow.service` rates it **1.2 OK**, and CI fails if the rating gets worse than OK.
+[`deploy/systemd/dhow.service`](../../../deploy/systemd/dhow.service) is the same file the installer writes. `systemd-analyze security dhow.service` rates it **1.2 OK**, and CI fails if the rating gets worse than OK.
 
 | Setting | Effect |
 |---|---|

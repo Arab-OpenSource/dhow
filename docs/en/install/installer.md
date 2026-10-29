@@ -1,6 +1,8 @@
+[العربية](../../install/installer.md)
+
 # The interactive installer
 
-`dhow-server install` sets up a complete Dhow host: the `dhow` service user, PostgreSQL 18, the secrets, the hardened systemd unit, a reverse proxy with TLS and the firewall. It asks before it installs anything, shows the whole plan before it changes anything, and can be run again at any time. `dhow-server doctor` checks an install and proposes fixes, and `dhow-server uninstall` removes it. The decisions behind it are in [ADR-0036](../../Plan/ADR/0036-interactive-host-installer.md).
+`dhow-server install` sets up a complete Dhow host: the `dhow` service user, PostgreSQL 18, the secrets, the hardened systemd unit, a reverse proxy with TLS and the firewall. It asks before it installs anything, shows the whole plan before it changes anything, and can be run again at any time. `dhow-server doctor` checks an install and proposes fixes, and `dhow-server uninstall` removes it. The decisions behind it are in [ADR-0036](../../../Plan/ADR/0036-interactive-host-installer.md).
 
 The installer is part of the `dhow-server` binary, so there is one artifact to verify. It runs every system command as an argument list, never through a shell.
 
@@ -68,7 +70,7 @@ The installer speaks English or Arabic. It follows `--lang en|ar`, then `lang` i
    - **None**, when TLS ends somewhere else. Dhow then listens on `127.0.0.1:8080` only.
 
    The nginx and Caddy files are the configurations tested by `make proxy-check` in [Put Dhow behind a reverse proxy](reverse-proxy.md), with your domain filled in. For nginx, `http2 on;` is left out because the distributions' nginx is older than 1.25.1, which introduced it. With a managed proxy on SELinux, the installer turns on `httpd_can_network_connect` so the proxy can reach Dhow.
-5. **The breached-password check.** Answer no on hosts without internet access; it sets `DHOW_BREACHED_PASSWORD_CHECK=false`, which locks the setting in the dashboard. Answering yes writes nothing, so the instance owner can change it later in **Server settings** ([ADR-0063](../../Plan/ADR/0063-instance-settings-in-the-database.md)). A re-run removes a `DHOW_BREACHED_PASSWORD_CHECK=true` line an older installer wrote.
+5. **The breached-password check.** Answer no on hosts without internet access; it sets `DHOW_BREACHED_PASSWORD_CHECK=false`, which locks the setting in the dashboard. Answering yes writes nothing, so the instance owner can change it later in **Server settings** ([ADR-0063](../../../Plan/ADR/0063-instance-settings-in-the-database.md)). A re-run removes a `DHOW_BREACHED_PASSWORD_CHECK=true` line an older installer wrote.
 6. **The firewall.** Asked only with Caddy or nginx and an active ufw or firewalld: open ports 80 and 443, and nothing else. The default is no.
 7. **Missing packages.** The installer lists every package it would install, for example `postgresql-18 caddy`, and installs nothing unless you agree.
 
@@ -92,7 +94,7 @@ At the end it prints the one-time setup link from the journal, which creates the
 | `/etc/dhow/credentials/dhow-database-url` | `600` | The database URL. For a local database: `postgres://dhow:<generated>@/dhow?host=/var/run/postgresql&port=5432&sslmode=require`, a Unix socket that never touches the network |
 | `/etc/dhow/dhow.env` | `600` | `DHOW_PUBLIC_URL`, `DHOW_LISTEN_ADDR`, `DHOW_TRUSTED_PROXIES`, `DHOW_LOG_LEVEL`, and `DHOW_BREACHED_PASSWORD_CHECK=false` only when the check is turned off |
 | `/etc/dhow/answers.yaml` | `600` | Your answers, without any secret, for re-runs, `doctor` and `uninstall` |
-| `/etc/systemd/system/dhow.service` | `644` | [`deploy/systemd/dhow.service`](../../deploy/systemd/dhow.service) |
+| `/etc/systemd/system/dhow.service` | `644` | [`deploy/systemd/dhow.service`](../../../deploy/systemd/dhow.service) |
 | `/etc/apt/keyrings/dhow-pgdg.asc`, `/etc/apt/sources.list.d/dhow-pgdg.sources` | `644` | The PGDG key and repository on apt systems |
 | `/etc/pki/rpm-gpg/RPM-GPG-KEY-dhow-pgdg`, `/etc/yum.repos.d/dhow-pgdg.repo` | `644` | The same on dnf systems, with `gpgcheck` and `repo_gpgcheck` on |
 | `/etc/caddy/dhow.caddyfile` or `/etc/nginx/conf.d/dhow.conf` | `644` | The proxy site |
@@ -200,4 +202,4 @@ Back up the database and `/etc/dhow` together, as shown in [Back up and restore]
 ## How it is tested
 
 - Unit tests run the installer against a fake system: detection, plan building, the answers file, idempotency, rollback, doctor and uninstall, and that no secret reaches the output, a command line or the answers file. A test drives the interactive path through a real pseudo-terminal and checks that the database URL is not echoed.
-- The [Installer workflow](../../.github/workflows/installer.yml) runs [`deploy/install/e2e/run.sh`](../../deploy/install/e2e/run.sh) on Debian 12, Ubuntu 24.04, Rocky Linux 9 and Fedora in a container that boots systemd. It installs from an answers file with PostgreSQL 18 from PGDG, checks readiness, the setup link in the journal, the file modes, the `systemd-analyze security` rating and an idempotent re-run, then runs `doctor`, `uninstall` and `uninstall --purge`. `make installer-e2e E2E_BASE=ubuntu:24.04` runs it locally.
+- The [Installer workflow](../../../.github/workflows/installer.yml) runs [`deploy/install/e2e/run.sh`](../../../deploy/install/e2e/run.sh) on Debian 12, Ubuntu 24.04, Rocky Linux 9 and Fedora in a container that boots systemd. It installs from an answers file with PostgreSQL 18 from PGDG, checks readiness, the setup link in the journal, the file modes, the `systemd-analyze security` rating and an idempotent re-run, then runs `doctor`, `uninstall` and `uninstall --purge`. `make installer-e2e E2E_BASE=ubuntu:24.04` runs it locally.

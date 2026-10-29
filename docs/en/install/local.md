@@ -1,3 +1,5 @@
+[العربية](../../install/local.md)
+
 # Run Dhow locally
 
 This page is for trying Dhow out or working on it on your own computer. To install it for other people, use [Docker Compose](compose.md) behind a [reverse proxy](reverse-proxy.md).

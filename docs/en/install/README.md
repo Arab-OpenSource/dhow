@@ -1,6 +1,8 @@
+[العربية](../../install/README.md)
+
 # Install Dhow
 
-Dhow is one server process with the web app built in, and a PostgreSQL 18 database. Its install methods are set in [ADR-0024](../../Plan/ADR/0024-install-methods.md) and [ADR-0036](../../Plan/ADR/0036-interactive-host-installer.md).
+Dhow is one server process with the web app built in, and a PostgreSQL 18 database. Its install methods are set in [ADR-0024](../../../Plan/ADR/0024-install-methods.md) and [ADR-0036](../../../Plan/ADR/0036-interactive-host-installer.md).
 
 ## Choose a method
 

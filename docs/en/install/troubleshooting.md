@@ -1,3 +1,5 @@
+[العربية](../../install/troubleshooting.md)
+
 # Troubleshooting
 
 Dhow writes JSON lines to standard output. With the Compose stack, read them with `docker compose logs dhow`. Every request appears as an `http request` line with its `path`, `status` and `client_ip`, and every error answer has a `Code` such as `CSRF_FAILED` in its body.
