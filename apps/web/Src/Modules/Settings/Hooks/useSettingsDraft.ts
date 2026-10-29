@@ -44,6 +44,13 @@ export const useSettingsDraft = (spec: IGroupSpec, settings: TInstanceSettings |
       } else if (typeof setting.Value === 'boolean') out[field.Name] = draft === 'true';
       else out[field.Name] = draft;
     }
+    const password = settings.Mail.Password;
+    const typed = Secrets.Password ?? KEEP;
+    const hostChanged = spec.Key === 'Mail' && 'Host' in out;
+    if (hostChanged && password.Saved && !password.Locked && typed.Mode !== 'clear' && !(typed.Mode === 'replace' && typed.Value !== '')) {
+      bad.Password = t('settings.mail.passwordAgain');
+      if (typed.Mode === 'keep') setSecrets((current) => ({ ...current, Password: { Mode: 'replace', Value: '' } }));
+    }
     SetErrors(bad);
     return Object.keys(bad).length > 0 ? null : out;
   };

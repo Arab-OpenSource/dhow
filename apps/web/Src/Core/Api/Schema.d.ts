@@ -1590,6 +1590,8 @@ export interface components {
             Source: components["schemas"]["SettingSource"];
             /** @description True when the environment variable `Env` sets it. The dashboard cannot change it then. */
             Locked: boolean;
+            /** @description The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked. */
+            LockedBy?: string;
             /** @example DHOW_SMTP_HOST */
             Env: string;
         };
@@ -1598,17 +1600,24 @@ export interface components {
             Value: number;
             Source: components["schemas"]["SettingSource"];
             Locked: boolean;
+            /** @description The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked. */
+            LockedBy?: string;
             Env: string;
         };
         BooleanSetting: {
             Value: boolean;
             Source: components["schemas"]["SettingSource"];
             Locked: boolean;
+            /** @description The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked. */
+            LockedBy?: string;
             Env: string;
         };
-        /** @description A write-only secret. Its value never comes back, only whether one is saved. */
+        /** @description A write-only secret. Its value never comes back, only whether one is set. */
         SecretSetting: {
+            /** @description True when a value is in effect, from the environment or the database. */
             Set: boolean;
+            /** @description True when a copy is saved in the database. With `Locked`, that copy is unused, and sending "" removes it. */
+            Saved: boolean;
             Locked: boolean;
             Env: string;
         };
@@ -1666,7 +1675,7 @@ export interface components {
             Username?: string;
             /**
              * Format: password
-             * @description Leave out to keep the saved password, send a value to replace it, or send "" to clear it.
+             * @description Leave out to keep the saved password, send a value to replace it, or send "" to clear it. When `Host` changes and a password is saved, send the password again (`400 SETTING_INVALID` otherwise), so a saved password never goes to a new server without the owner typing it. When `DHOW_SMTP_PASSWORD` is set in the environment, `Host`, `Port` and `Tls` are locked too (`409 SETTING_LOCKED_BY_ENV`), and "" only removes the unused database copy. From the dashboard, `Tls` may be `none` only for a loopback host.
              */
             Password?: string;
             From?: string;

@@ -3,7 +3,13 @@ import { envelope } from '@/Core/Testing/Fetch';
 
 type TSource = 'env' | 'database' | 'default';
 
-const value = (Value: string | number | boolean, Env: string, Source: TSource = 'default') => ({ Value, Source, Locked: Source === 'env', Env });
+const value = (Value: string | number | boolean, Env: string, Source: TSource = 'default', LockedBy?: string) => ({
+  Value,
+  Source,
+  Locked: Source === 'env' || LockedBy !== undefined,
+  Env,
+  ...(Source === 'env' ? { LockedBy: Env } : LockedBy === undefined ? {} : { LockedBy }),
+});
 
 export const settingsFixture = () => ({
   Mail: {
@@ -12,7 +18,7 @@ export const settingsFixture = () => ({
     Port: value(587, 'DHOW_SMTP_PORT'),
     Tls: value('starttls', 'DHOW_SMTP_TLS'),
     Username: value('', 'DHOW_SMTP_USERNAME'),
-    Password: { Set: false, Locked: false, Env: 'DHOW_SMTP_PASSWORD' },
+    Password: { Set: false, Locked: false, Saved: false, Env: 'DHOW_SMTP_PASSWORD' },
     From: value('', 'DHOW_SMTP_FROM'),
   },
   Organizations: { Version: 0, Creation: value('instance-owner', 'DHOW_ORG_CREATION') },
@@ -35,10 +41,22 @@ export const configuredSettings = (): TSettingsFixture => {
     Version: 2,
     Host: value('smtp.example.com', 'DHOW_SMTP_HOST', 'database'),
     Username: value('dhow', 'DHOW_SMTP_USERNAME', 'database'),
-    Password: { Set: true, Locked: false, Env: 'DHOW_SMTP_PASSWORD' },
+    Password: { Set: true, Locked: false, Saved: true, Env: 'DHOW_SMTP_PASSWORD' },
     From: value('Dhow <dhow@example.com>', 'DHOW_SMTP_FROM', 'database'),
   };
   s.RateLimits = { ...s.RateLimits, Public: value(1000, 'DHOW_RATE_LIMIT_PUBLIC', 'env') };
+  return s;
+};
+
+export const passwordFromEnv = (): TSettingsFixture => {
+  const s = configuredSettings();
+  s.Mail = {
+    ...s.Mail,
+    Host: value('smtp.example.com', 'DHOW_SMTP_HOST', 'database', 'DHOW_SMTP_PASSWORD'),
+    Port: value(587, 'DHOW_SMTP_PORT', 'default', 'DHOW_SMTP_PASSWORD'),
+    Tls: value('starttls', 'DHOW_SMTP_TLS', 'default', 'DHOW_SMTP_PASSWORD'),
+    Password: { Set: true, Locked: true, Saved: true, Env: 'DHOW_SMTP_PASSWORD' },
+  };
   return s;
 };
 

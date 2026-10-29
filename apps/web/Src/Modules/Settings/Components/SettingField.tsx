@@ -27,12 +27,12 @@ export interface ISettingFieldProps {
   onSecret: (draft: TSecretDraft) => void;
 }
 
-const EnvNote = ({ env }: { env: string }) => {
+const EnvNote = ({ env, byPassword = false }: { env: string; byPassword?: boolean }) => {
   const t = useT();
   return (
     <span className="flex flex-wrap items-center gap-1.5 text-body-sm text-tertiary">
       <Icon name="key" size={14} />
-      {t('settings.lockedByEnv')}
+      {byPassword ? t('settings.lockedByPassword') : t('settings.lockedByEnv')}
       <code dir="ltr" className="rounded-md border border-line bg-surface-inset px-1.5 font-mono text-code text-secondary">
         {env}
       </code>
@@ -51,7 +51,29 @@ const LockedValue = ({ spec, setting }: { spec: IFieldSpec; setting: TValueSetti
       <span dir={spec.Ltr ? 'ltr' : undefined} className="text-start text-body text-primary">
         {shown === '' ? t('settings.empty') : shown}
       </span>
-      <EnvNote env={setting.Env} />
+      <EnvNote env={setting.LockedBy ?? setting.Env} byPassword={setting.LockedBy !== undefined && setting.LockedBy !== setting.Env} />
+    </div>
+  );
+};
+
+type TLockedCopyProps = Pick<ISettingFieldProps, 'secret' | 'disabled' | 'onSecret'>;
+
+const LockedCopy = ({ secret, disabled, onSecret }: TLockedCopyProps) => {
+  const t = useT();
+  const clearing = secret.Mode === 'clear';
+  return (
+    <div className="grid justify-items-start gap-1.5">
+      <p className="m-0 text-body-sm text-secondary">{clearing ? t('settings.secret.willClearCopy') : t('settings.secret.unusedCopy')}</p>
+      <Button
+        size="sm"
+        variant={clearing ? 'ghost' : 'secondary'}
+        disabled={disabled}
+        onClick={() => {
+          onSecret(clearing ? { Mode: 'keep' } : { Mode: 'clear' });
+        }}
+      >
+        {clearing ? t('settings.secret.keepCopy') : t('settings.secret.clearCopy')}
+      </Button>
     </div>
   );
 };
@@ -65,7 +87,7 @@ const SecretValue = ({
   onSecret,
 }: Pick<ISettingFieldProps, 'spec' | 'secret' | 'disabled' | 'error' | 'onSecret'> & { setting: TSecretSetting }) => {
   const t = useT();
-  const saved = setting.Set && secret.Mode !== 'clear';
+  const saved = setting.Set && (setting.Locked || secret.Mode !== 'clear');
   return (
     <div className="grid gap-1.5">
       <span className="flex flex-wrap items-center gap-2 text-body-sm text-secondary">
@@ -73,6 +95,7 @@ const SecretValue = ({
         <Badge tone={saved ? 'ok' : 'mute'}>{saved ? t('settings.secret.saved') : t('settings.secret.notSaved')}</Badge>
       </span>
       {setting.Locked ? <EnvNote env={setting.Env} /> : null}
+      {setting.Locked && setting.Saved ? <LockedCopy secret={secret} disabled={disabled} onSecret={onSecret} /> : null}
       {!setting.Locked && secret.Mode === 'replace' ? (
         <Field label={t('settings.secret.new')} error={error}>
           <PasswordInput
