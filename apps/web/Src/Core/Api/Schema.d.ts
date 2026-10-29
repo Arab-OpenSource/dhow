@@ -2029,6 +2029,13 @@ export interface components {
             Mfa?: components["schemas"]["MfaState"];
             /** @description An admin reset the member's second factor and the member has not set up a new one yet. */
             MfaResetPending?: boolean;
+            /** @description The teams of the organization the member belongs to, by name. It needs `member.read`, like the list itself and the teams list, and comes from the same query as the page of members. */
+            Teams: components["schemas"]["MemberTeam"][];
+        };
+        MemberTeam: {
+            /** Format: uuid */
+            Id: string;
+            Name: string;
         };
         MemberListResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Member"][];

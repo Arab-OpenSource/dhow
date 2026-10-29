@@ -491,7 +491,7 @@ type ListJobsParams struct {
 	Page  *Page  `form:"Page,omitempty" json:"Page,omitempty"`
 	Limit *Limit `form:"Limit,omitempty" json:"Limit,omitempty"`
 
-	// State Keep only jobs in these states. Repeat the parameter (`State=failed&State=timed_out`) or separate the states with commas (`State=failed,timed_out`). An unknown state is refused with 400 `VALIDATION_FAILED`.
+	// State Keep only jobs in these states. Repeat the parameter (`State=failed&State=timed_out`) or separate the states with commas (`State=failed,timed_out`). An unknown state is refused with 422 `VALIDATION_FAILED`.
 	State *JobStateFilter `form:"State,omitempty" json:"State,omitempty"`
 }
 

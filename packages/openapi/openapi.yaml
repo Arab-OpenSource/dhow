@@ -3407,7 +3407,7 @@ components:
     Member:
       type: object
       additionalProperties: false
-      required: [UserId, Name, Email, Role, EffectiveRole, JoinedAt]
+      required: [UserId, Name, Email, Role, EffectiveRole, JoinedAt, Teams]
       properties:
         UserId:
           type: string
@@ -3430,6 +3430,23 @@ components:
         MfaResetPending:
           type: boolean
           description: An admin reset the member's second factor and the member has not set up a new one yet.
+        Teams:
+          type: array
+          description: >-
+            The teams of the organization the member belongs to, by name. It needs `member.read`, like the list itself
+            and the teams list, and comes from the same query as the page of members.
+          items:
+            $ref: "#/components/schemas/MemberTeam"
+    MemberTeam:
+      type: object
+      additionalProperties: false
+      required: [Id, Name]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        Name:
+          type: string
     MemberListResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"

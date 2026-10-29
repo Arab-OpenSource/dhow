@@ -12,6 +12,7 @@ import { Card } from '@/Core/Ui/Card';
 import { CardStates, cardStateOf } from '@/Core/Ui/CardStates';
 import { EmptyState } from '@/Core/Ui/EmptyState';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
+import { followInApp } from '@/Core/Ui/PlainClick';
 import { useT } from '@/I18n/useT';
 import { MemberMfaCard, MemberRemoveCard, MemberRoleCard } from '@/Modules/Organization/Components/MemberCards';
 import { MfaBadge } from '@/Modules/Organization/Components/MembersCard';
@@ -24,6 +25,13 @@ export interface IMemberBodyProps {
   userId: string;
   onRemove: () => void;
   onOpenAccount: () => void;
+  teamHrefOf: (teamId: string) => string;
+  onOpenTeam: (teamId: string) => void;
+}
+
+interface ITeamLinks {
+  teamHrefOf: (teamId: string) => string;
+  onOpenTeam: (teamId: string) => void;
 }
 
 const Fact = ({ label, children }: { label: string; children: ReactNode }) => (
@@ -53,7 +61,29 @@ const MemberHeader = ({ member }: { member: TMember }) => {
   );
 };
 
-const MemberFacts = ({ actor, rule, member }: { actor: TRole; rule: TSecondFactorRule; member: TMember }) => {
+const MemberTeams = ({ member, teamHrefOf, onOpenTeam }: { member: TMember } & ITeamLinks) => {
+  const t = useT();
+  if (member.Teams.length === 0) return <span className="text-secondary">{t('member.facts.teams.none')}</span>;
+  return (
+    <ul className="m-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0">
+      {member.Teams.map((team) => (
+        <li key={team.Id} className="min-w-0">
+          <a
+            href={teamHrefOf(team.Id)}
+            onClick={followInApp(() => {
+              onOpenTeam(team.Id);
+            })}
+            className="rounded-xs text-primary underline underline-offset-4"
+          >
+            <bdi>{team.Name}</bdi>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const MemberFacts = ({ actor, rule, member, ...links }: { actor: TRole; rule: TSecondFactorRule; member: TMember } & ITeamLinks) => {
   const t = useT();
   const time = useRelativeTime();
   return (
@@ -75,6 +105,9 @@ const MemberFacts = ({ actor, rule, member }: { actor: TRole; rule: TSecondFacto
             </span>
           </Fact>
         ) : null}
+        <Fact label={t('member.facts.teams')}>
+          <MemberTeams member={member} {...links} />
+        </Fact>
         <Fact label={t('member.facts.joined')}>
           <time dateTime={member.JoinedAt}>{time.full(member.JoinedAt)}</time>
           <span className="text-tertiary">
@@ -87,7 +120,7 @@ const MemberFacts = ({ actor, rule, member }: { actor: TRole; rule: TSecondFacto
   );
 };
 
-export const MemberBody = ({ organizationId, actor, rule, userId, onRemove, onOpenAccount }: IMemberBodyProps) => {
+export const MemberBody = ({ organizationId, actor, rule, userId, onRemove, onOpenAccount, teamHrefOf, onOpenTeam }: IMemberBodyProps) => {
   const t = useT();
   const errorText = useApiErrorText();
   const me = useMe().data?.User.Id;
@@ -125,7 +158,7 @@ export const MemberBody = ({ organizationId, actor, rule, userId, onRemove, onOp
   return (
     <>
       <MemberHeader member={member} />
-      <MemberFacts actor={actor} rule={rule} member={member} />
+      <MemberFacts actor={actor} rule={rule} member={member} teamHrefOf={teamHrefOf} onOpenTeam={onOpenTeam} />
       {member.UserId === me ? (
         <InlineAlert accent="building" title={t('member.self')}>
           <Button size="sm" variant="ghost" iconStart="shield" className="mt-2" onClick={onOpenAccount}>

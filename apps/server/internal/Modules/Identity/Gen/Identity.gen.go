@@ -445,10 +445,13 @@ type Member struct {
 	Mfa           *MfaState `json:"Mfa,omitempty"`
 
 	// MfaResetPending An admin reset the member's second factor and the member has not set up a new one yet.
-	MfaResetPending *bool              `json:"MfaResetPending,omitempty"`
-	Name            string             `json:"Name"`
-	Role            Role               `json:"Role"`
-	UserId          openapi_types.UUID `json:"UserId"`
+	MfaResetPending *bool  `json:"MfaResetPending,omitempty"`
+	Name            string `json:"Name"`
+	Role            Role   `json:"Role"`
+
+	// Teams The teams of the organization the member belongs to, by name. It needs `member.read`, like the list itself and the teams list, and comes from the same query as the page of members.
+	Teams  []MemberTeam       `json:"Teams"`
+	UserId openapi_types.UUID `json:"UserId"`
 }
 
 // MemberChange defines model for MemberChange.
@@ -483,6 +486,12 @@ type MemberListResponse struct {
 	Message *string   `json:"Message,omitempty"`
 	Meta    *PageMeta `json:"Meta,omitempty"`
 	Success bool      `json:"Success"`
+}
+
+// MemberTeam defines model for MemberTeam.
+type MemberTeam struct {
+	Id   openapi_types.UUID `json:"Id"`
+	Name string             `json:"Name"`
 }
 
 // MfaState defines model for MfaState.

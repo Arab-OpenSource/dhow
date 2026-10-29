@@ -123,7 +123,7 @@ describe('a member page', () => {
     const coOwner = '0198a000-0000-7000-8000-0000000000b4';
     const members = [
       ...membersFixture(),
-      { UserId: coOwner, Name: 'Laila Owner', Email: 'laila@future.dev', Role: 'owner', EffectiveRole: 'owner', JoinedAt: '2026-10-06T08:00:00Z', Mfa: 'totp' },
+      { UserId: coOwner, Name: 'Laila Owner', Email: 'laila@future.dev', Role: 'owner', EffectiveRole: 'owner', JoinedAt: '2026-10-06T08:00:00Z', Mfa: 'totp', Teams: [] },
     ];
     const { dialog } = await open(`/org/members/${coOwner}`, Ar['shell.nav.members'], { members });
     expect(await within(dialog).findByText(Ar['member.remove.ownerFirst'].replace('{name}', 'Laila Owner'))).toBeInTheDocument();
