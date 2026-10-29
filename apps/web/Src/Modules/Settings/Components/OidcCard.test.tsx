@@ -122,7 +122,7 @@ describe('testing and removing a provider', () => {
   it('removes a provider after naming the linked accounts and a fresh factor', async () => {
     const { user, state } = mount(oidcFixture([oidcProviderFixture('corp', { LinkedIdentities: 2, Version: 4 })]));
     await user.click(await screen.findByRole('button', { name: Ar['settings.oidc.remove'] }));
-    expect(await screen.findByText(fill('settings.oidc.remove.question', { name: 'Corp SSO', count: '2' }))).toBeInTheDocument();
+    expect(await screen.findByText(`${fill('settings.oidc.remove.question', { name: 'Corp SSO', count: '2' })} ${Ar['settings.oidc.remove.about']}`)).toBeInTheDocument();
     await user.type(await screen.findByLabelText(Ar['factor.method.totp']), GOOD_CODE);
     await user.click(screen.getByRole('button', { name: fill('settings.oidc.remove.confirm', { name: 'Corp SSO' }) }));
     await waitFor(() => {

@@ -44,7 +44,7 @@ export const OidcCard = ({ onAdd, onEdit }: IOidcCardProps) => {
   );
 
   return (
-    <Card title={t('settings.oidc.title')} icon="key">
+    <Card title={t('settings.oidc.title')} icon="user">
       <CardStates
         state={cardStateOf(query, false)}
         loadingLabel={t('settings.oidc.loading')}
@@ -53,7 +53,7 @@ export const OidcCard = ({ onAdd, onEdit }: IOidcCardProps) => {
         onRetry={() => {
           void query.refetch();
         }}
-        emptyIcon="key"
+        emptyIcon="user"
         emptyText={t('settings.oidc.empty', PRODUCT_NAMES)}
         lines={3}
       >
@@ -64,7 +64,7 @@ export const OidcCard = ({ onAdd, onEdit }: IOidcCardProps) => {
               {settings.Locked ? <Locked settings={settings} /> : null}
             </div>
             {settings.Providers.length === 0 ? (
-              <EmptyState icon="key" text={t('settings.oidc.empty', PRODUCT_NAMES)} action={settings.Locked ? undefined : add} className="pt-2" />
+              <EmptyState icon="user" text={t('settings.oidc.empty', PRODUCT_NAMES)} action={settings.Locked ? undefined : add} className="pt-2" />
             ) : (
               <>
                 <ul aria-label={t('settings.oidc.list')} className="m-0 grid list-none border-t border-line p-0">

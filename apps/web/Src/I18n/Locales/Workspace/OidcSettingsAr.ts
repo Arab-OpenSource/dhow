@@ -8,7 +8,7 @@ export const OidcSettingsAr = {
   'settings.oidc.limit': 'وصلت إلى الحد الأقصى للمزوّدين ({max}).',
   'settings.oidc.locked': 'محدَّد من متغيرات البيئة',
   'settings.oidc.lockedAbout': 'القائمة كلها تأتي من متغيرات البيئة. غيّرها ثم أعد تشغيل السيرفر، أو احذف هذا المتغير لتدير المزوّدين من هنا:',
-  'settings.oidc.ignored': 'توجد مزوّدات محفوظة في قاعدة البيانات لا نستخدمها الآن. العدد: {count}.',
+  'settings.oidc.ignored': 'بعض المزوّدين المحفوظين في قاعدة البيانات غير مستخدمين الآن. العدد: {count}.',
   'settings.oidc.linked': 'حسابات مربوطة: {count}',
   'settings.oidc.off': 'متوقف',
   'settings.oidc.offAbout': 'أضف سر العميل لتشغيله.',

@@ -24,7 +24,7 @@ export const OidcProviderRow = ({ provider, locked, onEdit }: IOidcProviderRowPr
   return (
     <li className="grid min-w-0 gap-3 border-t border-line px-card py-3.5 first:border-t-0">
       <div className="flex min-w-0 items-start gap-3">
-        <Icon name="key" size={18} className="mt-0.5 flex-none text-secondary" />
+        <Icon name="user" size={18} className="mt-0.5 flex-none text-secondary" />
         <span className="grid min-w-0 flex-1 gap-1">
           <span className="flex flex-wrap items-center gap-2 text-label">
             <bdi>{provider.Name}</bdi>

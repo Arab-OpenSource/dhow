@@ -35,11 +35,10 @@ export const OidcRemove = ({ provider, onClose }: IOidcRemoveProps) => {
   }
 
   return (
-    <div className="-mx-card grid gap-2">
-      <p className="m-0 px-card text-body-sm text-secondary">{t('settings.oidc.remove.about')}</p>
+    <div className="-mx-card grid">
       <SettingsConfirm
         danger
-        question={t('settings.oidc.remove.question', { name, count: String(provider.LinkedIdentities) })}
+        question={`${t('settings.oidc.remove.question', { name, count: String(provider.LinkedIdentities) })} ${t('settings.oidc.remove.about')}`}
         confirm={t('settings.oidc.remove.confirm', { name })}
         save={async (factor) => {
           try {
