@@ -71,6 +71,8 @@ export const OidcSettingsAr = {
   'settings.oidc.error.issuer': 'اكتب عنوان الخدمة.',
   'settings.oidc.error.clientId': 'اكتب معرّف العميل.',
   'settings.oidc.error.secret': 'اكتب سر العميل.',
+  'settings.oidc.error.secretAgain': 'اكتب سر العميل مرة أخرى حتى يصل إلى الخدمة الجديدة فقط.',
+  'settings.oidc.field.secret.again': 'غيّرت الخدمة أو عنوانها، فاكتب سر العميل مرة أخرى.',
   'settings.oidc.error.name': 'اكتب اسمًا حتى 40 حرفًا.',
   'settings.oidc.notFound': 'لم نجد هذا المزوّد. ربما أزاله شخص آخر.',
   'settings.oidc.lockedForm': 'المزوّدون محدَّدون من متغيرات البيئة، فلا يمكن تغييرهم من هنا.',

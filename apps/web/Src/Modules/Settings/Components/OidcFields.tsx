@@ -20,7 +20,7 @@ type TSecretFieldProps = Pick<IOidcFieldsProps, 'form' | 'creating' | 'disabled'
 
 const SecretField = ({ form, creating, disabled }: TSecretFieldProps) => {
   const t = useT();
-  const { Draft, Errors, Set } = form;
+  const { Draft, Errors, Set, SecretMode, SecretNeeded } = form;
   const input = (
     <Field label={creating ? t('settings.oidc.field.secret') : t('settings.oidc.field.secret.new')} error={Errors.ClientSecret}>
       <PasswordInput
@@ -37,10 +37,11 @@ const SecretField = ({ form, creating, disabled }: TSecretFieldProps) => {
   return (
     <div className="grid gap-2">
       <span className="text-body-sm text-secondary">{t('settings.oidc.field.secret')}</span>
-      {Draft.SecretMode === 'replace' ? input : null}
-      {Draft.SecretMode === 'clear' ? <p className="m-0 text-body-sm text-warn-fg">{t('settings.oidc.field.secret.willClear')}</p> : null}
+      {SecretNeeded ? <p className="m-0 text-body-sm text-warn-fg">{t('settings.oidc.field.secret.again')}</p> : null}
+      {SecretMode === 'replace' ? input : null}
+      {SecretMode === 'clear' ? <p className="m-0 text-body-sm text-warn-fg">{t('settings.oidc.field.secret.willClear')}</p> : null}
       <div className="flex flex-wrap gap-2">
-        {Draft.SecretMode === 'keep' ? (
+        {SecretMode === 'keep' ? (
           <>
             <Button
               size="sm"
@@ -63,7 +64,7 @@ const SecretField = ({ form, creating, disabled }: TSecretFieldProps) => {
               {t('settings.oidc.field.secret.clear')}
             </Button>
           </>
-        ) : (
+        ) : SecretNeeded ? null : (
           <Button
             size="sm"
             variant="ghost"

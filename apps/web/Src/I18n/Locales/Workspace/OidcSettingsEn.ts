@@ -73,6 +73,8 @@ export const OidcSettingsEn: Record<keyof typeof OidcSettingsAr, string> = {
   'settings.oidc.error.issuer': 'Enter the issuer URL.',
   'settings.oidc.error.clientId': 'Enter the client ID.',
   'settings.oidc.error.secret': 'Enter the client secret.',
+  'settings.oidc.error.secretAgain': 'Type the client secret again so it goes only to the new service.',
+  'settings.oidc.field.secret.again': 'You changed the service or its address, so type the client secret again.',
   'settings.oidc.error.name': 'Enter a name of up to 40 characters.',
   'settings.oidc.notFound': 'We could not find this provider. Someone may have removed it.',
   'settings.oidc.lockedForm': 'The providers are set by environment variables, so they cannot change here.',

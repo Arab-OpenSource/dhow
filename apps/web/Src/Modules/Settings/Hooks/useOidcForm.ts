@@ -59,6 +59,8 @@ export const typeOf = (preset: TOidcPreset): TOidcType => (preset === 'github' ?
 
 export interface IOidcForm {
   Draft: IOidcDraft;
+  SecretNeeded: boolean;
+  SecretMode: TSecretMode;
   Errors: TOidcErrors;
   Set: <K extends keyof IOidcDraft>(key: K, value: IOidcDraft[K]) => void;
   Choose: (preset: TOidcPreset) => void;
@@ -92,13 +94,21 @@ export const useOidcForm = (provider: TOidcProvider | undefined): IOidcForm => {
     });
   };
 
+  const SecretNeeded =
+    provider !== undefined &&
+    provider.ClientSecret.Set &&
+    (typeOf(Draft.Preset) !== provider.Type || Draft.Issuer.trim() !== provider.Issuer);
+  const SecretMode: TSecretMode = SecretNeeded && Draft.SecretMode === 'keep' ? 'replace' : Draft.SecretMode;
+
   const Problems = (): TOidcProblems => {
     const out: TOidcProblems = {};
     if (provider === undefined && !OIDC_ID_PATTERN.test(Draft.Id)) out.Id = 'settings.oidc.error.id';
     if (Draft.Name.trim().length > OIDC_NAME_MAX) out.Name = 'settings.oidc.error.name';
     if (typeOf(Draft.Preset) === 'oidc' && Draft.Issuer.trim() === '') out.Issuer = 'settings.oidc.error.issuer';
     if (Draft.ClientId.trim() === '') out.ClientId = 'settings.oidc.error.clientId';
-    if (Draft.SecretMode === 'replace' && Draft.Secret.trim() === '') out.ClientSecret = 'settings.oidc.error.secret';
+    if (SecretMode === 'replace' && Draft.Secret.trim() === '') {
+      out.ClientSecret = SecretNeeded ? 'settings.oidc.error.secretAgain' : 'settings.oidc.error.secret';
+    }
     return out;
   };
 
@@ -119,11 +129,11 @@ export const useOidcForm = (provider: TOidcProvider | undefined): IOidcForm => {
     if (next.Name !== current.Name) out.Name = next.Name;
     if (next.Issuer !== current.Issuer) out.Issuer = next.Issuer;
     if (next.ClientId !== current.ClientId) out.ClientId = next.ClientId;
-    if (Draft.SecretMode === 'replace') out.ClientSecret = next.ClientSecret;
-    if (Draft.SecretMode === 'clear') out.ClientSecret = '';
+    if (SecretMode === 'replace') out.ClientSecret = next.ClientSecret;
+    if (SecretMode === 'clear') out.ClientSecret = '';
     if (next.AllowedDomains.join(',') !== current.AllowedDomains.join(',')) out.AllowedDomains = next.AllowedDomains;
     return out;
   };
 
-  return { Draft, Errors, Set, Choose, SetErrors, Problems, Create, Changes };
+  return { Draft, SecretNeeded, SecretMode, Errors, Set, Choose, SetErrors, Problems, Create, Changes };
 };

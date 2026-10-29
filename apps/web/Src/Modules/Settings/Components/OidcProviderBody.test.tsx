@@ -178,4 +178,21 @@ describe('editing a sign-in provider', () => {
     });
     expect(state.writes[0]?.body).toMatchObject({ ClientSecret: '' });
   });
+
+  it('asks for the client secret again when the issuer changes', async () => {
+    const { user, state } = mount(oidcFixture([oidcProviderFixture('corp', { Version: 2 })]), 'corp');
+    const issuer = await screen.findByLabelText(Ar['settings.oidc.field.issuer']);
+    await user.clear(issuer);
+    await user.type(issuer, 'https://elsewhere.example');
+    expect(screen.getByText(Ar['settings.oidc.field.secret.again'])).toBeInTheDocument();
+    await confirm(user, Ar['settings.oidc.form.save']);
+    expect(await screen.findByText(Ar['settings.oidc.error.secretAgain'])).toBeInTheDocument();
+    expect(state.writes).toEqual([]);
+    await user.type(screen.getByLabelText(Ar['settings.oidc.field.secret.new']), 'a-brand-new-client-value');
+    await confirm(user, Ar['settings.oidc.form.save']);
+    await waitFor(() => {
+      expect(state.writes).toHaveLength(1);
+    });
+    expect(state.writes[0]?.body).toMatchObject({ Issuer: 'https://elsewhere.example', ClientSecret: 'a-brand-new-client-value', Version: 2 });
+  });
 });
