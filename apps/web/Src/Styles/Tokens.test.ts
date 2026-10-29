@@ -117,7 +117,8 @@ describe('design tokens', () => {
     }
     expect(generated).toContain('--spacing-btn: 40px;');
     expect(generated).toContain('--spacing-input: 44px;');
-    expect(generated).toContain('--spacing-menu: 216px;');
+    expect(generated).toContain('--spacing-menu: 248px;');
+    expect(generated).toContain('--spacing-panel: 560px;');
   });
 
   it('keeps every type size at 13px or more', () => {
