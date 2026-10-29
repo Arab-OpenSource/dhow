@@ -1,5 +1,6 @@
 import type { TRouteHandler } from '@/Core/Testing/Backend';
 import { envelope } from '@/Core/Testing/Fetch';
+import { oidcFixture, oidcRoute } from '@/Core/Testing/OidcSettingsBackend';
 
 type TSource = 'env' | 'database' | 'default';
 
@@ -85,6 +86,9 @@ export const settingsRoute =
   (state: ISettingsBackend, replies: ISettingsReplies = {}): TRouteHandler =>
   (request, url) => {
     if (!url.pathname.startsWith('/api/v1/instance/settings')) return undefined;
+    if (url.pathname.startsWith('/api/v1/instance/settings/oidc')) {
+      return oidcRoute({ oidc: oidcFixture(), writes: [], tests: [] })(request, url);
+    }
     if (request.method === 'GET') return replies.get?.() ?? envelope({ Success: true, Data: state.settings });
     if (url.pathname.endsWith('/mail/test')) {
       state.tests += 1;

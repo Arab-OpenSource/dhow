@@ -94,7 +94,7 @@ func (s *Service) startFlow(ctx context.Context, purpose, providerID string, use
 	now := s.now()
 	expires := now.Add(config.OidcFlowTTL)
 	_, err = s.queries().InsertOidcFlow(ctx, sqlc.InsertOidcFlowParams{
-		Purpose: purpose, Provider: providerID, TokenHash: cookieHash, StateHash: stateHash,
+		Purpose: purpose, Provider: providerID, Issuer: p.Issuer(), TokenHash: cookieHash, StateHash: stateHash,
 		DeviceHash: auth.DeviceHash(auth.RequestMetaFrom(ctx).UserAgent), UserID: userID, SessionID: sessionID,
 		ExpiresAt: expires, Now: now,
 	})
@@ -123,7 +123,7 @@ func (s *Service) takeFlow(ctx context.Context, purpose string, in models.OidcCa
 		return takenFlow{}, apperrors.OidcFlowInvalid()
 	}
 	p, err := s.oidcProvider(row.Provider)
-	if err != nil {
+	if err != nil || row.Issuer != p.Issuer() {
 		return takenFlow{}, apperrors.OidcFlowInvalid()
 	}
 	return takenFlow{row: row, provider: p, flow: s.flowFor(meta.OidcToken, in.State, row.Provider)}, nil

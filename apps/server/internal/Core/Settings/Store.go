@@ -54,6 +54,7 @@ type Snapshot struct {
 	Values  settingspec.Settings
 	Sources map[string]Source
 	Stored  map[settingspec.Group]Stored
+	Oidc    Oidc
 	env     settingspec.Raw
 }
 
@@ -122,20 +123,25 @@ type Options struct {
 	DB        DB
 	SecretKey []byte
 	Env       settingspec.Raw
+	EnvOIDC   []settingspec.OIDCProvider
+	Dev       bool
 	Listen    Listener
 	Log       *slog.Logger
 	Now       func() time.Time
 }
 
 type Store struct {
-	db      DB
-	sealer  *appcrypto.Sealer
-	env     settingspec.Raw
-	listen  Listener
-	log     *slog.Logger
-	now     func() time.Time
-	mu      sync.Mutex
-	current atomic.Pointer[Snapshot]
+	db       DB
+	sealer   *appcrypto.Sealer
+	env      settingspec.Raw
+	envOIDC  []settingspec.OIDCProvider
+	dev      bool
+	listen   Listener
+	log      *slog.Logger
+	now      func() time.Time
+	mu       sync.Mutex
+	watchers []func(*Snapshot)
+	current  atomic.Pointer[Snapshot]
 }
 
 func New(o Options) (*Store, error) {
@@ -148,13 +154,18 @@ func New(o Options) (*Store, error) {
 		now = time.Now
 	}
 	env := o.Env.Clone()
-	s := &Store{db: o.DB, sealer: sealer, env: env, listen: o.Listen, log: o.Log, now: now}
-	snap, err := s.build(map[settingspec.Group]Stored{})
+	s := &Store{
+		db: o.DB, sealer: sealer, env: env, envOIDC: append([]settingspec.OIDCProvider(nil), o.EnvOIDC...), dev: o.Dev,
+		listen: o.Listen, log: o.Log, now: now,
+	}
+	snap, err := s.build(map[settingspec.Group]Stored{}, s.emptyOidc())
 	if err != nil && s.db == nil {
 		return nil, err
 	}
 	if err != nil {
-		snap = &Snapshot{Values: settingspec.Defaults(), Sources: map[string]Source{}, Stored: map[settingspec.Group]Stored{}, env: env}
+		snap = &Snapshot{
+			Values: settingspec.Defaults(), Sources: map[string]Source{}, Stored: map[settingspec.Group]Stored{}, Oidc: s.emptyOidc(), env: env,
+		}
 	}
 	s.current.Store(snap)
 	return s, nil
@@ -170,15 +181,20 @@ func (s *Store) Load(ctx context.Context) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	stored, err := s.read(ctx, sqlc.New(s.db))
+	q := sqlc.New(s.db)
+	stored, err := s.read(ctx, q)
 	if err != nil {
 		return err
 	}
-	snap, err := s.build(stored)
+	oidc, err := s.readOidc(ctx, q)
 	if err != nil {
 		return err
 	}
-	s.current.Store(snap)
+	snap, err := s.build(stored, oidc)
+	if err != nil {
+		return err
+	}
+	s.publish(snap)
 	return nil
 }
 
@@ -215,8 +231,8 @@ func (s *Store) read(ctx context.Context, q *sqlc.Queries) (map[settingspec.Grou
 	return out, nil
 }
 
-func (s *Store) build(stored map[settingspec.Group]Stored) (*Snapshot, error) {
-	snap := &Snapshot{Stored: stored, env: s.env, Sources: make(map[string]Source, len(settingspec.Keys()))}
+func (s *Store) build(stored map[settingspec.Group]Stored, oidc Oidc) (*Snapshot, error) {
+	snap := &Snapshot{Stored: stored, Oidc: oidc, env: s.env, Sources: make(map[string]Source, len(settingspec.Keys()))}
 	for _, k := range settingspec.Keys() {
 		switch {
 		case s.env.Has(k.Env):

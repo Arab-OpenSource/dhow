@@ -47,6 +47,7 @@ type Options struct {
 	Oidc         *oidcauth.Registry
 	OidcKey      []byte
 	CallbackBase string
+	EnvProviders []string
 }
 
 type Service struct {
@@ -65,6 +66,7 @@ type Service struct {
 	oidc         *oidcauth.Registry
 	oidcKey      []byte
 	callbackBase string
+	envProviders []string
 }
 
 var (
@@ -84,7 +86,7 @@ func NewService(o Options) *Service {
 	return &Service{
 		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, csrf: o.CSRF, sealer: o.Sealer, recovery: o.Recovery,
 		webauthn: o.WebAuthn, bus: o.Bus, instance: instance, log: o.Log, now: now,
-		oidc: o.Oidc, oidcKey: o.OidcKey, callbackBase: o.CallbackBase,
+		oidc: o.Oidc, oidcKey: o.OidcKey, callbackBase: o.CallbackBase, envProviders: append([]string{}, o.EnvProviders...),
 	}
 }
 

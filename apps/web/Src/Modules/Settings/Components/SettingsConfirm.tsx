@@ -5,18 +5,19 @@ import { Button } from '@/Core/Ui/Button';
 import { ConfirmPanel } from '@/Core/Ui/ConfirmPanel';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Skeleton } from '@/Core/Ui/Skeleton';
-import type { TMessageKey } from '@/I18n/Messages';
 import { useT } from '@/I18n/useT';
-import type { TInstanceSettings } from '@/Modules/Settings/Types/SettingsTypes';
 
-export interface ISettingsConfirmProps {
-  confirm: TMessageKey;
-  save: (factor: TCurrentFactor) => Promise<TInstanceSettings>;
-  onSaved: (result: TInstanceSettings) => void;
+export interface ISettingsConfirmProps<TResult> {
+  confirm: string;
+  question?: string;
+  danger?: boolean;
+  save: (factor: TCurrentFactor) => Promise<TResult>;
+  onSaved: (result: TResult) => void;
   onCancel: () => void;
 }
 
-export const SettingsConfirm = ({ confirm, save, onSaved, onCancel }: ISettingsConfirmProps) => {
+export const SettingsConfirm = <TResult,>(props: ISettingsConfirmProps<TResult>) => {
+  const { confirm, question, danger = false, save, onSaved, onCancel } = props;
   const t = useT();
   const status = useMfaStatus();
   const methods = useFactorMethods();
@@ -59,9 +60,10 @@ export const SettingsConfirm = ({ confirm, save, onSaved, onCancel }: ISettingsC
 
   return (
     <ConfirmPanel
-      question={t('settings.confirm.question')}
-      confirm={t(confirm)}
-      icon="check"
+      question={question ?? t('settings.confirm.question')}
+      confirm={confirm}
+      icon={danger ? 'trash' : 'check'}
+      danger={danger}
       methods={methods}
       action={action}
       onConfirm={() => {

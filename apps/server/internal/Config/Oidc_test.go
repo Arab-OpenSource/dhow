@@ -89,6 +89,7 @@ func TestOIDCProviderConfigFailsClosed(t *testing.T) {
 		{"plain http issuer", map[string]string{"DHOW_OIDC_CORP_ISSUER": "http://sso.example.com"}, "must use https"},
 		{"issuer with a query", map[string]string{"DHOW_OIDC_CORP_ISSUER": "https://sso.example.com/?x=1"}, "must not contain"},
 		{"relative issuer", map[string]string{"DHOW_OIDC_CORP_ISSUER": "/realms/dhow"}, "absolute URL"},
+		{"metadata issuer", map[string]string{"DHOW_OIDC_CORP_ISSUER": "https://169.254.169.254/realms"}, "link-local or cloud metadata"},
 		{"missing client id", map[string]string{"DHOW_OIDC_CORP_CLIENT_ID": ""}, "DHOW_OIDC_CORP_CLIENT_ID: is required"},
 		{"missing secret", map[string]string{"DHOW_OIDC_CORP_CLIENT_SECRET": ""}, "DHOW_OIDC_CORP_CLIENT_SECRET: is required"},
 		{"placeholder secret", map[string]string{"DHOW_OIDC_CORP_CLIENT_SECRET": "change-me-please"}, "placeholder"},

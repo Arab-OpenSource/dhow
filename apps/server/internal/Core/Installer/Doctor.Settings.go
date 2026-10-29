@@ -13,6 +13,22 @@ import (
 
 type SettingsReader interface {
 	StoredSettings(ctx context.Context, url string) (map[string]bool, error)
+	StoredProviders(ctx context.Context, url string) (int64, error)
+}
+
+func (PostgresChecker) StoredProviders(ctx context.Context, url string) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, databaseCheckTimeout)
+	defer cancel()
+	pool, err := config.OpenDatabase(ctx, url)
+	if err != nil {
+		return 0, err
+	}
+	defer pool.Close()
+	n, err := sqlc.New(pool).CountOidcProviders(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count sign-in providers: %w", err)
+	}
+	return n, nil
 }
 
 func (PostgresChecker) StoredSettings(ctx context.Context, url string) (map[string]bool, error) {
@@ -47,12 +63,16 @@ func (PostgresChecker) StoredSettings(ctx context.Context, url string) (map[stri
 	return out, nil
 }
 
-func (d Doctor) envSettings() map[string]bool {
+func (d Doctor) envEntries() []EnvEntry {
 	path := EnvFilePath
 	if d.A.Mode == ModeCompose {
 		path = ComposeEnvPath
 	}
-	entries := ParseEnv(d.b.readExisting(path))
+	return ParseEnv(d.b.readExisting(path))
+}
+
+func (d Doctor) envSettings() map[string]bool {
+	entries := d.envEntries()
 	out := map[string]bool{}
 	for _, k := range settingspec.Keys() {
 		if strings.TrimSpace(EnvValue(entries, k.Env)) != "" {
@@ -63,6 +83,25 @@ func (d Doctor) envSettings() map[string]bool {
 		out[config.EnvSMTPPassword] = true
 	}
 	return out
+}
+
+func (d Doctor) providerSource(ctx context.Context) Finding {
+	if list := strings.TrimSpace(EnvValue(d.envEntries(), config.EnvOIDCProviders)); list != "" {
+		return Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckProviders, len(strings.Split(list, ",")), d.M.T(KeySourceEnv))}
+	}
+	unknown := Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckProvidersUnknown)}
+	if d.Settings == nil || d.A.Mode == ModeCompose {
+		return unknown
+	}
+	url, err := d.secretContent(DatabaseURLPath)
+	if err != nil {
+		return unknown
+	}
+	n, err := d.Settings.StoredProviders(ctx, url)
+	if err != nil {
+		return unknown
+	}
+	return Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckProviders, n, d.M.T(KeySourceDatabase))}
 }
 
 func (d Doctor) storedSettings(ctx context.Context) (map[string]bool, bool) {
@@ -98,5 +137,5 @@ func (d Doctor) settingSources(ctx context.Context) []Finding {
 		}
 		out = append(out, Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckSetting, k.Env, d.M.T(source))})
 	}
-	return out
+	return append(out, d.providerSource(ctx))
 }

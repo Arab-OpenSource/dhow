@@ -53,6 +53,8 @@ var enMessages = map[Key]string{ //nolint:gosec // User-facing text that names s
 	KeySourceDatabase:        "the database (set in the dashboard)",
 	KeySourceDefault:         "the default",
 	KeySourceUnknown:         "the database or the default (the database could not be read from here)",
+	KeyCheckProviders:        "Sign-in providers: %d, from %s",
+	KeyCheckProvidersUnknown: "Sign-in providers come from the database (the database could not be read from here)",
 	KeyCheckTrusted:          "DHOW_TRUSTED_PROXIES",
 	KeyCheckUnit:             "The systemd unit matches this release",
 	KeyChoose:                "Number",

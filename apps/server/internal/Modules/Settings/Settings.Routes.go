@@ -30,6 +30,11 @@ func Policies() []policy.Rule {
 		policy.Instance(http.MethodPut, settingsPath+"/passwords", policy.InstanceSettingsManage),
 		policy.Instance(http.MethodPut, settingsPath+"/rate-limits", policy.InstanceSettingsManage),
 		policy.Instance(http.MethodPut, settingsPath+"/logs", policy.InstanceSettingsManage),
+		policy.Instance(http.MethodGet, settingsPath+"/oidc", policy.InstanceSettingsManage),
+		policy.Instance(http.MethodPost, settingsPath+"/oidc", policy.InstanceSettingsManage),
+		policy.Instance(http.MethodPost, settingsPath+"/oidc/test", policy.InstanceSettingsManage),
+		policy.Instance(http.MethodPut, settingsPath+"/oidc/{providerId}", policy.InstanceSettingsManage),
+		policy.Instance(http.MethodPost, settingsPath+"/oidc/{providerId}/remove", policy.InstanceSettingsManage),
 	}
 }
 

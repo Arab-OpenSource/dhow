@@ -1,6 +1,6 @@
 # ADR-0039: تنفيذ OIDC وAPI tokens والتفضيلات في M2.4: الإعداد من الـ env، وGitHub كمزوّد OAuth لوحده، والـ token اللي عمره ما يعدّي صاحبه، والتفضيلات في السيرفر
 
-- **الحالة:** مقبول
+- **الحالة:** مقبول. سطر «من الـ env بس» في إعداد مزوّدي الدخول اتبدّل بقسم «الجزء التاني» في [ADR-0063](0063-instance-settings-in-the-database.md): المزوّدين بيتعدّلوا من اللوحة، وenv بيقفل القايمة كلها.
 - **التاريخ:** 2026-10-28
 - **بيكمّل:** [ADR-0013](0013-authentication-methods.md) و[ADR-0033](0033-browser-sessions-invites-breached-passwords.md) و[ADR-0035](0035-identity-core-implementation.md) و[ADR-0037](0037-mfa-implementation.md) و[ADR-0038](0038-orgs-teams-invites-implementation.md) و[ADR-0047](0047-job-state-machine-and-reconciliation.md).
 

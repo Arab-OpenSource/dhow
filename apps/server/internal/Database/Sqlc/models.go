@@ -236,6 +236,24 @@ type OidcFlow struct {
 	SessionId  *uuid.UUID
 	ExpiresAt  time.Time
 	UsedAt     *time.Time
+	Issuer     string
+}
+
+type OidcProvider struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	ProviderId     string
+	Type           string
+	Name           string
+	Issuer         string
+	ClientId       string
+	AllowedDomains []string
+	Secret         []byte
+	Version        int64
+	CreatedBy      *uuid.UUID
+	UpdatedBy      *uuid.UUID
 }
 
 type Organization struct {

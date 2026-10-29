@@ -35,7 +35,7 @@ There is no configuration file and no fallback value for a secret. A missing or 
 | `DHOW_SSE_MAX_STREAMS` | No | `2000` | `500` | How many live log streams (server-sent events) one server instance serves at once. One user may hold 10 of them on an instance, and one organization a tenth of this value (at least 20). Above either limit the browser gets `429 TOO_MANY_STREAMS` with `Retry-After`. A whole number from 1 to 100000. |
 | `DHOW_LOG_READ_CONNS` | No | `4` | `8` | Database connections set aside for reading job logs: history pages and live streams. They are a pool of their own, next to the 20 connections of the API and the runner plane, so many open streams can slow each other down but never the rest of Dhow. Each statement on them stops after 5 seconds. A whole number from 1 to 20. |
 | `DHOW_SMTP_PASSWORD_FILE` | No | none | `/run/secrets/dhow-smtp-password` | A file that holds `DHOW_SMTP_PASSWORD`, see [Secrets in files](#secrets-in-files). |
-| `DHOW_OIDC_PROVIDERS` | No | empty | `google,github` | Turns on sign-in with external identity providers. A comma-separated list of provider ids (lowercase letters and digits, starting with a letter, at most 32, at most 10 providers). Each id needs its own `DHOW_OIDC_<ID>_*` variables, see [Sign-in providers](#sign-in-providers). Empty turns external sign-in off. |
+| `DHOW_OIDC_PROVIDERS` | No | empty | `google,github` | Sets the sign-in providers in the environment. A comma-separated list of provider ids (lowercase letters and digits, starting with a letter, at most 32, at most 10 providers). Each id needs its own `DHOW_OIDC_<ID>_*` variables, see [Sign-in providers](#sign-in-providers). When it is set, the whole list comes from the environment and **Server settings** shows it read-only. When it is empty, the instance owner manages the providers on **Server settings → Sign-in providers**. |
 
 `DHOW_DEV=true` never turns off the `Secure` flag of the session cookie, the `Origin` check or the secret key checks.
 
@@ -120,12 +120,36 @@ With SMTP set up, Dhow also emails the link to the invited address in the invite
 
 ## Sign-in providers
 
+Sign-in providers come from one place, either the dashboard or the environment, never both:
+
+| `DHOW_OIDC_PROVIDERS` | Where the providers come from | **Server settings → Sign-in providers** |
+|---|---|---|
+| Set | The `DHOW_OIDC_*` variables below | Read-only, marked **Set by environment variables**. The API answers `409 SETTING_LOCKED_BY_ENV`. Providers saved in the database are unused and only counted. |
+| Empty | The database | The instance owner adds, edits, tests and removes them |
+
+- **All or nothing.** Dhow does not mix the two lists, because a provider that exists twice, or a list from two places, surprises the people who manage it. When you set `DHOW_OIDC_PROVIDERS`, the saved providers stay in the database unused; when you remove it and restart, they come back. Nothing is copied either way.
+- **The same rules.** The dashboard runs the checks of the variables below on every save: an `https://` issuer (`http://` only with `DHOW_DEV=true`) without credentials, a query or a fragment, valid domains, a name of at most 40 characters, a real client secret and an issuer no other provider uses. An issuer on a link-local or cloud metadata address (including `0.0.0.0/8`, `168.63.129.16` and IPv4 inside NAT64 `64:ff9b::/96`) is refused in both places. Dhow also refuses to connect to such an address when a host name resolves to one, and it checks the target before an HTTP proxy from `HTTPS_PROXY` carries the request.
+- **The id never changes.** It is part of the callback URL and of linked accounts, so it is chosen once when the provider is added.
+- **Type and issuer stay once accounts are linked.** Accounts are linked by issuer and subject, so a new issuer would leave them behind. The dashboard refuses with `409 OIDC_PROVIDER_LINKED`; add a new provider instead.
+- **The client secret** is encrypted with a key derived from `DHOW_SECRET_KEY` and never comes back, like the SMTP password. Leave it as it is, replace it, or remove it; removing it turns the provider off. A change of type or issuer must carry the secret again (`400 SETTING_INVALID` on `ClientSecret` otherwise), so a saved secret never goes to a new token endpoint without the owner typing it.
+- **Removing a provider** is a soft delete. Linked accounts keep the link on their account page and can unlink it, but nobody signs in with it. Dhow refuses to remove or turn off a provider while some account can sign in with nothing else (`409 OIDC_PROVIDER_ONLY_SIGN_IN`, with the number of accounts), and the dashboard shows that number before you try. A new list of allowed domains is refused the same way when an account that can sign in with nothing else has a linked email outside the new list.
+- **Test the connection** reads the discovery document, checks that its endpoints use `https` and fetches the signing keys (for GitHub, it calls the API). It never sends the client secret, and an owner may run it five times in ten minutes.
+- **No restart.** A save reaches every instance through `pg_notify`. Open sessions stay. A sign-in or link that started before its provider was removed, turned off or moved to another issuer ends with `OIDC_FLOW_INVALID`, and one that started before its secret changed is refused by the provider. Linking checks the issuer saved in the database, and the last-sign-in-method check reads the providers from the database, so an instance that has not reloaded yet cannot lock an account out.
+- **Fail closed.** A saved provider that is not valid, or whose secret the current `DHOW_SECRET_KEY` cannot decrypt, stops the server at start-up. `dhow-server doctor` prints how many providers there are and whether they come from the environment or the database.
+- **After you change `DHOW_SECRET_KEY`.** Saved client secrets were sealed with the old key, so the server refuses to start and names the provider. Clear the old secrets before you start, then type them again on **Server settings** (each provider is off until you do):
+
+  ```sql
+  UPDATE "OidcProviders" SET "Secret" = NULL, "UpdatedAt" = now() WHERE NOT "IsDeleted";
+  ```
+
+  A running server whose stored secret became unreadable refuses every provider change except removing that provider or clearing its secret, which is the repair.
+
 Each id in `DHOW_OIDC_PROVIDERS` reads the variables below, with the id in upper case (`google` reads `DHOW_OIDC_GOOGLE_ISSUER`). Any problem with any provider stops the server. The full guide, with Google, Keycloak and GitHub examples, is [Sign in with OIDC](../guides/oidc.md).
 
 | Variable | Required | Default | Purpose and validation |
 |---|---|---|---|
 | `DHOW_OIDC_<ID>_TYPE` | No | `oidc` | `oidc` for any OpenID Connect provider (Google, Keycloak, Entra ID, Authentik, ...). `github` for GitHub, which speaks OAuth 2.0 without OpenID Connect. |
-| `DHOW_OIDC_<ID>_ISSUER` | With `oidc` | `https://github.com` for `github` | The issuer URL, exactly as the provider's `/.well-known/openid-configuration` reports it. `https://` only, or `http://` with `DHOW_DEV=true`, without credentials, a query or a fragment. For GitHub Enterprise Server, the server's URL. Two providers cannot share an issuer (compared without case in the host and without a trailing `/`), because linked identities are keyed by issuer. |
+| `DHOW_OIDC_<ID>_ISSUER` | With `oidc` | `https://github.com` for `github` | The issuer URL, exactly as the provider's `/.well-known/openid-configuration` reports it. `https://` only, or `http://` with `DHOW_DEV=true`, without credentials, a query or a fragment, and never a link-local or cloud metadata address. For GitHub Enterprise Server, the server's URL. Two providers cannot share an issuer (compared without case in the host and without a trailing `/`), because linked identities are keyed by issuer. |
 | `DHOW_OIDC_<ID>_CLIENT_ID` | Yes | none | The client id registered at the provider. |
 | `DHOW_OIDC_<ID>_CLIENT_SECRET` | Yes | none | The client secret. Like other secrets it may come from `DHOW_OIDC_<ID>_CLIENT_SECRET_FILE` or the systemd credential `dhow-oidc-<id>-client-secret`, see [Secrets in files](#secrets-in-files), and placeholder values are refused. It is never logged or returned. |
 | `DHOW_OIDC_<ID>_NAME` | No | the id, or `GitHub` | The button label on the sign-in page, at most 40 characters. |

@@ -1,13 +1,23 @@
 import { Page } from '@/App/Layout/Page';
+import { useSlide } from '@/App/Navigation/useSlide';
+import { oidcEditSlide } from '@/App/Panels';
 import { useT } from '@/I18n/useT';
 import { SettingsBody } from '@/Modules/Settings/Components/SettingsBody';
 
 export const SystemSettingsPage = () => {
   const t = useT();
+  const { open } = useSlide();
 
   return (
     <Page title={t('shell.nav.systemSettings')} lead={t('settings.lead')}>
-      <SettingsBody />
+      <SettingsBody
+        onAddProvider={() => {
+          open('oidc-new');
+        }}
+        onEditProvider={(id) => {
+          open(oidcEditSlide(id));
+        }}
+      />
     </Page>
   );
 };

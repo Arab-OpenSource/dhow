@@ -93,6 +93,7 @@ func New(t testing.TB, github bool, now func() time.Time) *IdP {
 	mux.HandleFunc("POST /login/oauth/access_token", idp.token)
 	mux.HandleFunc("GET /api/v3/user", idp.githubUser)
 	mux.HandleFunc("GET /api/v3/user/emails", idp.githubEmails)
+	mux.HandleFunc("GET /api/v3/meta", idp.githubMeta)
 	idp.Server = httptest.NewTLSServer(mux)
 	t.Cleanup(idp.Server.Close)
 	return idp
@@ -288,6 +289,15 @@ func (i *IdP) githubUser(w http.ResponseWriter, r *http.Request) {
 		id = 0
 	}
 	i.writeJSON(w, http.StatusOK, map[string]any{"id": id, "login": "octo-" + c.Subject, "name": c.Name})
+}
+
+func (i *IdP) githubMeta(w http.ResponseWriter, r *http.Request) {
+	i.count("github_meta")
+	if r.Header.Get("Authorization") != "" {
+		i.writeJSON(w, http.StatusBadRequest, map[string]string{"message": "the meta check sends no credentials"})
+		return
+	}
+	i.writeJSON(w, http.StatusOK, map[string]any{"verifiable_password_authentication": false})
 }
 
 func (i *IdP) githubEmails(w http.ResponseWriter, r *http.Request) {

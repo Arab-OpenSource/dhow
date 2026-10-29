@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
@@ -83,6 +84,9 @@ func (s *Service) CompleteOidcLink(ctx context.Context, in models.OidcCallback) 
 	}
 	var change models.IdentityChange
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		if err := s.currentIssuer(ctx, q, t, got.identity.Issuer); err != nil {
+			return err
+		}
 		row, err := q.InsertIdentity(ctx, sqlc.InsertIdentityParams{
 			UserID: p.UserID, Provider: t.row.Provider, Issuer: got.identity.Issuer, Subject: got.identity.Subject,
 			Email: got.email, Now: now,
@@ -124,6 +128,34 @@ func (s *Service) linkConflict(ctx context.Context, q *sqlc.Queries, userID uuid
 	return apperrors.OidcIdentityInUse()
 }
 
+func (s *Service) lockSignInMethods(ctx context.Context, q *sqlc.Queries, userID uuid.UUID) (sqlc.LockUserSignInMethodsRow, error) {
+	if err := q.LockUserRow(ctx, userID); err != nil {
+		return sqlc.LockUserSignInMethodsRow{}, err
+	}
+	return q.LockUserSignInMethods(ctx, sqlc.LockUserSignInMethodsParams{ID: userID, Env: s.envProviders})
+}
+
+func (s *Service) currentIssuer(ctx context.Context, q *sqlc.Queries, t takenFlow, issuer string) error {
+	if err := q.LockOidcProvidersShared(ctx, config.OidcProvidersLockKey); err != nil {
+		return err
+	}
+	current := t.provider.Issuer()
+	if len(s.envProviders) == 0 {
+		stored, err := q.CurrentProviderIssuer(ctx, t.row.Provider)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperrors.OidcFlowInvalid()
+		}
+		if err != nil {
+			return err
+		}
+		current = stored
+	}
+	if current != issuer {
+		return apperrors.OidcFlowInvalid()
+	}
+	return nil
+}
+
 func signInMethods(m sqlc.LockUserSignInMethodsRow) int64 {
 	n := m.Identities + m.Passkeys
 	if m.HasPassword {
@@ -141,7 +173,8 @@ func (s *Service) RemoveIdentity(ctx context.Context, id uuid.UUID, factor model
 	if err != nil {
 		return 0, err
 	}
-	if !containsIdentity(owned, id) {
+	target, ok := findIdentity(owned, id)
+	if !ok {
 		return 0, apperrors.NotFound()
 	}
 	if err := s.confirmFactor(ctx, p, factor); err != nil {
@@ -151,11 +184,15 @@ func (s *Service) RemoveIdentity(ctx context.Context, id uuid.UUID, factor model
 	var revoked int64
 	var provider string
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-		methods, err := q.LockUserSignInMethods(ctx, p.UserID)
+		methods, err := s.lockSignInMethods(ctx, q, p.UserID)
 		if err != nil {
 			return err
 		}
-		if signInMethods(methods) <= 1 {
+		active, err := q.SignInProviderActive(ctx, sqlc.SignInProviderActiveParams{Provider: target.Provider, Env: s.envProviders})
+		if err != nil {
+			return err
+		}
+		if active && signInMethods(methods) <= 1 {
 			return apperrors.LastSignInMethod()
 		}
 		provider, err = q.RemoveUserIdentity(ctx, sqlc.RemoveUserIdentityParams{ID: id, UserID: p.UserID, Now: now})
@@ -176,11 +213,11 @@ func (s *Service) RemoveIdentity(ctx context.Context, id uuid.UUID, factor model
 	})
 }
 
-func containsIdentity(list []models.LinkedIdentity, id uuid.UUID) bool {
+func findIdentity(list []models.LinkedIdentity, id uuid.UUID) (models.LinkedIdentity, bool) {
 	for _, i := range list {
 		if i.ID == id {
-			return true
+			return i, true
 		}
 	}
-	return false
+	return models.LinkedIdentity{}, false
 }

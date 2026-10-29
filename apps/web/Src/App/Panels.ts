@@ -16,12 +16,16 @@ const STATIC_SLIDES = [
   'theme-edit',
   'member-remove',
   'organization-leave',
+  'oidc-new',
 ] as const;
 const THEME_EDIT_PREFIX = 'theme-edit-';
+const OIDC_EDIT_PREFIX = 'oidc-edit-';
+const OIDC_ID = /^[a-z][a-z0-9]{0,31}$/;
 
 export type TStaticSlideId = (typeof STATIC_SLIDES)[number];
 export type TThemeEditSlideId = `theme-edit-${string}`;
-export type TSlideId = TStaticSlideId | TThemeEditSlideId;
+export type TOidcEditSlideId = `oidc-edit-${string}`;
+export type TSlideId = TStaticSlideId | TThemeEditSlideId | TOidcEditSlideId;
 
 export interface IShellSearch {
   slide?: TSlideId | typeof UNKNOWN_SLIDE;
@@ -30,9 +34,14 @@ export interface IShellSearch {
 
 export const themeEditSlide = (id: string): TThemeEditSlideId => `${THEME_EDIT_PREFIX}${id}`;
 
+export const oidcEditSlide = (id: string): TOidcEditSlideId => `${OIDC_EDIT_PREFIX}${id}`;
+
+export const oidcOf = (id: TSlideId): string | null => (id.startsWith(OIDC_EDIT_PREFIX) ? id.slice(OIDC_EDIT_PREFIX.length) : null);
+
 export const isSlideId = (value: unknown): value is TSlideId => {
   if (typeof value !== 'string') return false;
   if (STATIC_SLIDES.some((id) => id === value)) return true;
+  if (value.startsWith(OIDC_EDIT_PREFIX)) return OIDC_ID.test(value.slice(OIDC_EDIT_PREFIX.length));
   return value.startsWith(THEME_EDIT_PREFIX) && isCustomThemeId(value.slice(THEME_EDIT_PREFIX.length));
 };
 

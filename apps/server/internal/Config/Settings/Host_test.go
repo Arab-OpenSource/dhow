@@ -24,6 +24,15 @@ func TestTheSMTPHostRefusesLinkLocalAndMetadataButKeepsLocalRelays(t *testing.T)
 		{"METADATA.GOOGLE.INTERNAL.", true},
 		{"metadata", true},
 		{"instance-data.ec2.internal", true},
+		{"168.63.129.16", true},
+		{"0.0.0.0", true},
+		{"0.1.2.3", true},
+		{"::", true},
+		{"[::]", true},
+		{"64:ff9b::a9fe:a9fe", true},
+		{"64:ff9b::169.254.169.254", true},
+		{"64:ff9b::a00:5", false},
+		{"fe80::1%eth0", true},
 		{"127.0.0.1", false},
 		{"localhost", false},
 		{"10.0.0.25", false},
@@ -33,7 +42,7 @@ func TestTheSMTPHostRefusesLinkLocalAndMetadataButKeepsLocalRelays(t *testing.T)
 		{"metadata.example.com", false},
 	}
 	for _, tt := range tests {
-		assert.Equal(t, tt.blocked, settingspec.BlockedSMTPHost(tt.host), tt.host)
+		assert.Equal(t, tt.blocked, settingspec.BlockedHost(tt.host), tt.host)
 		if tt.blocked && settingspec.ValidateValue(settingspec.EnvSMTPHost, tt.host) == nil {
 			assert.Contains(t, tt.host, ":", "a host without a colon is refused by the shared validator: %s", tt.host)
 		}

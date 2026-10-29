@@ -14,7 +14,7 @@ const TOTP = { TotpEnabled: true, RecoveryCodesRemaining: 10, Passkeys: [] };
 const mount = (settings: TSettingsFixture) => {
   const state: ISettingsBackend = { settings, puts: [], tests: 0 };
   startBackend({ instanceOwner: true, mfa: TOTP, routes: [settingsRoute(state)] });
-  return { ...renderWithProviders(<SettingsBody />), settings: state };
+  return { ...renderWithProviders(<SettingsBody onAddProvider={() => undefined} onEditProvider={() => undefined} />), settings: state };
 };
 
 const mailCard = async (): Promise<HTMLElement> => {

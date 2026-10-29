@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
@@ -70,8 +72,18 @@ type Options struct {
 }
 
 type Registry struct {
+	client    *http.Client
+	now       func() time.Time
+	allowHTTP bool
+
+	mu      sync.Mutex
+	current atomic.Pointer[providerSet]
+}
+
+type providerSet struct {
 	order     []string
 	providers map[string]Provider
+	configs   map[string]config.OIDCProvider
 }
 
 func NewRegistry(cfgs []config.OIDCProvider, o Options) (*Registry, error) {
@@ -79,49 +91,94 @@ func NewRegistry(cfgs []config.OIDCProvider, o Options) (*Registry, error) {
 	if now == nil {
 		now = time.Now
 	}
-	client := newClient(o.Transport)
-	r := &Registry{providers: make(map[string]Provider, len(cfgs))}
-	for _, c := range cfgs {
-		var p Provider
-		switch c.Kind {
-		case config.OIDCKindOIDC:
-			p = newOIDC(c, client, now, o.AllowHTTP)
-		case config.OIDCKindGitHub:
-			p = newGitHub(c, client)
-		default:
-			return nil, fmt.Errorf("%w: %s", errUnsupported, c.Kind)
-		}
-		r.order = append(r.order, c.ID)
-		r.providers[c.ID] = p
+	r := &Registry{client: newClient(o.Transport), now: now, allowHTTP: o.AllowHTTP}
+	if err := r.Replace(cfgs); err != nil {
+		return nil, err
 	}
 	return r, nil
 }
 
-func (r *Registry) Get(id string) (Provider, error) {
+func (r *Registry) build(c config.OIDCProvider) (Provider, error) {
+	switch c.Kind {
+	case config.OIDCKindOIDC:
+		return newOIDC(c, r.client, r.now, r.allowHTTP), nil
+	case config.OIDCKindGitHub:
+		return newGitHub(c, r.client), nil
+	default:
+		return nil, fmt.Errorf("%w: %s", errUnsupported, c.Kind)
+	}
+}
+
+func (r *Registry) Replace(cfgs []config.OIDCProvider) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	old := r.current.Load()
+	next := &providerSet{providers: make(map[string]Provider, len(cfgs)), configs: make(map[string]config.OIDCProvider, len(cfgs))}
+	for _, c := range cfgs {
+		if old != nil {
+			if prev, ok := old.configs[c.ID]; ok && prev.Equal(c) {
+				next.add(c, old.providers[c.ID])
+				continue
+			}
+		}
+		p, err := r.build(c)
+		if err != nil {
+			return err
+		}
+		next.add(c, p)
+	}
+	r.current.Store(next)
+	return nil
+}
+
+func (s *providerSet) add(c config.OIDCProvider, p Provider) {
+	s.order = append(s.order, c.ID)
+	s.providers[c.ID] = p
+	s.configs[c.ID] = c
+}
+
+func (r *Registry) set() *providerSet {
 	if r == nil {
+		return nil
+	}
+	return r.current.Load()
+}
+
+func (r *Registry) Get(id string) (Provider, error) {
+	s := r.set()
+	if s == nil {
 		return nil, ErrUnknown
 	}
-	p, ok := r.providers[id]
+	p, ok := s.providers[id]
 	if !ok {
 		return nil, ErrUnknown
 	}
 	return p, nil
 }
 
+func (r *Registry) IDs() []string {
+	s := r.set()
+	if s == nil {
+		return []string{}
+	}
+	return append([]string{}, s.order...)
+}
+
 func (r *Registry) List() []Info {
-	if r == nil {
+	s := r.set()
+	if s == nil {
 		return []Info{}
 	}
-	out := make([]Info, 0, len(r.order))
-	for _, id := range r.order {
-		out = append(out, r.providers[id].Info())
+	out := make([]Info, 0, len(s.order))
+	for _, id := range s.order {
+		out = append(out, s.providers[id].Info())
 	}
 	return out
 }
 
 func newClient(base http.RoundTripper) *http.Client {
 	if base == nil {
-		base = http.DefaultTransport
+		base = guardedTransport()
 	}
 	return &http.Client{
 		Timeout:   RequestTimeout,

@@ -8,6 +8,8 @@ import (
 	"net/url"
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
+
+	settingspec "github.com/Khaymah/dhow/apps/server/internal/Config/Settings"
 )
 
 var errInsecureEndpoint = errors.New("discovery names an endpoint that is not https")
@@ -62,13 +64,18 @@ func (p *oidcProvider) discover(ctx context.Context, done chan struct{}) {
 }
 
 func (p *oidcProvider) checkEndpoints(d *gooidc.Provider) error {
+	_, err := secureEndpoints(d, p.allowHTTP)
+	return err
+}
+
+func secureEndpoints(d *gooidc.Provider, allowHTTP bool) (string, error) {
 	var raw map[string]json.RawMessage
 	if err := d.Claims(&raw); err != nil {
-		return err
+		return "", err
 	}
 	var jwks string
 	if err := json.Unmarshal(raw["jwks_uri"], &jwks); err != nil {
-		return fmt.Errorf("jwks_uri: %w", err)
+		return "", fmt.Errorf("jwks_uri: %w", err)
 	}
 	endpoints := []struct{ name, value string }{
 		{"authorization_endpoint", d.Endpoint().AuthURL},
@@ -76,17 +83,17 @@ func (p *oidcProvider) checkEndpoints(d *gooidc.Provider) error {
 		{"jwks_uri", jwks},
 	}
 	for _, e := range endpoints {
-		if !p.secureEndpoint(e.value) {
-			return fmt.Errorf("%w: %s", errInsecureEndpoint, e.name)
+		if !secureEndpoint(e.value, allowHTTP) {
+			return "", fmt.Errorf("%w: %s", errInsecureEndpoint, e.name)
 		}
 	}
-	return nil
+	return jwks, nil
 }
 
-func (p *oidcProvider) secureEndpoint(raw string) bool {
+func secureEndpoint(raw string, allowHTTP bool) bool {
 	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" || u.User != nil {
+	if err != nil || u.Host == "" || u.User != nil || settingspec.BlockedHost(u.Hostname()) {
 		return false
 	}
-	return u.Scheme == "https" || (p.allowHTTP && u.Scheme == "http")
+	return u.Scheme == "https" || (allowHTTP && u.Scheme == "http")
 }

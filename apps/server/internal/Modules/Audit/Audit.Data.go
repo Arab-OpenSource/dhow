@@ -17,7 +17,7 @@ const (
 var allowedDataKeys = map[string]struct{}{
 	"Arch": {}, "Disabled": {}, "Email": {}, "EmailDigest": {}, "EmailStatus": {}, "ExpiresAt": {}, "ExpiresInDays": {},
 	"Fields": {}, "FirstMethod": {}, "From": {}, "Group": {}, "Image": {}, "KeyVersion": {}, "Labels": {}, "MaxUses": {},
-	"Method": {}, "Name": {}, "NewAccount": {}, "OrganizationSlug": {}, "Os": {}, "Owner": {}, "Passkeys": {}, "Priority": {},
+	"Method": {}, "Name": {}, "NewAccount": {}, "Operation": {}, "OrganizationSlug": {}, "Os": {}, "Owner": {}, "Passkeys": {}, "Priority": {},
 	"Provider": {}, "Purpose": {}, "Reason": {}, "RecoveryCodes": {}, "RegisteredWith": {}, "Remaining": {}, "Replaced": {},
 	"Revoked": {}, "RevokedPats": {}, "RevokedSessions": {}, "Role": {}, "Scope": {}, "Scopes": {}, eventbus.SeverityKey: {},
 	"Slug": {}, "SpecDigest": {}, "State": {}, "Steps": {}, "SubjectDigest": {}, "Switches": {}, "To": {}, "Totp": {},
