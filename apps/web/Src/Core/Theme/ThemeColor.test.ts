@@ -109,7 +109,7 @@ describe('background derivation', () => {
   });
 
   it('turns a grey into greys', () => {
-    expect(deriveBackgrounds('#808080')).toMatchObject({ input: '#060606', canvas: '#0e0e0e', track: '#3b3b3b' });
+    expect(deriveBackgrounds('#808080')).toMatchObject({ input: '#040404', canvas: '#0c0c0c', track: '#3b3b3b' });
   });
 });
 

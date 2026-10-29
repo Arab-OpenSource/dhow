@@ -49,7 +49,7 @@ export const CheckList = <T extends string>(props: ICheckListProps<T>) => {
           </span>
           <span className="grid min-w-0 flex-1 gap-px">
             <span className="text-label text-primary">{item.title}</span>
-            {item.about ? <small className="text-caption text-tertiary">{item.about}</small> : null}
+            {item.about ? <small className="text-body-sm text-tertiary">{item.about}</small> : null}
           </span>
         </button>
       );

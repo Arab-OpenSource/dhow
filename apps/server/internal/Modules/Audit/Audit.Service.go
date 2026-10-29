@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
@@ -27,6 +28,8 @@ const (
 	viaAPIToken      = "api_token"
 	instanceChainKey = "instance"
 )
+
+var ErrEventNotFound = errors.New("audit event not found")
 
 type DB interface {
 	sqlc.DBTX
@@ -127,30 +130,63 @@ func (s *Service) append(ctx context.Context, org *uuid.UUID, action string, a e
 	})
 }
 
-func (s *Service) List(ctx context.Context, org uuid.UUID, page, limit int) ([]models.Event, int64, error) {
+func text(v string) pgtype.Text { return pgtype.Text{String: v, Valid: v != ""} }
+
+func utc(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	v := t.UTC()
+	return &v
+}
+
+func (s *Service) List(ctx context.Context, org uuid.UUID, f models.Filter, page, limit int) ([]models.Event, int64, error) {
 	q := sqlc.New(s.db)
-	total, err := q.CountAuditEvents(ctx, &org)
+	category, action, from, to := text(f.Category), text(f.Action), utc(f.From), utc(f.To)
+	total, err := q.CountAuditEvents(ctx, sqlc.CountAuditEventsParams{
+		OrganizationID: &org, Category: category, Action: action, ActorUserID: f.ActorUserID, FromTime: from, ToTime: to,
+	})
 	if err != nil {
 		return nil, 0, err
 	}
 	rows, err := q.ListAuditEvents(ctx, sqlc.ListAuditEventsParams{
-		OrganizationID: &org, PageLimit: int32(limit), PageOffset: int32((page - 1) * limit), //nolint:gosec // limit and page are bounded by response.PageParams.
+		OrganizationID: &org, Category: category, Action: action, ActorUserID: f.ActorUserID, FromTime: from, ToTime: to,
+		PageLimit: int32(limit), PageOffset: int32((page - 1) * limit), //nolint:gosec // limit and page are bounded by response.PageParams.
 	})
 	if err != nil {
 		return nil, 0, err
 	}
 	out := make([]models.Event, 0, len(rows))
 	for _, r := range rows {
-		data := map[string]string{}
-		if err := json.Unmarshal(r.Data, &data); err != nil {
-			return nil, 0, fmt.Errorf("decode audit data: %w", err)
+		ev, err := decodeEvent(sqlc.GetAuditEventRow(r))
+		if err != nil {
+			return nil, 0, err
 		}
-		out = append(out, models.Event{
-			ID: r.Id, CreatedAt: r.CreatedAt, OrganizationID: r.OrganizationId, ActorUserID: r.ActorUserId, Action: r.Action,
-			TargetType: r.TargetType, TargetID: r.TargetId, IP: r.Ip, Data: data,
-		})
+		out = append(out, ev)
 	}
 	return out, total, nil
+}
+
+func (s *Service) Get(ctx context.Context, org, id uuid.UUID) (models.Event, error) {
+	row, err := sqlc.New(s.db).GetAuditEvent(ctx, sqlc.GetAuditEventParams{OrganizationID: &org, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return models.Event{}, ErrEventNotFound
+	}
+	if err != nil {
+		return models.Event{}, err
+	}
+	return decodeEvent(row)
+}
+
+func decodeEvent(r sqlc.GetAuditEventRow) (models.Event, error) {
+	data := map[string]string{}
+	if err := json.Unmarshal(r.Data, &data); err != nil {
+		return models.Event{}, fmt.Errorf("decode audit data: %w", err)
+	}
+	return models.Event{
+		ID: r.Id, CreatedAt: r.CreatedAt, OrganizationID: r.OrganizationId, ActorUserID: r.ActorUserId, Action: r.Action,
+		TargetType: r.TargetType, TargetID: r.TargetId, IP: r.Ip, Data: data,
+	}, nil
 }
 
 func (s *Service) Verify(ctx context.Context, org uuid.UUID) (models.VerifyResult, error) {

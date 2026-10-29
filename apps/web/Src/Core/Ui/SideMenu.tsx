@@ -1,6 +1,7 @@
-import type { MouseEvent, ReactNode } from 'react';
+import { useId, type MouseEvent, type ReactNode } from 'react';
 
 import { Avatar } from '@/Core/Ui/Avatar';
+import { Badge } from '@/Core/Ui/Badge';
 import { cx } from '@/Core/Ui/ClassNames';
 import { Icon } from '@/Core/Ui/Icon';
 import { IconButton } from '@/Core/Ui/IconButton';
@@ -22,6 +23,7 @@ export interface IPendingMenuItem {
   icon: TIconName;
   label: string;
   hint: string;
+  badge: string;
 }
 
 export type TMenuEntry = IMenuItem | IPendingMenuItem;
@@ -52,7 +54,7 @@ export interface ISideMenuProps {
 }
 
 const ITEM =
-  'flex items-center gap-3 rounded-sm px-2.5 py-2 text-body-sm no-underline transition-colors duration-140 max-md:size-11 max-md:justify-center max-md:p-0';
+  'flex items-center gap-3 rounded-sm px-2.5 py-2 text-label no-underline transition-colors duration-140 max-md:size-11 max-md:justify-center max-md:p-0';
 
 const isPlainClick = (event: MouseEvent<HTMLAnchorElement>): boolean =>
   event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
@@ -78,14 +80,35 @@ const MenuLink = ({ item }: { item: IMenuItem }) => (
   </Tooltip>
 );
 
-const PendingLink = ({ item }: { item: IPendingMenuItem }) => (
-  <Tooltip label={item.hint} side="top">
-    <button type="button" aria-disabled="true" className={cx(ITEM, 'cursor-not-allowed border-0 bg-transparent text-start text-tertiary')}>
-      <Icon name={item.icon} size={18} />
-      <span className="max-md:sr-only">{item.label}</span>
-    </button>
-  </Tooltip>
-);
+const PendingLink = ({ item }: { item: IPendingMenuItem }) => {
+  const id = useId();
+  return (
+    <Tooltip label={`${item.label} · ${item.hint}`} side="top" phoneOnly>
+      <button
+        type="button"
+        aria-disabled="true"
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-hint`}
+        data-pending=""
+        onClick={(event) => {
+          event.preventDefault();
+        }}
+        className={cx(ITEM, 'cursor-not-allowed border-0 bg-transparent text-start text-tertiary')}
+      >
+        <Icon name={item.icon} size={18} className="opacity-60" />
+        <span id={`${id}-label`} className="opacity-80 max-md:sr-only">
+          {item.label}
+        </span>
+        <span id={`${id}-hint`} className="sr-only">
+          {item.hint}
+        </span>
+        <span aria-hidden="true" className="ms-auto max-md:hidden">
+          <Badge tone="mute">{item.badge}</Badge>
+        </span>
+      </button>
+    </Tooltip>
+  );
+};
 
 const AccountRow = ({ account }: { account: IMenuAccount }) => (
   <div className="flex items-center gap-1 max-md:contents">
@@ -102,7 +125,7 @@ const AccountRow = ({ account }: { account: IMenuAccount }) => (
           }
         }}
         className={cx(
-          'flex min-w-0 flex-1 items-center gap-2.5 rounded-sm px-1.5 py-2 text-body-sm no-underline transition-colors duration-140',
+          'flex min-w-0 flex-1 items-center gap-2.5 rounded-sm px-1.5 py-2 text-label no-underline transition-colors duration-140',
           'max-md:size-11 max-md:flex-none max-md:justify-center max-md:p-0',
           account.current ? 'bg-sel text-primary' : 'text-secondary hover:bg-hover hover:text-primary',
         )}

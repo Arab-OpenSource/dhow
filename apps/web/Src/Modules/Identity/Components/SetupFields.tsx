@@ -53,7 +53,7 @@ export const PasswordFields = ({ form }: ISetupFieldsProps) => {
           <PasswordInput autoComplete="new-password" {...form.register('Password')} />
         </Field>
         <StrengthMeter password={password} />
-        <p className="m-0 text-caption text-tertiary">{t('password.hint')}</p>
+        <p className="m-0 text-body-sm text-tertiary">{t('password.hint')}</p>
       </div>
       <Field label={t('field.confirmPassword')} error={message(errors.ConfirmPassword?.message)}>
         <PasswordInput autoComplete="new-password" {...form.register('ConfirmPassword')} />
@@ -96,7 +96,7 @@ export const OrganizationFields = ({ form }: ISetupFieldsProps) => {
             })}
           />
         </Field>
-        <p className="m-0 text-caption text-tertiary">{t('setup.slug.hint')}</p>
+        <p className="m-0 text-body-sm text-tertiary">{t('setup.slug.hint')}</p>
       </div>
     </>
   );

@@ -148,7 +148,7 @@ const Loaded = ({ organizationId, actor, teamId, onDeleted }: ITeamBodyProps & {
       ) : (
         <Card padded>
           <div className="grid gap-1">
-            <span className="text-title-sm">{team.data.Name}</span>
+            <span className="text-title-card">{team.data.Name}</span>
             {team.data.Description === '' ? null : <p className="m-0 text-body-sm text-secondary">{team.data.Description}</p>}
           </div>
         </Card>

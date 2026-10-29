@@ -14,6 +14,6 @@ export const HintedField = ({ label, hint, error, children }: IHintedFieldProps)
     <Field label={label} error={error}>
       {children}
     </Field>
-    <small className="text-caption text-tertiary">{hint}</small>
+    <small className="text-body-sm text-tertiary">{hint}</small>
   </div>
 );

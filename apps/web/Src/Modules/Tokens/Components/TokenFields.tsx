@@ -39,7 +39,7 @@ export const TokenFields = (props: ITokenFieldsProps) => {
       ) : null}
       <div className="grid gap-1.5">
         <span className="text-body-sm text-secondary">{t('tokens.form.scopes')}</span>
-        <small className="text-caption text-tertiary">{t('tokens.form.scopes.hint')}</small>
+        <small className="text-body-sm text-tertiary">{t('tokens.form.scopes.hint')}</small>
         <CheckList
           label={t('tokens.form.scopes')}
           items={SCOPES.map((scope) => ({ value: scope, title: t(`scope.${scope}`), about: scope, disabled: !allowed.includes(scope) }))}

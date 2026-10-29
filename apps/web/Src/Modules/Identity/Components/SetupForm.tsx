@@ -96,18 +96,18 @@ export const SetupForm = ({ token, onDone, onAlreadyDone }: ISetupFormProps) => 
     <form noValidate onSubmit={(event) => void form.handleSubmit(HandleValid)(event)} className="grid gap-5">
       {Notice ? <InlineAlert accent="failed" title={Notice} /> : null}
       <fieldset className="m-0 grid gap-4 border-0 p-0">
-        <legend className="mb-3 p-0 text-title-sm">{t('setup.section.owner')}</legend>
+        <legend className="mb-3 p-0 text-title-card">{t('setup.section.owner')}</legend>
         <OwnerFields form={form} />
         <PasswordFields form={form} />
       </fieldset>
       <fieldset className="m-0 grid gap-4 border-0 p-0">
-        <legend className="mb-3 p-0 text-title-sm">{t('setup.section.organization')}</legend>
+        <legend className="mb-3 p-0 text-title-card">{t('setup.section.organization')}</legend>
         <OrganizationFields form={form} />
       </fieldset>
       <Button type="submit" variant="primary" disabled={submit.Pending} className="w-full">
         {submit.Pending ? t('setup.submitting') : t('setup.submit')}
       </Button>
-      <p className="m-0 flex items-start gap-2 text-caption text-secondary">
+      <p className="m-0 flex items-start gap-2 text-body-sm text-secondary">
         <Icon name="shield" size={16} className="mt-px text-tertiary" />
         <span>{t('setup.closeNotice')}</span>
       </p>

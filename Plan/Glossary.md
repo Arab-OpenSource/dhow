@@ -26,6 +26,10 @@
 | Developer | مطوّر |
 | Viewer | مشاهد |
 | Audit log | سجل الأحداث |
+| Job | تشغيل (الجمع: التشغيلات) |
+| Attempt | محاولة |
+| Fencing token | رقم الحجز |
+| Label | وسم (الجمع: الأوسمة) |
 | Job log | سجل التشغيل |
 | Deployment | نشر |
 | Environment | بيئة |

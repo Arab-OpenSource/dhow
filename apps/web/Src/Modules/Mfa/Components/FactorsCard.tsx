@@ -20,7 +20,8 @@ export const FactorsCard = ({ status, methods, onSetUpTotp }: IFactorsCardProps)
   const card = useFactorsCard(methods);
   const Open = card.Open;
 
-  const totpSub = status.TotpEnabled && status.TotpEnabledAt ? t('mfa.totp.on', { when: time.ago(status.TotpEnabledAt) }) : t('mfa.totp.off');
+  const totpOff = status.PasskeyCount > 0 ? t('mfa.totp.off') : t('mfa.totp.off.alone');
+  const totpSub = status.TotpEnabled && status.TotpEnabledAt ? t('mfa.totp.on', { when: time.ago(status.TotpEnabledAt) }) : totpOff;
   const recoverySub = !status.Enabled
     ? t('mfa.recovery.off')
     : status.RecoveryCodesRemaining > 0
@@ -95,7 +96,7 @@ export const FactorsCard = ({ status, methods, onSetUpTotp }: IFactorsCardProps)
           </li>
         ) : null}
         {card.Codes !== null ? (
-          <li className="px-4 pb-4">
+          <li className="px-card pb-card">
             <RecoveryCodes codes={card.Codes} onDone={card.DoneCodes} />
           </li>
         ) : null}

@@ -16,10 +16,16 @@ export const SECOND_FACTOR_RULES: readonly TSecondFactorRule[] = ['off', 'admins
 
 export const ruleReach = (rule: TSecondFactorRule): number => SECOND_FACTOR_RULES.indexOf(rule);
 
+const SECOND_FACTOR_ADMIN_ROLES: readonly TRole[] = ['owner', 'admin'];
+
+export const secondFactorCovers = (rule: TSecondFactorRule, role: TRole): boolean =>
+  rule === 'everyone' || (rule === 'admins' && SECOND_FACTOR_ADMIN_ROLES.includes(role));
+
 const AUDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const ORGANIZATION_EDIT_ROLES: readonly TRole[] = ['owner', 'admin'];
 const MEMBER_READ_ROLES: readonly TRole[] = ['owner', 'admin', 'maintainer', 'developer'];
 const MEMBER_MANAGE_ROLES: readonly TRole[] = ['owner', 'admin'];
+const TOKEN_MANAGE_ROLES: readonly TRole[] = ['owner', 'admin'];
 const RUNNER_READ_ROLES: readonly TRole[] = ['owner', 'admin', 'maintainer', 'developer'];
 const RUNNER_MANAGE_ROLES: readonly TRole[] = ['owner', 'admin'];
 
@@ -32,6 +38,8 @@ export const canReadMembers = (role: TRole | undefined): boolean => role !== und
 
 export const canManageMembers = (role: TRole | undefined): boolean =>
   role !== undefined && MEMBER_MANAGE_ROLES.includes(role);
+
+export const canManageTokens = (role: TRole | undefined): boolean => role !== undefined && TOKEN_MANAGE_ROLES.includes(role);
 
 export const canReadRunners = (role: TRole | undefined): boolean => role !== undefined && RUNNER_READ_ROLES.includes(role);
 

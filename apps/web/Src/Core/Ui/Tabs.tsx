@@ -47,7 +47,7 @@ export const Tabs = <T extends string>(props: ITabsProps<T>) => {
       ref={listRef}
       role="tablist"
       aria-label={label}
-      className="flex gap-1 overflow-x-auto rounded-md border border-line bg-surface-inset p-1"
+      className="flex min-h-fit shrink-0 gap-1 overflow-x-auto rounded-md border border-line bg-surface-inset p-1"
     >
       {tabs.map((tab) => {
         const selected = tab.id === value;
@@ -65,7 +65,7 @@ export const Tabs = <T extends string>(props: ITabsProps<T>) => {
               onChange(tab.id);
             }}
             className={cx(
-              'h-btn-sm flex-1 cursor-pointer rounded-btn border-0 px-3 text-label-sm whitespace-nowrap transition-colors duration-140',
+              'h-btn-sm flex-1 cursor-pointer rounded-btn border-0 px-3 text-label whitespace-nowrap transition-colors duration-140',
               selected ? 'bg-surface-raised text-primary' : 'bg-transparent text-secondary hover:text-primary',
             )}
           >

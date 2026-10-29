@@ -56,6 +56,13 @@ func seedInvitation(env *apptest.Env, org, inviter, role string) string {
 	return id
 }
 
+func auditEventOf(env *apptest.Env, org string) string {
+	var id string
+	require.NoError(env.T, env.Pool.QueryRow(context.Background(),
+		`SELECT "Id"::text FROM "AuditEvents" WHERE "OrganizationId" = $1 ORDER BY "Seq" LIMIT 1`, org).Scan(&id))
+	return id
+}
+
 func freshMember(env *apptest.Env, org string) string {
 	return env.SeedUser(uuid.MustParse(org), randomEmail(env.T), "a long password for a target", string(policy.RoleViewer)).String()
 }
@@ -76,6 +83,9 @@ func organizationPath(env *apptest.Env, fx fixture, rule policy.Rule) string {
 	}
 	if strings.Contains(path, "{bindingId}") {
 		path = strings.ReplaceAll(path, "{bindingId}", seedBinding(env, fx.orgA, team, string(policy.RoleViewer)))
+	}
+	if strings.Contains(path, "{eventId}") {
+		path = strings.ReplaceAll(path, "{eventId}", auditEventOf(env, fx.orgA))
 	}
 	if strings.Contains(path, "{invitationId}") {
 		path = strings.ReplaceAll(path, "{invitationId}", seedInvitation(env, fx.orgA, fx.byRole[policy.RoleOwner], string(policy.RoleViewer)))

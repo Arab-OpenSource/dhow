@@ -59,6 +59,7 @@ A host needs at least 1 CPU core, 2 GiB of memory and 5 GiB of free disk (2 core
 | [Hardware requirements](docs/requirements.md) | Measured CPU, memory and disk for the server, PostgreSQL and runners |
 | [Development](docs/development.md) | Running Dhow from source on Linux, macOS or Windows, with or without Docker, and the tests |
 | [Sign in with OIDC](docs/guides/oidc.md) | Google, Keycloak, GitHub and any OIDC provider, account linking, allowed domains |
+| [Follow jobs in the web app](docs/guides/jobs.md) | The job list, stuck jobs without a runner, stopping a job, the live log, attempts and settings |
 | [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
 | [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
 

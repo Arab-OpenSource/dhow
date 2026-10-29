@@ -133,8 +133,45 @@ describe('the members list', () => {
     expect(rows[0]).toHaveTextContent(Ar['role.owner']);
     expect(rows[1]).toHaveTextContent(Ar['role.admin']);
     expect(rows[2]).toHaveTextContent(Ar['role.developer']);
-    expect(rows[2]).toHaveTextContent(Ar['members.mfa.needs']);
     expect(within(dialog).getByRole('button', { name: Ar['organization.invite'] })).toBeInTheDocument();
+  });
+
+  it('warns about a missing second step only when the organization asks for it', async () => {
+    const { dialog } = await mount();
+    const list = await within(dialog).findByRole('list', { name: Ar['members.title'] });
+    expect(list).not.toHaveTextContent(Ar['members.mfa.needs']);
+    const calm = within(list).getAllByText(Ar['members.mfa.none']);
+    expect(calm.length).toBeGreaterThan(0);
+    for (const badge of calm) expect(badge).toHaveAttribute('data-tone', 'mute');
+  });
+
+  it('warns every member without a second step when the organization asks everyone', async () => {
+    const { dialog } = await mount({ secondFactorRule: 'everyone' });
+    const list = await within(dialog).findByRole('list', { name: Ar['members.title'] });
+    const rows = within(list).getAllByRole('listitem');
+    const [warning] = within(rows[2] ?? list).getAllByText(Ar['members.mfa.needs']);
+    expect(warning).toHaveAttribute('data-tone', 'warn');
+    expect(rows[0]).not.toHaveTextContent(Ar['members.mfa.needs']);
+  });
+
+  it('warns only owners and admins when the organization asks them alone', async () => {
+    const members = membersFixture().map((member) => ({ ...member, Mfa: 'none' }));
+    const { dialog } = await mount({ secondFactorRule: 'admins', members });
+    const rows = within(await within(dialog).findByRole('list', { name: Ar['members.title'] })).getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent(Ar['members.mfa.needs']);
+    expect(rows[1]).toHaveTextContent(Ar['members.mfa.needs']);
+    expect(rows[2]).not.toHaveTextContent(Ar['members.mfa.needs']);
+    expect(rows[2]).toHaveTextContent(Ar['members.mfa.none']);
+  });
+
+  it('keeps the tabs whole and pinned above a long settings tab', async () => {
+    const { dialog } = await settings();
+    await within(dialog).findByLabelText(Ar['organization.name']);
+    const list = within(dialog).getByRole('tablist', { name: Ar['organization.tabs'] });
+    expect(list).toHaveClass('min-h-fit', 'shrink-0');
+    expect(list.closest('[data-slide-pinned]')).toHaveClass('sticky');
+    expect(list.closest('.overflow-auto')).toHaveClass('auto-rows-max');
+    expect(within(list).getByRole('tab', { name: Ar['organization.tab.settings'] })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('shows the list read-only to a developer, without the invite button or the second-step state', async () => {

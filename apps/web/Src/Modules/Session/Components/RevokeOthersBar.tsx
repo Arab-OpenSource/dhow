@@ -23,7 +23,7 @@ export const RevokeOthersBar = ({ others, confirming, busy, onAsk, onCancel, onC
   if (others === 0) return null;
 
   return (
-    <div className="grid gap-2 border-t border-line px-4 py-3">
+    <div className="grid gap-2 border-t border-line px-card py-3">
       {confirming ? (
         <>
           <span className="text-body-sm text-secondary">{t('sessions.revokeOthers.question', { count: others })}</span>

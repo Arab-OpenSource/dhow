@@ -40,7 +40,7 @@ export const ChoiceList = <T extends string>(props: IChoiceListProps<T>) => {
         >
           <span className="grid min-w-0 flex-1 gap-px">
             <span className="text-label text-primary">{choice.title}</span>
-            {choice.about ? <small className="text-caption text-tertiary">{choice.about}</small> : null}
+            {choice.about ? <small className="text-body-sm text-tertiary">{choice.about}</small> : null}
           </span>
           {checked ? <Icon name="check" size={16} weight={2.4} className="flex-none text-primary" /> : null}
         </button>

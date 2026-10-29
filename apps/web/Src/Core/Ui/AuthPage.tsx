@@ -20,7 +20,7 @@ export const AuthPage = ({ title, lead, footer, children }: IAuthPageProps) => {
     <div className="flex min-h-dvh flex-col bg-canvas">
       <header className="flex items-center gap-2.5 px-4 py-4 md:px-8">
         <Mark size={28} />
-        <span className="text-title-xl">{t('shell.brand')}</span>
+        <span className="text-title-section">{t('shell.brand')}</span>
         <Button
           className="ms-auto"
           aria-label={t('shell.language.switch', { language: t(`language.${target}`) })}
@@ -35,7 +35,7 @@ export const AuthPage = ({ title, lead, footer, children }: IAuthPageProps) => {
         <div className="grid w-full max-w-[440px] gap-4">
           <section className="grid gap-5 rounded-lg border border-line bg-surface p-5 md:p-8">
             <div className="grid gap-1.5">
-              <h1 className="m-0 text-title-2xl">{title}</h1>
+              <h1 className="m-0 text-title-page">{title}</h1>
               {lead ? <p className="m-0 text-body-sm text-secondary">{lead}</p> : null}
             </div>
             {children}

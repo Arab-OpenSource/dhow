@@ -1,3 +1,5 @@
+import { AuditAr } from '@/I18n/Locales/Workspace/AuditAr';
+import { JobsAr } from '@/I18n/Locales/Workspace/JobsAr';
 import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
 import { RunnersAr } from '@/I18n/Locales/Workspace/RunnersAr';
 
@@ -159,14 +161,15 @@ export const WorkspaceAr = {
   'pager.next': 'الصفحة اللي بعدها',
   'pager.status': 'صفحة {page} من {pages}',
 
-
   'palette.command.account': 'افتح حسابي',
   'palette.command.password': 'غيّر كلمة السر',
   'palette.command.signOut': 'اخرج من الحساب',
 
   'account.title': 'حسابي',
   'account.error.title': 'مقدرناش نحمّل بيانات حسابك',
-  'account.summary.title': 'إنت داخل بحسابك',
+  'account.summary.strong.title': 'حسابك محمي بخطوة ثانية',
+  'account.summary.weak.title': 'فعّل الخطوة الثانية لحماية حسابك',
+  'account.summary.weak.sub': 'حسابك محمي بكلمة السر فقط. أضف كودًا من تطبيق المصادقة أو مفتاح مرور من قسم الخطوة الثانية أدناه.',
   'account.summary.sub': 'الجلسة دي بتنتهي {date}، أو بعد 12 ساعة من غير نشاط.',
   'account.profile.title': 'بياناتك',
   'account.profile.name': 'الاسم',
@@ -288,14 +291,6 @@ export const WorkspaceAr = {
   'audit.verify.intact.sub': 'اتفحص {count} حدث ومفيش أي تعديل.',
   'audit.verify.broken.title': 'السلسلة مكسورة',
   'audit.verify.broken.sub': 'اتفحص {count} حدث، والكسر بدأ عند الحدث ده:',
-  'audit.action.auth.login': 'دخول ناجح',
-  'audit.action.auth.login_failed': 'محاولة دخول فاشلة',
-  'audit.action.auth.logout': 'خروج من الحساب',
-  'audit.action.auth.password_changed': 'تغيير كلمة السر',
-  'audit.action.auth.session_revoked': 'إنهاء جهاز داخل',
-  'audit.action.auth.sessions_revoked_others': 'إنهاء كل الأجهزة التانية',
-  'audit.action.identity.organization.updated': 'تعديل بيانات المؤسسة',
-  'audit.action.system.instance.setupCompleted': 'إكمال الإعداد الأولاني',
 
   'palette.command.organization': 'افتح بيانات المؤسسة والأعضاء',
   'organization.title': 'المؤسسة',
@@ -322,6 +317,7 @@ export const WorkspaceAr = {
   'mfa.totp.title': 'كود من تطبيق المصادقة',
   'mfa.totp.on': 'شغّال {when}',
   'mfa.totp.off': 'مقفول. مفاتيح المرور كفاية، بس الكود مفيد كبديل.',
+  'mfa.totp.off.alone': 'غير مفعّل. فعّله لتحمي حسابك بخطوة ثانية.',
   'mfa.totp.enable': 'فعّله',
   'mfa.totp.change': 'غيّره',
   'mfa.totp.disable': 'اقفله',
@@ -380,25 +376,14 @@ export const WorkspaceAr = {
   'totp.code': 'الكود اللي ظاهر في التطبيق',
   'totp.submit': 'أكّد وفعّل',
   'totp.submitting': 'بنفعّل',
+  'totp.start': 'اعرض الرمز للمسح',
+  'totp.start.about': 'سنعرض لك رمزًا تمسحه بتطبيق المصادقة، ثم تكتب الكود الذي يظهر فيه. لن يتغير شيء في حسابك قبل أن تؤكد الكود.',
   'totp.loading': 'بنجهّز الكود',
   'totp.error': 'مقدرناش نبدأ التفعيل',
   'totp.restart': 'ابدأ من الأول',
   'totp.enabled': 'اتفعّل الكود من تطبيق المصادقة',
-  'audit.action.auth.mfa_pending': 'كلمة سر صح ومستني الخطوة التانية',
-  'audit.action.auth.mfa_failed': 'خطوة تانية فاشلة',
-  'audit.action.auth.recovery_code_used': 'استخدام كود طوارئ',
-  'audit.action.auth.totp_enabled': 'تفعيل الكود من تطبيق المصادقة',
-  'audit.action.auth.totp_disabled': 'قفل الكود من تطبيق المصادقة',
-  'audit.action.auth.recovery_codes_regenerated': 'أكواد طوارئ جديدة',
-  'audit.action.auth.passkey_added': 'إضافة مفتاح مرور',
-  'audit.action.auth.passkey_renamed': 'تغيير اسم مفتاح مرور',
-  'audit.action.auth.passkey_removed': 'شيل مفتاح مرور',
-  'audit.action.auth.passkey_sign_count_regressed': 'عدّاد مفتاح مرور رجع لورا',
-  'audit.action.auth.oidc_login_failed': 'محاولة دخول بخدمة خارجية ما نفعتش',
-  'audit.action.auth.identity_linked': 'اتربط حساب دخول خارجي',
-  'audit.action.auth.identity_unlinked': 'اتفك ربط حساب دخول خارجي',
-  'audit.action.auth.api_token_created': 'اتعمل مفتاح API',
-  'audit.action.auth.api_token_revoked': 'اتلغى مفتاح API',
+  ...AuditAr,
   ...OrganizationAr,
+  ...JobsAr,
   ...RunnersAr,
 } as const;

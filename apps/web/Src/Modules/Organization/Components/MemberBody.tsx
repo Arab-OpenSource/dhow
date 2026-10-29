@@ -46,7 +46,7 @@ const MfaCard = ({ organizationId, actor, member }: { organizationId: string; ac
           {member.MfaResetPending ? <Badge tone="warn">{t('members.mfa.resetPending')}</Badge> : null}
         </p>
         {!allowed ? null : state === 'none' ? (
-          <p className="m-0 text-caption text-tertiary">{t('member.mfa.nothing', { name: member.Name })}</p>
+          <p className="m-0 text-body-sm text-tertiary">{t('member.mfa.nothing', { name: member.Name })}</p>
         ) : Confirming && methods !== undefined ? (
           <ConfirmPanel
             question={t('member.mfa.resetQuestion', { name: member.Name })}
@@ -70,7 +70,7 @@ const MfaCard = ({ organizationId, actor, member }: { organizationId: string; ac
           />
         ) : (
           <>
-            <p className="m-0 text-caption text-tertiary">{t('member.mfa.resetAbout')}</p>
+            <p className="m-0 text-body-sm text-tertiary">{t('member.mfa.resetAbout')}</p>
             <Button
               size="sm"
               variant="danger"
@@ -108,8 +108,8 @@ export const MemberBody = ({ userId, onRemoved }: IMemberBodyProps) => {
         <div className="flex min-w-0 items-center gap-3">
           <Avatar name={member.Name} size="lg" />
           <div className="grid min-w-0 flex-1 gap-0.5">
-            <span className="truncate text-title-sm">{member.Name}</span>
-            <bdi dir="ltr" className="truncate font-mono text-caption text-tertiary">
+            <span className="truncate text-title-card">{member.Name}</span>
+            <bdi dir="ltr" className="truncate font-mono text-code text-tertiary">
               {member.Email}
             </bdi>
           </div>

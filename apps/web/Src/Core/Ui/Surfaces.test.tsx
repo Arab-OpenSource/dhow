@@ -19,6 +19,8 @@ describe('Card', () => {
     const card = container.querySelector<HTMLElement>('section');
     if (!card) throw new Error('the card did not render');
     expect(card).toHaveClass('border-line', 'bg-surface', 'rounded-md');
+    expect(screen.getByRole('heading', { level: 3 })).toHaveClass('text-title-card');
+    expect(card.querySelector('header')).toHaveClass('px-card');
     expect(screen.getByRole('heading', { level: 3, name: 'Sign-in methods' })).toBeInTheDocument();
     expect(within(card).getByText('3 devices')).toBeInTheDocument();
     expect(card.querySelector('header svg')).toHaveAttribute('aria-hidden', 'true');
@@ -85,6 +87,18 @@ describe('Summary', () => {
 });
 
 describe('Badge', () => {
+  it('has a tone for every status, with a line, a wash and a foreground', () => {
+    render(
+      <>
+        <Badge tone="info">Building</Badge>
+        <Badge tone="queue">Queued</Badge>
+      </>,
+    );
+    expect(screen.getByText('Building')).toHaveClass('border-info-line', 'bg-info-wash', 'text-info-fg');
+    expect(screen.getByText('Queued')).toHaveClass('border-queue-line', 'bg-queue-wash', 'text-queue-fg');
+    expect(screen.getByText('Queued')).toHaveClass('text-caption', 'border');
+  });
+
   it('has ok, warn, bad and mute tones and always carries a word', () => {
     render(
       <>

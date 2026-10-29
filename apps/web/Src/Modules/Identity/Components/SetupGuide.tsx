@@ -23,7 +23,7 @@ export const SetupGuide = ({ rejection }: ISetupGuideProps) => {
         <li>{t('setup.guide.step3')}</li>
       </ol>
       <div className="grid gap-1.5">
-        <span className="text-caption text-secondary">{t('setup.guide.command')}</span>
+        <span className="text-body-sm text-secondary">{t('setup.guide.command')}</span>
         <code dir="ltr" className="block overflow-x-auto rounded-input border border-line bg-input px-3 py-2.5 text-start font-mono text-code">
           {LOG_COMMAND}
         </code>

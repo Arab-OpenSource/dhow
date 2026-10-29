@@ -57,6 +57,7 @@ type jobView struct {
 	Attempts []struct {
 		Id, State, FailureReason, RunnerId string
 		Number                             int
+		FencingToken                       int64
 		MutationStartedAt                  *string
 		Steps                              []struct {
 			Index    int

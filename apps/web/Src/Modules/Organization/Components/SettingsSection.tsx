@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import type { ApiError } from '@/Core/Api/ApiError';
-import { canEditOrganization, type TOrganization, type TRole } from '@/Core/Auth/AuthTypes';
+import { canEditOrganization, canManageTokens, type TOrganization, type TRole } from '@/Core/Auth/AuthTypes';
 import { ME_QUERY_KEY } from '@/Core/Auth/MeQuery';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { useOrganizationStore } from '@/Core/Store/useOrganizationStore';
@@ -19,6 +19,7 @@ export interface ISettingsSectionProps {
   organization: TOrganization;
   role: TRole;
   onTransfer: () => void;
+  onTokens: () => void;
   onLeft: () => void;
 }
 
@@ -90,12 +91,22 @@ const LeaveCard = ({ organization, onLeft }: TLeaveCardProps) => {
   );
 };
 
-export const SettingsSection = ({ organization, role, onTransfer, onLeft }: ISettingsSectionProps) => {
+export const SettingsSection = ({ organization, role, onTransfer, onTokens, onLeft }: ISettingsSectionProps) => {
   const t = useT();
   return (
     <>
       <OrganizationCard organization={organization} editable={canEditOrganization(role)} />
       {role === 'owner' ? <SecondFactorCard organization={organization} /> : null}
+      {canManageTokens(role) ? (
+        <Card title={t('organization.tokens.title')} icon="key" padded>
+          <div className="grid justify-items-start gap-3">
+            <p className="m-0 text-body-sm text-secondary">{t('organization.tokens.about')}</p>
+            <Button size="sm" iconStart="key" onClick={onTokens}>
+              {t('organization.tokens.open')}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
       {role === 'owner' ? (
         <Card title={t('organization.transfer.title')} icon="swap" padded>
           <div className="grid justify-items-start gap-3">

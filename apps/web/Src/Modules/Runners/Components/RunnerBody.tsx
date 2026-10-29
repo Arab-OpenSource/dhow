@@ -37,7 +37,7 @@ const Header = ({ runner }: { runner: TRunner }) => {
         <Icon name="server" size={22} className="mt-0.5 flex-none text-secondary" />
         <div className="grid min-w-0 flex-1 gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="m-0 min-w-0 truncate text-title-sm">
+            <h3 className="m-0 min-w-0 truncate text-title-card">
               <bdi>{runner.Name}</bdi>
             </h3>
             <Badge tone={VIEW_TONE[view]}>{t(VIEW_LABEL[view])}</Badge>

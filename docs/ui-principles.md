@@ -1,11 +1,8 @@
 # UI principles
 
-Status: **Draft**. Final brand color and Arabic typeface are **pending the design-system review**:
+Status: **Accepted**. The current visual direction is "control room" (ADR-0059, which amends ADR-0034).
 
-- Color candidates: deep sea teal, warm saffron/sand, Nile green.
-- Font candidates: IBM Plex Sans Arabic, Readex Pro, Cairo/Tajawal.
-
-Decisions: ADR-0021 to ADR-0023.
+Decisions: ADR-0021 to ADR-0023, ADR-0034 and ADR-0059.
 
 ## 1. Arabic-first, not "mirrored English" (ADR-0021)
 
@@ -19,7 +16,25 @@ Decisions: ADR-0021 to ADR-0023.
   - **Never hardcode strings.** CI fails on missing keys in any shipped locale.
   - Mixed-direction content gets proper bidi isolation: commit SHAs, branch names, paths and logs render LTR inside RTL layouts using `<bdi>` / `dir="ltr"`.
   - Logs and code are always LTR, in monospace.
-- **Typography:** the Arabic and Latin faces are tuned together (x-height and weight matching), and the line-height accommodates Arabic diacritics.
+- **Typography:** IBM Plex Sans Arabic for Arabic, IBM Plex Sans for Latin and numerals, and IBM Plex Mono for code and logs. All three are self-hosted (SIL OFL 1.1) in weights 400, 500 and 600.
+  - Arabic has its own sizes, set on `:root:lang(ar)` by the generated tokens, so no class is needed.
+  - The scale, Latin / Arabic in px (size / line height):
+
+    | Role | Latin | Arabic |
+    |---|---|---|
+    | Page title | 24 / 34 | 26 / 38 |
+    | Section and slide title | 18 / 28 | 19 / 30 |
+    | Card title | 16 / 24 | 17 / 26 |
+    | Body | 15 / 24 | 16 / 28 |
+    | Secondary text | 14 / 22 | 15 / 24 |
+    | Buttons and labels | 14 / 20 | 15 / 22 |
+    | Small buttons | 13 / 20 | 14 / 20 |
+    | Badges and dates | 13 / 20 | 13 / 20 |
+    | Stats | 30 / 38 | 30 / 38 |
+    | Code and logs | 13 / 22 | 13 / 22 |
+
+  - Nothing is smaller than 13px, and 13px is only for badges, dates and code. Titles go up to weight 600.
+- **Spacing:** a 4px grid. The page gutter is 32px (16px on phones), cards have 20px of padding (14px on phones), blocks are 16px apart, and the top bar is 60px high.
 
 ## 2. Navigation model (ADR-0022)
 
@@ -36,7 +51,8 @@ Decisions: ADR-0021 to ADR-0023.
   - Summaries come first and details appear on demand.
   - Tables are not the default view.
   - Show the ~5 things that matter and put the rest behind a panel.
-- Dark and light themes follow the system setting, with a manual override.
+- Four dark system themes, plus custom ones. Text meets WCAG AA on every surface of every theme, and cards stand out with a hairline instead of a shadow.
+- Status has its own colors, each with a background and a foreground: green for success, blue for running, violet for queued, amber for warnings and coral for failures.
 
 ## 4. Performance budgets
 

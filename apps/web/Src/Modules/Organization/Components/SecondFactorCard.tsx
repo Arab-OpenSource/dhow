@@ -61,7 +61,7 @@ export const SecondFactorCard = ({ organization }: ISecondFactorCardProps) => {
 
   return (
     <Card title={t('organization.secondFactor.title')} icon="shield">
-      <div className="grid gap-3 px-4 py-3">
+      <div className="grid gap-3 px-card py-3">
         <p className="m-0 text-body-sm text-secondary">{t('organization.secondFactor.about')}</p>
         {organization.RequireSecondFactorSince && current !== 'off' ? (
           <p className="m-0 text-body-sm text-secondary">

@@ -21,7 +21,7 @@ export const Input = ({ compact = false, invalid, className, type = 'text', ...r
       className={cx(
         'w-full min-w-0 rounded-input border border-line-2 bg-input text-primary placeholder:text-tertiary',
         'aria-invalid:border-accent-coral',
-        compact ? 'h-btn-sm px-2.5 text-caption' : 'h-input px-3.5 text-body',
+        compact ? 'h-btn-sm px-2.5 text-body-sm' : 'h-input px-3.5 text-body',
         className,
       )}
       {...rest}

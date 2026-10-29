@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 import { isApiError } from '@/Core/Api/ApiError';
 import { canReadAudit } from '@/Core/Auth/AuthTypes';
-import { useMembers } from '@/Core/Auth/useMembers';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
 import { Button } from '@/Core/Ui/Button';
@@ -13,26 +12,13 @@ import { Pager } from '@/Core/Ui/Pager';
 import { Rows } from '@/Core/Ui/Row';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
-import type { TAuditEvent } from '@/Modules/Audit/Api/AuditApi';
 import { AuditEventRow } from '@/Modules/Audit/Components/AuditEventRow';
+import { AuditFilters } from '@/Modules/Audit/Components/AuditFilters';
 import { VerifyCard } from '@/Modules/Audit/Components/VerifyCard';
 import { AUDIT_PAGE_SIZE, useAuditEvents } from '@/Modules/Audit/Hooks/useAuditEvents';
+import { useActors } from '@/Modules/Audit/Hooks/useActors';
 import { useVerifyChain, useVerifyState } from '@/Modules/Audit/Hooks/useVerifyChain';
-
-const MEMBER_LOOKUP_LIMIT = 100;
-
-const useActorName = (organizationId: string): ((event: TAuditEvent) => string) => {
-  const t = useT();
-  const members = useMembers(organizationId, 1, MEMBER_LOOKUP_LIMIT);
-  const names = new Map((members.data?.Items ?? []).map((member) => [member.UserId, member.Name]));
-
-  return (event) => {
-    if (event.ActorUserId === undefined) {
-      return event.Action === 'auth.login_failed' ? t('audit.actor.visitor') : t('audit.actor.system');
-    }
-    return names.get(event.ActorUserId) ?? t('audit.actor.unknown');
-  };
-};
+import { EMPTY_FILTER, isFiltered, isRangeValid, toQuery, type IAuditFilter } from '@/Modules/Audit/Types/AuditFilter';
 
 const Forbidden = () => {
   const t = useT();
@@ -43,14 +29,26 @@ const Forbidden = () => {
   );
 };
 
-const AuditContent = ({ organizationId }: { organizationId: string }) => {
+export interface IAuditBodyProps {
+  onOpenEvent?: (eventId: string) => void;
+}
+
+const AuditContent = ({ organizationId, onOpenEvent }: IAuditBodyProps & { organizationId: string }) => {
   const t = useT();
   const errorText = useApiErrorText();
   const [Page, setPage] = useState(1);
-  const events = useAuditEvents(organizationId, Page);
+  const [Filter, setFilter] = useState<IAuditFilter>(EMPTY_FILTER);
+  const [Applied, setApplied] = useState<IAuditFilter>(EMPTY_FILTER);
+  const events = useAuditEvents(organizationId, Page, toQuery(Applied));
   const verify = useVerifyChain(organizationId);
   const verifyState = useVerifyState(organizationId);
-  const actorName = useActorName(organizationId);
+  const actors = useActors(organizationId);
+  const HandleFilter = (next: IAuditFilter) => {
+    setFilter(next);
+    if (!isRangeValid(next)) return;
+    setApplied(next);
+    setPage(1);
+  };
 
   if (isApiError(events.error) && events.error.Status === 403) return <Forbidden />;
   if (events.isError) {
@@ -80,10 +78,18 @@ const AuditContent = ({ organizationId }: { organizationId: string }) => {
           verify.mutate();
         }}
       />
+      <AuditFilters
+        filter={Filter}
+        members={actors.Members.data?.Items ?? []}
+        onChange={HandleFilter}
+        onClear={() => {
+          HandleFilter(EMPTY_FILTER);
+        }}
+      />
       {events.data === undefined ? <Skeleton label={t('audit.loading')} lines={6} /> : null}
       {events.data?.Items.length === 0 ? (
         <Card>
-          <EmptyState icon="file" text={t('audit.empty')} />
+          <EmptyState icon="file" text={isFiltered(Applied) ? t('audit.filter.empty') : t('audit.empty')} />
         </Card>
       ) : null}
       {events.data && events.data.Items.length > 0 ? (
@@ -94,7 +100,18 @@ const AuditContent = ({ organizationId }: { organizationId: string }) => {
         >
           <Rows label={t('audit.list.title')}>
             {events.data.Items.map((event) => (
-              <AuditEventRow key={event.Id} event={event} actor={actorName(event)} />
+              <AuditEventRow
+                key={event.Id}
+                event={event}
+                actor={actors.NameOf(event)}
+                onOpen={
+                  onOpenEvent
+                    ? () => {
+                        onOpenEvent(event.Id);
+                      }
+                    : undefined
+                }
+              />
             ))}
           </Rows>
         </Card>
@@ -106,8 +123,8 @@ const AuditContent = ({ organizationId }: { organizationId: string }) => {
   );
 };
 
-export const AuditBody = () => {
+export const AuditBody = ({ onOpenEvent }: IAuditBodyProps) => {
   const membership = useCurrentMembership();
   if (membership === undefined || !canReadAudit(membership.Role)) return <Forbidden />;
-  return <AuditContent organizationId={membership.OrganizationId} />;
+  return <AuditContent organizationId={membership.OrganizationId} onOpenEvent={onOpenEvent} />;
 };

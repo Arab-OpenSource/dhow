@@ -94,7 +94,7 @@ export const membersFixture = (): IMemberFixture[] => [
   },
 ];
 
-export type TRouteHandler = (request: Request, url: URL) => Response | undefined;
+export type TRouteHandler = (request: Request, url: URL) => Response | Promise<Response> | undefined;
 
 export interface IPreferencesFixture {
   Locale: string;
@@ -115,6 +115,7 @@ export interface IBackendOptions {
   passwordReply?: () => Response;
   audit?: IAuditFixture[];
   members?: IMemberFixture[];
+  secondFactorRule?: 'off' | 'admins' | 'everyone';
   verify?: () => Response;
   renameReply?: () => Response;
   mfa?: IMfaFixture;
@@ -231,7 +232,7 @@ const organizationReply = async (request: Request, url: URL, options: IBackendOp
     Name: name,
     Slug: 'future-solution',
     CreatedAt: '2026-10-01T08:00:00Z',
-    RequireSecondFactor: 'off',
+    RequireSecondFactor: options.secondFactorRule ?? 'off',
   });
   if (pathname.endsWith('/audit-events/verify')) {
     return options.verify?.() ?? envelope({ Success: true, Data: { Valid: true, Checked: (options.audit ?? []).length } });

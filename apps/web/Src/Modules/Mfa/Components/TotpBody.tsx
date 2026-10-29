@@ -65,7 +65,7 @@ const TotpForm = ({ enrollment, status, onDone }: { enrollment: TTotpEnrollment;
     >
       <QrCode value={enrollment.Uri} />
       <div className="grid gap-1 rounded-md border border-dashed border-line-2 px-4 py-3">
-        <small className="text-caption text-secondary">{t('totp.manual')}</small>
+        <small className="text-body-sm text-secondary">{t('totp.manual')}</small>
         <bdi dir="ltr" className="font-mono text-body-sm tracking-wider select-all">
           {enrollment.Secret.match(KEY_GROUP)?.join(' ')}
         </bdi>
@@ -89,18 +89,42 @@ const TotpForm = ({ enrollment, status, onDone }: { enrollment: TTotpEnrollment;
   );
 };
 
+const TotpStart = ({ onStart }: { onStart: () => void }) => {
+  const t = useT();
+  return (
+    <div className="grid justify-items-start gap-3">
+      <p className="m-0 text-body-sm text-secondary">{t('totp.start.about')}</p>
+      <Button variant="primary" iconStart="phone" onClick={onStart}>
+        {t('totp.start')}
+      </Button>
+    </div>
+  );
+};
+
 export const TotpBody = ({ onDone }: ITotpBodyProps) => {
   const t = useT();
   const errorText = useApiErrorText();
   const status = useMfaStatus();
+  const [Started, setStarted] = useState(false);
   const enrollment = useQuery<TTotpEnrollment, ApiError>({
     queryKey: ENROLLMENT_KEY,
     queryFn: startTotp,
+    enabled: Started,
     staleTime: Infinity,
     gcTime: 0,
     retry: false,
     refetchOnWindowFocus: false,
   });
+
+  if (!Started) {
+    return (
+      <TotpStart
+        onStart={() => {
+          setStarted(true);
+        }}
+      />
+    );
+  }
 
   if (enrollment.isError || status.isError) {
     return (

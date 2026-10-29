@@ -1153,9 +1153,29 @@ export interface paths {
         };
         /**
          * List the audit events of an organization
-         * @description Needs `audit.read`. Newest first. A caller who is not a member gets 404.
+         * @description Needs `audit.read`. Newest first. A caller who is not a member gets 404. Every filter is optional and they combine with AND; `Meta.Total` counts the matching events. A `From` later than `To`, or an unknown `Category`, is `VALIDATION_FAILED`.
          */
         get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/audit-events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one audit event of an organization
+         * @description Needs `audit.read`. An event of another organization, or an unknown id, is 404.
+         */
+        get: operations["getAuditEvent"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1301,7 +1321,7 @@ export interface paths {
         };
         /**
          * List the jobs of an organization
-         * @description Needs `job.read`. Newest first, optionally filtered by state. A caller who is not a member gets 404.
+         * @description Needs `job.read`. Newest first, optionally filtered by state. A queued job that no active runner of the organization can take carries `QueuedReason` `NO_MATCHING_RUNNER`, as in the job itself. A caller who is not a member gets 404.
          */
         get: operations["listJobs"];
         put?: never;
@@ -1625,6 +1645,11 @@ export interface components {
             Data: {
                 [key: string]: string;
             };
+        };
+        /** @enum {string} */
+        AuditCategory: "auth" | "identity" | "runner" | "job" | "system";
+        AuditEventResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["AuditEvent"];
         };
         AuditEventListResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["AuditEvent"][];
@@ -2318,6 +2343,11 @@ export interface components {
             Number: number;
             /** Format: uuid */
             RunnerId: string;
+            /**
+             * Format: int64
+             * @description The fencing token of the attempt's lease. Every attempt gets a larger one than the attempts before it, and the server refuses any call from a runner that holds an older token.
+             */
+            FencingToken: number;
             State: components["schemas"]["JobAttemptState"];
             FailureReason?: string;
             ExitCode?: number;
@@ -2405,6 +2435,17 @@ export interface components {
         Id: string;
         RunnerId: string;
         TokenId: string;
+        EventId: string;
+        /** @description Only events whose action starts with this category, such as `auth` for `auth.login`. */
+        AuditCategory: components["schemas"]["AuditCategory"];
+        /** @description Only events with exactly this action. */
+        AuditAction: string;
+        /** @description Only events done by this user. */
+        AuditActor: string;
+        /** @description Only events at or after this time. */
+        AuditFrom: string;
+        /** @description Only events before this time. */
+        AuditTo: string;
         JobId: string;
         /** @description The attempt number. Without it, the latest attempt. */
         LogAttempt: number;
@@ -4100,6 +4141,16 @@ export interface operations {
             query?: {
                 Page?: components["parameters"]["Page"];
                 Limit?: components["parameters"]["Limit"];
+                /** @description Only events whose action starts with this category, such as `auth` for `auth.login`. */
+                Category?: components["parameters"]["AuditCategory"];
+                /** @description Only events with exactly this action. */
+                Action?: components["parameters"]["AuditAction"];
+                /** @description Only events done by this user. */
+                ActorUserId?: components["parameters"]["AuditActor"];
+                /** @description Only events at or after this time. */
+                From?: components["parameters"]["AuditFrom"];
+                /** @description Only events before this time. */
+                To?: components["parameters"]["AuditTo"];
             };
             header?: never;
             path: {
@@ -4116,6 +4167,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditEventListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getAuditEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                eventId: components["parameters"]["EventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The audit event. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventResponse"];
                 };
             };
             default: components["responses"]["Error"];

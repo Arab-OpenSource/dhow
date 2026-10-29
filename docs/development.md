@@ -36,7 +36,7 @@ Open that link in Chrome or Firefox to create the owner account. From then on, u
 
 | Service | What it does | On your machine |
 |---|---|---|
-| `db` | PostgreSQL 18 with the databases `dhow` and `dhow_test` | `127.0.0.1:5432` |
+| `db` | PostgreSQL 18 with the databases `dhow` and `dhow_test` | `127.0.0.1:55432` |
 | `init` | Writes `.env.dev` with a new secret key the first time, then exits | |
 | `server` | Builds and runs the server from your clone, and watches the Go files (it checks every second, which works on Windows and macOS too) | `http://localhost:8080` (the API only) |
 | `web` | Vite with live reload, forwarding `/api` to `server` | `http://localhost:5173` |
@@ -64,17 +64,17 @@ Everyday commands, from the root of the clone:
 |---|---|---|
 | `DHOW_DEV_WEB_PORT` | `5173` | The web app, and the address the setup link uses |
 | `DHOW_DEV_HTTP_PORT` | `8080` | The server, for `curl` and API clients |
-| `DHOW_DEV_DB_PORT` | `5432` | PostgreSQL, for `psql` or the native tools. `.env.dev` keeps the port of the first start |
+| `DHOW_DEV_DB_PORT` | `55432` | PostgreSQL, for `psql` or the native tools. It is not 5432, so a PostgreSQL already installed on the machine does not block it. `.env.dev` keeps the port of the first start |
 | `DHOW_DEV_POLL_SECONDS` | `1` | How often the server checks the Go files |
 | `DHOW_DEV_POSTGRES_IMAGE`, `DHOW_DEV_GO_IMAGE`, `DHOW_DEV_NODE_IMAGE` | `postgres:18`, `golang:1.27.3-bookworm`, `node:26-bookworm-slim` | Another registry or mirror, such as `mirror.gcr.io/library/postgres:18` |
 
-On Linux and macOS, `DHOW_DEV_DB_PORT=5433 docker compose -f deploy/dev/compose.yaml up`. In PowerShell, `$env:DHOW_DEV_DB_PORT = "5433"` first.
+On Linux and macOS, `DHOW_DEV_DB_PORT=55433 docker compose -f deploy/dev/compose.yaml up`. In PowerShell, `$env:DHOW_DEV_DB_PORT = "55433"` first.
 
 ### When something goes wrong
 
 | Symptom | Cause and fix |
 |---|---|
-| `port is already allocated` | Another program uses 5432, 5173 or 8080, often a local PostgreSQL. Pick another port with the variables above. |
+| `port is already allocated`, or `ports are not available` on Windows | Another program uses 55432, 5173 or 8080. `docker ps` shows whether an old container holds it, such as `dhow-dev-postgres` from `make dev-db`; remove it with `docker rm -f dhow-dev-postgres`. Otherwise pick another port with the variables above. When the database does not start, the `web` log shows `ENOTFOUND server`, because the server waits for it. |
 | No setup box in the log | The owner already exists, so there is nothing to set up: sign in on `http://localhost:5173`. Otherwise run `docker compose -f deploy/dev/compose.yaml logs server` and look for the box or for `setup_url`. |
 | `CSRF_FAILED` at setup or sign-in | Open the app on `http://localhost:5173` (or your `DHOW_DEV_WEB_PORT`), not on port 8080 and not on `127.0.0.1`. |
 | The web app reports a missing package after a `git pull` | Run `docker compose -f deploy/dev/compose.yaml restart web`. |

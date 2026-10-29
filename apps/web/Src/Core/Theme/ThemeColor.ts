@@ -7,12 +7,12 @@ export const BACKGROUND_TOKENS = ['input', 'canvas', 'rail', 'inset', 'surface',
 export type TBackgroundToken = (typeof BACKGROUND_TOKENS)[number];
 
 const BACKGROUND_LIGHTNESS: Record<TBackgroundToken, number> = {
-  input: 2.5,
-  canvas: 5.5,
-  rail: 7.5,
-  inset: 9,
-  surface: 10.5,
-  raised: 14,
+  input: 1.7,
+  canvas: 4.7,
+  rail: 6.7,
+  inset: 7.8,
+  surface: 10.1,
+  raised: 14.8,
   top: 17,
   track: 23,
 };

@@ -51,7 +51,7 @@ const RenameForm = ({ organization }: { organization: TOrganization }) => {
   };
 
   return (
-    <form noValidate onSubmit={(event) => void form.handleSubmit(HandleValid)(event)} className="grid gap-3 px-4 py-3">
+    <form noValidate onSubmit={(event) => void form.handleSubmit(HandleValid)(event)} className="grid gap-3 px-card py-3">
       {Notice ? <InlineAlert accent="failed" title={Notice} /> : null}
       <Field label={t('organization.name')} error={message(errors.Name?.message)}>
         <Input maxLength={NAME_MAX} autoComplete="organization" {...form.register('Name')} />

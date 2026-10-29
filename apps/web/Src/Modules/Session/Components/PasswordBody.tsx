@@ -102,7 +102,7 @@ export const PasswordBody = ({ onDone }: IPasswordBodyProps) => {
           <PasswordInput autoComplete="new-password" {...form.register('NewPassword')} />
         </Field>
         <StrengthMeter password={next} />
-        <p className="m-0 text-caption text-tertiary">{t('password.hint')}</p>
+        <p className="m-0 text-body-sm text-tertiary">{t('password.hint')}</p>
       </div>
       <Field label={t('password.confirm')} error={message(errors.ConfirmPassword?.message)}>
         <PasswordInput autoComplete="new-password" {...form.register('ConfirmPassword')} />

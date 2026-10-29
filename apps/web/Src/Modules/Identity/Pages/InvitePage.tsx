@@ -72,7 +72,7 @@ const Invited = ({ token, preview, onSignIn, onCreated, onJoined, onGone }: IInv
       lead={t('invite.page.lead', { role, about: t(`role.${preview.Role}.about`) })}
     >
       {body}
-      <p className="m-0 flex items-start gap-2 text-caption text-secondary">
+      <p className="m-0 flex items-start gap-2 text-body-sm text-secondary">
         <Icon name="info" size={16} className="mt-px text-tertiary" />
         <span>{t('invite.page.notice', { when: formatDateTime(preview.ExpiresAt, Locale) })}</span>
       </p>

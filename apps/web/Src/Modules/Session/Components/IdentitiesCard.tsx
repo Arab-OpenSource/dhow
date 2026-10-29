@@ -50,7 +50,7 @@ export const IdentitiesCard = ({ navigate }: IIdentitiesCardProps) => {
 
   return (
     <Card title={t('identities.title')} icon="user">
-      <p className="m-0 px-4 pb-2 text-body-sm text-secondary">{t('identities.lead')}</p>
+      <p className="m-0 px-card pb-2 text-body-sm text-secondary">{t('identities.lead')}</p>
       <Rows label={t('identities.title')}>
         {card.Entries.map((entry) => [
           <IdentityRow
