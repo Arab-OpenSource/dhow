@@ -30,7 +30,7 @@ export const AuditEventRow = ({ event, actor, onOpen }: IAuditEventRowProps) => 
               {' · '}
             </>
           ) : null}
-          {actor}
+          <bdi>{actor}</bdi>
           {event.Ip === '' ? null : (
             <>
               {' · '}

@@ -36,18 +36,9 @@ describe('reaching the organization API keys', () => {
     });
   });
 
-  it('opens from the organization settings for an admin', async () => {
-    const { user, router } = await mount('admin');
-    await user.click(await screen.findByRole('button', { name: Ar['organization.tokens.open'] }, { timeout: 5000 }));
-    await waitFor(() => {
-      expect(router.state.location.href).toBe('/org/api-keys');
-    });
-  });
-
   it('stays out of sight for a developer', async () => {
     const { nav } = await mount('developer');
     await screen.findByRole('heading', { level: 1, name: Ar['shell.nav.orgSettings'] });
     expect(within(nav).queryByRole('link', { name: Ar['shell.nav.apiKeys'] })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: Ar['organization.tokens.open'] })).not.toBeInTheDocument();
   });
 });

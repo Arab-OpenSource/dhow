@@ -22,7 +22,7 @@ const CASES: IPageCase[] = [
     body: (main) => within(main).findByText(Ar['checkDetail.database.means']),
   },
   { url: '/account/preferences', title: Ar['shell.nav.preferences'], body: (main) => within(main).findByText(Ar['appearance.system']) },
-  { url: '/account/profile', title: Ar['shell.nav.profile'], body: (main) => within(main).findByText(Ar['account.profile.title']) },
+  { url: '/account/profile', title: Ar['shell.nav.profile'], body: (main) => within(main).findByText(Ar['account.profile.readOnly']) },
   { url: '/account/security', title: Ar['shell.nav.security'], body: (main) => within(main).findByText(Ar['account.sessions.title']) },
   { url: '/audit', title: Ar['audit.title'], body: (main) => within(main).findByRole('list', { name: Ar['audit.list.title'] }) },
   { url: '/org/members', title: Ar['shell.nav.members'], body: (main) => within(main).findByRole('list', { name: Ar['members.title'] }) },

@@ -2,6 +2,7 @@ import { AuditEn } from '@/I18n/Locales/Workspace/AuditEn';
 import { HomeEn } from '@/I18n/Locales/Workspace/HomeEn';
 import { JobsEn } from '@/I18n/Locales/Workspace/JobsEn';
 import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
+import { OrgPagesEn } from '@/I18n/Locales/Workspace/OrgPagesEn';
 import { PagesEn } from '@/I18n/Locales/Workspace/PagesEn';
 import { RunnersEn } from '@/I18n/Locales/Workspace/RunnersEn';
 import type { TWorkspaceMessages } from '@/I18n/Messages';
@@ -377,4 +378,5 @@ export const WorkspaceEn: TWorkspaceMessages = {
   ...RunnersEn,
   ...PagesEn,
   ...HomeEn,
+  ...OrgPagesEn,
 };

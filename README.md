@@ -61,6 +61,7 @@ A host needs at least 1 CPU core, 2 GiB of memory and 5 GiB of free disk (2 core
 | [Sign in with OIDC](docs/guides/oidc.md) | Google, Keycloak, GitHub and any OIDC provider, account linking, allowed domains |
 | [The home page](docs/guides/home.md) | What is running, what needs attention, the sidebar counters, and the overview API behind them |
 | [Follow jobs in the web app](docs/guides/jobs.md) | The job list, stuck jobs without a runner, stopping a job, the live log, attempts and settings |
+| [Your organization and your account](docs/guides/organization.md) | Members and teams beside their details, invitations, API keys, organization settings, and your profile and security |
 | [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
 | [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
 

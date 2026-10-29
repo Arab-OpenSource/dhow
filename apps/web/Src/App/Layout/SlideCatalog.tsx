@@ -1,6 +1,8 @@
 import {
   LazyInviteBody,
   LazyInviteFooter,
+  LazyLeaveBody,
+  LazyMemberRemoveBody,
   LazyOrganizationNewBody,
   LazyOrganizationTokenNewBody,
   LazyPasswordBody,
@@ -24,6 +26,9 @@ export interface ISlideContext {
   close: () => void;
   openTeam: (teamId: string) => void;
   openOrganization: () => void;
+  memberId: string | undefined;
+  openMembers: () => void;
+  openHome: () => void;
   draftName: string | undefined;
   customThemes: readonly ICustomTheme[];
 }
@@ -73,6 +78,16 @@ const BUILDERS: Record<Exclude<TStaticSlideId, 'theme-edit'>, TBuilder> = {
     subtitle: <span>{t('totp.slide.subtitle')}</span>,
     children: <LazyTotpBody onDone={close} />,
     footer: <LazyTotpFooter onCancel={close} />,
+  }),
+  'member-remove': ({ t, close, memberId, openMembers }) => ({
+    title: t('member.remove.title'),
+    subtitle: <span>{t('member.remove.subtitle')}</span>,
+    children: <LazyMemberRemoveBody userId={memberId} onDone={openMembers} onCancel={close} />,
+  }),
+  'organization-leave': ({ t, close, openHome }) => ({
+    title: t('organization.leave.title'),
+    subtitle: <span>{t('organization.leave.subtitle')}</span>,
+    children: <LazyLeaveBody onLeft={openHome} onCancel={close} />,
   }),
   'account-token-new': ({ t, close }) => ({
     title: t('tokens.slide.title'),

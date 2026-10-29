@@ -1,123 +1,80 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-
-import type { ApiError } from '@/Core/Api/ApiError';
-import { canEditOrganization, canManageTokens, type TOrganization, type TRole } from '@/Core/Auth/AuthTypes';
-import { ME_QUERY_KEY } from '@/Core/Auth/MeQuery';
-import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
-import { useOrganizationStore } from '@/Core/Store/useOrganizationStore';
-import { useToastStore } from '@/Core/Store/useToastStore';
+import { type TOrganization, type TRole } from '@/Core/Auth/AuthTypes';
+import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Button } from '@/Core/Ui/Button';
 import { Card } from '@/Core/Ui/Card';
-import { InlineAlert } from '@/Core/Ui/InlineAlert';
+import type { TIconName } from '@/Core/Ui/Icons';
 import { useT } from '@/I18n/useT';
-import { leaveOrganization } from '@/Modules/Organization/Api/OrganizationApi';
-import { OrganizationCard } from '@/Modules/Organization/Components/OrganizationCard';
-import { SecondFactorCard } from '@/Modules/Organization/Components/SecondFactorCard';
 
-export interface ISettingsSectionProps {
-  organization: TOrganization;
-  role: TRole;
-  onTransfer: () => void;
-  onTokens: () => void;
-  onLeft: () => void;
-}
-
-type TLeaveCardProps = Pick<ISettingsSectionProps, 'organization' | 'onLeft'>;
-
-const LeaveCard = ({ organization, onLeft }: TLeaveCardProps) => {
+export const SecondFactorSummary = ({ organization }: { organization: TOrganization }) => {
   const t = useT();
-  const errorText = useApiErrorText();
-  const client = useQueryClient();
-  const Push = useToastStore((state) => state.Push);
-  const [Confirming, setConfirming] = useState(false);
-  const leave = useMutation<unknown, ApiError>({
-    mutationFn: () => leaveOrganization(organization.Id),
-    onSuccess: () => {
-      useOrganizationStore.getState().Set(null);
-      void client.invalidateQueries({ queryKey: ME_QUERY_KEY });
-      Push({ Id: `left-${organization.Id}`, Accent: 'live', Title: t('organization.left', { name: organization.Name }) });
-      onLeft();
-    },
-  });
+  const time = useRelativeTime();
+  const rule = organization.RequireSecondFactor;
 
   return (
-    <Card title={t('organization.leave.title')} icon="out" padded>
-      <div className="grid gap-3">
-        <p className="m-0 text-body-sm text-secondary">{t('organization.leave.about')}</p>
-        {leave.error ? (
-          <InlineAlert accent="failed" title={leave.error.Code === 'LAST_OWNER' ? t('organization.leave.lastOwner') : errorText(leave.error)} />
+    <Card title={t('organization.secondFactor.title')} icon="shield" padded>
+      <div className="grid gap-1.5">
+        <p className="m-0 text-body text-primary">{t(`organization.secondFactor.rule.${rule}`)}</p>
+        <p className="m-0 text-body-sm text-secondary">{t(`organization.secondFactor.about.${rule}`)}</p>
+        {organization.RequireSecondFactorSince && rule !== 'off' ? (
+          <p className="m-0 text-body-sm text-tertiary">
+            {t('organization.secondFactor.since', { date: time.full(organization.RequireSecondFactorSince) })}
+          </p>
         ) : null}
-        <div className="flex flex-wrap gap-2">
-          {Confirming ? (
-            <>
-              <Button
-                size="sm"
-                variant="danger"
-                iconStart="out"
-                disabled={leave.isPending}
-                onClick={() => {
-                  leave.mutate();
-                }}
-              >
-                {t('organization.leave.confirm')}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setConfirming(false);
-                  leave.reset();
-                }}
-              >
-                {t('organization.leave.cancel')}
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              variant="danger"
-              iconStart="out"
-              onClick={() => {
-                setConfirming(true);
-              }}
-            >
-              {t('organization.leave.action', { name: organization.Name })}
-            </Button>
-          )}
-        </div>
+        <p className="m-0 text-body-sm text-tertiary">{t('orgSettings.security.ownerOnly')}</p>
       </div>
     </Card>
   );
 };
 
-export const SettingsSection = ({ organization, role, onTransfer, onTokens, onLeft }: ISettingsSectionProps) => {
+interface IDangerItemProps {
+  title: string;
+  about: string;
+  action: string;
+  icon: TIconName;
+  onClick: () => void;
+}
+
+const DangerItem = ({ title, about, action, icon, onClick }: IDangerItemProps) => (
+  <li className="grid min-w-0 gap-3 border-t border-line px-card py-4 first:border-t-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <span className="grid min-w-0 gap-1">
+      <span className="text-label">{title}</span>
+      <small className="text-body-sm text-secondary">{about}</small>
+    </span>
+    <Button variant="danger" iconStart={icon} className="justify-self-start" onClick={onClick}>
+      {action}
+    </Button>
+  </li>
+);
+
+export interface IDangerZoneProps {
+  organization: TOrganization;
+  role: TRole;
+  onTransfer: () => void;
+  onLeave: () => void;
+}
+
+export const DangerZone = ({ organization, role, onTransfer, onLeave }: IDangerZoneProps) => {
   const t = useT();
   return (
-    <>
-      <OrganizationCard organization={organization} editable={canEditOrganization(role)} />
-      {role === 'owner' ? <SecondFactorCard organization={organization} /> : null}
-      {canManageTokens(role) ? (
-        <Card title={t('organization.tokens.title')} icon="key" padded>
-          <div className="grid justify-items-start gap-3">
-            <p className="m-0 text-body-sm text-secondary">{t('organization.tokens.about')}</p>
-            <Button size="sm" iconStart="key" onClick={onTokens}>
-              {t('organization.tokens.open')}
-            </Button>
-          </div>
-        </Card>
-      ) : null}
-      {role === 'owner' ? (
-        <Card title={t('organization.transfer.title')} icon="swap" padded>
-          <div className="grid justify-items-start gap-3">
-            <p className="m-0 text-body-sm text-secondary">{t('organization.transfer.about')}</p>
-            <Button size="sm" iconStart="swap" onClick={onTransfer}>
-              {t('organization.transfer.open')}
-            </Button>
-          </div>
-        </Card>
-      ) : null}
-      <LeaveCard organization={organization} onLeft={onLeft} />
-    </>
+    <div className="min-w-0 rounded-md border border-bad-line bg-surface">
+      <ul aria-label={t('orgSettings.group.danger')} className="m-0 grid list-none p-0">
+        {role === 'owner' ? (
+          <DangerItem
+            title={t('organization.transfer.title')}
+            about={t('organization.transfer.about')}
+            action={t('organization.transfer.open')}
+            icon="swap"
+            onClick={onTransfer}
+          />
+        ) : null}
+        <DangerItem
+          title={t('organization.leave.title')}
+          about={t('organization.leave.about')}
+          action={t('organization.leave.action', { name: organization.Name })}
+          icon="out"
+          onClick={onLeave}
+        />
+      </ul>
+    </div>
   );
 };

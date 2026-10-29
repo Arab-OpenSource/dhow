@@ -14,6 +14,8 @@ const STATIC_SLIDES = [
   'account-totp',
   'account-token-new',
   'theme-edit',
+  'member-remove',
+  'organization-leave',
 ] as const;
 const THEME_EDIT_PREFIX = 'theme-edit-';
 
@@ -45,6 +47,8 @@ const SLIDE_GATES: Partial<Record<TStaticSlideId, (role: TRole | undefined) => b
   'team-new': canManageMembers,
   'organization-token-new': canManageTokens,
   'organization-transfer': (role) => role === 'owner',
+  'member-remove': canManageMembers,
+  'organization-leave': (role) => role !== undefined,
 };
 
 const isStaticSlide = (id: TSlideId): id is TStaticSlideId => STATIC_SLIDES.some((slide) => slide === id);

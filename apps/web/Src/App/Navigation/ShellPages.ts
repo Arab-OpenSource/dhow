@@ -20,9 +20,9 @@ export const SHELL_PAGES = {
   ),
   runner: lazyPage(() => import('@/App/Pages/RunnerPage').then((module) => module.RunnerPage), canReadRunners),
   members: lazyPage(() => import('@/App/Pages/MembersPage').then((module) => module.MembersPage), canReadMembers),
-  member: lazyPage(() => import('@/App/Pages/MemberPage').then((module) => module.MemberPage), canManageMembers),
+  member: lazyPage(() => import('@/App/Pages/MembersPage').then((module) => module.MembersPage), canReadMembers),
   teams: lazyPage(() => import('@/App/Pages/TeamsPage').then((module) => module.TeamsPage), canReadMembers),
-  team: lazyPage(() => import('@/App/Pages/TeamPage').then((module) => module.TeamPage), canReadMembers),
+  team: lazyPage(() => import('@/App/Pages/TeamsPage').then((module) => module.TeamsPage), canReadMembers),
   invitations: lazyPage(
     () => import('@/App/Pages/InvitationsPage').then((module) => module.InvitationsPage),
     canManageMembers,

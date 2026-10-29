@@ -48,7 +48,6 @@ export const AdminEn: Record<keyof typeof AdminAr, string> = {
   'orgTokens.lead': 'Each token works with its own scopes and its creator’s role in the organization. Revoke any token you don’t recognize or no longer use.',
   'orgTokens.list': 'Tokens',
   'orgTokens.count': '{count} active',
-  'orgTokens.owner': 'Created by {name}',
   'orgTokens.scopes': 'Scopes',
   'orgTokens.created': 'Created',
   'orgTokens.lastUsed': 'Last used',
@@ -59,8 +58,5 @@ export const AdminEn: Record<keyof typeof AdminAr, string> = {
   'orgTokens.loading': 'Loading the API tokens',
   'orgTokens.empty': 'This organization has no API tokens yet.',
   'orgTokens.new.subtitle': 'The token is for this organization. Pick its scopes and how long it lasts.',
-  'organization.tokens.title': 'Organization API tokens',
-  'organization.tokens.about': 'Review every token your members created, and revoke the ones you don’t need.',
-  'organization.tokens.open': 'Open API tokens',
   'palette.command.organizationTokens': 'Open the organization’s API tokens',
 } as const;

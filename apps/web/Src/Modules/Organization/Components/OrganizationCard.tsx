@@ -71,7 +71,7 @@ export const OrganizationCard = ({ organization, editable }: IOrganizationCardPr
     <Card title={t('organization.card.title')} icon="building">
       {editable ? <RenameForm organization={organization} /> : null}
       <Rows label={t('organization.card.title')}>
-        {editable ? null : <Row title={organization.Name} sub={t('organization.name')} />}
+        {editable ? null : <Row title={<bdi>{organization.Name}</bdi>} sub={t('organization.name')} />}
         <Row title={organization.Slug} sub={t('organization.slug')} mono />
         <Row title={time.full(organization.CreatedAt)} sub={t('organization.created')} />
       </Rows>

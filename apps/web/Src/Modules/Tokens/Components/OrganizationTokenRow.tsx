@@ -33,8 +33,10 @@ export const OrganizationTokenRow = ({ token, onAskRevoke }: IOrganizationTokenR
       <div className="flex min-w-0 items-center gap-3">
         <Icon name="key" size={18} className="flex-none text-secondary" />
         <span className="grid min-w-0 flex-1 gap-px">
-          <span className="truncate text-label">{token.Name}</span>
-          <small className="truncate text-body-sm text-tertiary">{t('orgTokens.owner', { name: token.Owner.Name })}</small>
+          <bdi className="truncate text-label">{token.Name}</bdi>
+          <small className="truncate text-body-sm text-tertiary">
+            {t('orgTokens.createdBy')} <bdi>{token.Owner.Name}</bdi>
+          </small>
         </span>
         <span className="flex flex-none items-center gap-1.5">
           <Badge tone={TONES[token.Status]}>{t(`tokens.status.${token.Status}`)}</Badge>

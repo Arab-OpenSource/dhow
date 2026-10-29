@@ -2,6 +2,7 @@ import { AuditAr } from '@/I18n/Locales/Workspace/AuditAr';
 import { HomeAr } from '@/I18n/Locales/Workspace/HomeAr';
 import { JobsAr } from '@/I18n/Locales/Workspace/JobsAr';
 import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
+import { OrgPagesAr } from '@/I18n/Locales/Workspace/OrgPagesAr';
 import { PagesAr } from '@/I18n/Locales/Workspace/PagesAr';
 import { RunnersAr } from '@/I18n/Locales/Workspace/RunnersAr';
 
@@ -376,4 +377,5 @@ export const WorkspaceAr = {
   ...RunnersAr,
   ...PagesAr,
   ...HomeAr,
+  ...OrgPagesAr,
 } as const;

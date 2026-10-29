@@ -16,6 +16,8 @@ import {
   type TTeamDetail,
 } from '@/Modules/Organization/Api/OrganizationApi';
 
+export const ALL_MEMBERS = 100;
+
 export const organizationKey = (organizationId: string) => ['organization', organizationId] as const;
 export const teamsKey = (organizationId: string) => ['teams', organizationId] as const;
 export const teamKey = (organizationId: string, teamId: string) => ['team', organizationId, teamId] as const;

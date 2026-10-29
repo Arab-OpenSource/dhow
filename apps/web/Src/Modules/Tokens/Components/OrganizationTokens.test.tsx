@@ -54,7 +54,7 @@ describe('the organization API tokens slide', () => {
     const [active, revoked] = within(list).getAllByRole('listitem');
     if (active === undefined || revoked === undefined) throw new Error('missing rows');
     expect(active).toHaveTextContent('Deploy bot');
-    expect(active).toHaveTextContent(Ar['orgTokens.owner'].replace('{name}', 'Mona Adel'));
+    expect(active).toHaveTextContent(`${Ar['orgTokens.createdBy']} Mona Adel`);
     expect(within(active).getByText(Ar['scope.runner.manage'])).toBeInTheDocument();
     expect(within(active).getByText(Ar['orgTokens.lastUsed'])).toBeInTheDocument();
     expect(within(active).getByText(Ar['orgTokens.expires'])).toBeInTheDocument();

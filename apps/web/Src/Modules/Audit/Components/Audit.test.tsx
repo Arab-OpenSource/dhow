@@ -1,13 +1,14 @@
 import { createMemoryHistory } from '@tanstack/react-router';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from '@/App/App';
 import { createAppRouter } from '@/App/Router';
 import { createQueryClient } from '@/Core/Api/QueryClient';
-import { auditFixture, backendFailure, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
-import { envelope } from '@/Core/Testing/Fetch';
+import { usePaletteStore } from '@/Core/Store/usePaletteStore';
+import { auditFixture, backendFailure, membersFixture, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
+import { envelope, USER_ID } from '@/Core/Testing/Fetch';
 import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
 
@@ -196,5 +197,44 @@ describe('who can open the audit log', () => {
     await user.keyboard('{Control>}k{/Control}');
     await user.type(await screen.findByRole('combobox'), Ar['palette.command.audit']);
     expect(screen.queryByRole('option', { name: new RegExp(Ar['palette.command.audit']) })).not.toBeInTheDocument();
+  });
+});
+
+describe('names and addresses in the audit log', () => {
+  beforeEach(() => {
+    usePaletteStore.setState({ Open: false });
+  });
+
+  it('isolates the actor name and the address so an Arabic name keeps its place in English text', async () => {
+    const members = membersFixture().map((member) => (member.UserId === USER_ID ? { ...member, Name: 'صبري داود' } : member));
+    const { dialog } = await mount({ members, audit: auditFixture(3) });
+    const list = await within(dialog).findByRole('list', { name: Ar['audit.list.title'] }, { timeout: 5000 });
+    const first = within(list).getAllByRole('listitem')[0];
+    if (first === undefined) throw new Error('no audit row');
+    expect(within(first).getByText('صبري داود').tagName).toBe('BDI');
+    expect(within(first).getByText('203.0.113.1').tagName).toBe('BDI');
+    expect(within(first).getByText('صبري داود').nextSibling?.textContent).toBe(' · ');
+  });
+
+  it('isolates the actor, the address and the ids on the event page', async () => {
+    const members = membersFixture().map((member) => (member.UserId === USER_ID ? { ...member, Name: 'صبري داود' } : member));
+    const events = auditFixture(1);
+    const event = events[0];
+    if (event === undefined) throw new Error('no audit event');
+    startBackend({
+      members,
+      audit: events,
+      routes: [
+        (request, url) =>
+          request.method === 'GET' && url.pathname.endsWith(`/audit-events/${event.Id}`) ? envelope({ Success: true, Data: event }) : undefined,
+      ],
+    });
+    const router = createAppRouter(createMemoryHistory({ initialEntries: [`/audit/${event.Id}`] }));
+    render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
+    const page = await findPage(Ar['audit.detail.title']);
+    expect((await within(page).findByText('صبري داود', {}, { timeout: 5000 })).tagName).toBe('BDI');
+    expect(within(page).getByText(event.Ip).tagName).toBe('BDI');
+    expect(within(page).getByText(event.Id).tagName).toBe('BDI');
+    expect(within(page).getByText(event.TargetId).tagName).toBe('BDI');
   });
 });
