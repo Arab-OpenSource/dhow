@@ -22,7 +22,7 @@ On a terminal it offers each proposed fix in turn. `--fix` applies them all with
 | The systemd unit matches this release | The installed unit differs from the one in the binary (a warning). | `--fix` writes it again and restarts the runner. |
 | The service is enabled and running | The unit is stopped or disabled. | `--fix` enables and restarts it. |
 | Unit hardening | `systemd-analyze security` rates the unit above 6.9. | Put the shipped unit back and remove drop-ins that loosen it. |
-| File ownership and permissions | A file or directory has another owner or mode than `install` gives it. | `--fix` sets them back. |
+| File ownership and permissions | A file or directory has another owner or mode than `install` gives it, or a state file is a symlink or a special file. | `--fix` sets owner and mode back through a descriptor that never follows a link. A symlink or special file is never fixed: remove it by hand, and treat the runner keys as exposed. |
 | Identity storage | The identity is encrypted but its drop-in is missing, both a plain and an encrypted copy exist, or the runner has no identity. A plain `0600` identity is reported as information, with the reason. | `--fix` writes the drop-in again. |
 | No unfinished key rotation | `identity.pending` or `identity.pending.cred` is left from a rotation (a warning). | Stop the runner and run `sudo dhow-runner rotate-keys`. |
 | The server answers | The server cannot be reached, or its certificate is not trusted. | The address, DNS, the firewall or `DHOW_RUNNER_CA_FILE`. |

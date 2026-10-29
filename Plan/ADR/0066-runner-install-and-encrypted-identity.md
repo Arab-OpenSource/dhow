@@ -102,6 +102,28 @@
   - Postgres 18 في container، ونفس الـ smoke بـ Podman حقيقي.
   - workflow أسبوعي وبالطلب، لأن الـ runners العادية في GitHub فيها `/dev/kvm`.
 
+### بعد المراجعة الأمنية
+الافتراض: job هرب للـ uid بتاع `dhow-runner` ويقدر يحط ملفات في `/var/lib/dhow-runner`.
+- **مفيش follow للـ symlinks في أي حاجة root بيعملها في مجلد الحالة:**
+  - `doctor` بيفحص بـ `Lstat`، والـ symlink أو الملف الخاص مشكلة بتتعرض ومابتتصلحش.
+  - والإصلاح بـ `fchown`/`fchmod` على fd اتفتح بـ `O_NOFOLLOW`.
+  - و`uninstall` بيكتب أصفار بس فوق ملف عادي، والـ link بيتمسح هو نفسه.
+  - كل ده من خلال `engine.SafeSystem` (interface اختياري جنب `System`، فالسيرفر ماتغيّرش)، والـ fake بيعرف الـ symlinks.
+  - و`readCredential` بـ `O_NOFOLLOW` برضه.
+- **ملف الإجابات تحت root:**
+  - ملك root، ومحدش غيره يكتب فيه، ومتفتح بـ `O_NOFOLLOW`.
+  - في مجلد مايكتبش فيه غير root أو sticky.
+  - ملف التوكن بـ `O_NOFOLLOW`، وبيترفض لو حد تاني يكتب فيه، وتحذير لو حد يقراه.
+- **`runner.env`:** أي قيمة فيها control characters أو علامات تنصيص أو backslash بتترفض، والـ keys من قايمة `config.SettableEnv()` بس.
+- **`CREDENTIALS_DIRECTORY`** بيتحسب بس تحت الوحدة: لازم `INVOCATION_ID` موجود، والمجلد ملك root أو مستخدم الـ runner (من غير ACL بيبقى ملك المستخدم)، ومحدش تاني يكتب فيه.
+- **المستخدم اللي الـ installer عمله عليه علامة في الـ GECOS** (`Dhow runner (created by dhow-runner install)`)، و`--remove-user` بيمسح بس اللي عليه العلامة.
+  - العلامة في `/etc/passwd` مش ملف في `/etc/dhow-runner`، لأن `uninstall` من غير `--remove-user` بيمسح المجلد ده، وبعدها `--remove-user` كان هيفقد العلامة.
+- **الـ VM:**
+  - كل `curl` بـ https بس حتى في الـ redirects.
+  - `CHECKSUM` بتاع Fedora و`CHECKSUM.asc` بتاع Rocky متحققين بـ gpg على بصمة مفتاح Fedora 43 وRocky 10 المثبّتة.
+  - Debian مابينشرش توقيع للـ checksums بتاعة الـ cloud images، فـ Debian https بس.
+- **الـ audit بتاع الإلغاء بيتنشر بعد الـ commit:** الـ event bus مافيهوش outbox، وإلغاء اللوحة بنفس الطريقة. فاتساب زي ما هو، ومتسجّل في `Status.md`.
+
 ## البدائل اللي اتدرست
 - **التسجيل كأمر فرعي بمستخدم `dhow-runner`** (`systemd-run --uid`): كان هيكتب الهوية صريحة على القرص قبل التشفير.
 - **`systemd-creds --user`** عشان الـ runner يشفّر بنفسه: محتاج systemd 256+، وUbuntu 24.04 فيه 255.

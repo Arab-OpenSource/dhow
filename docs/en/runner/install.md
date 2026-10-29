@@ -118,7 +118,7 @@ sudo dhow-runner install --answers runner.yaml
 | `dev` | `false` | Allows plain `http://` to a loopback address, for local development only. |
 | `lang` | the locale | `en` or `ar`. |
 
-Unknown keys, a second YAML document or a file over 64 KiB are refused. `--token` on the command line is refused too.
+Unknown keys, a second YAML document or a file over 64 KiB are refused. `--token` on the command line is refused too. Under root the answers file must belong to root, be writable by root only and sit in a directory others cannot write to (or a sticky one like `/tmp`); neither it nor the token file may be a symlink, the token file is refused when others can write to it, and you get a warning when others can read it. Values written to `runner.env` may not hold control characters, quotes or backslashes, and `env` accepts only the settings listed in [Runner configuration](configuration.md).
 
 ## Check the runner
 
@@ -134,7 +134,7 @@ It checks the sandbox prerequisites, the unit and its hardening, the files and t
 sudo dhow-runner uninstall
 ```
 
-It stops and disables the unit, then revokes the runner on the server: the runner signs a revoke request with its own key, and the server ends its sessions and records `runner.revoked`. If the runner cannot reach the server or sign in, it prints the runner ID and tells you to revoke it in the dashboard. Then it removes the unit and its drop-in, `/var/lib/dhow-runner` (the identity, the credential and the journal), `/etc/dhow-runner` and the binary. The `dhow-runner` user and its sub-ids stay, unless you add `--remove-user`. Running it again finds nothing to remove. `--yes` skips the question.
+It stops and disables the unit, then revokes the runner on the server: the runner signs a revoke request with its own key, and the server ends its sessions and records `runner.revoked`. If the runner cannot reach the server or sign in, it prints the runner ID and tells you to revoke it in the dashboard. Then it removes the unit and its drop-in, `/var/lib/dhow-runner` (the identity, the credential and the journal), `/etc/dhow-runner` and the binary. The `dhow-runner` user and its sub-ids stay, unless you add `--remove-user`, which deletes the user only if `install` created it (its comment says so); a user that existed before is kept, and `install` says when it adopts one. Running it again finds nothing to remove. `--yes` skips the question.
 
 ## Set up by hand
 

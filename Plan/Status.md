@@ -64,6 +64,7 @@
 | الشغل | الـ branch | الـ PR | اللي فاضل |
 |---|---|---|---|
 | M3.10 الجزء ب: الـ engine في `internal/installer`، و`dhow-runner install` و`doctor` و`uninstall`، والهوية مشفّرة بـ `systemd-creds`، و`AuthService.Revoke`، وsmoke في container بـ systemd، وjob `runner-install`، و`make vm-test` (ADR-0066) | `feat/runner-install` | لسه | الـ PR، والـ CI (`runner-install` بـ Podman حقيقي و`vm-test` على KVM ماتجرّبوش هنا)، والمراجعة الأمنية |
+| `runner.revoked` (إلغاء اللوحة وإلغاء الـ runner لنفسه) بيتنشر على الـ event bus بعد الـ commit، فلو الـ process وقع بينهم الـ audit بيضيع. الـ bus مافيهوش outbox | — | — | outbox للأحداث اللي بتتسجّل، أو نشرها جوه نفس الـ transaction |
 
 M2.6 وM3.6 والتطوير المحلي وإصلاحات مراجعة M3.6 وتغيير الاسم وM3.7 وتجهيز Windows وM3.9 اتدمجوا في 2026-10-28، ومن #35 لـ #59 اتدمجوا في 2026-10-28 و2026-10-29.
 
