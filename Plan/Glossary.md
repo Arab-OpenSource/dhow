@@ -1,6 +1,6 @@
 # مصطلحات الواجهة
 
-المصطلح العربي هو اللي بيظهر في الواجهة. الإنجليزي بيظهر في التلميح أو بين قوسين أول مرة بس ([ADR-0034](ADR/0034-ui-direction-calm-and-organized.md)).
+المصطلح العربي هو اللي بيظهر في الواجهة، وبالعربي المبسّط ([ADR-0062](ADR/0062-simple-arabic-for-users.md)). الإنجليزي بيظهر في التلميح أو بين قوسين أول مرة بس ([ADR-0034](ADR/0034-ui-direction-calm-and-organized.md)).
 
 | English | في الواجهة |
 |---|---|
@@ -14,8 +14,8 @@
 | Capacity | السعة |
 | Pause / Resume (runner) | إيقاف مؤقت / إعادة التشغيل |
 | Revoke (runner) | إلغاء نهائي |
-| Session | جهاز داخل / جلسة |
-| Sign out everywhere | اخرج من كل الأجهزة التانية |
+| Session | جهاز متصل / جلسة |
+| Sign out everywhere | اخرج من كل الأجهزة الأخرى |
 | Organization | المؤسسة |
 | Team | الفريق |
 | Member | عضو |
@@ -35,7 +35,7 @@
 | Environment | بيئة |
 | Pipeline | خطوات النشر (pipeline) |
 | Secret | سر |
-| Rollback | ارجع للنسخة اللي قبلها |
+| Rollback | ارجع إلى النسخة السابقة |
 | Approval | موافقة |
 | Workspace / Home | الرئيسية |
 | Settings | الإعدادات |
