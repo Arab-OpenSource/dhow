@@ -113,7 +113,21 @@ jobs:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Runner isolation (rootless Podman)
     runs-on: ubuntu-26.04
-    timeout-minutes: 40
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: dhow
+          POSTGRES_PASSWORD: dhow-ci-only
+          POSTGRES_DB: dhow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dhow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -124,7 +138,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
         run: |
-          if [ "$EVENT" != pull_request ] || ! git diff --quiet HEAD^1 HEAD -- apps/runner packages/proto internal go.mod go.sum Makefile .github/workflows/ci.yml; then
+          if [ "$EVENT" != pull_request ] || ! git diff --quiet HEAD^1 HEAD -- apps/runner packages/proto internal deploy/systemd go.mod go.sum Makefile .github/workflows/ci.yml; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -161,6 +175,24 @@ jobs:
           make runner-isolation ISOLATION_DIR=/tmp/dhow-isolation
           ISOLATION_RUN="sudo systemd-run --uid=dhowci --gid=dhowci --pipe --wait --collect --quiet
           -p Delegate=yes -p MemorySwapMax=0 --working-directory=/tmp --"
+      - name: Escape and limits suites inside the sandbox of the shipped runner unit
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          sudo install -d -m 0755 /opt/dhow-isolation
+          sudo install -m 0755 /tmp/dhow-isolation/dhow-runner /tmp/dhow-isolation/escape-probe /tmp/dhow-isolation/isolation.test /opt/dhow-isolation/
+          sudo install -d -m 0700 -o dhowci -g dhowci /var/lib/dhow-runner
+          props=$(deploy/systemd/sandbox-properties.sh deploy/systemd/dhow-runner.service)
+          echo "Unit sandbox: $props"
+          eval "sudo systemd-run --uid=dhowci --gid=dhowci --pipe --wait --collect --quiet $props --working-directory=/tmp -- \
+            env DHOW_ISOLATION_BIN=/opt/dhow-isolation DHOW_ISOLATION_BUSYBOX=/bin/busybox \
+            /opt/dhow-isolation/isolation.test -test.v -test.count=1 -test.timeout 30m"
+          sudo rm -rf /var/lib/dhow-runner
+      - name: The runner comes online under the shipped unit and rotates its keys
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          make build build-runner
+          sudo deploy/systemd/smoke-runner.sh bin/dhow-server bin/dhow-runner \
+            "postgres://dhow:dhow-ci-only@127.0.0.1:5432/dhow?sslmode=disable"
 
   web:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
