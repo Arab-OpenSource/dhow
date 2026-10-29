@@ -18,6 +18,7 @@ const defaultFree = 100 << 30
 var defaultChecks = []string{"getent ", "systemctl is-", "rpm -q", "dpkg-query ", "systemd-creds has-tpm2"}
 
 type File struct {
+	Link string
 	Data []byte
 	Mode installer.FileMode
 	Dir  bool
@@ -43,7 +44,10 @@ type Sys struct {
 	Exe      string
 	Owners   map[string]int
 	commands []installer.Command
+	Shredded []string
 }
+
+var _ installer.SafeSystem = (*Sys)(nil)
 
 func New() *Sys {
 	return &Sys{
@@ -73,6 +77,23 @@ func (s *Sys) PutDir(p string, mode installer.FileMode) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Files[p] = &File{Mode: mode, Dir: true, UID: s.Owners[mode.Owner], GID: s.Owners[mode.Group]}
+}
+
+func (s *Sys) PutLink(p, target string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Files[p] = &File{Link: target, Mode: installer.FileMode{Perm: 0o777}}
+}
+
+func (s *Sys) follow(p string) (*File, bool) {
+	f, ok := s.Files[p]
+	for range 8 {
+		if !ok || f.Link == "" {
+			return f, ok
+		}
+		f, ok = s.Files[f.Link]
+	}
+	return nil, false
 }
 
 func (s *Sys) Content(p string) string {
@@ -178,7 +199,7 @@ func (s *Sys) LookPath(name string) bool {
 func (s *Sys) ReadFile(p string) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	f, ok := s.Files[p]
+	f, ok := s.follow(p)
 	if !ok || f.Dir {
 		return nil, &fs.PathError{Op: "open", Path: p, Err: fs.ErrNotExist}
 	}
@@ -195,7 +216,7 @@ func (s *Sys) WriteFile(p string, data []byte, mode installer.FileMode) error {
 func (s *Sys) Chmod(p string, mode installer.FileMode) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	f, ok := s.Files[p]
+	f, ok := s.follow(p)
 	if !ok {
 		return &fs.PathError{Op: "chmod", Path: p, Err: fs.ErrNotExist}
 	}
@@ -203,18 +224,87 @@ func (s *Sys) Chmod(p string, mode installer.FileMode) error {
 	return nil
 }
 
+func infoOf(f *File) installer.FileInfo {
+	mode := f.Mode.Perm
+	switch {
+	case f.Link != "":
+		mode |= fs.ModeSymlink
+	case f.Dir:
+		mode |= fs.ModeDir
+	}
+	return installer.FileInfo{Mode: mode, UID: f.UID, GID: f.GID, Size: int64(len(f.Data)), IsDir: f.Dir}
+}
+
 func (s *Sys) Stat(p string) (installer.FileInfo, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f, ok := s.follow(p)
+	if !ok {
+		return installer.FileInfo{}, &fs.PathError{Op: "stat", Path: p, Err: fs.ErrNotExist}
+	}
+	return infoOf(f), nil
+}
+
+func (s *Sys) Lstat(p string) (installer.FileInfo, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	f, ok := s.Files[p]
 	if !ok {
-		return installer.FileInfo{}, &fs.PathError{Op: "stat", Path: p, Err: fs.ErrNotExist}
+		return installer.FileInfo{}, &fs.PathError{Op: "lstat", Path: p, Err: fs.ErrNotExist}
 	}
-	mode := f.Mode.Perm
+	return infoOf(f), nil
+}
+
+func (s *Sys) noFollow(p string) (*File, error) {
+	f, ok := s.Files[p]
+	if !ok {
+		return nil, &fs.PathError{Op: "open", Path: p, Err: fs.ErrNotExist}
+	}
+	if f.Link != "" {
+		return nil, fmt.Errorf("%s %w", p, installer.ErrNotRegular)
+	}
+	return f, nil
+}
+
+func (s *Sys) ChmodNoFollow(p string, mode installer.FileMode) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f, err := s.noFollow(p)
+	if err != nil {
+		return err
+	}
+	f.Mode, f.UID, f.GID = mode, s.Owners[mode.Owner], s.Owners[mode.Group]
+	return nil
+}
+
+func (s *Sys) ReadFileNoFollow(p string, limit int64) ([]byte, installer.FileInfo, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f, err := s.noFollow(p)
+	if err != nil {
+		return nil, installer.FileInfo{}, err
+	}
 	if f.Dir {
-		mode |= fs.ModeDir
+		return nil, installer.FileInfo{}, fmt.Errorf("%s %w", p, installer.ErrNotRegular)
 	}
-	return installer.FileInfo{Mode: mode, UID: f.UID, GID: f.GID, Size: int64(len(f.Data)), IsDir: f.Dir}, nil
+	if int64(len(f.Data)) > limit {
+		return nil, installer.FileInfo{}, fmt.Errorf("%s is larger than %d bytes", p, limit)
+	}
+	return append([]byte(nil), f.Data...), infoOf(f), nil
+}
+
+func (s *Sys) ShredNoFollow(p string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f, ok := s.Files[p]
+	if !ok {
+		return nil
+	}
+	if f.Link == "" && !f.Dir {
+		s.Shredded = append(s.Shredded, p)
+	}
+	delete(s.Files, p)
+	return nil
 }
 
 func (s *Sys) Remove(p string) error {

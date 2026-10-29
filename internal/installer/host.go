@@ -152,12 +152,7 @@ func (Host) Stat(path string) (FileInfo, error) {
 	if err != nil {
 		return FileInfo{}, err
 	}
-	info := FileInfo{Mode: st.Mode(), Size: st.Size(), IsDir: st.IsDir(), UID: -1, GID: -1}
-	if sys, ok := st.Sys().(*syscall.Stat_t); ok {
-		info.UID = int(sys.Uid)
-		info.GID = int(sys.Gid)
-	}
-	return info, nil
+	return infoOf(st), nil
 }
 
 func (Host) Remove(path string) error {
