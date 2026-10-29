@@ -13,6 +13,7 @@ import (
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
+	installer "github.com/Khaymah/dhow/apps/runner/internal/Installer"
 	"github.com/Khaymah/dhow/internal/buildinfo"
 	"github.com/Khaymah/dhow/internal/logging"
 )
@@ -24,7 +25,7 @@ const (
 )
 
 var (
-	ErrUsage        = errors.New("usage: dhow-runner register --url <server> --token-file <path|-> [--name <name>] [--dev] | dhow-runner run [--dev] | dhow-runner rotate-keys [--dev] | dhow-runner version")
+	ErrUsage        = errors.New("usage: dhow-runner install [--answers <file>] [--dry-run] [--yes] | dhow-runner doctor [--fix] | dhow-runner uninstall [--remove-user] [--yes] | dhow-runner register --url <server> --token-file <path|-> [--name <name>] [--dev] | dhow-runner run [--dev] | dhow-runner rotate-keys [--dev] | dhow-runner version")
 	ErrTokenOnFlags = errors.New("the registration token is never passed on the command line, where shell history and ps would keep it; use --token-file <path> or --token-file - to read it from stdin")
 )
 
@@ -70,6 +71,8 @@ func Main(ctx context.Context, args []string, env Env) error {
 		return runRun(ctx, args[1:], env)
 	case CommandRotateKeys:
 		return runRotateKeys(ctx, args[1:], env)
+	case installer.CommandInstall, installer.CommandDoctor, installer.CommandUninstall:
+		return runInstaller(ctx, args, env)
 	case CommandVersion:
 		info := buildinfo.Get()
 		_, err := fmt.Fprintf(env.Stdio.Out, "dhow-runner %s (%s, %s)\n", info.Version, info.Commit, info.GoVersion)

@@ -32,6 +32,8 @@ func TestTheTokenNeverComesFromTheCommandLine(t *testing.T) {
 		{"register", "--url", "https://d.example.com", "--token", "dhow_rrt_abc"},
 		{"register", "--url", "https://d.example.com", "-token=dhow_rrt_abc"},
 		{"register", "--url", "https://d.example.com", "--token-file", "-", "dhow_rrt_abcdefghijklmnopqrstuv"},
+		{"install", "--token", "dhow_rrt_abc"},
+		{"install", "--answers", "/root/a.yaml", "dhow_rrt_abcdefghijklmnopqrstuv"},
 	} {
 		_, err := cli(t, env, "", args...)
 		assert.ErrorIs(t, err, app.ErrTokenOnFlags, args)
