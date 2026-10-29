@@ -1,6 +1,8 @@
+[العربية](../../guides/instance-settings.md)
+
 # Server settings
 
-**Server settings** (`/system/settings`, under **Monitoring** in the side menu) is where the instance owner changes mail, sign-in providers, who may create organizations, the breached-password check, rate limits and job log limits, without editing a file or restarting the server. The decision is [ADR-0063](../../Plan/ADR/0063-instance-settings-in-the-database.md), and every setting is listed in [Configuration](../install/configuration.md#dashboard-settings).
+**Server settings** (`/system/settings`, under **Monitoring** in the side menu) is where the instance owner changes mail, sign-in providers, who may create organizations, the breached-password check, rate limits and job log limits, without editing a file or restarting the server. The decision is [ADR-0063](../../../Plan/ADR/0063-instance-settings-in-the-database.md), and every setting is listed in [Configuration](../install/configuration.md#dashboard-settings).
 
 ## Who can open it
 

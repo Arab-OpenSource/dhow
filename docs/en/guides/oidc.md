@@ -1,3 +1,5 @@
+[العربية](../../guides/oidc.md)
+
 # Sign in with OIDC
 
 Dhow can let people sign in with an external identity provider: any OpenID Connect provider (Google, Keycloak, Microsoft Entra ID, Authentik, ...) and GitHub. This guide shows how to register Dhow at the provider, how to configure it, and how people link their accounts.

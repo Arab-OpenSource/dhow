@@ -1,3 +1,5 @@
+[العربية](../../guides/jobs.md)
+
 # Follow jobs in the web app
 
 Open **Run › Jobs** in the side menu (or type "jobs" in the command palette). The list lives at `/jobs` and each job has its own page at `/jobs/<id>`, so you can bookmark or share a link to it. Every member of the organization sees the list. Viewers see the jobs but not their logs.
@@ -38,5 +40,5 @@ curl -X POST https://dhow.example.com/api/v1/organizations/<org-id>/jobs \
 ```
 
 - `<org-id>` is `Memberships[].OrganizationId` in the answer of `GET /api/v1/me`. The request needs the session of an owner or admin, with a second factor when the organization asks for one.
-- The image must be pinned by digest. The full spec, including resources, secrets and allowed hosts, is in [the API reference](../../packages/openapi/openapi.yaml) under `CreateJobRequest`.
+- The image must be pinned by digest. The full spec, including resources, secrets and allowed hosts, is in [the API reference](../../../packages/openapi/openapi.yaml) under `CreateJobRequest`.
 - The job waits in the queue until an active runner has every label in `Labels` and supports its `Isolation`.

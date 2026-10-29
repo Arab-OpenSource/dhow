@@ -1,3 +1,5 @@
+[العربية](../../guides/organization.md)
+
 # Your organization and your account
 
 The **Organization** group in the side menu holds Members, Teams, Invitations, API keys and Organization settings. Your own account is at the bottom of the side menu: Profile, Security and Preferences. Each page has at most one primary button, and each list shows a skeleton while it loads, an error with **Try again** when it cannot load, and a plain sentence when it is empty.

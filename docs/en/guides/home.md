@@ -1,3 +1,5 @@
+[العربية](../../guides/home.md)
+
 # The home page
 
 The home page (`/`) answers two questions at a glance: is everything OK, and what needs me? The numbers update every 15 seconds while the tab is visible, and stop while it is in the background.
@@ -53,4 +55,4 @@ GET /api/v1/organizations/{id}/overview
   - `Invitations.Pending` counts invitations that are not accepted, revoked or expired.
 - **Cost:** three fixed queries, whatever the size of the organization. The job count reads only active jobs and jobs that failed in the last day, through two partial indexes, so it stays small as history grows.
 
-The full contract is in [`packages/openapi/openapi.yaml`](../../packages/openapi/openapi.yaml) (operation `getOrganizationOverview`).
+The full contract is in [`packages/openapi/openapi.yaml`](../../../packages/openapi/openapi.yaml) (operation `getOrganizationOverview`).
