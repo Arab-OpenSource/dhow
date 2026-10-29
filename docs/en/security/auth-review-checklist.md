@@ -1,3 +1,5 @@
+[العربية](../../security/auth-review-checklist.md)
+
 # Authentication review checklist (M2)
 
 Status: **internal review done, external review pending (M9)** · Date: 2026-10-28 · Scope: milestone M2 (identity and tenancy)

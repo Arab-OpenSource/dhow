@@ -1,3 +1,5 @@
+[العربية](../development.md)
+
 # Develop Dhow on your machine
 
 This page gets you from a fresh clone to a running server, the web app with live reload, and the full test suite. There are two ways in:
@@ -228,7 +230,7 @@ Then open `http://localhost:5173`. Vite serves the web app and forwards `/api` t
 make dev-check
 ```
 
-`make dev-check` runs `make check` (lint, workflow lint, the runner protocol checks, every Go test with the race detector, the vulnerability scan and the hooks tests) with the test database from `.env.dev`.
+`make dev-check` runs `make check` (lint, workflow lint, the runner protocol checks, every Go test with the race detector, the vulnerability scan, the hooks tests and the docs check) with the test database from `.env.dev`.
 
 > [!IMPORTANT]
 > Use `make dev-check`, not a bare `make check`. Without `DHOW_TEST_DATABASE_URL` the database tests **skip themselves**, so `make check` can pass on your machine while most server tests never ran. CI always sets it.

@@ -1,3 +1,5 @@
+[العربية](../security-model.md)
+
 # Security model
 
 Status: **Draft v0.2**. Security is the product: every design choice below is a default, not an option.
@@ -173,7 +175,7 @@ These are the only deletes in the code base, all in one query file that a projec
   - It is **required** for merge: tests, lint with zero warnings allowed, type checks, `govulncheck`/`npm audit` blocking on high and critical, CodeQL, secret scanning and license checks.
   - Dependabot updates are merged only on green CI.
 - An external penetration test is required before GA, and again yearly.
-- The disclosure policy is in [`SECURITY.md`](../SECURITY.md).
+- The disclosure policy is in [`SECURITY.md`](../../SECURITY.en.md).
 
 ## 11. Lessons from the Deploy Center v3 audit
 
