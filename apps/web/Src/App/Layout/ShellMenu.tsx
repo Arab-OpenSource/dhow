@@ -18,6 +18,7 @@ export const ShellMenu = () => {
   const me = useMe();
   const { SignOut, Pending } = useSignOut();
   const role = useCurrentMembership()?.Role;
+  const owner = me.data?.InstanceOwner === true;
   const currentId = match ? (match.section.parent ?? match.section.id) : null;
   const counters = useCounters();
 
@@ -41,7 +42,7 @@ export const ShellMenu = () => {
     ...MENU_GROUPS.map((group) => ({
       id: group,
       label: t(GROUP_LABELS[group]),
-      items: visibleSections(role, group)
+      items: visibleSections(role, group, owner)
         .filter((section) => section.menu)
         .map(item),
     })),

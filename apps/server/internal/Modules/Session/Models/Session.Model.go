@@ -42,6 +42,7 @@ type Me struct {
 	ExpiresAt   time.Time
 
 	CanCreateOrganizations bool
+	InstanceOwner          bool
 	MfaReenrollRequired    bool
 }
 

@@ -2,6 +2,7 @@ package installer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -195,4 +196,37 @@ func TestPublicChecksForAnUnreachableManagedProxy(t *testing.T) {
 	assert.Equal(t, SeverityFail, findings[0].Severity)
 	require.NotNil(t, findings[0].Fix)
 	assert.Contains(t, findings[0].Fix.Commands, "systemctl reload-or-restart caddy")
+}
+
+func TestDoctorShowsWhereEachSettingComesFromButNeverItsValue(t *testing.T) {
+	f, _ := installedHost(t)
+	f.put(EnvFilePath, f.content(EnvFilePath)+"DHOW_SMTP_PASSWORD=relay-credential-in-env\n", 0o600)
+	tests := []struct {
+		name string
+		db   fakeDB
+		want []string
+	}{
+		{"the database answers", fakeDB{stored: map[string]bool{"DHOW_SMTP_HOST": true, "DHOW_LOG_RETENTION_DAYS": true}}, []string{
+			"DHOW_BREACHED_PASSWORD_CHECK comes from the environment",
+			"DHOW_SMTP_PASSWORD comes from the environment",
+			"DHOW_SMTP_HOST comes from the database",
+			"DHOW_LOG_RETENTION_DAYS comes from the database",
+			"DHOW_RATE_LIMIT_PUBLIC comes from the default",
+		}},
+		{"the database is unreachable", fakeDB{err: errors.New("connection refused")}, []string{
+			"DHOW_BREACHED_PASSWORD_CHECK comes from the environment",
+			"DHOW_SMTP_HOST comes from the database or the default",
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, out := newApp(f, "")
+			app.DB = tt.db
+			_ = app.Doctor(context.Background(), DoctorOptions{})
+			for _, w := range tt.want {
+				assert.Contains(t, out.String(), w)
+			}
+			assert.NotContains(t, out.String(), "relay-credential-in-env")
+		})
+	}
 }

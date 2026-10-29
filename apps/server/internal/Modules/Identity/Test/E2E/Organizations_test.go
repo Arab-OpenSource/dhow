@@ -42,7 +42,7 @@ func TestOnlyTheInstanceOwnerCreatesOrganizationsByDefault(t *testing.T) {
 }
 
 func TestAnyUserCreatesOrganizationsWhenTheInstanceAllowsIt(t *testing.T) {
-	env := apptest.NewWithOptions(t, apptest.Options{Profile: func(c *config.Config) { c.AnyUserCreatesOrganizations = true }})
+	env := apptest.NewWithOptions(t, apptest.Options{Profile: func(c *config.Config) { c.SetEnvSetting(config.EnvOrgCreation, config.OrgCreationAnyUser) }})
 	_, d := env.SetupAndLogin()
 	org := env.OrganizationID(d.OrgSlug)
 	viewer, _ := env.SignedIn(org, "viewer@example.com", "viewer")

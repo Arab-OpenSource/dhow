@@ -184,7 +184,11 @@ func (s *Service) Append(ctx context.Context, ref *runnerv1.LeaseRef, chunks []*
 		if err != nil {
 			return err
 		}
-		plan := planAppend(logState{lastSeq: a.LastSeq, bytes: a.LogBytes, truncated: a.Truncated}, s.logs.MaxBytes, chunks)
+		limit := s.limits().JobLogMaxBytes
+		if a.LogMaxBytes.Valid {
+			limit = a.LogMaxBytes.Int64
+		}
+		plan := planAppend(logState{lastSeq: a.LastSeq, bytes: a.LogBytes, truncated: a.Truncated}, limit, chunks)
 		if err := insertRows(ctx, q, a, plan.rows); err != nil {
 			return err
 		}

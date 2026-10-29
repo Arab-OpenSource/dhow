@@ -27,17 +27,21 @@ func (r Route) Key() string { return r.Method + " " + r.Path }
 
 type PerClient struct {
 	limiter Limiter
-	max     int
+	max     func() int
 	window  time.Duration
 	log     *slog.Logger
 }
 
 func NewPerClient(limiter Limiter, maxPerWindow int, window time.Duration, log *slog.Logger) *PerClient {
+	return NewLivePerClient(limiter, func() int { return maxPerWindow }, window, log)
+}
+
+func NewLivePerClient(limiter Limiter, maxPerWindow func() int, window time.Duration, log *slog.Logger) *PerClient {
 	return &PerClient{limiter: limiter, max: maxPerWindow, window: window, log: log}
 }
 
 func (p *PerClient) LimitFor(r Route) Limit {
-	return Limit{Name: clientPrefix + r.Group, Max: p.max, Window: p.window}
+	return Limit{Name: clientPrefix + r.Group, Max: p.max(), Window: p.window}
 }
 
 func (p *PerClient) Middleware(routes ...Route) func(http.Handler) http.Handler {

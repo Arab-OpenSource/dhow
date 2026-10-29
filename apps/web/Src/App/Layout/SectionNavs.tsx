@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { sectionById, type TSectionId } from '@/App/Navigation/Sections';
 import { useSection } from '@/App/Navigation/useSection';
-import { useCurrentMembership } from '@/Core/Auth/useMe';
+import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { SectionNav, type ISectionNavItem } from '@/Core/Ui/SectionNav';
 import type { TMessageKey } from '@/I18n/Messages';
 import { useT } from '@/I18n/useT';
@@ -18,9 +18,10 @@ const SectionLinks = ({ label, ids, className }: ISectionNavsProps) => {
   const navigate = useNavigate();
   const match = useSection();
   const role = useCurrentMembership()?.Role;
+  const owner = useMe().data?.InstanceOwner === true;
   const items: ISectionNavItem[] = ids
     .map(sectionById)
-    .filter((section) => section.allow(role))
+    .filter((section) => section.allow(role, owner))
     .map((section) => ({
       id: section.id,
       label: t(section.label),

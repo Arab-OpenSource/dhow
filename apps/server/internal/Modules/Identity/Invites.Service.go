@@ -62,12 +62,13 @@ func invitationOf(r sqlc.GetOpenInvitationRow, now time.Time) models.Invitation 
 }
 
 func (s *Service) takeInviteLimits(ctx context.Context, org, user uuid.UUID) error {
+	limits := s.limits()
 	checks := []struct {
 		limit   ratelimit.Limit
 		subject uuid.UUID
 	}{
-		{ratelimit.Limit{Name: limitInvitesUser, Max: s.limits.InvitesUser, Window: config.RateLimitInviteWindow}, user},
-		{ratelimit.Limit{Name: limitInvitesOrg, Max: s.limits.InvitesOrg, Window: config.RateLimitInviteWindow}, org},
+		{ratelimit.Limit{Name: limitInvitesUser, Max: limits.InvitesUser, Window: config.RateLimitInviteWindow}, user},
+		{ratelimit.Limit{Name: limitInvitesOrg, Max: limits.InvitesOrg, Window: config.RateLimitInviteWindow}, org},
 	}
 	for _, c := range checks {
 		d, err := s.limiter.Take(ctx, c.limit, c.subject.String())

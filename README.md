@@ -62,6 +62,7 @@ A host needs at least 1 CPU core, 2 GiB of memory and 5 GiB of free disk (2 core
 | [The home page](docs/guides/home.md) | What is running, what needs attention, the sidebar counters, and the overview API behind them |
 | [Follow jobs in the web app](docs/guides/jobs.md) | The job list, stuck jobs without a runner, stopping a job, the live log, attempts and settings |
 | [Your organization and your account](docs/guides/organization.md) | Members and teams beside their details, invitations, API keys, organization settings, and your profile and security |
+| [Server settings](docs/guides/instance-settings.md) | Mail, organization creation, the breached-password check, rate limits and log limits from the dashboard, and how the environment locks them |
 | [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
 | [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
 

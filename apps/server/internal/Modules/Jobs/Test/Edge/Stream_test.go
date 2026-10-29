@@ -146,7 +146,7 @@ func TestTheStreamOutlivesTheServerReadAndWriteTimeouts(t *testing.T) {
 
 func TestStreamsAreLimitedPerUserAndPerInstance(t *testing.T) {
 	w := setup(t, apptest.NewWithOptions(t, apptest.Options{Profile: func(c *config.Config) {
-		c.Logs = config.Logs{MaxBytes: config.LogMaxBytesDefault, RetentionDays: 30, MaxStreams: config.LogStreamsPerUser + 2}
+		c.Logs = config.Logs{MaxStreams: config.LogStreamsPerUser + 2}
 	}}))
 	id, _, _ := runningJob(t, w)
 	srv := w.env.Serve()

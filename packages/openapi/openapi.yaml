@@ -52,6 +52,11 @@ tags:
     description: >-
       Counts for the home page and the sidebar, in one request. Served by the Overview module, which reads the jobs,
       runners and invitations tables and never writes them.
+  - name: settings
+    description: >-
+      Server settings that the instance owner changes from the dashboard (ADR-0063): mail, organization creation, the
+      breached-password check, rate limits and log limits. Served by the Settings module. An environment variable
+      always wins and locks its setting.
 paths:
   /health/live:
     get:
@@ -2151,6 +2156,177 @@ paths:
                 $ref: "#/components/schemas/OrganizationOverviewResponse"
         default:
           $ref: "#/components/responses/Error"
+  /instance/settings:
+    get:
+      operationId: getInstanceSettings
+      tags: [settings]
+      summary: Every dashboard setting, with where each value comes from
+      description: >-
+        Needs `instance.settings.manage` (the instance owner only, never an API token). Each setting carries its
+        effective `Value`, its `Source` (`env`, `database` or `default`), `Locked` (true when an environment variable
+        sets it) and `Env`, the name of that variable. A secret never comes back: it is `{Set, Locked, Env}` only.
+        Each group carries the `Version` to send back when you change it.
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The settings of every group.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/mail:
+    put:
+      operationId: updateMailSettings
+      tags: [settings]
+      summary: Change the mail settings
+      description: >-
+        Needs `instance.settings.manage`, a second factor on the caller's account (`SECOND_FACTOR_REQUIRED`
+        otherwise) and a fresh `CurrentFactor`. Send only the fields you change. A field you leave out keeps its value.
+        An empty string removes a field from the database, so it goes back to its default. For `Password`, leave it
+        out to keep the saved password, send a new value to replace it, or send an empty string to clear it. A field
+        set by an environment variable answers `409 SETTING_LOCKED_BY_ENV`, a stale `Version` answers
+        `409 SETTING_CHANGED`, and a bad value answers `400 SETTING_INVALID` with the field and the reason.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMailSettingsRequest"
+      responses:
+        "200":
+          description: Every group, after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/mail/test:
+    post:
+      operationId: sendTestMail
+      tags: [settings]
+      summary: Send a test email to the caller
+      description: >-
+        Needs `instance.settings.manage`. Sends one short message to the caller's own address with the mail settings
+        in effect now. Five tests per user in ten minutes (`429 RATE_LIMITED` after that). Mail that is off answers
+        `409 MAIL_NOT_CONFIGURED`, and a mail server that refuses answers `502 MAIL_TEST_FAILED`; the reason is in
+        the server log, never in the response.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      responses:
+        "200":
+          description: The address the message went to.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MailTestResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/organizations:
+    put:
+      operationId: updateOrganizationSettings
+      tags: [settings]
+      summary: Choose who may create organizations
+      description: Same rules as `PUT /instance/settings/mail`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationSettingsRequest"
+      responses:
+        "200":
+          description: Every group, after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/passwords:
+    put:
+      operationId: updatePasswordSettings
+      tags: [settings]
+      summary: Turn the breached-password check on or off
+      description: Same rules as `PUT /instance/settings/mail`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePasswordSettingsRequest"
+      responses:
+        "200":
+          description: Every group, after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/rate-limits:
+    put:
+      operationId: updateRateLimitSettings
+      tags: [settings]
+      summary: Change the rate limits
+      description: Same rules as `PUT /instance/settings/mail`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRateLimitSettingsRequest"
+      responses:
+        "200":
+          description: Every group, after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/logs:
+    put:
+      operationId: updateLogSettings
+      tags: [settings]
+      summary: Change how long job logs are kept and how large one attempt's log may grow
+      description: >-
+        Same rules as `PUT /instance/settings/mail`. A new `JobLogMaxBytes` applies to attempts that start after the
+        change; a running attempt keeps the limit it started with.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLogSettingsRequest"
+      responses:
+        "200":
+          description: Every group, after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstanceSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     SessionCookie:
@@ -2342,6 +2518,300 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    SettingSource:
+      type: string
+      enum: [env, database, default]
+      description: Where the value in effect comes from. An environment variable wins over the database.
+    StringSetting:
+      type: object
+      additionalProperties: false
+      required: [Value, Source, Locked, Env]
+      properties:
+        Value:
+          type: string
+        Source:
+          $ref: "#/components/schemas/SettingSource"
+        Locked:
+          type: boolean
+          description: True when the environment variable `Env` sets it. The dashboard cannot change it then.
+        LockedBy:
+          type: string
+          description: >-
+            The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail
+            server, port and encryption when the SMTP password comes from the environment. Absent when not locked.
+        Env:
+          type: string
+          example: DHOW_SMTP_HOST
+    IntegerSetting:
+      type: object
+      additionalProperties: false
+      required: [Value, Source, Locked, Env]
+      properties:
+        Value:
+          type: integer
+          format: int64
+        Source:
+          $ref: "#/components/schemas/SettingSource"
+        Locked:
+          type: boolean
+        LockedBy:
+          type: string
+          description: >-
+            The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail
+            server, port and encryption when the SMTP password comes from the environment. Absent when not locked.
+        Env:
+          type: string
+    BooleanSetting:
+      type: object
+      additionalProperties: false
+      required: [Value, Source, Locked, Env]
+      properties:
+        Value:
+          type: boolean
+        Source:
+          $ref: "#/components/schemas/SettingSource"
+        Locked:
+          type: boolean
+        LockedBy:
+          type: string
+          description: >-
+            The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail
+            server, port and encryption when the SMTP password comes from the environment. Absent when not locked.
+        Env:
+          type: string
+    SecretSetting:
+      type: object
+      additionalProperties: false
+      required: [Set, Locked, Env, Saved]
+      description: A write-only secret. Its value never comes back, only whether one is set.
+      properties:
+        Set:
+          type: boolean
+          description: True when a value is in effect, from the environment or the database.
+        Saved:
+          type: boolean
+          description: >-
+            True when a copy is saved in the database. With `Locked`, that copy is unused, and sending "" removes it.
+        Locked:
+          type: boolean
+        Env:
+          type: string
+    MailSettings:
+      type: object
+      additionalProperties: false
+      required: [Version, Host, Port, Tls, Username, Password, From]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        Host:
+          $ref: "#/components/schemas/StringSetting"
+        Port:
+          $ref: "#/components/schemas/IntegerSetting"
+        Tls:
+          $ref: "#/components/schemas/StringSetting"
+        Username:
+          $ref: "#/components/schemas/StringSetting"
+        Password:
+          $ref: "#/components/schemas/SecretSetting"
+        From:
+          $ref: "#/components/schemas/StringSetting"
+    OrganizationSettings:
+      type: object
+      additionalProperties: false
+      required: [Version, Creation]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        Creation:
+          $ref: "#/components/schemas/StringSetting"
+    PasswordSettings:
+      type: object
+      additionalProperties: false
+      required: [Version, BreachedCheck]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        BreachedCheck:
+          $ref: "#/components/schemas/BooleanSetting"
+    RateLimitSettings:
+      type: object
+      additionalProperties: false
+      required: [Version, Public, InvitesPerUser, InvitesPerOrganization]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        Public:
+          $ref: "#/components/schemas/IntegerSetting"
+        InvitesPerUser:
+          $ref: "#/components/schemas/IntegerSetting"
+        InvitesPerOrganization:
+          $ref: "#/components/schemas/IntegerSetting"
+    LogSettings:
+      type: object
+      additionalProperties: false
+      required: [Version, RetentionDays, JobLogMaxBytes]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        RetentionDays:
+          $ref: "#/components/schemas/IntegerSetting"
+        JobLogMaxBytes:
+          $ref: "#/components/schemas/IntegerSetting"
+    InstanceSettings:
+      type: object
+      additionalProperties: false
+      required: [Mail, Organizations, Passwords, RateLimits, Logs]
+      properties:
+        Mail:
+          $ref: "#/components/schemas/MailSettings"
+        Organizations:
+          $ref: "#/components/schemas/OrganizationSettings"
+        Passwords:
+          $ref: "#/components/schemas/PasswordSettings"
+        RateLimits:
+          $ref: "#/components/schemas/RateLimitSettings"
+        Logs:
+          $ref: "#/components/schemas/LogSettings"
+    InstanceSettingsResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/InstanceSettings"
+    UpdateMailSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [Version, CurrentFactor]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+        Host:
+          type: string
+          maxLength: 253
+        Port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+        Tls:
+          type: string
+          enum: [starttls, tls, none]
+        Username:
+          type: string
+          maxLength: 320
+        Password:
+          type: string
+          format: password
+          writeOnly: true
+          maxLength: 1024
+          description: >-
+            Leave out to keep the saved password, send a value to replace it, or send "" to clear it. When `Host`
+            changes and a password is saved, send the password again (`400 SETTING_INVALID` otherwise), so a saved
+            password never goes to a new server without the owner typing it. When `DHOW_SMTP_PASSWORD` is set in the
+            environment, `Host`, `Port` and `Tls` are locked too (`409 SETTING_LOCKED_BY_ENV`), and "" only removes
+            the unused database copy. From the dashboard, `Tls` may be `none` only for a loopback host.
+        From:
+          type: string
+          maxLength: 320
+    UpdateOrganizationSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [Version, CurrentFactor]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+        Creation:
+          type: string
+          enum: [instance-owner, any-user]
+    UpdatePasswordSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [Version, CurrentFactor]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+        BreachedCheck:
+          type: boolean
+    UpdateRateLimitSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [Version, CurrentFactor]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+        Public:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        InvitesPerUser:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        InvitesPerOrganization:
+          type: integer
+          minimum: 1
+          maximum: 100000
+    UpdateLogSettingsRequest:
+      type: object
+      additionalProperties: false
+      required: [Version, CurrentFactor]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+        RetentionDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        JobLogMaxBytes:
+          type: integer
+          format: int64
+          minimum: 1048576
+          maximum: 1073741824
+    MailTest:
+      type: object
+      additionalProperties: false
+      required: [SentTo]
+      properties:
+        SentTo:
+          type: string
+          format: email
+    MailTestResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/MailTest"
     Envelope:
       type: object
       required: [Success]
@@ -2403,7 +2873,8 @@ components:
             `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`,
             `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`,
             `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`,
-            `INVITATION_ACCOUNT_EXISTS` or `SECOND_FACTOR_REQUIRED`.
+            `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`,
+            `SETTING_INVALID`, `MAIL_NOT_CONFIGURED` or `MAIL_TEST_FAILED`.
           example: INTERNAL
         Message:
           type: string
@@ -2675,7 +3146,7 @@ components:
     Me:
       type: object
       additionalProperties: false
-      required: [User, Memberships, CsrfToken, SessionId, ExpiresAt, CanCreateOrganizations, MfaReenrollRequired]
+      required: [User, Memberships, CsrfToken, SessionId, ExpiresAt, CanCreateOrganizations, InstanceOwner, MfaReenrollRequired]
       properties:
         User:
           $ref: "#/components/schemas/User"
@@ -2694,6 +3165,9 @@ components:
         CanCreateOrganizations:
           type: boolean
           description: True when this user may call `POST /organizations`.
+        InstanceOwner:
+          type: boolean
+          description: True when this user owns the server and may manage its settings (`instance.settings.manage`).
         MfaReenrollRequired:
           type: boolean
           description: An admin reset this user's second factor, and a new one is not set up yet.

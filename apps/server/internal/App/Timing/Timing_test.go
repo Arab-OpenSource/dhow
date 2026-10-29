@@ -10,6 +10,7 @@ import (
 	mathrand "math/rand/v2"
 	"net/http"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -126,7 +127,9 @@ func randomToken(t *testing.T) string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-func unlimited(c *config.Config) { c.RateLimits.Public = config.RateLimitUpperBound }
+func unlimited(c *config.Config) {
+	c.SetEnvSetting(config.EnvRateLimitPublic, strconv.Itoa(config.RateLimitUpperBound))
+}
 
 func TestTimingSignInDoesNotRevealWhetherAnAccountExists(t *testing.T) {
 	params := auth.DefaultParams()

@@ -21,44 +21,44 @@ func withSMTP(extra map[string]string) map[string]string {
 }
 
 func TestSMTPIsOffByDefault(t *testing.T) {
-	cfg, err := config.Load(env(valid()))
+	cfg, err := resolve(valid())
 	require.NoError(t, err)
-	assert.False(t, cfg.SMTP.Enabled())
-	assert.False(t, cfg.AnyUserCreatesOrganizations)
+	assert.False(t, cfg.Mail.Enabled())
+	assert.False(t, cfg.AnyUserCreatesOrganizations())
 }
 
 func TestSMTPDefaults(t *testing.T) {
-	cfg, err := config.Load(env(withSMTP(map[string]string{
+	cfg, err := resolve(withSMTP(map[string]string{
 		config.EnvSMTPHost: "smtp.example.com", config.EnvSMTPFrom: "Dhow <dhow@example.com>",
 		config.EnvSMTPUsername: "dhow", config.EnvSMTPPassword: "mail-relay-credential",
-	})))
+	}))
 	require.NoError(t, err)
-	assert.True(t, cfg.SMTP.Enabled())
-	assert.Equal(t, 587, cfg.SMTP.Port)
-	assert.Equal(t, config.SMTPTLSStartTLS, cfg.SMTP.TLS)
-	assert.Equal(t, "dhow@example.com", cfg.SMTP.From.Address)
-	assert.Equal(t, "Dhow", cfg.SMTP.From.Name)
-	assert.Equal(t, "mail-relay-credential", cfg.SMTP.Password)
+	assert.True(t, cfg.Mail.Enabled())
+	assert.Equal(t, 587, cfg.Mail.Port)
+	assert.Equal(t, config.SMTPTLSStartTLS, cfg.Mail.TLS)
+	assert.Equal(t, "dhow@example.com", cfg.Mail.From.Address)
+	assert.Equal(t, "Dhow", cfg.Mail.From.Name)
+	assert.Equal(t, "mail-relay-credential", cfg.Mail.Password)
 }
 
 func TestSMTPImplicitTLSDefaultsTo465(t *testing.T) {
-	cfg, err := config.Load(env(withSMTP(map[string]string{
+	cfg, err := resolve(withSMTP(map[string]string{
 		config.EnvSMTPHost: "smtp.example.com", config.EnvSMTPFrom: "dhow@example.com", config.EnvSMTPTLS: "TLS",
-	})))
+	}))
 	require.NoError(t, err)
-	assert.Equal(t, 465, cfg.SMTP.Port)
-	assert.Equal(t, config.SMTPTLSImplicit, cfg.SMTP.TLS)
+	assert.Equal(t, 465, cfg.Mail.Port)
+	assert.Equal(t, config.SMTPTLSImplicit, cfg.Mail.TLS)
 }
 
 func TestSMTPPasswordFromAFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "smtp")
 	require.NoError(t, os.WriteFile(path, []byte("from-a-file\n"), 0o600))
-	cfg, err := config.Load(env(withSMTP(map[string]string{
+	cfg, err := resolve(withSMTP(map[string]string{
 		config.EnvSMTPHost: "smtp.example.com", config.EnvSMTPFrom: "dhow@example.com", config.EnvSMTPUsername: "dhow",
 		config.EnvSMTPPasswordFile: path,
-	})))
+	}))
 	require.NoError(t, err)
-	assert.Equal(t, "from-a-file", cfg.SMTP.Password)
+	assert.Equal(t, "from-a-file", cfg.Mail.Password)
 }
 
 func TestSMTPRejects(t *testing.T) {
@@ -85,7 +85,7 @@ func TestSMTPRejects(t *testing.T) {
 			for k, v := range tt.extra {
 				m[k] = v
 			}
-			_, err := config.Load(env(m))
+			_, err := resolve(m)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.want)
 			assert.NotContains(t, err.Error(), "relay-credential")
@@ -94,12 +94,12 @@ func TestSMTPRejects(t *testing.T) {
 }
 
 func TestSMTPNoneWithoutCredentialsIsAllowed(t *testing.T) {
-	cfg, err := config.Load(env(withSMTP(map[string]string{
+	cfg, err := resolve(withSMTP(map[string]string{
 		config.EnvSMTPHost: "relay.internal", config.EnvSMTPFrom: "dhow@example.com", config.EnvSMTPTLS: "none", config.EnvSMTPPort: "25",
-	})))
+	}))
 	require.NoError(t, err)
-	assert.Equal(t, config.SMTPTLSNone, cfg.SMTP.TLS)
-	assert.Equal(t, 25, cfg.SMTP.Port)
+	assert.Equal(t, config.SMTPTLSNone, cfg.Mail.TLS)
+	assert.Equal(t, 25, cfg.Mail.Port)
 }
 
 func TestOrgCreation(t *testing.T) {
@@ -108,8 +108,8 @@ func TestOrgCreation(t *testing.T) {
 		want bool
 	}{{"", false}, {"instance-owner", false}, {"ANY-USER", true}, {" any-user ", true}}
 	for _, tt := range tests {
-		cfg, err := config.Load(env(withSMTP(map[string]string{config.EnvOrgCreation: tt.in})))
+		cfg, err := resolve(withSMTP(map[string]string{config.EnvOrgCreation: tt.in}))
 		require.NoError(t, err, tt.in)
-		assert.Equal(t, tt.want, cfg.AnyUserCreatesOrganizations, strings.TrimSpace(tt.in))
+		assert.Equal(t, tt.want, cfg.AnyUserCreatesOrganizations(), strings.TrimSpace(tt.in))
 	}
 }

@@ -33,12 +33,13 @@ type DoctorOptions struct {
 }
 
 type Doctor struct {
-	Sys   System
-	Det   Detection
-	A     Answers
-	M     Messages
-	Probe ProbeIDs
-	b     *Builder
+	Sys      System
+	Det      Detection
+	A        Answers
+	M        Messages
+	Probe    ProbeIDs
+	Settings SettingsReader
+	b        *Builder
 }
 
 type ProbeIDs func() (string, error)
@@ -67,6 +68,9 @@ func (app App) Doctor(ctx context.Context, opts DoctorOptions) error {
 	}
 	det := Detect(ctx, app.Sys)
 	d := Doctor{Sys: app.Sys, Det: det, A: a, M: m, Probe: func() (string, error) { return RandomHex(8) }}
+	if reader, ok := app.DB.(SettingsReader); ok {
+		d.Settings = reader
+	}
 	d.b = &Builder{Sys: app.Sys, Det: det, A: a, M: m, Version: app.Version, Sleep: app.Sleep}
 	findings := d.Run(ctx)
 	app.printFindings(findings, m)
@@ -145,6 +149,7 @@ func (d Doctor) Run(ctx context.Context) []Finding {
 	out = append(out, d.publicChecks(ctx)...)
 	out = append(out, d.resources()...)
 	out = append(out, d.disk()...)
+	out = append(out, d.settingSources(ctx)...)
 	return out
 }
 

@@ -259,7 +259,7 @@ func (q *Queries) ListenLogAppended(ctx context.Context) error {
 
 const lockAttemptLog = `-- name: LockAttemptLog :one
 SELECT "Id", "JobId", "OrganizationId", "State", "LastSeq", "LogBytes", ("LogTruncatedAt" IS NOT NULL)::boolean AS "Truncated",
-       ("LateResultLoggedAt" IS NOT NULL)::boolean AS "LateResultLogged"
+       ("LateResultLoggedAt" IS NOT NULL)::boolean AS "LateResultLogged", "LogMaxBytes"
 FROM "JobAttempts"
 WHERE "Id" = $1
 FOR UPDATE
@@ -274,6 +274,7 @@ type LockAttemptLogRow struct {
 	LogBytes         int64
 	Truncated        bool
 	LateResultLogged bool
+	LogMaxBytes      pgtype.Int8
 }
 
 func (q *Queries) LockAttemptLog(ctx context.Context, id uuid.UUID) (LockAttemptLogRow, error) {
@@ -288,6 +289,7 @@ func (q *Queries) LockAttemptLog(ctx context.Context, id uuid.UUID) (LockAttempt
 		&i.LogBytes,
 		&i.Truncated,
 		&i.LateResultLogged,
+		&i.LogMaxBytes,
 	)
 	return i, err
 }

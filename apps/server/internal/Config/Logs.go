@@ -5,11 +5,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	settingspec "github.com/Khaymah/dhow/apps/server/internal/Config/Settings"
 )
 
 const (
-	EnvJobLogMaxBytes    = "DHOW_JOB_LOG_MAX_BYTES"
-	EnvLogRetentionDays  = "DHOW_LOG_RETENTION_DAYS"
+	EnvJobLogMaxBytes    = settingspec.EnvJobLogMaxBytes
+	EnvLogRetentionDays  = settingspec.EnvLogRetentionDays
 	EnvSSEMaxStreams     = "DHOW_SSE_MAX_STREAMS"
 	EnvLogReadConns      = "DHOW_LOG_READ_CONNS"
 	LogAppendedChannel   = "dhow_log_appended"
@@ -30,11 +32,11 @@ const (
 	LogPartitionsAhead   = 3
 	LogMaintainInterval  = time.Hour
 	LogMaintainLockWait  = 2 * time.Second
-	LogMaxBytesDefault   = 64 << 20
-	LogMaxBytesMin       = 1 << 20
-	LogMaxBytesMax       = 1 << 30
-	LogRetentionDefault  = 30
-	LogRetentionMax      = 3650
+	LogMaxBytesDefault   = settingspec.JobLogMaxBytesDefault
+	LogMaxBytesMin       = settingspec.JobLogMaxBytesMin
+	LogMaxBytesMax       = settingspec.JobLogMaxBytesMax
+	LogRetentionDefault  = settingspec.LogRetentionDefault
+	LogRetentionMax      = settingspec.LogRetentionMax
 	SSEMaxStreamsDefault = 2000
 	SSEMaxStreamsMax     = 100_000
 	LogReadConnsDefault  = 4
@@ -48,32 +50,22 @@ const (
 	LogTrackedUsers      = 10_000
 )
 
+type LogSettings = settingspec.Logs
+
+func DefaultLogSettings() LogSettings {
+	return LogSettings{RetentionDays: LogRetentionDefault, JobLogMaxBytes: LogMaxBytesDefault}
+}
+
 type Logs struct {
-	MaxBytes      int64
-	RetentionDays int
-	MaxStreams    int
-	ReadConns     int
+	MaxStreams int
+	ReadConns  int
 }
 
 func DefaultLogs() Logs {
-	return Logs{
-		MaxBytes: LogMaxBytesDefault, RetentionDays: LogRetentionDefault, MaxStreams: SSEMaxStreamsDefault, ReadConns: LogReadConnsDefault,
-	}
+	return Logs{MaxStreams: SSEMaxStreamsDefault, ReadConns: LogReadConnsDefault}
 }
 
 func (l Logs) OrgStreams() int { return max(2*LogStreamsPerUser, l.MaxStreams/LogOrgStreamsShare) }
-
-func boundedInt(v string, def, lowest, highest int64) (int64, error) {
-	v = strings.TrimSpace(v)
-	if v == "" {
-		return def, nil
-	}
-	n, err := strconv.ParseInt(v, 10, 64)
-	if err != nil || n < lowest || n > highest {
-		return 0, errors.New("must be a whole number from " + strconv.FormatInt(lowest, 10) + " to " + strconv.FormatInt(highest, 10))
-	}
-	return n, nil
-}
 
 func boundedSmall(v string, def, lowest, highest int) (int, error) {
 	v = strings.TrimSpace(v)
@@ -90,14 +82,6 @@ func boundedSmall(v string, def, lowest, highest int) (int, error) {
 func loadLogs(getenv func(string) string) (Logs, []error) {
 	out := DefaultLogs()
 	var errs []error
-	maxBytes, err := boundedInt(getenv(EnvJobLogMaxBytes), LogMaxBytesDefault, LogMaxBytesMin, LogMaxBytesMax)
-	if err != nil {
-		errs = append(errs, errors.New(EnvJobLogMaxBytes+": "+err.Error()))
-	}
-	retention, err := boundedSmall(getenv(EnvLogRetentionDays), LogRetentionDefault, 1, LogRetentionMax)
-	if err != nil {
-		errs = append(errs, errors.New(EnvLogRetentionDays+": "+err.Error()))
-	}
 	streams, err := boundedSmall(getenv(EnvSSEMaxStreams), SSEMaxStreamsDefault, 1, SSEMaxStreamsMax)
 	if err != nil {
 		errs = append(errs, errors.New(EnvSSEMaxStreams+": "+err.Error()))
@@ -109,5 +93,5 @@ func loadLogs(getenv func(string) string) (Logs, []error) {
 	if len(errs) > 0 {
 		return out, errs
 	}
-	return Logs{MaxBytes: maxBytes, RetentionDays: retention, MaxStreams: streams, ReadConns: conns}, nil
+	return Logs{MaxStreams: streams, ReadConns: conns}, nil
 }

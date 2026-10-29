@@ -1436,10 +1436,286 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/instance/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every dashboard setting, with where each value comes from
+         * @description Needs `instance.settings.manage` (the instance owner only, never an API token). Each setting carries its effective `Value`, its `Source` (`env`, `database` or `default`), `Locked` (true when an environment variable sets it) and `Env`, the name of that variable. A secret never comes back: it is `{Set, Locked, Env}` only. Each group carries the `Version` to send back when you change it.
+         */
+        get: operations["getInstanceSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/mail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change the mail settings
+         * @description Needs `instance.settings.manage`, a second factor on the caller's account (`SECOND_FACTOR_REQUIRED` otherwise) and a fresh `CurrentFactor`. Send only the fields you change. A field you leave out keeps its value. An empty string removes a field from the database, so it goes back to its default. For `Password`, leave it out to keep the saved password, send a new value to replace it, or send an empty string to clear it. A field set by an environment variable answers `409 SETTING_LOCKED_BY_ENV`, a stale `Version` answers `409 SETTING_CHANGED`, and a bad value answers `400 SETTING_INVALID` with the field and the reason.
+         */
+        put: operations["updateMailSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/mail/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a test email to the caller
+         * @description Needs `instance.settings.manage`. Sends one short message to the caller's own address with the mail settings in effect now. Five tests per user in ten minutes (`429 RATE_LIMITED` after that). Mail that is off answers `409 MAIL_NOT_CONFIGURED`, and a mail server that refuses answers `502 MAIL_TEST_FAILED`; the reason is in the server log, never in the response.
+         */
+        post: operations["sendTestMail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Choose who may create organizations
+         * @description Same rules as `PUT /instance/settings/mail`.
+         */
+        put: operations["updateOrganizationSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/passwords": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Turn the breached-password check on or off
+         * @description Same rules as `PUT /instance/settings/mail`.
+         */
+        put: operations["updatePasswordSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/rate-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change the rate limits
+         * @description Same rules as `PUT /instance/settings/mail`.
+         */
+        put: operations["updateRateLimitSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/instance/settings/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change how long job logs are kept and how large one attempt's log may grow
+         * @description Same rules as `PUT /instance/settings/mail`. A new `JobLogMaxBytes` applies to attempts that start after the change; a running attempt keeps the limit it started with.
+         */
+        put: operations["updateLogSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Where the value in effect comes from. An environment variable wins over the database.
+         * @enum {string}
+         */
+        SettingSource: "env" | "database" | "default";
+        StringSetting: {
+            Value: string;
+            Source: components["schemas"]["SettingSource"];
+            /** @description True when the environment variable `Env` sets it. The dashboard cannot change it then. */
+            Locked: boolean;
+            /** @description The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked. */
+            LockedBy?: string;
+            /** @example DHOW_SMTP_HOST */
+            Env: string;
+        };
+        IntegerSetting: {
+            /** Format: int64 */
+            Value: number;
+            Source: components["schemas"]["SettingSource"];
+            Locked: boolean;
+            /** @description The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked. */
+            LockedBy?: string;
+            Env: string;
+        };
+        BooleanSetting: {
+            Value: boolean;
+            Source: components["schemas"]["SettingSource"];
+            Locked: boolean;
+            /** @description The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked. */
+            LockedBy?: string;
+            Env: string;
+        };
+        /** @description A write-only secret. Its value never comes back, only whether one is set. */
+        SecretSetting: {
+            /** @description True when a value is in effect, from the environment or the database. */
+            Set: boolean;
+            /** @description True when a copy is saved in the database. With `Locked`, that copy is unused, and sending "" removes it. */
+            Saved: boolean;
+            Locked: boolean;
+            Env: string;
+        };
+        MailSettings: {
+            /** Format: int64 */
+            Version: number;
+            Host: components["schemas"]["StringSetting"];
+            Port: components["schemas"]["IntegerSetting"];
+            Tls: components["schemas"]["StringSetting"];
+            Username: components["schemas"]["StringSetting"];
+            Password: components["schemas"]["SecretSetting"];
+            From: components["schemas"]["StringSetting"];
+        };
+        OrganizationSettings: {
+            /** Format: int64 */
+            Version: number;
+            Creation: components["schemas"]["StringSetting"];
+        };
+        PasswordSettings: {
+            /** Format: int64 */
+            Version: number;
+            BreachedCheck: components["schemas"]["BooleanSetting"];
+        };
+        RateLimitSettings: {
+            /** Format: int64 */
+            Version: number;
+            Public: components["schemas"]["IntegerSetting"];
+            InvitesPerUser: components["schemas"]["IntegerSetting"];
+            InvitesPerOrganization: components["schemas"]["IntegerSetting"];
+        };
+        LogSettings: {
+            /** Format: int64 */
+            Version: number;
+            RetentionDays: components["schemas"]["IntegerSetting"];
+            JobLogMaxBytes: components["schemas"]["IntegerSetting"];
+        };
+        InstanceSettings: {
+            Mail: components["schemas"]["MailSettings"];
+            Organizations: components["schemas"]["OrganizationSettings"];
+            Passwords: components["schemas"]["PasswordSettings"];
+            RateLimits: components["schemas"]["RateLimitSettings"];
+            Logs: components["schemas"]["LogSettings"];
+        };
+        InstanceSettingsResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["InstanceSettings"];
+        };
+        UpdateMailSettingsRequest: {
+            /** Format: int64 */
+            Version: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+            Host?: string;
+            Port?: number;
+            /** @enum {string} */
+            Tls?: "starttls" | "tls" | "none";
+            Username?: string;
+            /**
+             * Format: password
+             * @description Leave out to keep the saved password, send a value to replace it, or send "" to clear it. When `Host` changes and a password is saved, send the password again (`400 SETTING_INVALID` otherwise), so a saved password never goes to a new server without the owner typing it. When `DHOW_SMTP_PASSWORD` is set in the environment, `Host`, `Port` and `Tls` are locked too (`409 SETTING_LOCKED_BY_ENV`), and "" only removes the unused database copy. From the dashboard, `Tls` may be `none` only for a loopback host.
+             */
+            Password?: string;
+            From?: string;
+        };
+        UpdateOrganizationSettingsRequest: {
+            /** Format: int64 */
+            Version: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+            /** @enum {string} */
+            Creation?: "instance-owner" | "any-user";
+        };
+        UpdatePasswordSettingsRequest: {
+            /** Format: int64 */
+            Version: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+            BreachedCheck?: boolean;
+        };
+        UpdateRateLimitSettingsRequest: {
+            /** Format: int64 */
+            Version: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+            Public?: number;
+            InvitesPerUser?: number;
+            InvitesPerOrganization?: number;
+        };
+        UpdateLogSettingsRequest: {
+            /** Format: int64 */
+            Version: number;
+            CurrentFactor: components["schemas"]["CurrentFactor"];
+            RetentionDays?: number;
+            /** Format: int64 */
+            JobLogMaxBytes?: number;
+        };
+        MailTest: {
+            /** Format: email */
+            SentTo: string;
+        };
+        MailTestResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["MailTest"];
+        };
         Envelope: {
             Success: boolean;
             /**
@@ -1464,7 +1740,7 @@ export interface components {
         };
         ErrorDetail: {
             /**
-             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS` or `SECOND_FACTOR_REQUIRED`.
+             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`, `SETTING_INVALID`, `MAIL_NOT_CONFIGURED` or `MAIL_TEST_FAILED`.
              * @example INTERNAL
              */
             Code: string;
@@ -1617,6 +1893,8 @@ export interface components {
             ExpiresAt: string;
             /** @description True when this user may call `POST /organizations`. */
             CanCreateOrganizations: boolean;
+            /** @description True when this user owns the server and may manage its settings (`instance.settings.manage`). */
+            InstanceOwner: boolean;
             /** @description An admin reset this user's second factor, and a new one is not set up yet. */
             MfaReenrollRequired: boolean;
         };
@@ -4630,6 +4908,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationOverviewResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getInstanceSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings of every group. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateMailSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMailSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Every group, after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    sendTestMail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The address the message went to. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailTestResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateOrganizationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrganizationSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Every group, after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updatePasswordSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePasswordSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Every group, after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateRateLimitSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRateLimitSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Every group, after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceSettingsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateLogSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLogSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Every group, after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceSettingsResponse"];
                 };
             };
             default: components["responses"]["Error"];

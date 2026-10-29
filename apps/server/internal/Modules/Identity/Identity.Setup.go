@@ -45,7 +45,7 @@ type Options struct {
 	Mailer    mailer.Sender
 	PublicURL string
 	Limiter   ratelimit.Limiter
-	Limits    config.RateLimits
+	Limits    func() config.RateLimits
 	Log       *slog.Logger
 	Now       func() time.Time
 }
@@ -59,7 +59,7 @@ type Service struct {
 	mailer    mailer.Sender
 	publicURL string
 	limiter   ratelimit.Limiter
-	limits    config.RateLimits
+	limits    func() config.RateLimits
 	log       *slog.Logger
 	now       func() time.Time
 }
@@ -77,9 +77,13 @@ func NewService(o Options) *Service {
 	if limiter == nil {
 		limiter = ratelimit.NewMemory(config.RateLimitTrackedKeys, now)
 	}
+	limits := o.Limits
+	if limits == nil {
+		limits = func() config.RateLimits { return config.RateLimits{} }
+	}
 	return &Service{
 		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, bus: o.Bus, factors: o.Factors, mailer: mail,
-		publicURL: o.PublicURL, limiter: limiter, limits: o.Limits.WithDefaults(), log: o.Log, now: now,
+		publicURL: o.PublicURL, limiter: limiter, limits: func() config.RateLimits { return limits().WithDefaults() }, log: o.Log, now: now,
 	}
 }
 

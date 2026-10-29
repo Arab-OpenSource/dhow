@@ -65,7 +65,7 @@ type GuardOptions struct {
 	APITokens *APITokens
 	CSRF      *CSRF
 	PublicURL *url.URL
-	Instance  policy.InstanceSettings
+	Instance  func() policy.InstanceSettings
 	Log       *slog.Logger
 	Now       func() time.Time
 }
@@ -76,7 +76,7 @@ type Guard struct {
 	apiTokens *APITokens
 	csrf      *CSRF
 	origin    string
-	instance  policy.InstanceSettings
+	instance  func() policy.InstanceSettings
 	log       *slog.Logger
 	now       func() time.Time
 }
@@ -86,9 +86,13 @@ func NewGuard(o GuardOptions) *Guard {
 	if now == nil {
 		now = time.Now
 	}
+	instance := o.Instance
+	if instance == nil {
+		instance = func() policy.InstanceSettings { return policy.InstanceSettings{} }
+	}
 	return &Guard{
 		resolver: o.Resolver, tokens: o.Tokens, apiTokens: o.APITokens, csrf: o.CSRF, origin: OriginOf(o.PublicURL),
-		instance: o.Instance, log: o.Log, now: now,
+		instance: instance, log: o.Log, now: now,
 	}
 }
 
@@ -105,7 +109,7 @@ func OriginOf(u *url.URL) string {
 
 func (g *Guard) CSRF() *CSRF { return g.csrf }
 
-func (g *Guard) Instance() policy.InstanceSettings { return g.instance }
+func (g *Guard) Instance() policy.InstanceSettings { return g.instance() }
 
 func (g *Guard) Middleware(table *policy.Table) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -176,7 +180,7 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 		return ctx, apperrors.CSRFFailed()
 	}
 	if rule.Scope == policy.ScopeInstance {
-		if !policy.CanInstance(principal.Subject, rule.Action, g.instance) {
+		if !policy.CanInstance(principal.Subject, rule.Action, g.instance()) {
 			return ctx, apperrors.Forbidden()
 		}
 		return WithPrincipal(ctx, principal), nil

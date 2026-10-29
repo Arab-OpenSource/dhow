@@ -5,6 +5,7 @@ import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
 import { OrgPagesEn } from '@/I18n/Locales/Workspace/OrgPagesEn';
 import { PagesEn } from '@/I18n/Locales/Workspace/PagesEn';
 import { RunnersEn } from '@/I18n/Locales/Workspace/RunnersEn';
+import { SettingsEn } from '@/I18n/Locales/Workspace/SettingsEn';
 import type { TWorkspaceMessages } from '@/I18n/Messages';
 
 export const WorkspaceEn: TWorkspaceMessages = {
@@ -15,6 +16,7 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'palette.kind.action': 'Action',
   'palette.command.home': 'Go to Home',
   'palette.command.systemStatus': 'Open server status',
+  'palette.command.systemSettings': 'Open server settings',
   'palette.command.notifications': 'Open notifications',
   'palette.command.language': 'Switch the language to {language}',
 
@@ -379,4 +381,5 @@ export const WorkspaceEn: TWorkspaceMessages = {
   ...PagesEn,
   ...HomeEn,
   ...OrgPagesEn,
+  ...SettingsEn,
 };

@@ -38,7 +38,7 @@ var (
 func limitedEnv(t *testing.T, configure func(*config.Config)) *apptest.Env {
 	t.Helper()
 	return apptest.NewWithOptions(t, apptest.Options{Profile: func(c *config.Config) {
-		c.RateLimits.Public = testPublicLimit
+		c.SetEnvSetting(config.EnvRateLimitPublic, strconv.Itoa(testPublicLimit))
 		if configure != nil {
 			configure(c)
 		}
@@ -161,7 +161,7 @@ func TestIPv6ClientsAreCountedPerSlash64(t *testing.T) {
 func TestASecondInstanceOnTheSameDatabaseSeesTheSameCounter(t *testing.T) {
 	first := limitedEnv(t, nil)
 	second := apptest.NewWithOptions(t, apptest.Options{Pool: first.Pool, Clock: first.Clock, Profile: func(c *config.Config) {
-		c.RateLimits.Public = testPublicLimit
+		c.SetEnvSetting(config.EnvRateLimitPublic, strconv.Itoa(testPublicLimit))
 	}})
 	require.NotSame(t, first.Wired, second.Wired)
 	for i := range testPublicLimit {

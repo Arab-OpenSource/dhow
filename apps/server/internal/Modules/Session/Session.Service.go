@@ -40,7 +40,7 @@ type Options struct {
 	Recovery  *auth.RecoveryHasher
 	WebAuthn  *webauthn.WebAuthn
 	Bus       Publisher
-	Instance  policy.InstanceSettings
+	Instance  func() policy.InstanceSettings
 	Log       *slog.Logger
 	Now       func() time.Time
 
@@ -58,7 +58,7 @@ type Service struct {
 	recovery  *auth.RecoveryHasher
 	webauthn  *webauthn.WebAuthn
 	bus       Publisher
-	instance  policy.InstanceSettings
+	instance  func() policy.InstanceSettings
 	log       *slog.Logger
 	now       func() time.Time
 
@@ -77,9 +77,13 @@ func NewService(o Options) *Service {
 	if now == nil {
 		now = time.Now
 	}
+	instance := o.Instance
+	if instance == nil {
+		instance = func() policy.InstanceSettings { return policy.InstanceSettings{} }
+	}
 	return &Service{
 		db: o.DB, hasher: o.Hasher, passwords: o.Passwords, csrf: o.CSRF, sealer: o.Sealer, recovery: o.Recovery,
-		webauthn: o.WebAuthn, bus: o.Bus, instance: o.Instance, log: o.Log, now: now,
+		webauthn: o.WebAuthn, bus: o.Bus, instance: instance, log: o.Log, now: now,
 		oidc: o.Oidc, oidcKey: o.OidcKey, callbackBase: o.CallbackBase,
 	}
 }
@@ -178,7 +182,8 @@ func (s *Service) Me(ctx context.Context) (models.Me, error) {
 	return models.Me{
 		User:        models.User{ID: p.UserID, Email: p.Email, Name: p.Name, Locale: p.Locale},
 		Memberships: memberships, CSRFToken: p.CSRFToken, SessionID: p.SessionID, ExpiresAt: p.ExpiresAt,
-		CanCreateOrganizations: policy.CanInstance(p.Subject, policy.OrgCreate, s.instance),
+		CanCreateOrganizations: policy.CanInstance(p.Subject, policy.OrgCreate, s.instance()),
+		InstanceOwner:          p.InstanceOwner && !p.ViaToken(),
 		MfaReenrollRequired:    flags.MfaResetAt != nil && !hasMfa(factors),
 	}, nil
 }

@@ -5,6 +5,7 @@ import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
 import { OrgPagesAr } from '@/I18n/Locales/Workspace/OrgPagesAr';
 import { PagesAr } from '@/I18n/Locales/Workspace/PagesAr';
 import { RunnersAr } from '@/I18n/Locales/Workspace/RunnersAr';
+import { SettingsAr } from '@/I18n/Locales/Workspace/SettingsAr';
 
 export const WorkspaceAr = {
   'palette.label': 'الأوامر',
@@ -14,6 +15,7 @@ export const WorkspaceAr = {
   'palette.kind.action': 'إجراء',
   'palette.command.home': 'انتقل إلى الرئيسية',
   'palette.command.systemStatus': 'افتح حالة السيرفر',
+  'palette.command.systemSettings': 'افتح إعدادات السيرفر',
   'palette.command.notifications': 'افتح الإشعارات',
   'palette.command.language': 'غيّر اللغة إلى {language}',
 
@@ -378,4 +380,5 @@ export const WorkspaceAr = {
   ...PagesAr,
   ...HomeAr,
   ...OrgPagesAr,
+  ...SettingsAr,
 } as const;

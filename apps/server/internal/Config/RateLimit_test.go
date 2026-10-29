@@ -10,7 +10,7 @@ import (
 )
 
 func TestRateLimitsDefaultWhenUnset(t *testing.T) {
-	cfg, err := config.Load(env(valid()))
+	cfg, err := resolve(valid())
 	require.NoError(t, err)
 	assert.Equal(t, config.RateLimits{
 		Public: config.RateLimitPublicDefault, InvitesUser: config.RateLimitInvitesUserDefault, InvitesOrg: config.RateLimitInvitesOrgDefault,
@@ -39,7 +39,7 @@ func TestRateLimitValues(t *testing.T) {
 			t.Run(name+"/"+tt.name, func(t *testing.T) {
 				m := valid()
 				m[name] = tt.value
-				cfg, err := config.Load(env(m))
+				cfg, err := resolve(m)
 				if tt.wantErr {
 					require.Error(t, err)
 					assert.Contains(t, err.Error(), name)

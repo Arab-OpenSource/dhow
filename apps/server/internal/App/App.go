@@ -24,6 +24,7 @@ import (
 	preferences "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences"
 	runners "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Khaymah/dhow/apps/server/internal/Modules/Session"
+	settings "github.com/Khaymah/dhow/apps/server/internal/Modules/Settings"
 	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
 	tokens "github.com/Khaymah/dhow/apps/server/internal/Modules/Tokens"
 )
@@ -44,6 +45,8 @@ type Options struct {
 	CSRF      *auth.CSRF
 	APITokens *auth.APITokens
 	Limits    *ratelimit.PerClient
+	Settings  *settings.Service
+	Instance  func() policy.InstanceSettings
 	Now       func() time.Time
 	Web       http.Handler
 }
@@ -59,6 +62,7 @@ func Policies() []policy.Rule {
 	rules = append(rules, overview.Policies()...)
 	rules = append(rules, tokens.Policies()...)
 	rules = append(rules, preferences.Policies()...)
+	rules = append(rules, settings.Policies()...)
 	return rules
 }
 
@@ -95,7 +99,7 @@ func (o Options) guard() *auth.Guard {
 	}
 	return auth.NewGuard(auth.GuardOptions{
 		Resolver: resolver, Tokens: tokenResolver, APITokens: o.APITokens, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now,
-		Instance: policy.InstanceSettings{AnyUserCreatesOrganizations: o.Config.AnyUserCreatesOrganizations},
+		Instance: o.Instance,
 	})
 }
 
@@ -145,6 +149,9 @@ func publicRouter(o Options) chi.Router {
 			}
 			if o.Overview != nil {
 				overview.Routes(timed, overview.Deps{Service: o.Overview, Guard: guard, Log: o.Log})
+			}
+			if o.Settings != nil {
+				settings.Routes(timed, settings.Deps{Service: o.Settings, Guard: guard, Log: o.Log})
 			}
 		})
 		if o.Jobs != nil {

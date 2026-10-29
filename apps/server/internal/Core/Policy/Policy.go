@@ -51,12 +51,14 @@ const (
 	JobCreate         Action = "job.create"
 	JobCancel         Action = "job.cancel"
 	LogRead           Action = "log.read"
+
+	InstanceSettingsManage Action = "instance.settings.manage"
 )
 
 func Actions() []Action {
 	return []Action{
 		OrgRead, OrgUpdate, OrgLeave, OrgTransfer, OrgSecurity, MemberRead, MemberManage, AuditRead, SessionManageSelf, OrgCreate,
-		RunnerRead, RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
+		RunnerRead, RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead, InstanceSettingsManage,
 	}
 }
 
@@ -66,7 +68,7 @@ func TokenActions() []Action {
 
 func IsTokenAction(a Action) bool { return slices.Contains(TokenActions(), a) }
 
-func InstanceActions() []Action { return []Action{OrgCreate} }
+func InstanceActions() []Action { return []Action{OrgCreate, InstanceSettingsManage} }
 
 func IsInstanceAction(a Action) bool {
 	for _, ia := range InstanceActions() {
@@ -167,6 +169,8 @@ func CanInstance(s Subject, action Action, inst InstanceSettings) bool {
 	switch action {
 	case OrgCreate:
 		return s.InstanceOwner || inst.AnyUserCreatesOrganizations
+	case InstanceSettingsManage:
+		return s.InstanceOwner
 	default:
 		return false
 	}

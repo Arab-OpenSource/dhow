@@ -64,7 +64,8 @@ func TestTheMigrationPreparesTodayAndThreeDaysAhead(t *testing.T) {
 
 func TestRetentionDropsOnlyPartitionsPastIt(t *testing.T) {
 	env := apptest.NewWithOptions(t, apptest.Options{Profile: func(c *config.Config) {
-		c.Logs = config.Logs{MaxBytes: config.LogMaxBytesDefault, RetentionDays: 7, MaxStreams: 10}
+		c.Logs = config.Logs{MaxStreams: 10}
+		c.SetEnvSetting(config.EnvLogRetentionDays, "7")
 	}})
 	makeOldPartition(t, env, -40)
 	makeOldPartition(t, env, -8)

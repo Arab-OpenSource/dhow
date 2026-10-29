@@ -34,7 +34,7 @@ export const USER_ID = '0198a000-0000-7000-8000-0000000000b1';
 export const SESSION_ID = '0198a000-0000-7000-8000-0000000000c1';
 export const CSRF_TOKEN = 'csrf-token-1';
 
-export const meBody = (role = 'owner', csrfToken = CSRF_TOKEN, organizationName = 'Future Solution') => ({
+export const meBody = (role = 'owner', csrfToken = CSRF_TOKEN, organizationName = 'Future Solution', instanceOwner = false) => ({
   Success: true,
   Message: 'session.me.loaded',
   Data: {
@@ -44,6 +44,7 @@ export const meBody = (role = 'owner', csrfToken = CSRF_TOKEN, organizationName 
     SessionId: SESSION_ID,
     ExpiresAt: '2026-11-10T12:00:00Z',
     CanCreateOrganizations: role === 'owner',
+    InstanceOwner: instanceOwner,
     MfaReenrollRequired: false,
   },
 });
