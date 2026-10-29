@@ -176,14 +176,15 @@ func crashCases() []crashCase {
 			name: "after the reply, before the identity file was switched", want: app.ErrNotSwitched, serverHas: "new", diskHas: "old",
 			pendingAll: true,
 			rotation: func(_ *runnertest.Runner, rot *app.Rotation) {
-				rot.Promote = func(string, string) error { return errCrash }
+				rot.Promote = func(string, string, *identity.Identity) error { return errCrash }
 			},
 		},
 		{
-			name: "after the rename, before the directory was synced", want: app.ErrNotSwitched, serverHas: "new", diskHas: "new",
+			name: "after the new identity was written, before the pending file was removed", want: app.ErrNotSwitched,
+			serverHas: "new", diskHas: "new", pendingAll: true,
 			rotation: func(_ *runnertest.Runner, rot *app.Rotation) {
-				rot.Promote = func(from, to string) error {
-					if err := os.Rename(from, to); err != nil {
+				rot.Promote = func(_, path string, next *identity.Identity) error {
+					if err := identity.Save(path, next); err != nil {
 						return err
 					}
 					return errCrash
@@ -229,10 +230,8 @@ func TestEveryCrashPointOfRotateKeysLeavesAUsableIdentity(t *testing.T) {
 					require.NoError(t, err)
 					assert.Empty(t, stale, "half-written identity files are removed")
 					require.NoError(t, authenticate(t, r, id), "the identity the runner starts with is accepted")
-					if tc.serverHas == "new" {
-						requireNoPending(t, r)
-						assert.False(t, r.Identity().SameKeys(old))
-					}
+					requireNoPending(t, r)
+					assert.Equal(t, tc.serverHas == "new", !r.Identity().SameKeys(old), "the runner uses the key the server holds")
 					requireJobWithSecretRuns(t, r)
 					return
 				}
@@ -241,8 +240,9 @@ func TestEveryCrashPointOfRotateKeysLeavesAUsableIdentity(t *testing.T) {
 				requireNoPending(t, r)
 				rotated := r.Identity()
 				assert.True(t, rotated.SameKeys(res.Identity))
-				if pending != nil {
-					assert.True(t, rotated.SameKeys(pending), "a resumed rotation reuses the keys it saved")
+				if pending != nil && !pending.SameKeys(onDisk) {
+					assert.Equal(t, tc.serverHas == "new", rotated.SameKeys(pending),
+						"saved keys are kept only when the server took them, and are replaced by fresh ones otherwise")
 				}
 				version := int32(2)
 				if tc.diskHas == "new" {
@@ -260,7 +260,7 @@ func TestEveryCrashPointOfRotateKeysLeavesAUsableIdentity(t *testing.T) {
 	}
 }
 
-func TestRecoveryKeepsTheCurrentKeyWhenTheServerNeverSawTheNewOne(t *testing.T) {
+func TestRecoveryDiscardsKeysTheServerNeverTook(t *testing.T) {
 	srv := runnertest.NewServer(t)
 	r := runnertest.Register(t, srv, srv.URL)
 	old := r.Identity()
@@ -272,8 +272,49 @@ func TestRecoveryKeepsTheCurrentKeyWhenTheServerNeverSawTheNewOne(t *testing.T) 
 
 	got := recoverIdentity(t, r)
 	assert.True(t, got.SameKeys(old))
-	_, err = os.Lstat(pendingPath(r))
-	require.NoError(t, err, "the pending keys stay, so rotate-keys can finish with them")
+	requireNoPending(t, r)
+}
+
+func TestRotateKeysMakesFreshKeysWhenTheServerNeverTookTheSavedOnes(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	keys, err := identity.GenerateKeys()
+	require.NoError(t, err)
+	stale, err := r.Identity().Next(keys)
+	require.NoError(t, err)
+	require.NoError(t, identity.Save(pendingPath(r), stale))
+
+	res, err := app.Rotation{Config: r.Config()}.Run(context.Background())
+	require.NoError(t, err)
+	assert.False(t, res.Finished)
+	assert.False(t, r.Identity().SameKeys(stale), "keys that sat on disk unconfirmed are never sent to the server")
+	requireServerKey(t, r, r.Identity(), 2)
+	requireNoPending(t, r)
+}
+
+func TestFinishingARotationKeepsOnlyTheKeysFromThePendingFile(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	old := r.Identity()
+	srv.Configure(func(k *runnertest.Knobs) { k.RotateLoseReply = true })
+	_, err := app.Rotation{Config: r.Config()}.Run(context.Background())
+	require.ErrorIs(t, err, app.ErrUnconfirmed)
+	srv.Configure(func(k *runnertest.Knobs) { k.RotateLoseReply = false })
+
+	pending, err := identity.Load(pendingPath(r))
+	require.NoError(t, err)
+	pending.ServerURL = "https://elsewhere.example.com"
+	pending.Labels = []string{"planted"}
+	pending.KeyVersion = 40
+	require.NoError(t, identity.Save(pendingPath(r), pending))
+
+	got := recoverIdentity(t, r)
+	assert.True(t, got.SameKeys(pending))
+	onDisk := r.Identity()
+	assert.Equal(t, old.ServerURL, onDisk.ServerURL, "only the keys come from the pending file")
+	assert.Equal(t, old.Labels, onDisk.Labels)
+	assert.Equal(t, int32(2), onDisk.KeyVersion)
+	requireNoPending(t, r)
 }
 
 func TestRecoveryRefusesAPendingIdentityOfAnotherRunner(t *testing.T) {

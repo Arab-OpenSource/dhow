@@ -37,16 +37,16 @@ A rotation is safe to interrupt at any point: power loss, a killed process or a 
 
 1. **The new keys are saved first.** `rotate-keys` writes the full new identity to `identity.pending` in the state directory (mode `0600`, written to a temporary file, flushed to disk, renamed, and the directory flushed), before the server hears of the new keys.
 2. **The server is asked to switch,** in one request signed by the current key and by the new key over the same message (the runner ID, the current key version and both new public keys). The server checks both signatures, bumps the key version only if it is still the one signed, and ends the runner's sessions, all in one transaction.
-3. **Once the server confirms,** `identity.pending` is renamed over `identity` and the directory is flushed.
+3. **Once the server confirms,** the runner writes the new identity over `identity` the same safe way, built from the current identity with only the new keys taken over, and then removes `identity.pending`.
 
 | Interrupted | On disk | On the server | What fixes it |
 |---|---|---|---|
 | Before or while `identity.pending` is written | old identity, maybe a half-written temporary file | old key | Nothing to fix. The next run or rotation removes the temporary file. |
-| After `identity.pending` is saved, before the server switched | old identity and `identity.pending` | old key | `run` signs in with the old key and logs that a rotation is unfinished. `rotate-keys` again finishes it with the saved keys. |
-| After the server switched, before the reply arrived or the file was renamed | old identity and `identity.pending` | new key | `run` finds the old key refused, signs in with `identity.pending`, renames it over `identity` and goes on. `rotate-keys` again does the same and stops. |
-| After the rename, before the directory was flushed | new identity, or after a power loss the state of the row above | new key | As above. |
+| After `identity.pending` is saved, before the server switched | old identity and `identity.pending` | old key | The old key still signs in, so the saved keys were never used. `run` and `rotate-keys` both overwrite and remove `identity.pending`, and `rotate-keys` makes fresh keys. |
+| After the server switched, before the reply arrived or the identity was written | old identity and `identity.pending` | new key | The old key is refused and the saved key signs in. `run` writes the new identity and goes on; `rotate-keys` does the same and stops. |
+| After the identity was written, before `identity.pending` was removed | new identity and `identity.pending` with the same keys | new key | `run` and `rotate-keys` remove the leftover file. |
 
-`rotate-keys` never throws the saved keys away: a second run reuses `identity.pending` rather than making new keys, so the keys the server may already hold are never lost. It deletes nothing the server might need. If both keys are refused (the runner was revoked, or the server's data was restored from an older backup), the runner keeps retrying with backoff like any runner whose credentials are refused; revoke it and register the host again.
+Saved keys are used only when the server already holds them: the current key is refused and the saved one signs in. If the current key still signs in, the server never took the saved keys (it switches only from the key version both signatures name), so they are overwritten with zeros and removed, and a new rotation makes fresh ones. Keys that sat on disk unconfirmed, perhaps long enough to be copied, are never sent to the server. If both keys are refused (the runner was revoked, or the server's data was restored from an older backup), the runner keeps retrying with backoff like any runner whose credentials are refused; revoke it and register the host again.
 
 ## When it fails
 
@@ -55,7 +55,7 @@ A rotation is safe to interrupt at any point: power loss, a killed process or a 
 | `the runner is running; stop it first` | `dhow-runner run` holds the state directory. Stop the service and try again. |
 | `the last run left attempts it has not reported yet` | Start the runner so it reports them, stop it, then rotate. |
 | `the server did not confirm the new keys` | The request failed or timed out. The current key stays in use; run `rotate-keys` again. If the server did switch, the runner also finishes the rotation on its next start. |
-| `the server took the new keys, but the identity file was not switched yet` | The rename failed (a full or read-only disk). Fix the disk, then run `rotate-keys` again or start the runner. |
+| `the server took the new keys, but the identity file was not switched yet` | Writing the identity failed (a full or read-only disk). Fix the disk, then run `rotate-keys` again or start the runner. |
 | `the pending identity belongs to another runner or server` | `identity.pending` does not match `identity`. Someone copied files between state directories; remove `identity.pending` only if you are sure no rotation of this runner is unfinished. |
 | `RUNNER_REVOKED` | The runner was revoked. Register the host again. |
 

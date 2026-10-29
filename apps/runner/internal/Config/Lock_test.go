@@ -37,13 +37,24 @@ func TestLockStateRefusesASymlink(t *testing.T) {
 	require.ErrorIs(t, err, config.ErrNotFile)
 }
 
-func TestRenameDurableMovesTheFile(t *testing.T) {
+func TestShredFileOverwritesAndRemoves(t *testing.T) {
 	dir := t.TempDir()
-	from, to := filepath.Join(dir, "a"), filepath.Join(dir, "b")
-	require.NoError(t, os.WriteFile(from, []byte("x"), 0o600))
-	require.NoError(t, config.RenameDurable(from, to))
-	raw, err := os.ReadFile(to)
+	path := filepath.Join(dir, "pending")
+	require.NoError(t, os.WriteFile(path, []byte("private key material"), 0o600))
+	keep, err := os.Open(path)
 	require.NoError(t, err)
-	assert.Equal(t, "x", string(raw))
-	assert.Error(t, config.RenameDurable(from, to), "a missing source is an error")
+	defer func() { _ = keep.Close() }()
+	require.NoError(t, config.ShredFile(path))
+	_, err = os.Lstat(path)
+	require.ErrorIs(t, err, os.ErrNotExist)
+	left := make([]byte, 64)
+	n, _ := keep.Read(left)
+	assert.Equal(t, make([]byte, n), left[:n], "the bytes were zeroed before the file was removed")
+	require.NoError(t, config.ShredFile(path), "a missing file is already gone")
+
+	target := filepath.Join(dir, "target")
+	require.NoError(t, os.WriteFile(target, []byte("x"), 0o600))
+	link := filepath.Join(dir, "link")
+	require.NoError(t, os.Symlink(target, link))
+	require.ErrorIs(t, config.ShredFile(link), config.ErrNotFile, "a symlink is never followed")
 }

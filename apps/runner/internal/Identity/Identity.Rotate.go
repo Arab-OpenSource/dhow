@@ -52,9 +52,19 @@ func (i *Identity) Matches(pending *Identity) error {
 	return nil
 }
 
-func Promote(pendingPath, path string) error {
-	if err := config.RenameDurable(pendingPath, path); err != nil {
+func Promote(pendingPath, path string, next *Identity) error {
+	if err := Save(path, next); err != nil {
 		return fmt.Errorf("switch to the new identity: %w", err)
+	}
+	if err := config.RemoveDurable(pendingPath); err != nil {
+		return fmt.Errorf("remove the pending identity after the switch: %w", err)
+	}
+	return nil
+}
+
+func Discard(pendingPath string) error {
+	if err := config.ShredFile(pendingPath); err != nil {
+		return fmt.Errorf("discard the unused keys in %s: %w", pendingPath, err)
 	}
 	return nil
 }

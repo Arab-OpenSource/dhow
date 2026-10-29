@@ -179,11 +179,35 @@ func WriteFileAtomic(path string, data []byte) error {
 	return syncDir(dir)
 }
 
-func RenameDurable(from, to string) error {
-	if err := os.Rename(from, to); err != nil {
-		return fmt.Errorf("rename %s: %w", to, err)
+func RemoveDurable(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("remove %s: %w", path, err)
 	}
-	return syncDir(filepath.Dir(to))
+	return syncDir(filepath.Dir(path))
+}
+
+func ShredFile(path string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0) //nolint:gosec // The runner's own state directory.
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("open %s: %w", path, openErr(err))
+	}
+	info, err := f.Stat()
+	if err == nil && info.Mode().IsRegular() && info.Size() <= maxStateFile {
+		_, err = f.Write(make([]byte, info.Size()))
+		if err == nil {
+			err = f.Sync()
+		}
+	}
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return fmt.Errorf("overwrite %s: %w", path, err)
+	}
+	return RemoveDurable(path)
 }
 
 func syncDir(dir string) error {

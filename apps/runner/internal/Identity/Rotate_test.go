@@ -82,7 +82,7 @@ func TestMatchesRefusesAnotherRunnerOrServer(t *testing.T) {
 	}
 }
 
-func TestPromoteSwapsThePendingFileAndRemoveStaleTempsCleansUp(t *testing.T) {
+func TestPromoteWritesTheValidatedIdentityAndRemoveStaleTempsCleansUp(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, config.IdentityFileName)
 	pending := filepath.Join(dir, config.PendingFileName)
@@ -92,11 +92,18 @@ func TestPromoteSwapsThePendingFileAndRemoveStaleTempsCleansUp(t *testing.T) {
 	require.NoError(t, err)
 	next, err := current.Next(keys)
 	require.NoError(t, err)
-	require.NoError(t, identity.Save(pending, next))
-	require.NoError(t, identity.Promote(pending, path))
+	tampered := *next
+	tampered.ServerURL = "https://elsewhere.example.com"
+	require.NoError(t, identity.Save(pending, &tampered))
+	require.NoError(t, identity.Promote(pending, path, next))
 	got, err := identity.Load(path)
 	require.NoError(t, err)
 	assert.True(t, got.SameKeys(next))
+	assert.Equal(t, current.ServerURL, got.ServerURL, "the validated identity is written, not the pending file")
+	require.NoError(t, identity.Save(pending, next))
+	require.NoError(t, identity.Discard(pending))
+	_, err = os.Lstat(pending)
+	assert.ErrorIs(t, err, os.ErrNotExist)
 	_, err = os.Lstat(pending)
 	assert.ErrorIs(t, err, os.ErrNotExist)
 

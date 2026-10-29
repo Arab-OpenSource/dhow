@@ -29,7 +29,7 @@ type Rotation struct {
 	Log         *slog.Logger
 	Generate    func() (identity.Keys, error)
 	SavePending func(path string, id *identity.Identity) error
-	Promote     func(pendingPath, path string) error
+	Promote     func(pendingPath, path string, next *identity.Identity) error
 }
 
 type Rotated struct {
@@ -114,38 +114,26 @@ func (r Rotation) Run(ctx context.Context) (Rotated, error) {
 	if n := len(j.Entries()); n > 0 {
 		return Rotated{}, fmt.Errorf("%w (%d attempts)", ErrJournalBusy, n)
 	}
-	next, resumed, err := r.prepare(current)
-	if err != nil {
-		return Rotated{}, err
-	}
-	if resumed {
-		done, err := r.finishedEarlier(ctx, next)
-		if err != nil || done {
-			return Rotated{Identity: next, Resumed: true, Finished: done}, err
-		}
+	next, finished, err := r.prepare(ctx, current)
+	if err != nil || finished {
+		return Rotated{Identity: next, Resumed: finished, Finished: finished}, err
 	}
 	if err := r.confirm(ctx, current, next); err != nil {
 		return Rotated{}, err
 	}
-	return Rotated{Identity: next, Resumed: resumed}, nil
+	return Rotated{Identity: next}, nil
 }
 
-func (r Rotation) prepare(current *identity.Identity) (*identity.Identity, bool, error) {
+func (r Rotation) prepare(ctx context.Context, current *identity.Identity) (*identity.Identity, bool, error) {
 	pending, err := loadPending(r.Config, current)
 	if err != nil {
 		return nil, false, err
 	}
 	if pending != nil && !current.SameKeys(pending) {
-		next, err := current.Next(pending.Keys)
-		if err != nil {
-			return nil, false, err
+		next, done, err := r.settle(ctx, current, pending)
+		if err != nil || done {
+			return next, done, err
 		}
-		if pending.KeyVersion != next.KeyVersion {
-			if err := r.SavePending(r.Config.PendingIdentityPath(), next); err != nil {
-				return nil, false, err
-			}
-		}
-		return next, true, nil
 	}
 	keys, err := r.Generate()
 	if err != nil {
@@ -161,24 +149,29 @@ func (r Rotation) prepare(current *identity.Identity) (*identity.Identity, bool,
 	return next, false, nil
 }
 
-func (r Rotation) finishedEarlier(ctx context.Context, next *identity.Identity) (bool, error) {
-	c, err := clientFor(r.Config, next, r.Log)
+func (r Rotation) settle(ctx context.Context, current, pending *identity.Identity) (*identity.Identity, bool, error) {
+	next, err := current.Next(pending.Keys)
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-	defer c.CloseIdle()
-	err = c.Authenticate(ctx)
-	switch {
-	case err == nil:
-		if err := r.Promote(r.Config.PendingIdentityPath(), r.Config.IdentityPath()); err != nil {
-			return false, errors.Join(ErrNotSwitched, err)
+	v, c, err := checkPending(ctx, r.Config, r.Log, current, next)
+	if err != nil {
+		return nil, false, fmt.Errorf("check whether the server took the new keys of the unfinished rotation: %w", err)
+	}
+	if c != nil {
+		defer c.CloseIdle()
+	}
+	switch v {
+	case keepCurrent:
+		r.Log.Info("the server never took the keys of the unfinished rotation; they are discarded and fresh keys are made")
+		return nil, false, identity.Discard(r.Config.PendingIdentityPath())
+	case takePending:
+		if err := r.Promote(r.Config.PendingIdentityPath(), r.Config.IdentityPath(), next); err != nil {
+			return nil, false, errors.Join(ErrNotSwitched, err)
 		}
-		return true, nil
-	case errors.Is(err, client.ErrCredentials):
-		r.Log.Info("resuming an unfinished key rotation with the keys it saved")
-		return false, nil
+		return next, true, nil
 	default:
-		return false, fmt.Errorf("check whether the server took the new keys of the unfinished rotation: %w", err)
+		return nil, false, ErrNoKeyAccepted
 	}
 }
 
@@ -202,11 +195,8 @@ func (r Rotation) confirm(ctx context.Context, current, next *identity.Identity)
 	if v := res.GetKeyVersion(); v != next.KeyVersion {
 		r.Log.Warn("the server numbered the new key differently than expected", "expected", next.KeyVersion, "server", v)
 		next.KeyVersion = v
-		if err := r.SavePending(r.Config.PendingIdentityPath(), next); err != nil {
-			return errors.Join(ErrNotSwitched, err)
-		}
 	}
-	if err := r.Promote(r.Config.PendingIdentityPath(), r.Config.IdentityPath()); err != nil {
+	if err := r.Promote(r.Config.PendingIdentityPath(), r.Config.IdentityPath(), next); err != nil {
 		return errors.Join(ErrNotSwitched, err)
 	}
 	return nil
