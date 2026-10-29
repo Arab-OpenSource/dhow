@@ -51,6 +51,8 @@ For GitHub Enterprise Server, set `DHOW_OIDC_<ID>_ISSUER` to the server's URL, f
 
 ## 3. Configure Dhow
 
+The simplest way is the dashboard: open **Server settings → Sign-in providers**, press **Add a sign-in provider** and fill in what you got in step 2. See [Server settings](instance-settings.md#sign-in-providers). The rest of this step is for installs that manage configuration in files, such as Kubernetes or GitOps. When `DHOW_OIDC_PROVIDERS` is set, the whole list comes from the environment and the dashboard shows it read-only.
+
 List the ids in `DHOW_OIDC_PROVIDERS`, then give each id its variables, with the id in upper case:
 
 ```sh
