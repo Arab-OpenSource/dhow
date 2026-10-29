@@ -61,3 +61,19 @@ WHERE NOT u."IsDeleted"
       SELECT 1 FROM "UserIdentities" o
       WHERE o."UserId" = u."Id" AND NOT o."IsDeleted" AND o."Provider" <> @provider::text AND o."Provider" = ANY (@others::text[])
   );
+
+-- name: CountUsersOutsideDomains :one
+SELECT count(*)
+FROM "Users" u
+WHERE NOT u."IsDeleted"
+  AND u."PasswordHash" = ''
+  AND EXISTS (
+      SELECT 1 FROM "UserIdentities" i
+      WHERE i."UserId" = u."Id" AND i."Provider" = @provider::text AND NOT i."IsDeleted"
+        AND NOT (lower(COALESCE(substring(i."Email" FROM '@([^@]+)$'), '')) = ANY (@domains::text[]))
+  )
+  AND NOT EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted")
+  AND NOT EXISTS (
+      SELECT 1 FROM "UserIdentities" o
+      WHERE o."UserId" = u."Id" AND NOT o."IsDeleted" AND o."Provider" <> @provider::text AND o."Provider" = ANY (@others::text[])
+  );

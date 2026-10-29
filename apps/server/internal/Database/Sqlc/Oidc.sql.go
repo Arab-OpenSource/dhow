@@ -12,6 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const currentProviderIssuer = `-- name: CurrentProviderIssuer :one
+SELECT "Issuer" FROM "OidcProviders" WHERE "ProviderId" = $1 AND NOT "IsDeleted" AND "Secret" IS NOT NULL
+`
+
+func (q *Queries) CurrentProviderIssuer(ctx context.Context, provider string) (string, error) {
+	row := q.db.QueryRow(ctx, currentProviderIssuer, provider)
+	var Issuer string
+	err := row.Scan(&Issuer)
+	return Issuer, err
+}
+
 const findIdentityOwner = `-- name: FindIdentityOwner :one
 SELECT "UserId", "Provider"
 FROM "UserIdentities"
@@ -142,16 +153,17 @@ func (q *Queries) InsertIdentity(ctx context.Context, arg InsertIdentityParams) 
 }
 
 const insertOidcFlow = `-- name: InsertOidcFlow :one
-INSERT INTO "OidcFlows" ("Purpose", "Provider", "TokenHash", "StateHash", "DeviceHash", "UserId", "SessionId", "ExpiresAt",
+INSERT INTO "OidcFlows" ("Purpose", "Provider", "Issuer", "TokenHash", "StateHash", "DeviceHash", "UserId", "SessionId", "ExpiresAt",
                          "CreatedAt", "UpdatedAt")
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
-        $9, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+        $10, $10)
 RETURNING "Id"
 `
 
 type InsertOidcFlowParams struct {
 	Purpose    string
 	Provider   string
+	Issuer     string
 	TokenHash  []byte
 	StateHash  []byte
 	DeviceHash []byte
@@ -165,6 +177,7 @@ func (q *Queries) InsertOidcFlow(ctx context.Context, arg InsertOidcFlowParams) 
 	row := q.db.QueryRow(ctx, insertOidcFlow,
 		arg.Purpose,
 		arg.Provider,
+		arg.Issuer,
 		arg.TokenHash,
 		arg.StateHash,
 		arg.DeviceHash,
@@ -219,10 +232,34 @@ func (q *Queries) ListUserIdentities(ctx context.Context, userID uuid.UUID) ([]L
 	return items, nil
 }
 
+const lockOidcProvidersShared = `-- name: LockOidcProvidersShared :exec
+SELECT pg_advisory_xact_lock_shared($1::bigint)
+`
+
+func (q *Queries) LockOidcProvidersShared(ctx context.Context, lockKey int64) error {
+	_, err := q.db.Exec(ctx, lockOidcProvidersShared, lockKey)
+	return err
+}
+
+const lockUserRow = `-- name: LockUserRow :exec
+SELECT 1 FROM "Users" WHERE "Id" = $1 AND NOT "IsDeleted" FOR UPDATE
+`
+
+func (q *Queries) LockUserRow(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, lockUserRow, id)
+	return err
+}
+
 const lockUserSignInMethods = `-- name: LockUserSignInMethods :one
 SELECT u."PasswordHash" <> '' AS "HasPassword",
        (SELECT count(*) FROM "UserIdentities" i
-        WHERE i."UserId" = u."Id" AND NOT i."IsDeleted" AND i."Provider" = ANY ($1::text[])) AS "Identities",
+        WHERE i."UserId" = u."Id" AND NOT i."IsDeleted" AND (
+            i."Provider" = ANY ($1::text[])
+            OR (cardinality($1::text[]) = 0 AND EXISTS (
+                SELECT 1 FROM "OidcProviders" op
+                WHERE op."ProviderId" = i."Provider" AND NOT op."IsDeleted" AND op."Secret" IS NOT NULL
+            ))
+        )) AS "Identities",
        (SELECT count(*) FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted") AS "Passkeys"
 FROM "Users" u
 WHERE u."Id" = $2 AND NOT u."IsDeleted"
@@ -230,8 +267,8 @@ FOR UPDATE OF u
 `
 
 type LockUserSignInMethodsParams struct {
-	Providers []string
-	ID        uuid.UUID
+	Env []string
+	ID  uuid.UUID
 }
 
 type LockUserSignInMethodsRow struct {
@@ -241,7 +278,7 @@ type LockUserSignInMethodsRow struct {
 }
 
 func (q *Queries) LockUserSignInMethods(ctx context.Context, arg LockUserSignInMethodsParams) (LockUserSignInMethodsRow, error) {
-	row := q.db.QueryRow(ctx, lockUserSignInMethods, arg.Providers, arg.ID)
+	row := q.db.QueryRow(ctx, lockUserSignInMethods, arg.Env, arg.ID)
 	var i LockUserSignInMethodsRow
 	err := row.Scan(&i.HasPassword, &i.Identities, &i.Passkeys)
 	return i, err
@@ -267,11 +304,31 @@ func (q *Queries) RemoveUserIdentity(ctx context.Context, arg RemoveUserIdentity
 	return Provider, err
 }
 
+const signInProviderActive = `-- name: SignInProviderActive :one
+SELECT COALESCE(($1::text = ANY ($2::text[]))
+    OR (cardinality($2::text[]) = 0 AND EXISTS (
+        SELECT 1 FROM "OidcProviders"
+        WHERE "ProviderId" = $1::text AND NOT "IsDeleted" AND "Secret" IS NOT NULL
+    )), false)::boolean AS "Active"
+`
+
+type SignInProviderActiveParams struct {
+	Provider string
+	Env      []string
+}
+
+func (q *Queries) SignInProviderActive(ctx context.Context, arg SignInProviderActiveParams) (bool, error) {
+	row := q.db.QueryRow(ctx, signInProviderActive, arg.Provider, arg.Env)
+	var Active bool
+	err := row.Scan(&Active)
+	return Active, err
+}
+
 const takeOidcFlow = `-- name: TakeOidcFlow :one
 UPDATE "OidcFlows"
 SET "UsedAt" = $1::timestamptz, "UpdatedAt" = $1
 WHERE "TokenHash" = $2 AND "Purpose" = $3 AND "UsedAt" IS NULL AND "ExpiresAt" > $1 AND NOT "IsDeleted"
-RETURNING "Id", "Provider", "StateHash", "DeviceHash", "UserId", "SessionId"
+RETURNING "Id", "Provider", "Issuer", "StateHash", "DeviceHash", "UserId", "SessionId"
 `
 
 type TakeOidcFlowParams struct {
@@ -283,6 +340,7 @@ type TakeOidcFlowParams struct {
 type TakeOidcFlowRow struct {
 	Id         uuid.UUID
 	Provider   string
+	Issuer     string
 	StateHash  []byte
 	DeviceHash []byte
 	UserId     *uuid.UUID
@@ -295,6 +353,7 @@ func (q *Queries) TakeOidcFlow(ctx context.Context, arg TakeOidcFlowParams) (Tak
 	err := row.Scan(
 		&i.Id,
 		&i.Provider,
+		&i.Issuer,
 		&i.StateHash,
 		&i.DeviceHash,
 		&i.UserId,

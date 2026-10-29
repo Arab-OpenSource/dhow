@@ -64,6 +64,8 @@ const (
 	OidcFlowTTL      = 10 * time.Minute
 	OidcFlowKeyLabel = "dhow/oidc-flow/v1"
 	OidcCallbackPath = "/oidc/callback/"
+
+	OidcProvidersLockKey int64 = 0x64686f775f6f6964
 )
 
 const (

@@ -46,6 +46,7 @@ const (
 	RuleOIDCIssuerTaken = "oidcIssuerTaken"
 	RuleOIDCClientID    = "oidcClientId"
 	RuleOIDCSecret      = "oidcSecret"
+	RuleOIDCSecretAgain = "oidcSecretAgain"
 	RuleOIDCPlaceholder = "oidcSecretPlaceholder"
 	RuleOIDCDomain      = "oidcDomain"
 	RuleOIDCDomainCount = "oidcDomainCount"

@@ -149,9 +149,14 @@ func TestProviderIdsAreUniqueAndTheListHasALimit(t *testing.T) {
 func TestTypeAndIssuerStayOnceAccountsAreLinked(t *testing.T) {
 	o := newOidcEnv(t, apptest.Options{})
 	p := o.addCorp(t, nil)
-	moved := decodeOidc(t, updateOidc(o.owner, "corp", p.Version, o.fresh(), map[string]any{"Issuer": o.idp.Issuer() + "/"})).find(t, "corp")
+	again := map[string]any{"ClientSecret": oidcmock.ClientSecret}
+	moved := decodeOidc(t, updateOidc(o.owner, "corp", p.Version, o.fresh(), map[string]any{
+		"Issuer": o.idp.Issuer() + "/", "ClientSecret": again["ClientSecret"],
+	})).find(t, "corp")
 	assert.Equal(t, o.idp.Issuer()+"/", moved.Issuer, "without linked accounts the issuer may change")
-	back := decodeOidc(t, updateOidc(o.owner, "corp", moved.Version, o.fresh(), map[string]any{"Issuer": o.idp.Issuer()})).find(t, "corp")
+	back := decodeOidc(t, updateOidc(o.owner, "corp", moved.Version, o.fresh(), map[string]any{
+		"Issuer": o.idp.Issuer(), "ClientSecret": again["ClientSecret"],
+	})).find(t, "corp")
 
 	o.linkIdentity(t, o.seedMember(t, "linked@example.com"), "linked-1")
 	assert.Equal(t, int64(1), readOidc(t, o.owner).find(t, "corp").LinkedIdentities)

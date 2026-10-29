@@ -236,6 +236,7 @@ type OidcFlow struct {
 	SessionId  *uuid.UUID
 	ExpiresAt  time.Time
 	UsedAt     *time.Time
+	Issuer     string
 }
 
 type OidcProvider struct {

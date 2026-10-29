@@ -216,6 +216,7 @@ var arMessages = map[string]string{ //nolint:gosec // This is a message catalog,
 	"settings.invalid.oidcClientId":                "اكتب معرّف العميل بدون مسافات.",
 	"settings.invalid.oidcSecret":                  "اكتب سر العميل بدون مسافات.",
 	"settings.invalid.oidcSecretPlaceholder":       "تبدو هذه قيمة مثال. انسخ السر من خدمة الدخول.",
+	"settings.invalid.oidcSecretAgain":             "غيّرت الخدمة أو عنوانها. اكتب سر العميل مرة أخرى حتى يصل إلى الخدمة الجديدة فقط.",
 	"settings.invalid.oidcDomain":                  "اكتب أسماء نطاقات فقط، مثل example.com.",
 	"settings.invalid.oidcDomainCount":             "يمكنك كتابة 50 نطاقًا على الأكثر.",
 }

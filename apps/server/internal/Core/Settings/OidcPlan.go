@@ -2,6 +2,7 @@ package instancesettings
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sort"
 
@@ -54,7 +55,10 @@ type oidcRow struct {
 	cfg     settingspec.OIDCProvider
 	secret  []byte
 	version int64
+	sealed  bool
 }
+
+func (r oidcRow) enabled() bool { return r.cfg.ClientSecret != "" || r.sealed }
 
 type oidcPlan struct {
 	target  *oidcRow
@@ -99,7 +103,7 @@ func (p *oidcPlanner) others(id string) []settingspec.OIDCProvider {
 func (p *oidcPlanner) enabledOthers(id string) []string {
 	out := []string{}
 	for _, r := range p.rows {
-		if r.cfg.ID != id && r.cfg.ClientSecret != "" {
+		if r.cfg.ID != id && r.enabled() {
 			out = append(out, r.cfg.ID)
 		}
 	}
@@ -110,10 +114,13 @@ func (p *oidcPlanner) plan(ctx context.Context, c OidcChange) (oidcPlan, error) 
 	if len(p.store.envOIDC) > 0 {
 		return oidcPlan{}, apperrors.SettingLockedByEnv(detail(fieldProviders, apperrors.KeySettingLockedByEnv))
 	}
+	target := p.find(c.ID)
+	if err := p.unreadable(c, target); err != nil {
+		return oidcPlan{}, err
+	}
 	if c.Operation == OidcCreate {
 		return p.planCreate(ctx, c.Input)
 	}
-	target := p.find(c.ID)
 	if target == nil {
 		return oidcPlan{}, apperrors.NotFound()
 	}
@@ -121,14 +128,28 @@ func (p *oidcPlanner) plan(ctx context.Context, c OidcChange) (oidcPlan, error) 
 		return oidcPlan{}, apperrors.SettingChanged()
 	}
 	if c.Operation == OidcRemove {
-		if target.cfg.ClientSecret != "" {
-			if err := p.strands(ctx, c.ID); err != nil {
+		if target.enabled() {
+			if err := p.strands(ctx, c.ID, nil); err != nil {
 				return oidcPlan{}, err
 			}
 		}
 		return oidcPlan{target: target, changed: []string{string(OidcRemove)}}, nil
 	}
 	return p.planUpdate(ctx, target, c.Patch)
+}
+
+func (p *oidcPlanner) unreadable(c OidcChange, target *oidcRow) error {
+	for _, r := range p.rows {
+		if !r.sealed {
+			continue
+		}
+		fixes := target != nil && target.sealed && c.Operation != OidcCreate &&
+			(c.Operation == OidcRemove || c.Patch.ClientSecret != nil)
+		if !fixes {
+			return fmt.Errorf("sign-in provider %s (from the database): client secret: %w; remove it or clear its secret first", r.cfg.ID, ErrUndecryptable)
+		}
+	}
+	return nil
 }
 
 func (p *oidcPlanner) planCreate(ctx context.Context, in OidcInput) (oidcPlan, error) {
@@ -205,24 +226,43 @@ func (p *oidcPlanner) planUpdate(ctx context.Context, target *oidcRow, patch Oid
 			return oidcPlan{}, apperrors.OidcProviderLinked(identity...)
 		}
 	}
+	if len(identity) > 0 && target.cfg.ClientSecret != "" && patch.ClientSecret == nil {
+		return oidcPlan{}, apperrors.SettingInvalid(detail(settingspec.OIDCFieldClientSecret, invalidPrefix+settingspec.RuleOIDCSecretAgain))
+	}
 	if err := p.issuerFree(next); err != nil {
 		return oidcPlan{}, err
 	}
-	if target.cfg.ClientSecret != "" && next.ClientSecret == "" {
-		if err := p.strands(ctx, next.ID); err != nil {
+	if target.enabled() && next.ClientSecret == "" {
+		if err := p.strands(ctx, next.ID, nil); err != nil {
 			return oidcPlan{}, err
 		}
 	}
-	return oidcPlan{target: target, next: next, changed: changedProviderFields(target.cfg, next)}, nil
+	if next.ClientSecret != "" && len(next.AllowedDomains) > 0 && !slices.Equal(next.AllowedDomains, target.cfg.AllowedDomains) {
+		if err := p.strands(ctx, next.ID, next.AllowedDomains); err != nil {
+			return oidcPlan{}, err
+		}
+	}
+	changed := changedProviderFields(target.cfg, next)
+	if target.sealed && !slices.Contains(changed, settingspec.OIDCFieldClientSecret) {
+		changed = append(changed, settingspec.OIDCFieldClientSecret)
+		sort.Strings(changed)
+	}
+	return oidcPlan{target: target, next: next, changed: changed}, nil
 }
 
-func (p *oidcPlanner) strands(ctx context.Context, id string) error {
+func (p *oidcPlanner) strands(ctx context.Context, id string, domains []string) error {
 	if p.locked {
 		if _, err := p.q.LockUsersOfProvider(ctx, id); err != nil {
 			return err
 		}
 	}
-	n, err := p.q.CountUsersOnlyOnProvider(ctx, sqlc.CountUsersOnlyOnProviderParams{Provider: id, Others: p.enabledOthers(id)})
+	var n int64
+	var err error
+	if domains == nil {
+		n, err = p.q.CountUsersOnlyOnProvider(ctx, sqlc.CountUsersOnlyOnProviderParams{Provider: id, Others: p.enabledOthers(id)})
+	} else {
+		n, err = p.q.CountUsersOutsideDomains(ctx, sqlc.CountUsersOutsideDomainsParams{Provider: id, Domains: domains, Others: p.enabledOthers(id)})
+	}
 	if err != nil {
 		return err
 	}
@@ -261,11 +301,11 @@ func (s *Store) oidcRows(ctx context.Context, q *sqlc.Queries) ([]oidcRow, error
 	for _, r := range rows {
 		p, err := s.decodeProvider(r.ProviderId, storedProvider{
 			Type: r.Type, Name: r.Name, Issuer: r.Issuer, ClientID: r.ClientId, Domains: r.AllowedDomains, Secret: r.Secret,
-		})
+		}, true)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, oidcRow{rowID: r.Id, cfg: p.Config, secret: r.Secret, version: r.Version})
+		out = append(out, oidcRow{rowID: r.Id, cfg: p.Config, secret: r.Secret, version: r.Version, sealed: p.Sealed})
 	}
 	return out, nil
 }

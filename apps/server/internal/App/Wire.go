@@ -124,6 +124,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		DB: in.Pool, Hasher: hasher, Passwords: passwords, CSRF: csrf, Sealer: sealer, Recovery: recovery, WebAuthn: passkeys,
 		Bus: bus, Instance: store.Instance, Log: in.Log, Now: in.Now,
 		Oidc: external.providers, OidcKey: external.oidcKey, CallbackBase: in.Config.PublicURL.String() + config.OidcCallbackPath,
+		EnvProviders: envProviderIDs(in.Config.OIDCProviders),
 	})
 	mail := mailerFor(in, store)
 	alertsService := alertsFor(in, mail, bus)
@@ -306,4 +307,12 @@ func settingsStore(ctx context.Context, in Infra) (*instancesettings.Store, erro
 		return nil, fmt.Errorf("invalid instance settings:\n%w", err)
 	}
 	return store, nil
+}
+
+func envProviderIDs(providers []config.OIDCProvider) []string {
+	out := make([]string, 0, len(providers))
+	for _, p := range providers {
+		out = append(out, p.ID)
+	}
+	return out
 }

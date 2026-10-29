@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	GroupOidc          = "oidc"
-	oidcLockKey  int64 = 0x64686f775f6f6964
-	oidcSealPart       = "oidc:"
+	GroupOidc    = "oidc"
+	oidcSealPart = "oidc:"
 )
 
 type OidcProvider struct {
 	Config    settingspec.OIDCProvider
 	SecretSet bool
+	Sealed    bool
 	Version   int64
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
@@ -85,7 +85,7 @@ func (s *Store) readOidc(ctx context.Context, q *sqlc.Queries) (Oidc, error) {
 	for _, r := range rows {
 		p, err := s.decodeProvider(r.ProviderId, storedProvider{
 			Type: r.Type, Name: r.Name, Issuer: r.Issuer, ClientID: r.ClientId, Domains: r.AllowedDomains, Secret: r.Secret,
-		})
+		}, false)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -115,23 +115,28 @@ type storedProvider struct {
 	Secret   []byte
 }
 
-func (s *Store) decodeProvider(id string, r storedProvider) (OidcProvider, error) {
+func (s *Store) decodeProvider(id string, r storedProvider, tolerant bool) (OidcProvider, error) {
 	cfg := settingspec.OIDCProvider{
 		ID: id, Kind: r.Type, Name: r.Name, Issuer: r.Issuer, ClientID: r.ClientID, AllowedDomains: r.Domains,
 	}
+	sealed := false
 	if len(r.Secret) > 0 {
 		plain, err := s.sealer.Open(r.Secret, oidcSealContext(id))
-		if err != nil {
+		switch {
+		case err != nil && !tolerant:
 			return OidcProvider{}, fmt.Errorf("sign-in provider %s (from the database): client secret: %w", id, ErrUndecryptable)
+		case err != nil:
+			sealed = true
+		default:
+			cfg.ClientSecret = string(plain)
+			clear(plain)
 		}
-		cfg.ClientSecret = string(plain)
-		clear(plain)
 	}
 	valid, errs := settingspec.ValidateOIDCProvider(cfg, s.dev, false)
 	if len(errs) > 0 {
 		return OidcProvider{}, fmt.Errorf("sign-in provider %s (from the database): %s %s", id, errs[0].Field, errs[0].Message)
 	}
-	return OidcProvider{Config: valid, SecretSet: valid.ClientSecret != ""}, nil
+	return OidcProvider{Config: valid, SecretSet: valid.ClientSecret != "" || sealed, Sealed: sealed}, nil
 }
 
 func (s *Store) Watch(fn func(*Snapshot)) {

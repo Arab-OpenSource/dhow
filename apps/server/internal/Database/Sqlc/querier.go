@@ -37,6 +37,8 @@ type Querier interface {
 	CountRunnerSessionSwitches(ctx context.Context, arg CountRunnerSessionSwitchesParams) (int64, error)
 	CountRunners(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountUsersOnlyOnProvider(ctx context.Context, arg CountUsersOnlyOnProviderParams) (int64, error)
+	CountUsersOutsideDomains(ctx context.Context, arg CountUsersOutsideDomainsParams) (int64, error)
+	CurrentProviderIssuer(ctx context.Context, provider string) (string, error)
 	DeleteTeam(ctx context.Context, arg DeleteTeamParams) (int64, error)
 	DeleteTeamBinding(ctx context.Context, arg DeleteTeamBindingParams) (int64, error)
 	DisableRunnerAsClone(ctx context.Context, arg DisableRunnerAsCloneParams) (int64, error)
@@ -158,6 +160,7 @@ type Querier interface {
 	LockLeaseForCompletion(ctx context.Context, arg LockLeaseForCompletionParams) (LockLeaseForCompletionRow, error)
 	LockMfaChallenge(ctx context.Context, arg LockMfaChallengeParams) (LockMfaChallengeRow, error)
 	LockOidcProviderList(ctx context.Context, lockKey int64) error
+	LockOidcProvidersShared(ctx context.Context, lockKey int64) error
 	LockOpenInvitation(ctx context.Context, arg LockOpenInvitationParams) (LockOpenInvitationRow, error)
 	LockOrganization(ctx context.Context, id uuid.UUID) (LockOrganizationRow, error)
 	LockOrganizationQueue(ctx context.Context, organizationID string) error
@@ -172,6 +175,7 @@ type Querier interface {
 	LockUsableInvitation(ctx context.Context, arg LockUsableInvitationParams) (LockUsableInvitationRow, error)
 	LockUsableSetupToken(ctx context.Context, arg LockUsableSetupTokenParams) (uuid.UUID, error)
 	LockUserForTokens(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	LockUserRow(ctx context.Context, id uuid.UUID) error
 	LockUserSignInMethods(ctx context.Context, arg LockUserSignInMethodsParams) (LockUserSignInMethodsRow, error)
 	LockUsersOfProvider(ctx context.Context, provider string) ([]uuid.UUID, error)
 	LogPartitionReady(ctx context.Context) (bool, error)
@@ -252,6 +256,7 @@ type Querier interface {
 	SetTeamBindingRole(ctx context.Context, arg SetTeamBindingRoleParams) (int64, error)
 	SetUserLocale(ctx context.Context, arg SetUserLocaleParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	SignInProviderActive(ctx context.Context, arg SignInProviderActiveParams) (bool, error)
 	StartAttempt(ctx context.Context, id uuid.UUID) (JobAttempt, error)
 	TakeOidcFlow(ctx context.Context, arg TakeOidcFlowParams) (TakeOidcFlowRow, error)
 	TakeRateLimit(ctx context.Context, arg TakeRateLimitParams) (TakeRateLimitRow, error)

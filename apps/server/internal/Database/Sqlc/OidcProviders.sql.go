@@ -80,6 +80,36 @@ func (q *Queries) CountUsersOnlyOnProvider(ctx context.Context, arg CountUsersOn
 	return count, err
 }
 
+const countUsersOutsideDomains = `-- name: CountUsersOutsideDomains :one
+SELECT count(*)
+FROM "Users" u
+WHERE NOT u."IsDeleted"
+  AND u."PasswordHash" = ''
+  AND EXISTS (
+      SELECT 1 FROM "UserIdentities" i
+      WHERE i."UserId" = u."Id" AND i."Provider" = $1::text AND NOT i."IsDeleted"
+        AND NOT (lower(COALESCE(substring(i."Email" FROM '@([^@]+)$'), '')) = ANY ($2::text[]))
+  )
+  AND NOT EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted")
+  AND NOT EXISTS (
+      SELECT 1 FROM "UserIdentities" o
+      WHERE o."UserId" = u."Id" AND NOT o."IsDeleted" AND o."Provider" <> $1::text AND o."Provider" = ANY ($3::text[])
+  )
+`
+
+type CountUsersOutsideDomainsParams struct {
+	Provider string
+	Domains  []string
+	Others   []string
+}
+
+func (q *Queries) CountUsersOutsideDomains(ctx context.Context, arg CountUsersOutsideDomainsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersOutsideDomains, arg.Provider, arg.Domains, arg.Others)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const insertOidcProvider = `-- name: InsertOidcProvider :one
 INSERT INTO "OidcProviders" ("ProviderId", "Type", "Name", "Issuer", "ClientId", "AllowedDomains", "Secret", "CreatedBy", "UpdatedBy")
 VALUES ($1, $2, $3, $4, $5, $6::text[], $7, $8, $8)

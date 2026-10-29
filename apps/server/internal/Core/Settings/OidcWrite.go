@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Khaymah/dhow/apps/server/internal/Database/Tx"
@@ -32,7 +33,7 @@ func (s *Store) ApplyOidc(ctx context.Context, c OidcChange, actor uuid.UUID) (O
 	}
 	res := OidcResult{ID: c.ID}
 	err := dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-		if err := q.LockOidcProviderList(ctx, oidcLockKey); err != nil {
+		if err := q.LockOidcProviderList(ctx, config.OidcProvidersLockKey); err != nil {
 			return err
 		}
 		rows, err := s.oidcRows(ctx, q)
@@ -85,7 +86,7 @@ func (s *Store) writeOidc(ctx context.Context, q *sqlc.Queries, op OidcOperation
 		})
 	default:
 		secret := p.target.secret
-		if p.next.ClientSecret != p.target.cfg.ClientSecret {
+		if p.target.sealed || p.next.ClientSecret != p.target.cfg.ClientSecret {
 			if secret, err = s.sealSecret(p.next.ID, p.next.ClientSecret); err != nil {
 				return 0, err
 			}

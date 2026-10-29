@@ -216,6 +216,7 @@ var enMessages = map[string]string{ //nolint:gosec // This is a message catalog,
 	"settings.invalid.oidcClientId":                "Enter the client ID without spaces.",
 	"settings.invalid.oidcSecret":                  "Enter the client secret without spaces.",
 	"settings.invalid.oidcSecretPlaceholder":       "This looks like a sample value. Copy the secret from your sign-in service.",
+	"settings.invalid.oidcSecretAgain":             "You changed the service or its address. Type the client secret again so it goes only to the new service.",
 	"settings.invalid.oidcDomain":                  "Enter domain names only, such as example.com.",
 	"settings.invalid.oidcDomainCount":             "You can list up to 50 domains.",
 }
