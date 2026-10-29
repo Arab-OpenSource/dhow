@@ -31,6 +31,7 @@ type Options struct {
 	Bus       Publisher
 	Origin    string
 	PublicURL string
+	Dev       bool
 	Log       *slog.Logger
 	Now       func() time.Time
 }
@@ -41,6 +42,7 @@ type Service struct {
 	bus       Publisher
 	origin    string
 	publicURL string
+	dev       bool
 	log       *slog.Logger
 	now       func() time.Time
 }
@@ -52,7 +54,7 @@ func NewService(o Options) *Service {
 	if now == nil {
 		now = time.Now
 	}
-	return &Service{db: o.DB, keys: o.Keys, bus: o.Bus, origin: o.Origin, publicURL: o.PublicURL, log: o.Log, now: now}
+	return &Service{db: o.DB, keys: o.Keys, bus: o.Bus, origin: o.Origin, publicURL: o.PublicURL, dev: o.Dev, log: o.Log, now: now}
 }
 
 func (s *Service) queries() *sqlc.Queries { return sqlc.New(s.db) }

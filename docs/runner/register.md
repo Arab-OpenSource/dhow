@@ -33,6 +33,8 @@ sudo -u dhow-runner dhow-runner register --url https://dhow.example.com --token-
 | `--name` | The name shown in Dhow. Defaults to the host name. |
 | `--dev` | Allows plain `http://` to `localhost`, `127.0.0.1` or `[::1]`, for local development only. |
 
+The dashboard shows this same command with your server's address filled in. It runs as the `dhow-runner` user, so the identity belongs to the service account and not to root. On a server started with `DHOW_DEV=true`, the command shown after you create a token adds `--dev`. The command on the empty **Runners** page adds it when you open the dashboard over plain `http://` on a loopback address.
+
 The runner prints its runner ID, its organization and its labels. It saved the identity in `$DHOW_RUNNER_STATE_DIR/identity` with mode `0600`, together with the server address and the server's signing key, which every later job grant is checked against.
 
 If the server uses a private CA, set `DHOW_RUNNER_CA_FILE` before registering. If the runner reaches the server on a separate runner listener (`DHOW_RUNNER_LISTEN_ADDR` on the server), set `--url` to that listener and `DHOW_RUNNER_SERVER_ORIGIN` to the server's public address (`DHOW_PUBLIC_URL`), because the runner's signatures name the public origin.

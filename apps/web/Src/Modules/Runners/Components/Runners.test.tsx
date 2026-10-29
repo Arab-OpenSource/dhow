@@ -98,7 +98,7 @@ describe('the runners list', () => {
     const { user, onAddRunner } = mount({ runners: () => page([]) });
     expect(await screen.findByText(Ar['runners.empty.manager'])).toBeInTheDocument();
     expect(screen.getByLabelText(Ar['runners.command.label'])).toHaveTextContent(
-      `sudo dhow-runner register --url ${window.location.origin} --token-file -`,
+      `sudo -u dhow-runner dhow-runner register --dev --url ${window.location.origin} --token-file -`,
     );
     const adds = screen.getAllByRole('button', { name: Ar['runners.add'] });
     expect(adds).toHaveLength(2);
