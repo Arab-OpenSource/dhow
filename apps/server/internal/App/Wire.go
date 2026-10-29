@@ -134,7 +134,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 
 	runnersService := runners.NewService(runners.Options{
 		DB: in.Pool, Keys: runnerKeys, Bus: bus, Origin: auth.OriginOf(in.Config.PublicURL), PublicURL: in.Config.PublicURL.String(),
-		Log: in.Log, Now: in.Now,
+		Dev: in.Config.Dev, Log: in.Log, Now: in.Now,
 	})
 	tokensService := tokens.NewService(tokens.Options{
 		DB: in.Pool, Tokens: external.apiTokens, Factors: sessionService, Bus: bus, Log: in.Log, Now: in.Now,

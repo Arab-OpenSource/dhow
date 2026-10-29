@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import type { TRole } from '@/Core/Auth/AuthTypes';
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Badge } from '@/Core/Ui/Badge';
@@ -17,6 +19,7 @@ export interface IJobOverviewProps {
   organizationId: string;
   job: TJob;
   role: TRole | undefined;
+  waitingFor?: (job: TJob) => ReactNode;
 }
 
 export const NoRunnerAlert = ({ job }: { job: TJob }) => {
@@ -64,7 +67,7 @@ const useFacts = (job: TJob): IFact[] => {
   return facts;
 };
 
-export const JobOverview = ({ organizationId, job, role }: IJobOverviewProps) => {
+export const JobOverview = ({ organizationId, job, role, waitingFor }: IJobOverviewProps) => {
   const t = useT();
   const text = useJobText();
   const facts = useFacts(job);
@@ -73,6 +76,7 @@ export const JobOverview = ({ organizationId, job, role }: IJobOverviewProps) =>
   return (
     <>
       {isStuck(job) ? <NoRunnerAlert job={job} /> : null}
+      {isStuck(job) ? waitingFor?.(job) : null}
       {job.State === 'queued' && !isStuck(job) ? (
         <InlineAlert accent="queued" title={t('jobs.waiting.title')}>
           {t('jobs.waiting.about')}

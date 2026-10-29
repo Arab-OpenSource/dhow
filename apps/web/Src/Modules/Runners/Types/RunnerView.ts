@@ -80,4 +80,12 @@ export const expirySeconds = (hours: TExpiryHours): number => Number(hours) * SE
 export const sameLabels = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && [...a].sort().every((label, index) => label === [...b].sort()[index]);
 
-export const registerCommandFor = (origin: string): string => `sudo dhow-runner register --url ${origin} --token-file -`;
+const LOOPBACK_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '[::1]'];
+
+export const needsDevFlag = (origin: string): boolean => {
+  const url = new URL(origin);
+  return url.protocol === 'http:' && LOOPBACK_HOSTS.includes(url.hostname);
+};
+
+export const registerCommandFor = (origin: string): string =>
+  `sudo -u dhow-runner dhow-runner register${needsDevFlag(origin) ? ' --dev' : ''} --url ${origin} --token-file -`;

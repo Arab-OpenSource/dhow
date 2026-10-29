@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
 )
 
@@ -141,8 +142,32 @@ func TestTokenSettingsAreBounded(t *testing.T) {
 	assert.Equal(t, []string{"a", "b"}, data.RegistrationToken.Labels)
 	assert.Equal(t, 24*time.Hour, data.RegistrationToken.ExpiresAt.Sub(data.RegistrationToken.CreatedAt))
 	assert.Equal(t, "active", data.RegistrationToken.Status)
-	assert.Equal(t, "sudo dhow-runner register --url "+apptest.PublicOrigin+" --token-file -", data.RegisterCommand)
+	assert.Equal(t, "sudo -u dhow-runner dhow-runner register --url "+apptest.PublicOrigin+" --token-file -", data.RegisterCommand)
 	assert.NotContains(t, data.RegisterCommand, data.Token, "the token never goes on a command line")
+}
+
+func TestTheRegisterCommandAddsDevOnlyOnADevServer(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		dev  bool
+		want string
+	}{
+		{"production", false, "sudo -u dhow-runner dhow-runner register --url " + apptest.PublicOrigin + " --token-file -"},
+		{"dev", true, "sudo -u dhow-runner dhow-runner register --dev --url " + apptest.PublicOrigin + " --token-file -"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := apptest.NewWithOptions(t, apptest.Options{Profile: func(cfg *config.Config) { cfg.Dev = tc.dev }})
+			owner, d := env.SetupAndLogin()
+			res := owner.Do(apptest.Request{
+				Method: http.MethodPost, Path: "/organizations/" + env.OrganizationID(d.OrgSlug).String() + "/runner-registration-tokens",
+				Body: map[string]any{},
+			})
+			require.Equal(t, http.StatusCreated, res.Status, string(res.Raw))
+			var data struct{ RegisterCommand string }
+			res.Decode(t, &data)
+			assert.Equal(t, tc.want, data.RegisterCommand)
+		})
+	}
 }
 
 func TestRevokingATokenIsIdempotentAndKeepsItsRunners(t *testing.T) {

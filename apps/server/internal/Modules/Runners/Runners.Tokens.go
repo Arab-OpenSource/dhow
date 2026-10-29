@@ -17,7 +17,15 @@ import (
 	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners/Models"
 )
 
-const registerCommand = "sudo dhow-runner register --url %s --token-file -"
+const registerPrefix = "sudo -u dhow-runner dhow-runner register"
+
+func registerCommand(publicURL string, dev bool) string {
+	flags := " --url " + publicURL + " --token-file -"
+	if dev {
+		flags = " --dev" + flags
+	}
+	return registerPrefix + flags
+}
 
 func principalOf(ctx context.Context) (auth.Principal, error) {
 	p, ok := auth.PrincipalFrom(ctx)
@@ -62,7 +70,7 @@ func (s *Service) CreateRegistrationToken(ctx context.Context, org uuid.UUID, in
 		return models.CreatedToken{}, err
 	}
 	return models.CreatedToken{
-		Token: tokenOf(row, now), Secret: secret, RegisterCommand: strings.Replace(registerCommand, "%s", s.publicURL, 1),
+		Token: tokenOf(row, now), Secret: secret, RegisterCommand: registerCommand(s.publicURL, s.dev),
 	}, nil
 }
 

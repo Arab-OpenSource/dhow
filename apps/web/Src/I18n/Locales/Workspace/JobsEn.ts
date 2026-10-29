@@ -12,8 +12,8 @@ export const JobsEn: Record<keyof typeof JobsAr, string> = {
   'jobs.filter.label': 'Show jobs by state',
   'jobs.filter.all': 'All',
   'jobs.empty.title': 'No jobs yet',
-  'jobs.empty.about':
-    'A job starts when an owner or admin sends {request} to the API. Once pipelines arrive, they will start jobs on their own.',
+  'jobs.empty.about': 'Pipelines will create jobs on their own once they arrive. Until then, an owner or admin creates a job through the API.',
+  'jobs.empty.guide': 'How to create a job through the API',
   'jobs.empty.filtered': 'No jobs in this state.',
   'jobs.empty.showAll': 'Show all jobs',
   'jobs.stuck.title': '{count} jobs are waiting and no runner can take them',

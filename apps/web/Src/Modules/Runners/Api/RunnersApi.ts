@@ -13,6 +13,7 @@ export type TCreatedRegistrationToken = components['schemas']['CreatedRunnerRegi
 export const RUNNERS_PAGE_SIZE = 20;
 export const TOKENS_PAGE_SIZE = 10;
 export const RUNNERS_SUMMARY_LIMIT = 5;
+export const RUNNERS_ALL_LIMIT = 100;
 
 export const runnersKey = (organizationId: string) => ['runners', organizationId] as const;
 export const runnerListKey = (organizationId: string) => [...runnersKey(organizationId), 'list'] as const;
