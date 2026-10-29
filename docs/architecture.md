@@ -68,6 +68,7 @@ A modular monolith shipped as a single binary. The modules are listed below; eac
 | `artifacts` | Content-addressed artifacts, plus build cache entries. |
 | `logs` | Ingest of sequenced log chunks, storage, and SSE fan-out. |
 | `audit` | Append-only, hash-chained audit log. |
+| `overview` | Read-only counts for the home page and the sidebar in one request: active and failed jobs, runners by status, pending invitations (ADR-0061). It reads the jobs, runners and invitations tables and owns none. |
 | `notify` | A notification queue and channel adapters. |
 | `integrations` | Git providers (GitHub App, GitLab, Bitbucket, Gitea/Forgejo, generic Git), commit statuses and checks. |
 | `license` | Offline Ed25519 license verification and the entitlement checks. |

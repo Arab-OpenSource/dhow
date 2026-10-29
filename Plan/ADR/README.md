@@ -62,3 +62,4 @@
 | [0058](0058-graded-kill-and-chaos-suite.md) | آخر مرحلة في القتل بالتدريج (`cgroup.kill`)، وsuite الفوضى على processes حقيقية بـ Podman وPostgres وregistry بـ TLS (M3.9) |
 | [0059](0059-ui-direction-control-room.md) | اتجاه التصميم «غرفة التشغيل»: صفحات كاملة بروابط، وقايمة جانبية بمجموعات، ورئيسية بحالة النظام، وخط Plex بمقاسات عربي صريحة. بيعدّل ADR-0034 وADR-0032 |
 | [0060](0060-host-size-check.md) | فحص حجم الجهاز: الحد الأدنى والموصى بيه من القياس، والتنصيب الجديد بيقف تحت الحد الأدنى، والترقية بتحذّر بس |
+| [0061](0061-organization-overview-endpoint.md) | endpoint ملخّص المؤسسة: طلب واحد للرئيسية والعدّادات، وكل block بصلاحية قايمته و`null` للممنوع، و3 queries ثابتة بـ partial indexes |
