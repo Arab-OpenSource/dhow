@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 
-from . import go_comments, js_comments, runner_rules, web_rules
+from . import arabic_rules, go_comments, js_comments, runner_rules, web_rules
 from .common import GENERATED_PATH, is_test, is_ts, new_lines
 
 CSS_EXT = (".css",)
@@ -588,6 +588,7 @@ CHECKS = (
     check_ts,
     web_rules.check_web_imports,
     web_rules.check_web_text,
+    arabic_rules.check_arabic_register,
     check_direction,
     check_sql,
     check_migration_rules,
