@@ -12,6 +12,7 @@ The page loads every setting in one request and shows one card per group: **Mail
 
 - **A value set in the environment** is read-only. It says **Set by an environment variable** and shows the variable, such as `DHOW_RATE_LIMIT_PUBLIC`. Change it where you set the variable, then restart.
 - **A value nobody set** shows the default and says so next to its name.
+- **A setting locked because of the password.** When the SMTP password comes from the environment, the mail server, port and encryption are read-only too, with a line that says why. The password must never go to another server.
 - **The SMTP password** never comes back from the server. The card says **Saved** or **Not saved**. **Replace the password** opens a field for a new one, and **Remove the password** clears it when you save. If you do neither, the saved password stays.
 
 ## Saving
@@ -20,7 +21,7 @@ The page loads every setting in one request and shows one card per group: **Mail
 2. Confirm it is you with a code from your authenticator app, a passkey or a recovery code. Saving needs two-step verification on your account. Without it, the card asks you to turn it on first.
 3. The change works at once on every server instance that shares the database. A new largest attempt log applies to attempts that start after the save.
 
-If a value is not valid, the field says why and nothing is saved. If someone else saved the same card a moment before you, the page asks you to reload and try again.
+If a value is not valid, the field says why and nothing is saved. If you change the mail server while a password is saved, the card asks you to type the password again. **No encryption** is accepted here only for a mail server on the same machine, and link-local or cloud metadata addresses are refused. If someone else saved the same card a moment before you, the page asks you to reload and try again.
 
 Every save writes `system.settings.changed` to the audit log, with the group and the names of the fields that changed. A password value is never written anywhere.
 
