@@ -1,0 +1,51 @@
+name: Runner install on VMs
+
+on:
+  workflow_dispatch:
+    inputs:
+      distro:
+        description: The distribution to test
+        type: choice
+        options: [all, debian-13, fedora, rocky-10]
+        default: all
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vm-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vm:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: dhow-runner install on ${{ matrix.distro }} under QEMU/KVM
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: ${{ fromJSON((inputs.distro && inputs.distro != 'all') && format('["{0}"]', inputs.distro) || '["debian-13","fedora","rocky-10"]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Give the runner user access to /dev/kvm
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -w /dev/kvm
+      - name: Install QEMU and the seed image tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends qemu-system-x86 qemu-utils genisoimage
+      - name: Boot the cloud image and run the install checks in it
+        env:
+          DISTRO: ${{ matrix.distro }}
+        run: make vm-test DISTRO="$DISTRO"

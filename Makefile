@@ -22,6 +22,8 @@ PROTO_AGAINST         ?= $(shell git rev-parse --git-common-dir 2>/dev/null)\#br
 WEB_DIST              := apps/server/internal/App/WebDist
 IMAGE                 ?= dhow:dev
 E2E_BASE              ?= debian:12
+RUNNER_E2E_BASE       ?= debian:13
+DISTRO                ?=
 IMAGE_DOCKERFILE      ?= deploy/docker/Dockerfile
 DOCKER_BUILD_FLAGS    ?=
 COMPOSE_DIR           := deploy/compose
@@ -54,6 +56,17 @@ dist: ## Build reproducible release archives and SHA256SUMS in dist/ (run make w
 .PHONY: installer-e2e
 installer-e2e: build ## Run the installer end to end in a systemd container (E2E_BASE=debian:12)
 	deploy/install/e2e/run.sh $(E2E_BASE) bin/dhow-server
+
+.PHONY: runner-install-e2e
+runner-install-e2e: build ## Install, check and uninstall the runner in a systemd container with the fake driver (RUNNER_E2E_DATABASE_URL=postgres://..., RUNNER_E2E_BASE=debian:13)
+	@test -n "$(RUNNER_E2E_DATABASE_URL)" || { echo "runner-install-e2e: set RUNNER_E2E_DATABASE_URL to an empty PostgreSQL 18 database" >&2; exit 2; }
+	CGO_ENABLED=0 GOOS=linux $(GO) build -trimpath -tags dhowtest -ldflags '$(LDFLAGS)' -o bin/dhow-runner-fake ./apps/runner/cmd/dhow-runner
+	deploy/install/e2e/runner-install.sh $(RUNNER_E2E_BASE) bin/dhow-server bin/dhow-runner-fake '$(RUNNER_E2E_DATABASE_URL)'
+
+.PHONY: vm-test
+vm-test: build build-runner ## Install, check and uninstall the runner in a cloud image under QEMU/KVM (DISTRO=debian-13, fedora or rocky-10)
+	@test -n "$(DISTRO)" || { echo "vm-test: set DISTRO=debian-13, fedora or rocky-10" >&2; exit 2; }
+	deploy/test-vm/run.sh $(DISTRO) bin/dhow-server bin/dhow-runner
 
 .PHONY: image
 image: ## Build the container image (IMAGE=dhow:dev)
