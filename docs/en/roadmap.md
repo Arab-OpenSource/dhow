@@ -1,3 +1,5 @@
+[العربية](../roadmap.md)
+
 # Roadmap to v1.0
 
 Status: **Draft**. Team: Sabry + Claude.

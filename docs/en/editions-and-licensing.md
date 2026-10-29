@@ -1,3 +1,5 @@
+[العربية](../editions-and-licensing.md)
+
 # Editions and licensing
 
 Status: **Draft**. Decisions: ADR-0017 to ADR-0020.

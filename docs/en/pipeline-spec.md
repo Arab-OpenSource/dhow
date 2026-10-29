@@ -1,3 +1,5 @@
+[العربية](../pipeline-spec.md)
+
 # Pipeline spec — `.dhow.yml` v1 (draft)
 
 Status: **Draft**. The machine-readable JSON Schema will live in `packages/spec/` and is shared by the server, the

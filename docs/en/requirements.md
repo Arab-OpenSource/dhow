@@ -1,3 +1,5 @@
+[العربية](../requirements.md)
+
 # Hardware requirements
 
 This page says how much CPU, memory and disk Dhow needs, and how those numbers were measured. The installer and `dhow-server doctor` check the same numbers on the host (see [Below the minimum](#below-the-minimum)).
@@ -37,7 +39,7 @@ The smallest memory limit each load still ran under, without an error or an out-
 What the numbers mean:
 
 - **Memory peaks come from sign-ins.** Passwords are hashed with Argon2id, which takes 19 MiB per sign-in and runs as many at once as the host has CPU cores. Fifty people signing in within a few seconds is what pushed the server to its peak and what killed it at 192 MiB. Browsing and job traffic keep it near 30 to 60 MiB.
-- **The Compose limits fit the heavy load.** [`compose.yaml`](../deploy/compose/compose.yaml) limits the server to 256 MiB and PostgreSQL to 512 MiB, and the heavy load passed at 256 MiB with peaks of 193 to 226 MiB. Raise the server limit before you grow past about 50 people.
+- **The Compose limits fit the heavy load.** [`compose.yaml`](../../deploy/compose/compose.yaml) limits the server to 256 MiB and PostgreSQL to 512 MiB, and the heavy load passed at 256 MiB with peaks of 193 to 226 MiB. Raise the server limit before you grow past about 50 people.
 - **Idle memory depends on the last burst.** The idle server used between 13 and 120 MiB across runs, depending on how much memory the Go runtime had handed back to the system after setup.
 - **CPU is idle most of the time.** The averages stay under a quarter of a core even under the heavy load. Short peaks of about two cores during sign-in bursts make responses slower on a one-core host, but no request failed (see [CPU](#cpu)).
 - **Why 2 GiB and not less.** Under the heavy load the two containers need up to about 0.5 GiB together. The operating system, Docker or systemd, the reverse proxy, the page cache that keeps PostgreSQL fast, and PostgreSQL's own background work need the rest. The benchmark did not measure a whole host, so the minimum keeps a wide margin: on a 1 GiB host without swap the kernel kills the server or PostgreSQL as soon as several people sign in at once.
@@ -83,14 +85,14 @@ A runner host needs memory for the runner process and for every job it runs at o
 - **`dhow-server doctor`** fails below the minimum memory or cores and warns below the recommended size.
 - **What breaks.** Below the measured limits the kernel kills the server or PostgreSQL for running out of memory, and every request fails until the container restarts (Compose and systemd restart it, but sign-ins and job updates in flight are lost, and it happens again at the next peak). A server with too little memory dies during sign-in bursts first; PostgreSQL with too little memory died under the heavy load. With too little disk, PostgreSQL stops accepting writes, so sign-ins, new jobs and job logs fail.
 
-The numbers live in one place in the code, [`Requirements.go`](../apps/server/internal/Core/Installer/Requirements.go).
+The numbers live in one place in the code, [`Requirements.go`](../../apps/server/internal/Core/Installer/Requirements.go).
 
 ## How the numbers were measured
 
 - **Date:** 2026-10-28.
 - **Versions:** Dhow at commit `be0f272` (the server image built from that commit), PostgreSQL 18.6 (the image pinned in `deploy/compose/compose.yaml`), Docker Engine 29.9.2 with cgroup v1, Linux 6.18 on a 4-core, 16 GiB virtual machine.
-- **Stack:** the production [`compose.yaml`](../deploy/compose/compose.yaml) with the overrides in [`deploy/bench/compose.yaml`](../deploy/bench/compose.yaml): a memory limit with no swap for each container, 2 CPUs each, no restart, and higher [rate limits](install/configuration.md) so the load is not refused. Each run starts from an empty database.
-- **Load:** a Go driver, [`deploy/bench`](../deploy/bench), uses the real HTTP API. It takes the setup link from the server log, creates the owner, invites 70 members (20 admins who create jobs and 50 developers who browse), and signs every member in with its own session and CSRF token at the start of each phase. Each member uses its own client address through `X-Forwarded-For`, as people behind a reverse proxy would.
+- **Stack:** the production [`compose.yaml`](../../deploy/compose/compose.yaml) with the overrides in [`deploy/bench/compose.yaml`](../../deploy/bench/compose.yaml): a memory limit with no swap for each container, 2 CPUs each, no restart, and higher [rate limits](install/configuration.md) so the load is not refused. Each run starts from an empty database.
+- **Load:** a Go driver, [`deploy/bench`](../../deploy/bench), uses the real HTTP API. It takes the setup link from the server log, creates the owner, invites 70 members (20 admins who create jobs and 50 developers who browse), and signs every member in with its own session and CSRF token at the start of each phase. Each member uses its own client address through `X-Forwarded-For`, as people behind a reverse proxy would.
   - **Idle:** 30 seconds after setup, with one runner connected.
   - **Light:** 60 seconds. 10 people sign in and then read their account, the organization, members, teams, runners and job lists, one page a second each. 3 admins each create a job, follow it until it ends, read its log and list the jobs, again and again.
   - **Heavy:** 90 seconds. 50 people browse at one page every half second, and 20 admins run jobs as above.
@@ -106,4 +108,4 @@ make bench-run IMAGE=ghcr.io/khaymah/dhow:1.2.3     # measures an image you alre
 make bench-run BENCH_ARGS="-configs 2g:2g -baseline deploy/bench/baseline.json"
 ```
 
-The first run takes about an hour. It writes `bin/bench/results.json` and prints a table. `-configs` takes `server:postgres` memory limits, `-cpus` the CPU limit of each container, and `-baseline` fails the run when a peak is more than 20% over [`baseline.json`](../deploy/bench/baseline.json), the highest peaks of the published runs. Run it again when a change could move these numbers, and update this page and `Requirements.go` together.
+The first run takes about an hour. It writes `bin/bench/results.json` and prints a table. `-configs` takes `server:postgres` memory limits, `-cpus` the CPU limit of each container, and `-baseline` fails the run when a peak is more than 20% over [`baseline.json`](../../deploy/bench/baseline.json), the highest peaks of the published runs. Run it again when a change could move these numbers, and update this page and `Requirements.go` together.

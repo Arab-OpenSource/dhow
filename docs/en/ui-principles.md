@@ -1,3 +1,5 @@
+[العربية](../ui-principles.md)
+
 # UI principles
 
 Status: **Accepted**. The current visual direction is "control room" (ADR-0059, which amends ADR-0034).
