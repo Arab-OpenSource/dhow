@@ -183,7 +183,7 @@ jobs:
           sudo install -d -m 0700 -o dhowci -g dhowci /var/lib/dhow-runner
           props=$(deploy/systemd/sandbox-properties.sh deploy/systemd/dhow-runner.service)
           echo "Unit sandbox: $props"
-          eval "sudo systemd-run --uid=dhowci --gid=dhowci --pipe --wait --collect --quiet $props --working-directory=/tmp -- \
+          eval "sudo systemd-run --uid=dhowci --gid=dhowci --pipe --wait --collect --quiet $props --setenv=HOME=/var/lib/dhow-runner --working-directory=/tmp -- \
             env DHOW_ISOLATION_BIN=/opt/dhow-isolation DHOW_ISOLATION_BUSYBOX=/bin/busybox \
             /opt/dhow-isolation/isolation.test -test.v -test.count=1 -test.timeout 30m"
           sudo rm -rf /var/lib/dhow-runner
