@@ -107,3 +107,7 @@ func (c *Client) Complete(ctx context.Context, req *runnerv1.CompleteRequest) er
 func (c *Client) Append(ctx context.Context, ref *runnerv1.LeaseRef, chunks []*runnerv1.LogChunk) (*runnerv1.AppendResponse, error) {
 	return call(ctx, c, config.AppendTimeout, c.logs.Append, &runnerv1.AppendRequest{Lease: ref, Chunks: chunks})
 }
+
+func (c *Client) RotateKeys(ctx context.Context, req *runnerv1.RotateKeysRequest) (*runnerv1.RotateKeysResponse, error) {
+	return call(ctx, c, config.RPCTimeout, c.auth.RotateKeys, req)
+}

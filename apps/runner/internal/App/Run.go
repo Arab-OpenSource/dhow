@@ -17,7 +17,6 @@ import (
 	journal "github.com/Khaymah/dhow/apps/runner/internal/Journal"
 	logs "github.com/Khaymah/dhow/apps/runner/internal/Logs"
 	sandbox "github.com/Khaymah/dhow/apps/runner/internal/Sandbox"
-	"github.com/Khaymah/dhow/internal/buildinfo"
 )
 
 type Runner struct {
@@ -43,6 +42,7 @@ type RunnerOptions struct {
 	Wait     time.Duration
 	Outcomes chan<- executor.Outcome
 	Logs     func(*logs.Options)
+	Client   *client.Client
 }
 
 func runRun(ctx context.Context, args []string, env Env) error {
@@ -70,11 +70,20 @@ func runRun(ctx context.Context, args []string, env Env) error {
 	if err != nil {
 		return err
 	}
+	lock, err := config.LockState(cfg.LockPath())
+	if err != nil {
+		return err
+	}
+	defer func() { _ = lock.Release() }()
 	driver, err := newDriver(ctx, cfg, log)
 	if err != nil {
 		return err
 	}
-	r, err := NewRunner(RunnerOptions{Config: cfg, Identity: id, Driver: driver, Log: log})
+	recovered, err := Recovery{Config: cfg, Log: log}.Run(ctx, id)
+	if err != nil {
+		return err
+	}
+	r, err := NewRunner(RunnerOptions{Config: cfg, Identity: recovered.Identity, Client: recovered.Client, Driver: driver, Log: log})
 	if err != nil {
 		return err
 	}
@@ -83,13 +92,11 @@ func runRun(ctx context.Context, args []string, env Env) error {
 
 func NewRunner(o RunnerOptions) (*Runner, error) {
 	cfg := o.Config
-	if cfg.URL == nil {
-		u, err := config.ParseServerURL(o.Identity.ServerURL, cfg.Dev)
-		if err != nil {
-			return nil, fmt.Errorf("the server address saved at registration: %w", err)
-		}
-		cfg.URL = u
+	u, err := serverURL(cfg, o.Identity)
+	if err != nil {
+		return nil, err
 	}
+	cfg.URL = u
 	if o.Log == nil {
 		o.Log = slog.New(slog.DiscardHandler)
 	}
@@ -100,11 +107,11 @@ func NewRunner(o RunnerOptions) (*Runner, error) {
 		o.Wait = config.LeaseWait
 	}
 	log := o.Log.With("runner_id", o.Identity.RunnerID)
-	c, err := client.New(client.Options{
-		BaseURL: cfg.URL, CAFile: cfg.CAFile, Dev: cfg.Dev, Version: buildinfo.Get().Version, Identity: o.Identity, Log: log,
-	})
-	if err != nil {
-		return nil, err
+	c := o.Client
+	if c == nil {
+		if c, err = clientFor(cfg, o.Identity, log); err != nil {
+			return nil, err
+		}
 	}
 	if err := config.EnsurePrivateDir(cfg.StateDir); err != nil {
 		return nil, err
