@@ -26,6 +26,7 @@ CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_SYS_ADMIN CAP_S
 AmbientCapabilities=
 ProtectSystem=strict
 ReadWritePaths=/var/lib/dhow-runner
+InaccessiblePaths=-/usr/bin/sudo -/usr/bin/su -/usr/bin/pkexec -/usr/bin/passwd -/usr/bin/chsh -/usr/bin/chfn -/usr/bin/newgrp -/usr/bin/gpasswd -/usr/bin/mount -/usr/bin/umount
 ProtectHome=yes
 PrivateTmp=yes
 ProtectProc=invisible

@@ -41,6 +41,13 @@
   - `Restart=on-failure` و`EnvironmentFile=/etc/dhow-runner/runner.env`.
 - **زيادة، واتجرّبت كلها مع Podman rootless جوه الوحدة:**
   - `CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_SYS_ADMIN CAP_SYS_PTRACE`. الـ runner نفسه مالوش capabilities، والـ bounding set بيحدّد بس اللي يقدر ياخده برنامج setuid. والخمسة دول هما اللي `newuidmap` الـ setuid بتاع Debian وUbuntu محتاجهم، و`CAP_SYS_PTRACE` بالذات عشان يشوف الـ process الجديد لما `/proc` مخبّي باقي المستخدمين. والـ user namespace بتاع الـ job بيبدأ بمجموعة جديدة كاملة، فالـ jobs ماتتأثرش.
+  - **كل capability في الـ bounding set اتجرّبت لوحدها بعد المراجعة الأمنية:** شيل `CAP_SYS_ADMIN` أو `CAP_DAC_OVERRIDE` أو `CAP_SYS_PTRACE` (واحدة واحدة) بيخلّي `newuidmap` الـ setuid يفشل، وPodman مايقدرش يعمل الـ user namespace. فالخمسة فضلوا:
+    - `CAP_SETUID` و`CAP_SETGID`: كتابة الـ id maps.
+    - `CAP_DAC_OVERRIDE`: `newuidmap` بيفتح `uid_map` بتاع process مش بتاعه وهو root.
+    - `CAP_SYS_ADMIN`: الكيرنل بيشيّك عليها لما map بيتكتب لـ process تاني.
+    - `CAP_SYS_PTRACE`: يشوف الـ process الجديد لما `/proc` مخبّي باقي المستخدمين.
+    - وعلى Fedora وRHEL، `newuidmap` بـ file capabilities، فبيستخدم أول اتنين بس.
+  - `InaccessiblePaths=` لـ `sudo` و`su` و`pkexec` و`passwd` و`chsh` و`chfn` و`newgrp` و`gpasswd` و`mount` و`umount`: برامج setuid الـ runner مش محتاجها، فمحدش منها يقدر يستخدم الـ bounding set. و`newuidmap` و`newgidmap` فاضلين، وcrun والـ overlay العادي مش محتاجين `mount` ولا `fusermount3`. اتجرّب مع Podman وimage فيها ملف setuid.
   - `ProtectProc=invisible`: الـ runner بيشوف processes الـ jobs بتاعته بس، لأنه مالك الـ user namespaces بتاعتها.
   - `AmbientCapabilities=` و`PrivateIPC` و`RemoveIPC` و`KeyringMode=private`.
   - `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK`: نفس العائلات اللي الـ sandbox بيسمح بيها.
