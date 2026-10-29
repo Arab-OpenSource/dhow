@@ -114,7 +114,7 @@ func register(ctx context.Context, cfg config.Config, token, name string) (*iden
 	id := &identity.Identity{
 		Keys: keys, RunnerID: res.GetRunnerId(), OrganizationID: res.GetOrganizationId(), ServerURL: cfg.URL.String(),
 		ServerOrigin: cfg.Origin, ServerSigningKey: res.GetServerSigningPublicKey(), ServerKeyVersion: res.GetServerKeyVersion(),
-		Labels: res.GetLabels(),
+		KeyVersion: identity.FirstKeyVersion, Labels: res.GetLabels(),
 	}
 	if err := identity.Save(path, id); err != nil {
 		return nil, fmt.Errorf("the server registered runner %s but its identity could not be saved, so revoke it and register again: %w",

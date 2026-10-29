@@ -43,7 +43,7 @@ func checkStateDir(dir string) error {
 	if err := checkOwner(dir, info); err != nil {
 		return err
 	}
-	for _, name := range []string{IdentityFileName, JournalFileName} {
+	for _, name := range []string{IdentityFileName, PendingFileName, JournalFileName} {
 		if err := CheckPrivateFile(filepath.Join(dir, name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
@@ -177,6 +177,13 @@ func WriteFileAtomic(path string, data []byte) error {
 	}
 	keep = true
 	return syncDir(dir)
+}
+
+func RenameDurable(from, to string) error {
+	if err := os.Rename(from, to); err != nil {
+		return fmt.Errorf("rename %s: %w", to, err)
+	}
+	return syncDir(filepath.Dir(to))
 }
 
 func syncDir(dir string) error {
