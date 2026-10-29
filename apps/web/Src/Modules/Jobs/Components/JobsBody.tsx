@@ -16,7 +16,7 @@ import { JobFilter } from '@/Modules/Jobs/Components/JobFilter';
 import { JobRow } from '@/Modules/Jobs/Components/JobRow';
 import { JOBS_PAGE_SIZE, useJobs, useWaitingJobs } from '@/Modules/Jobs/Hooks/useJobs';
 import { useNow } from '@/Modules/Jobs/Hooks/useNow';
-import { isFinalState, isStuck } from '@/Modules/Jobs/Types/JobStates';
+import { isFinalState, isStuck, JOBS_GUIDE_URL } from '@/Modules/Jobs/Types/JobStates';
 
 export interface IJobsBodyProps {
   onOpenJob: (jobId: string) => void;
@@ -94,9 +94,13 @@ const JobsContent = ({ organizationId, onOpenJob, filter, onFilterChange }: IJob
           <EmptyState
             icon="play"
             className={Filter === null ? 'pt-2' : undefined}
-            text={Filter === null ? t('jobs.empty.about', { request: `POST /api/v1/organizations/${organizationId}/jobs` }) : t('jobs.empty.filtered')}
+            text={Filter === null ? t('jobs.empty.about') : t('jobs.empty.filtered')}
             action={
-              Filter === null ? undefined : (
+              Filter === null ? (
+                <a href={JOBS_GUIDE_URL} target="_blank" rel="noreferrer" className="text-label-sm text-primary underline underline-offset-4">
+                  {t('jobs.empty.guide')}
+                </a>
+              ) : (
                 <Button
                   size="sm"
                   onClick={() => {

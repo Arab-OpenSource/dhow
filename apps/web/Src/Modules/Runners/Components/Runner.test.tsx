@@ -10,7 +10,7 @@ import { RunnerNewBody } from '@/Modules/Runners/Components/RunnerNewBody';
 
 const RUNNER_ID = '0198a000-0000-7000-8000-0000000000e1';
 const SECRET = 'dhow_rrt_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcd';
-const COMMAND = 'sudo dhow-runner register --url https://dhow.example.com --token-file -';
+const COMMAND = 'sudo -u dhow-runner dhow-runner register --url https://dhow.example.com --token-file -';
 const path = (request: Request) => new URL(request.url).pathname;
 
 const runner = (over: Record<string, unknown> = {}) => ({

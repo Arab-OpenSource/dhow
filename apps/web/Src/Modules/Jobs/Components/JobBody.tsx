@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, type ReactNode } from 'react';
 
 import { isApiError } from '@/Core/Api/ApiError';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
@@ -9,6 +9,7 @@ import { EmptyState } from '@/Core/Ui/EmptyState';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
+import type { TJob } from '@/Modules/Jobs/Api/JobsApi';
 import { JobAttempts } from '@/Modules/Jobs/Components/JobAttempts';
 import { JobLogSection } from '@/Modules/Jobs/Components/JobLogSection';
 import { JobOverview } from '@/Modules/Jobs/Components/JobOverview';
@@ -17,9 +18,10 @@ import { jobKey, useJob } from '@/Modules/Jobs/Hooks/useJobs';
 
 export interface IJobBodyProps {
   jobId: string;
+  waitingFor?: (job: TJob) => ReactNode;
 }
 
-const JobContent = ({ organizationId, jobId }: IJobBodyProps & { organizationId: string }) => {
+const JobContent = ({ organizationId, jobId, waitingFor }: IJobBodyProps & { organizationId: string }) => {
   const t = useT();
   const client = useQueryClient();
   const role = useCurrentMembership()?.Role;
@@ -54,7 +56,7 @@ const JobContent = ({ organizationId, jobId }: IJobBodyProps & { organizationId:
   const detail = job.data;
   return (
     <>
-      <JobOverview organizationId={organizationId} job={detail.Job} role={role} />
+      <JobOverview organizationId={organizationId} job={detail.Job} role={role} waitingFor={waitingFor} />
       <JobLogSection organizationId={organizationId} detail={detail} role={role} onEnded={HandleEnded} />
       <JobAttempts attempts={detail.Attempts} maxRetries={detail.Job.MaxInfraRetries} />
       <JobSpecCard spec={detail.Spec} />
@@ -62,8 +64,8 @@ const JobContent = ({ organizationId, jobId }: IJobBodyProps & { organizationId:
   );
 };
 
-export const JobBody = ({ jobId }: IJobBodyProps) => {
+export const JobBody = ({ jobId, waitingFor }: IJobBodyProps) => {
   const membership = useCurrentMembership();
   if (membership === undefined) return null;
-  return <JobContent organizationId={membership.OrganizationId} jobId={jobId} />;
+  return <JobContent organizationId={membership.OrganizationId} jobId={jobId} waitingFor={waitingFor} />;
 };

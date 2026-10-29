@@ -55,7 +55,7 @@ const jobsRoute = createRoute({
 const jobRoute = page('jobs/$jobId', SHELL_PAGES.job);
 const runnersRoute = page('runners', SHELL_PAGES.runners);
 const runnerTokensRoute = page('runners/tokens', SHELL_PAGES.runnerTokens);
-const runnerRoute = page('runners/$runnerId', SHELL_PAGES.runner);
+const runnerRoute = createRoute({ getParentRoute: () => runnersRoute, path: '$runnerId', component: SHELL_PAGES.runner });
 const membersRoute = page('org/members', SHELL_PAGES.members);
 const memberRoute = page('org/members/$memberId', SHELL_PAGES.member);
 const teamsRoute = page('org/teams', SHELL_PAGES.teams);
@@ -120,9 +120,8 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     jobsRoute,
     jobRoute,
-    runnersRoute,
+    runnersRoute.addChildren([runnerRoute]),
     runnerTokensRoute,
-    runnerRoute,
     membersRoute,
     memberRoute,
     teamsRoute,

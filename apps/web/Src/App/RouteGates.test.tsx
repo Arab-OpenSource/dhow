@@ -30,7 +30,7 @@ const GATES: readonly IGateCase[] = [
   { url: '/jobs', title: Ar['jobs.title'], endpoint: /\/jobs/, allowed: EVERYONE },
   { url: `/jobs/${ID}`, title: Ar['jobs.detail.title'], endpoint: /\/jobs\//, allowed: EVERYONE },
   { url: '/runners', title: Ar['runners.title'], endpoint: /\/runners/, allowed: BUILDERS },
-  { url: `/runners/${ID}`, title: Ar['runners.detail.title'], endpoint: /\/runners\//, allowed: BUILDERS },
+  { url: `/runners/${ID}`, title: Ar['runners.title'], endpoint: /\/runners\//, allowed: BUILDERS },
   { url: '/runners/tokens', title: Ar['runners.tokens.title'], endpoint: /\/runner-registration-tokens/, allowed: ADMINS },
   { url: '/org/members', title: Ar['shell.nav.members'], endpoint: /\/members/, allowed: BUILDERS },
   { url: `/org/members/${ID}`, title: Ar['shell.nav.members'], endpoint: /\/members/, allowed: BUILDERS },

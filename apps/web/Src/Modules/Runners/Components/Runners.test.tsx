@@ -54,7 +54,11 @@ interface IBackend {
   revokeToken?: () => Response;
 }
 
-const mount = ({ role = 'owner', runners = () => page([runner()]), tokens = () => page([token()]), revokeToken }: IBackend = {}, withTokens = false) => {
+const mount = (
+  { role = 'owner', runners = () => page([runner()]), tokens = () => page([token()]), revokeToken }: IBackend = {},
+  withTokens = false,
+  selectedId?: string,
+) => {
   const { calls } = stubFetch((request) => {
     const p = path(request);
     if (p.endsWith('/me')) return envelope(meBody(role));
@@ -67,7 +71,7 @@ const mount = ({ role = 'owner', runners = () => page([runner()]), tokens = () =
   const onAddRunner = vi.fn();
   const view = renderWithProviders(
     <>
-      <RunnersBody onOpenRunner={onOpenRunner} onAddRunner={onAddRunner} />
+      <RunnersBody onOpenRunner={onOpenRunner} onAddRunner={onAddRunner} hrefFor={(id) => `/runners/${id}`} selectedId={selectedId} />
       {withTokens ? <RegistrationTokensCard organizationId={ORG_ID} /> : null}
       <footer>
         <RunnersFooter onAddRunner={onAddRunner} />
@@ -90,15 +94,25 @@ describe('the runners list', () => {
     const list = await screen.findByRole('list', { name: Ar['runners.list.title'] });
     expect(within(list).getByText(Ar['runners.view.online'])).toBeInTheDocument();
     expect(within(list).getByText(Ar['runners.view.paused'])).toBeInTheDocument();
-    await user.click(within(list).getByRole('button', { name: /build-01/ }));
+    const link = within(list).getByRole('link', { name: /build-01/ });
+    expect(link).toHaveAttribute('href', `/runners/${RUNNER_ID}`);
+    expect(link).not.toHaveAttribute('aria-current');
+    await user.click(link);
     expect(onOpenRunner).toHaveBeenCalledWith(RUNNER_ID);
+  });
+
+  it('marks the selected runner', async () => {
+    mount({ runners: () => page([runner(), runner({ Id: '0198a000-0000-7000-8000-0000000000e2', Name: 'build-02' })]) }, false, RUNNER_ID);
+    const list = await screen.findByRole('list', { name: Ar['runners.list.title'] });
+    expect(within(list).getByRole('link', { name: /build-01/ })).toHaveAttribute('aria-current', 'page');
+    expect(within(list).getByRole('link', { name: /build-02/ })).not.toHaveAttribute('aria-current');
   });
 
   it('explains how to add the first runner, with the register command', async () => {
     const { user, onAddRunner } = mount({ runners: () => page([]) });
     expect(await screen.findByText(Ar['runners.empty.manager'])).toBeInTheDocument();
     expect(screen.getByLabelText(Ar['runners.command.label'])).toHaveTextContent(
-      `sudo dhow-runner register --url ${window.location.origin} --token-file -`,
+      `sudo -u dhow-runner dhow-runner register --dev --url ${window.location.origin} --token-file -`,
     );
     const adds = screen.getAllByRole('button', { name: Ar['runners.add'] });
     expect(adds).toHaveLength(2);
