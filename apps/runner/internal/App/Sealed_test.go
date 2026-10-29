@@ -194,3 +194,19 @@ func TestEveryCrashPointOfASealedRotationLeavesAUsableIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestASymlinkedCredentialIsRefused(t *testing.T) {
+	srv := runnertest.NewServer(t)
+	r := runnertest.Register(t, srv, srv.URL)
+	r.Seal(runnertest.NewSealer(t))
+	unit := r.UnitStore()
+	link := filepath.Join(t.TempDir(), "identity")
+	require.NoError(t, os.Symlink(unit.Unsealed, link))
+	_, err := identity.SealedStore{Dir: r.StateDir, Unsealed: link}.Load()
+	require.ErrorIs(t, err, config.ErrNotFile)
+	sealed := filepath.Join(r.StateDir, config.SealedIdentityFileName)
+	require.NoError(t, os.Rename(sealed, sealed+".real"))
+	require.NoError(t, os.Symlink(sealed+".real", sealed))
+	_, err = r.Store().Load()
+	require.ErrorIs(t, err, config.ErrNotFile)
+}

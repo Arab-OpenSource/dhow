@@ -36,15 +36,26 @@ func TestWithEnvFileFillsWhatTheProcessLacks(t *testing.T) {
 	assert.Empty(t, same("DHOW_RUNNER_CAPACITY"))
 }
 
-func TestCredentialsDirectory(t *testing.T) {
+func TestTheCredentialsDirectoryIsTrustedOnlyUnderTheUnit(t *testing.T) {
 	state := t.TempDir()
-	env := map[string]string{config.EnvStateDir: state, config.EnvCredentialsDir: "/run/credentials/dhow-runner.service"}
-	cfg, err := config.Load(func(k string) string { return env[k] }, config.Options{})
-	require.NoError(t, err)
-	assert.Equal(t, "/run/credentials/dhow-runner.service/identity", cfg.CredentialPath())
-	assert.Equal(t, filepath.Join(state, "identity.cred"), cfg.SealedIdentityPath())
+	creds := filepath.Join(t.TempDir(), "credentials")
+	require.NoError(t, os.Mkdir(creds, 0o500))
+	env := map[string]string{config.EnvStateDir: state, config.EnvCredentialsDir: creds}
+	load := func() config.Config {
+		cfg, err := config.Load(func(k string) string { return env[k] }, config.Options{})
+		require.NoError(t, err)
+		return cfg
+	}
+	assert.Empty(t, load().CredentialPath(), "outside a unit (no INVOCATION_ID) the variable is ignored")
+	env[config.EnvInvocationID] = "0123456789abcdef"
+	assert.Equal(t, filepath.Join(creds, "identity"), load().CredentialPath())
+	assert.Equal(t, filepath.Join(state, "identity.cred"), load().SealedIdentityPath())
+	require.NoError(t, os.Chmod(creds, 0o777))
+	assert.Empty(t, load().CredentialPath(), "a directory others can write to is ignored")
+	env[config.EnvCredentialsDir] = filepath.Join(t.TempDir(), "missing")
+	assert.Empty(t, load().CredentialPath())
 	env[config.EnvCredentialsDir] = "relative"
-	_, err = config.Load(func(k string) string { return env[k] }, config.Options{})
+	_, err := config.Load(func(k string) string { return env[k] }, config.Options{})
 	require.ErrorIs(t, err, config.ErrRelativePath)
 }
 

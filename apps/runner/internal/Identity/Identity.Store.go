@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 )
@@ -184,7 +185,10 @@ func (s SealedStore) RemovePending() error { return config.RemoveDurable(s.Pendi
 func (s SealedStore) RemoveStaleTemps() error { return RemoveStaleTemps(s.Dir) }
 
 func readCredential(path string) ([]byte, error) {
-	f, err := os.Open(path) //nolint:gosec // The runner's own state directory, or the credentials directory systemd made for the unit.
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK|syscall.O_CLOEXEC, 0) //nolint:gosec // The runner's own state directory, or the credentials directory systemd made for the unit.
+	if errors.Is(err, syscall.ELOOP) {
+		return nil, fmt.Errorf("%s %w", path, config.ErrNotFile)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, err)
 	}
