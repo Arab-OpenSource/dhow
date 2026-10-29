@@ -184,21 +184,18 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  publish-binaries:
-    name: Sign, attest and publish the binaries
+  sign-binaries:
+    name: Sign and attest the binaries
     needs: binaries
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read
       id-token: write
       attestations: write
     env:
       VERSION: ${{ needs.binaries.outputs.version }}
       IDENTITY: ^https://github\.com/${{ github.repository }}/\.github/workflows/release\.yml@refs/tags/v
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dhow-binaries
@@ -218,6 +215,47 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --certificate-identity-regexp "$IDENTITY" \
             SHA256SUMS
+      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        id: syft
+      - name: Generate an SPDX SBOM per archive
+        env:
+          SYFT: ${{ steps.syft.outputs.cmd }}
+        run: |
+          for archive in dist/*.tar.gz; do
+            unpacked="$RUNNER_TEMP/sbom/$(basename "$archive" .tar.gz)"
+            mkdir -p "$unpacked"
+            tar -xzf "$archive" -C "$unpacked"
+            "$SYFT" scan "dir:$unpacked" --source-name "$(basename "$archive")" --source-version "$VERSION" \
+              -o "spdx-json=$archive.spdx.json"
+          done
+      - name: Attest the SLSA build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dhow-signed
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  verify-install:
+    name: Install the signed runner archive with get.sh
+    needs: [binaries, sign-binaries]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.binaries.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dhow-signed
+          path: dist
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - name: Install the signed runner archive with get.sh, as users will
         env:
           REPO: ${{ github.repository }}
@@ -241,23 +279,23 @@ jobs:
             exit 1
           fi
           grep -q 'the signature on SHA256SUMS does not verify' "$RUNNER_TEMP/forged.log"
-      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-        id: syft
-      - name: Generate an SPDX SBOM per archive
-        env:
-          SYFT: ${{ steps.syft.outputs.cmd }}
-        run: |
-          for archive in dist/*.tar.gz; do
-            unpacked="$RUNNER_TEMP/sbom/$(basename "$archive" .tar.gz)"
-            mkdir -p "$unpacked"
-            tar -xzf "$archive" -C "$unpacked"
-            "$SYFT" scan "dir:$unpacked" --source-name "$(basename "$archive")" --source-version "$VERSION" \
-              -o "spdx-json=$archive.spdx.json"
-          done
-      - name: Attest the SLSA build provenance
-        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+
+  publish-binaries:
+    name: Publish the binaries
+    needs: [binaries, verify-install]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.binaries.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          subject-path: dist/*.tar.gz
+          name: dhow-signed
+          path: dist
+      - name: Check the archives against SHA256SUMS
+        working-directory: dist
+        run: sha256sum --check --strict SHA256SUMS
       - name: Upload to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
