@@ -14,7 +14,6 @@ import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
 import { RUNNERS_PAGE_SIZE } from '@/Modules/Runners/Api/RunnersApi';
 import { CopyBlock } from '@/Modules/Runners/Components/CopyBlock';
-import { RegistrationTokensCard } from '@/Modules/Runners/Components/RegistrationTokensCard';
 import { RunnerRow } from '@/Modules/Runners/Components/RunnerRow';
 import { useRunnerAccess } from '@/Modules/Runners/Hooks/useRunnerAccess';
 import { useRunners } from '@/Modules/Runners/Hooks/useRunners';
@@ -122,7 +121,6 @@ const RunnersContent = ({ organizationId, manager, onOpenRunner, onAddRunner }: 
         </Card>
       )}
       <Pager page={Meta.Page} limit={Meta.Limit || RUNNERS_PAGE_SIZE} total={Meta.Total} busy={runners.isFetching} onPage={setPage} />
-      {manager ? <RegistrationTokensCard organizationId={organizationId} /> : null}
     </>
   );
 };

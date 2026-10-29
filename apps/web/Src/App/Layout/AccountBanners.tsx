@@ -1,4 +1,5 @@
-import { useShellNavigation } from '@/App/Layout/useShellNavigation';
+import { useNavigate } from '@tanstack/react-router';
+
 import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { useIsPast } from '@/Core/Hooks/useIsPast';
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
@@ -11,11 +12,11 @@ export const AccountBanners = () => {
   const time = useRelativeTime();
   const me = useMe();
   const membership = useCurrentMembership();
-  const { openStack } = useShellNavigation();
+  const navigate = useNavigate();
   const due = membership?.SecondFactorDue;
   const passed = useIsPast(due);
   const HandleOpenAccount = () => {
-    openStack(['account']);
+    void navigate({ to: '/account/security' });
   };
 
   if (membership && due !== undefined) {

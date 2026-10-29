@@ -1,13 +1,7 @@
 import { AdminAr } from '@/I18n/Locales/Workspace/AdminAr';
 
 export const OrganizationAr = {
-  'organization.tabs': 'أقسام المؤسسة',
-  'organization.tab.members': 'الأعضاء',
-  'organization.tab.teams': 'الفرق',
-  'organization.tab.invitations': 'الدعوات',
-  'organization.tab.settings': 'الإعدادات',
   'organization.invite': 'ادعي عضو',
-  'organization.audit': 'سجل الأحداث',
   'organization.leave.title': 'اخرج من المؤسسة',
   'organization.leave.about': 'هتفقد الوصول لكل حاجة فيها على طول. ترجع بدعوة جديدة بس.',
   'organization.leave.action': 'اخرج من {name}',

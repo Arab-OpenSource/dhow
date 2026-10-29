@@ -16,7 +16,7 @@ const NEXT = 'correct horse battery staple 42';
 
 const mount = async (options: IBackendOptions = {}) => {
   const backend = startBackend(options);
-  const router = createAppRouter(createMemoryHistory({ initialEntries: ['/?stack=account,account-password'] }));
+  const router = createAppRouter(createMemoryHistory({ initialEntries: ['/account/security?slide=account-password'] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
   const dialog = await screen.findByRole('dialog', { name: Ar['password.slide.title'] });
@@ -38,9 +38,9 @@ afterEach(() => {
 });
 
 describe('changing the password', () => {
-  it('stacks the form over the account slide and says other devices will be signed out', async () => {
+  it('opens the form over the security page and says other devices will be signed out', async () => {
     const { router, dialog } = await mount();
-    expect(router.state.location.href).toBe('/?stack=account,account-password');
+    expect(router.state.location.href).toBe('/account/security?slide=account-password');
     expect(within(dialog).getByText(Ar['password.change.notice'])).toBeInTheDocument();
     expect(within(dialog).getByRole('meter', { name: Ar['password.strength.label'] })).toBeInTheDocument();
     expect(within(dialog).getByLabelText(Ar['password.current'])).toHaveAttribute('autocomplete', 'current-password');
@@ -52,7 +52,7 @@ describe('changing the password', () => {
     await type(user, CURRENT, NEXT, NEXT);
     await submit(user);
     await waitFor(() => {
-      expect(router.state.location.href).toBe('/?stack=account');
+      expect(router.state.location.href).toBe('/account/security');
     });
     const put = calls.find((call) => call.method === 'PUT');
     expect(new URL(put?.url ?? '').pathname).toBe('/api/v1/me/password');
@@ -146,14 +146,14 @@ describe('refused password changes', () => {
     await type(user, CURRENT, NEXT, NEXT);
     await submit(user);
     expect(await screen.findByText('حصل خطأ في السيرفر.')).toBeInTheDocument();
-    expect(router.state.location.href).toBe('/?stack=account,account-password');
+    expect(router.state.location.href).toBe('/account/security?slide=account-password');
   });
 
   it('can be cancelled without sending anything', async () => {
     const { user, calls, router } = await mount();
     await user.click(screen.getByRole('button', { name: Ar['password.change.cancel'] }));
     await waitFor(() => {
-      expect(router.state.location.href).toBe('/?stack=account');
+      expect(router.state.location.href).toBe('/account/security');
     });
     expect(calls.filter((call) => call.method === 'PUT')).toHaveLength(0);
   });

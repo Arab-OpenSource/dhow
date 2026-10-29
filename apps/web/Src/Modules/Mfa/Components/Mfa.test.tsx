@@ -9,14 +9,15 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { GOOD_CODE, GOOD_PASSWORD, NEW_CODES, passkeyFixture } from '@/Core/Testing/MfaBackend';
 import { useToastStore } from '@/Core/Store/useToastStore';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
 
-const mount = async (options: IBackendOptions = {}, url = '/?stack=account') => {
+const mount = async (options: IBackendOptions = {}, url = '/account/security') => {
   const backend = startBackend(options);
   const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['account.title'] });
+  const dialog = await findPage(Ar['shell.nav.security']);
   await within(dialog).findByRole('list', { name: Ar['mfa.section.title'] });
   return { ...backend, router, user, dialog };
 };
@@ -43,7 +44,7 @@ describe('two-step verification in my account', () => {
     const { user, router, calls } = await mount();
     await user.click(screen.getByRole('button', { name: Ar['mfa.totp.enable'] }));
     const slide = await screen.findByRole('dialog', { name: Ar['totp.slide.title'] });
-    expect(router.state.location.href).toBe('/?stack=account,account-totp');
+    expect(router.state.location.href).toBe('/account/security?slide=account-totp');
     await user.click(await within(slide).findByRole('button', { name: Ar['totp.start'] }));
     expect(await within(slide).findByRole('img', { name: Ar['totp.qr'] })).toBeInTheDocument();
     expect(within(slide).getByText('JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP')).toBeInTheDocument();
@@ -65,7 +66,7 @@ describe('two-step verification in my account', () => {
 
     await user.click(within(slide).getByRole('button', { name: Ar['mfa.recovery.done'] }));
     await waitFor(() => {
-      expect(router.state.location.href).toBe('/?stack=account');
+      expect(router.state.location.href).toBe('/account/security');
     });
     expect(await screen.findByText(Ar['mfa.recovery.remaining'].replace('{count}', '10'))).toBeInTheDocument();
   });
@@ -134,7 +135,7 @@ describe('starting TOTP and the TOTP status line', () => {
   it('does not start an enrollment just because the TOTP slide was opened from a link', async () => {
     const { calls } = startBackend();
     const user = userEvent.setup();
-    render(<App router={createAppRouter(createMemoryHistory({ initialEntries: ['/?stack=account,account-totp'] }))} queryClient={createQueryClient({ retry: false })} />);
+    render(<App router={createAppRouter(createMemoryHistory({ initialEntries: ['/account/security?slide=account-totp'] }))} queryClient={createQueryClient({ retry: false })} />);
     const slide = await screen.findByRole('dialog', { name: Ar['totp.slide.title'] });
     const start = await within(slide).findByRole('button', { name: Ar['totp.start'] });
     expect(within(slide).getByText(Ar['totp.start.about'])).toBeInTheDocument();

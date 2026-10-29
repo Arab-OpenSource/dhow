@@ -1,6 +1,7 @@
 import { AuditAr } from '@/I18n/Locales/Workspace/AuditAr';
 import { JobsAr } from '@/I18n/Locales/Workspace/JobsAr';
 import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
+import { PagesAr } from '@/I18n/Locales/Workspace/PagesAr';
 import { RunnersAr } from '@/I18n/Locales/Workspace/RunnersAr';
 
 export const WorkspaceAr = {
@@ -8,7 +9,6 @@ export const WorkspaceAr = {
   'palette.placeholder': 'اكتب اسم صفحة أو أمر',
   'palette.empty': 'مفيش نتيجة. جرّب كلمة تانية.',
   'palette.kind.page': 'صفحة',
-  'palette.kind.panel': 'شريحة',
   'palette.kind.action': 'إجراء',
   'palette.command.home': 'روح للرئيسية',
   'palette.command.systemStatus': 'افتح حالة السيرفر',
@@ -26,7 +26,6 @@ export const WorkspaceAr = {
   'slides.back': 'ارجع خطوة',
   'slides.closeAll': 'اقفل كل الشرائح',
   'slides.level': '{current} من {total}',
-  'slides.returned.title': 'رجعت للشريحة اللي قبلها',
 
   'notifications.title': 'الإشعارات',
   'notifications.empty': 'مفيش إشعارات جديدة.',
@@ -58,7 +57,6 @@ export const WorkspaceAr = {
   'status.summary.setup.title': 'السيرفر شغّال، بس الإعداد لسه ماخلصش',
   'status.summary.setup.sub': 'كمّل الإعداد الأولاني عشان تقدر تبدأ.',
 
-  'palette.command.appearance': 'غيّر ثيم الألوان',
   'palette.command.createTheme': 'اعمل ثيم ألوان جديد',
   'appearance.title': 'المظهر والألوان',
   'appearance.subtitle': 'الاختيار بيتحفظ ليك إنت بس، والمدير يقدر يحدد الثيم الافتراضي للمؤسسة.',
@@ -165,7 +163,6 @@ export const WorkspaceAr = {
   'palette.command.password': 'غيّر كلمة السر',
   'palette.command.signOut': 'اخرج من الحساب',
 
-  'account.title': 'حسابي',
   'account.error.title': 'مقدرناش نحمّل بيانات حسابك',
   'account.summary.strong.title': 'حسابك محمي بخطوة ثانية',
   'account.summary.weak.title': 'فعّل الخطوة الثانية لحماية حسابك',
@@ -292,9 +289,6 @@ export const WorkspaceAr = {
   'audit.verify.broken.title': 'السلسلة مكسورة',
   'audit.verify.broken.sub': 'اتفحص {count} حدث، والكسر بدأ عند الحدث ده:',
 
-  'palette.command.organization': 'افتح بيانات المؤسسة والأعضاء',
-  'organization.title': 'المؤسسة',
-  'organization.subtitle': 'الأعضاء والفرق والدعوات والإعدادات.',
   'organization.card.title': 'بيانات المؤسسة',
   'organization.name': 'اسم المؤسسة',
   'organization.slug': 'الرابط المختصر',
@@ -386,4 +380,5 @@ export const WorkspaceAr = {
   ...OrganizationAr,
   ...JobsAr,
   ...RunnersAr,
+  ...PagesAr,
 } as const;

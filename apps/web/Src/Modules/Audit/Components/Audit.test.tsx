@@ -8,20 +8,21 @@ import { createAppRouter } from '@/App/Router';
 import { createQueryClient } from '@/Core/Api/QueryClient';
 import { auditFixture, backendFailure, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { envelope } from '@/Core/Testing/Fetch';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
 
-const mount = async (options: IBackendOptions = {}, url = '/?stack=audit') => {
+const mount = async (options: IBackendOptions = {}, url = '/audit') => {
   const backend = startBackend({ audit: auditFixture(45), ...options });
   const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['audit.title'] });
+  const dialog = await findPage(Ar['audit.title']);
   return { ...backend, router, user, dialog };
 };
 
 const verifyButton = () => screen.findByRole('button', { name: Ar['audit.verify.action'] });
 
-describe('the audit log slide', () => {
+describe('the audit log page', () => {
   it('lists events with what happened, who did it, from which address and when', async () => {
     const { dialog } = await mount();
     const list = await within(dialog).findByRole('list', { name: Ar['audit.list.title'] });
@@ -132,34 +133,34 @@ describe('verifying the chain', () => {
     await user.click(await verifyButton());
     expect(await screen.findByText(Ar['audit.verify.error'])).toBeInTheDocument();
     failing = false;
-    const dialog = screen.getByRole('dialog', { name: Ar['audit.title'] });
-    await user.click(within(dialog).getByRole('button', { name: Ar['status.retry'], hidden: true }));
+    await user.click(screen.getByRole('button', { name: Ar['status.retry'] }));
     expect(await screen.findByText(Ar['audit.verify.intact.title'])).toBeInTheDocument();
   });
 
-  it('forgets an old result when the slide is closed and opened again', async () => {
+  it('forgets an old result when the person leaves the page and comes back', async () => {
     const { user, router } = await mount();
     await user.click(await verifyButton());
     await screen.findByText(Ar['audit.verify.intact.title']);
-    await user.click(screen.getByRole('button', { name: Ar['slides.closeAll'] }));
+    const nav = screen.getByRole('navigation', { name: Ar['shell.nav.label'] });
+    await user.click(within(nav).getByRole('link', { name: Ar['shell.nav.home'] }));
     await waitFor(() => {
       expect(router.state.location.href).toBe('/');
     });
-    await user.click(await screen.findByRole('link', { name: Ar['shell.nav.audit'] }));
+    await user.click(within(nav).getByRole('link', { name: Ar['shell.nav.audit'] }));
     expect(await screen.findByText(Ar['audit.verify.idle.title'])).toBeInTheDocument();
   });
 });
 
 describe('who can open the audit log', () => {
-  it.each(['owner', 'admin'])('shows the menu entry to the %s and opens the slide from it', async (role) => {
+  it.each(['owner', 'admin'])('shows the menu entry to the %s and opens the page from it', async (role) => {
     const backend = startBackend({ role, audit: auditFixture(3) });
     const router = createAppRouter(createMemoryHistory({ initialEntries: ['/'] }));
     const user = userEvent.setup();
     render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
     expect(backend.state.role).toBe(role);
     await user.click(await screen.findByRole('link', { name: Ar['shell.nav.audit'] }));
-    expect(await screen.findByRole('dialog', { name: Ar['audit.title'] })).toBeInTheDocument();
-    expect(router.state.location.href).toBe('/?stack=audit');
+    expect(await findPage(Ar['audit.title'])).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/audit');
   });
 
   it.each(['maintainer', 'developer', 'viewer'])('hides the menu entry from the %s', async (role) => {
@@ -171,11 +172,12 @@ describe('who can open the audit log', () => {
     expect(screen.queryByRole('button', { name: Ar['shell.nav.audit'] })).not.toBeInTheDocument();
   });
 
-  it('shows a forbidden state, and no request, when a developer opens the link', async () => {
-    const { calls, dialog } = await mount({ role: 'developer' });
-    expect(await within(dialog).findByText(Ar['audit.forbidden'])).toBeInTheDocument();
+  it('shows the not-found state, and no request, when a developer opens the link', async () => {
+    const { calls } = startBackend({ role: 'developer', audit: auditFixture(3) });
+    render(<App router={createAppRouter(createMemoryHistory({ initialEntries: ['/audit'] }))} queryClient={createQueryClient({ retry: false })} />);
+    expect(await screen.findByText(Ar['notFound.text'], {}, { timeout: 5000 })).toBeInTheDocument();
     expect(calls.some((call) => call.url.includes('/audit-events'))).toBe(false);
-    expect(within(dialog).queryByRole('button', { name: Ar['audit.verify.action'] })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: Ar['audit.verify.action'] })).not.toBeInTheDocument();
   });
 
   it('shows the same forbidden state when the server answers 403 anyway', async () => {
@@ -186,7 +188,10 @@ describe('who can open the audit log', () => {
   });
 
   it('hides the command from the palette for a viewer', async () => {
-    const { user } = await mount({ role: 'viewer' });
+    startBackend({ role: 'viewer' });
+    const user = userEvent.setup();
+    render(<App router={createAppRouter(createMemoryHistory({ initialEntries: ['/'] }))} queryClient={createQueryClient({ retry: false })} />);
+    await findPage(Ar['home.title']);
     await user.keyboard('{Control>}k{/Control}');
     await user.type(await screen.findByRole('combobox'), Ar['palette.command.audit']);
     expect(screen.queryByRole('option', { name: new RegExp(Ar['palette.command.audit']) })).not.toBeInTheDocument();

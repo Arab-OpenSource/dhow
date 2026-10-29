@@ -1,0 +1,100 @@
+import { Suspense } from 'react';
+
+import { isThemeEditSlide, type TSlideId } from '@/App/Panels';
+import { lazyComponent, type IPreloadable, type TLazyComponent } from '@/Core/Ui/LazyComponent';
+import { Skeleton } from '@/Core/Ui/Skeleton';
+import { useT } from '@/I18n/useT';
+
+const ThemeEditorBody = lazyComponent(() =>
+  import('@/Modules/Appearance/Components/ThemeEditorBody').then((module) => module.ThemeEditorBody),
+);
+const ThemeEditorFooter = lazyComponent(() =>
+  import('@/Modules/Appearance/Components/ThemeEditorFooter').then((module) => module.ThemeEditorFooter),
+);
+const PasswordBody = lazyComponent(() =>
+  import('@/Modules/Session/Components/PasswordBody').then((module) => module.PasswordBody),
+);
+const PasswordFooter = lazyComponent(() =>
+  import('@/Modules/Session/Components/PasswordFooter').then((module) => module.PasswordFooter),
+);
+const TotpBody = lazyComponent(() => import('@/Modules/Mfa/Components/TotpBody').then((module) => module.TotpBody));
+const TotpFooter = lazyComponent(() => import('@/Modules/Mfa/Components/TotpFooter').then((module) => module.TotpFooter));
+const TokenNewBody = lazyComponent(() =>
+  import('@/Modules/Tokens/Components/TokenNewBody').then((module) => module.TokenNewBody),
+);
+const OrganizationTokenNewBody = lazyComponent(() =>
+  import('@/Modules/Tokens/Components/OrganizationTokensBody').then((module) => module.OrganizationTokenNewBody),
+);
+const OrganizationNewBody = lazyComponent(() =>
+  import('@/Modules/Organization/Components/OrganizationNewBody').then((module) => module.OrganizationNewBody),
+);
+const InviteBody = lazyComponent(() => import('@/Modules/Organization/Components/InviteBody').then((module) => module.InviteBody));
+const InviteFooter = lazyComponent(() =>
+  import('@/Modules/Organization/Components/InviteFooter').then((module) => module.InviteFooter),
+);
+const TransferBody = lazyComponent(() =>
+  import('@/Modules/Organization/Components/TransferBody').then((module) => module.TransferBody),
+);
+const TeamNewBody = lazyComponent(() => import('@/Modules/Organization/Components/TeamNewBody').then((module) => module.TeamNewBody));
+const RunnerNewBody = lazyComponent(() => import('@/Modules/Runners/Components/RunnerNewBody').then((module) => module.RunnerNewBody));
+
+type TSlidePart = Exclude<TSlideId, `theme-edit-${string}`>;
+
+const PARTS: Record<TSlidePart, readonly IPreloadable[]> = {
+  'theme-edit': [ThemeEditorBody, ThemeEditorFooter],
+  'account-password': [PasswordBody, PasswordFooter],
+  'account-totp': [TotpBody, TotpFooter],
+  'account-token-new': [TokenNewBody],
+  'organization-token-new': [OrganizationTokenNewBody],
+  'organization-new': [OrganizationNewBody],
+  'organization-invite': [InviteBody, InviteFooter],
+  'organization-transfer': [TransferBody],
+  'team-new': [TeamNewBody],
+  'runner-new': [RunnerNewBody],
+};
+
+const preloadAll = (components: readonly IPreloadable[]): Promise<void> =>
+  Promise.all(components.map((component) => component.preload())).then(() => undefined);
+
+export const preloadSlide = (id: TSlideId): Promise<void> =>
+  preloadAll(PARTS[isThemeEditSlide(id) ? 'theme-edit' : (id as TSlidePart)]);
+
+export const preloadAllSlides = (): Promise<void> => preloadAll(Object.values(PARTS).flat());
+
+const Loading = () => {
+  const t = useT();
+  return <Skeleton label={t('ui.loading')} lines={5} />;
+};
+
+const withSkeleton = <P extends object>(Component: TLazyComponent<P>) => {
+  const Body = (props: P) => (
+    <Suspense fallback={<Loading />}>
+      <Component {...props} />
+    </Suspense>
+  );
+  return Body;
+};
+
+const withNothing = <P extends object>(Component: TLazyComponent<P>) => {
+  const Part = (props: P) => (
+    <Suspense fallback={null}>
+      <Component {...props} />
+    </Suspense>
+  );
+  return Part;
+};
+
+export const LazyThemeEditorBody = withSkeleton(ThemeEditorBody);
+export const LazyThemeEditorFooter = withNothing(ThemeEditorFooter);
+export const LazyPasswordBody = withSkeleton(PasswordBody);
+export const LazyPasswordFooter = withNothing(PasswordFooter);
+export const LazyTotpBody = withSkeleton(TotpBody);
+export const LazyTotpFooter = withNothing(TotpFooter);
+export const LazyTokenNewBody = withSkeleton(TokenNewBody);
+export const LazyOrganizationTokenNewBody = withSkeleton(OrganizationTokenNewBody);
+export const LazyOrganizationNewBody = withSkeleton(OrganizationNewBody);
+export const LazyInviteBody = withSkeleton(InviteBody);
+export const LazyInviteFooter = withNothing(InviteFooter);
+export const LazyTransferBody = withSkeleton(TransferBody);
+export const LazyTeamNewBody = withSkeleton(TeamNewBody);
+export const LazyRunnerNewBody = withSkeleton(RunnerNewBody);

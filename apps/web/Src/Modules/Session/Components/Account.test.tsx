@@ -9,14 +9,17 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { backendFailure, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { useCsrfStore } from '@/Core/Store/useCsrfStore';
 import { useToastStore } from '@/Core/Store/useToastStore';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
 
-const mount = async (options: IBackendOptions = {}, url = '/?stack=account') => {
+const PROFILE = '/account/profile';
+
+const mount = async (options: IBackendOptions = {}, url = '/account/security') => {
   const backend = startBackend(options);
   const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['account.title'] });
+  const dialog = await findPage(url === PROFILE ? Ar['shell.nav.profile'] : Ar['shell.nav.security']);
   return { ...backend, router, user, dialog };
 };
 
@@ -34,11 +37,11 @@ afterEach(() => {
   useToastStore.setState({ Toasts: [] });
 });
 
-describe('my account slide', () => {
-  it('shows who is signed in and the role, with a summary of the session', async () => {
-    const { dialog } = await mount();
-    expect(await within(dialog).findAllByText('sabry@future.dev')).toHaveLength(2);
-    expect(await within(dialog).findAllByText(Ar['role.owner'])).toHaveLength(2);
+describe('my account pages', () => {
+  it('shows who is signed in and the role on the profile', async () => {
+    const { dialog } = await mount({}, PROFILE);
+    expect(await within(dialog).findAllByText('sabry@future.dev')).toHaveLength(1);
+    expect(await within(dialog).findAllByText(Ar['role.owner'])).toHaveLength(1);
     expect(await within(dialog).findByText('Sabry Dawood')).toBeInTheDocument();
     expect(await within(dialog).findByText('Future Solution')).toBeInTheDocument();
   });
@@ -58,15 +61,16 @@ describe('my account slide', () => {
     expect(within(dialog).queryByText(Ar['account.summary.weak.title'])).not.toBeInTheDocument();
   });
 
-  it('opens from the account link in the side menu and puts the slide in the URL', async () => {
+  it('opens the profile from the account link in the side menu', async () => {
     const backend = startBackend();
     const router = createAppRouter(createMemoryHistory({ initialEntries: ['/'] }));
     const user = userEvent.setup();
     render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
     expect(backend.state.signedIn).toBe(true);
-    await user.click(await screen.findByRole('link', { name: 'Sabry Dawood' }));
-    expect(await screen.findByRole('dialog', { name: Ar['account.title'] })).toBeInTheDocument();
-    expect(router.state.location.href).toBe('/?stack=account');
+    const nav = await screen.findByRole('navigation', { name: Ar['shell.nav.label'] }, { timeout: 5000 });
+    await user.click(within(nav).getByRole('link', { name: /Sabry Dawood/ }));
+    expect(await findPage(Ar['shell.nav.profile'])).toBeInTheDocument();
+    expect(router.state.location.href).toBe(PROFILE);
   });
 
   it('lists the devices with a readable name, address, last activity and which one is this device', async () => {
@@ -170,9 +174,9 @@ describe('signing out every other device', () => {
 
 describe('signing out', () => {
   it('ends the session, forgets the CSRF token and the cache, and lands on sign-in', async () => {
-    const { user, router, calls, state } = await mount();
-    await screen.findByText('Firefox على Windows');
-    await user.click(screen.getByRole('button', { name: Ar['account.signOut'] }));
+    const { user, router, calls, state, dialog } = await mount({}, PROFILE);
+    await within(dialog).findByText('Sabry Dawood');
+    await user.click(within(dialog).getByRole('button', { name: Ar['account.signOut'] }));
     expect(await screen.findByRole('heading', { level: 1, name: Ar['login.title'] })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/login');
     const logout = calls.find((call) => call.method === 'DELETE' && call.url.endsWith('/sessions/current'));
@@ -202,19 +206,19 @@ describe('signing out', () => {
   });
 
   it('stays signed in and says so when the server cannot be reached', async () => {
-    const { user, state } = await mount({
+    const { user, state, dialog } = await mount({
       routes: [
         (request) => {
           if (request.method === 'DELETE' && request.url.endsWith('/sessions/current')) throw new TypeError('Failed to fetch');
           return undefined;
         },
       ],
-    });
-    await user.click(await screen.findByRole('button', { name: Ar['account.signOut'] }));
+    }, PROFILE);
+    await user.click(await within(dialog).findByRole('button', { name: Ar['account.signOut'] }));
     await waitFor(() => {
       expect(useToastStore.getState().Toasts.some((toast) => toast.Title === Ar['account.signOut.failed'])).toBe(true);
     });
     expect(state.signedIn).toBe(true);
-    expect(screen.getByRole('dialog', { name: Ar['account.title'] })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: Ar['shell.nav.profile'] })).toBeInTheDocument();
   });
 });

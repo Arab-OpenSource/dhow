@@ -1,17 +1,18 @@
-import { useShellNavigation } from '@/App/Layout/useShellNavigation';
+import { useNavigate } from '@tanstack/react-router';
+
 import { Button } from '@/Core/Ui/Button';
 import { EmptyState } from '@/Core/Ui/EmptyState';
 import { useT } from '@/I18n/useT';
 
 export const NotFoundPage = () => {
   const t = useT();
-  const { goWorkspace } = useShellNavigation();
+  const navigate = useNavigate();
 
   return (
     <EmptyState
       icon="layers"
       text={t('notFound.text')}
-      action={<Button variant="primary" onClick={goWorkspace}>{t('notFound.action')}</Button>}
+      action={<Button variant="primary" onClick={() => void navigate({ to: '/' })}>{t('notFound.action')}</Button>}
     />
   );
 };

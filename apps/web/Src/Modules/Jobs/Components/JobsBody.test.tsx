@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/react-router';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -8,21 +8,22 @@ import { createAppRouter } from '@/App/Router';
 import { createQueryClient } from '@/Core/Api/QueryClient';
 import { backendFailure, startBackend } from '@/Core/Testing/Backend';
 import { jobFixture, jobsFixture, jobsRoute, type IJobsBackend } from '@/Core/Testing/JobsBackend';
+import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const mount = async (jobs: IJobsBackend, role = 'owner') => {
   const backend = startBackend({ role, routes: [jobsRoute(jobs)] });
-  const router = createAppRouter(createMemoryHistory({ initialEntries: ['/?stack=jobs'] }));
+  const router = createAppRouter(createMemoryHistory({ initialEntries: ['/jobs'] }));
   const user = userEvent.setup();
   render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
-  const dialog = await screen.findByRole('dialog', { name: Ar['jobs.title'] }, { timeout: 5000 });
+  const dialog = await findPage(Ar['jobs.title']);
   return { ...backend, router, user, dialog };
 };
 
 const listCalls = (calls: readonly Request[]) =>
   calls.map((call) => new URL(call.url)).filter((url) => url.pathname.endsWith('/jobs'));
 
-describe('the jobs slide', () => {
+describe('the jobs page', () => {
   it('says how jobs get created when there are none', async () => {
     const { dialog } = await mount({ jobs: [] });
     expect(await within(dialog).findByText(Ar['jobs.empty.title'])).toBeInTheDocument();
@@ -102,12 +103,12 @@ describe('the jobs slide', () => {
     expect(await within(dialog).findByRole('list', { name: Ar['jobs.list.title'] })).toBeInTheDocument();
   });
 
-  it('opens a job over the list', async () => {
+  it('opens a job as its own page', async () => {
     const { dialog, user, router } = await mount({ jobs: jobsFixture(1) });
     const list = await within(dialog).findByRole('list', { name: Ar['jobs.list.title'] });
     await user.click(within(list).getByRole('button', { name: /job-1/ }));
     await waitFor(() => {
-      expect(router.state.location.searchStr).toBe('?stack=jobs,job-0198a000-0000-7000-8000-000000000000');
+      expect(router.state.location.pathname).toBe('/jobs/0198a000-0000-7000-8000-000000000000');
     });
   });
 });

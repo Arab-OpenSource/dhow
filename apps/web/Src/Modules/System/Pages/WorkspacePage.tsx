@@ -12,9 +12,6 @@ export const WorkspacePage = () => {
   const me = useMe();
   const homeless = me.data?.Memberships.length === 0;
 
-  const Open = (frame: 'system-status' | 'appearance') => {
-    void navigate({ to: '/', search: (previous) => ({ ...previous, stack: [frame] }) });
-  };
 
   return (
     <div className="grid max-w-[760px] gap-block">
@@ -31,7 +28,7 @@ export const WorkspacePage = () => {
             title={t('status.title')}
             sub={t('home.status.sub')}
             onSelect={() => {
-              Open('system-status');
+              void navigate({ to: '/system' });
             }}
           />
           <Row
@@ -39,7 +36,7 @@ export const WorkspacePage = () => {
             title={t('appearance.title')}
             sub={t('home.appearance.sub')}
             onSelect={() => {
-              Open('appearance');
+              void navigate({ to: '/account/preferences' });
             }}
           />
         </Rows>

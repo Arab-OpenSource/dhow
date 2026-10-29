@@ -65,10 +65,10 @@ afterEach(() => {
 describe('the session gate', () => {
   it('sends a visitor without a session to sign-in and remembers where they were going', async () => {
     serve();
-    const { router } = mount('/?stack=notifications');
+    const { router } = mount('/account/security?slide=account-password');
     expect(await screen.findByRole('heading', { level: 1, name: Ar['login.title'] })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/login');
-    expect(router.state.location.search).toEqual({ redirect: '/?stack=notifications' });
+    expect(router.state.location.search).toEqual({ redirect: '/account/security?slide=account-password' });
     expect(screen.queryByRole('navigation', { name: Ar['shell.nav.label'] })).not.toBeInTheDocument();
   });
 
@@ -156,10 +156,10 @@ describe('the setup link', () => {
 describe('the sign-in page', () => {
   it('signs in, stores the CSRF token and opens the page the person asked for', async () => {
     const { calls } = serve();
-    const { router, user } = mount('/login?redirect=%2F%3Fstack%3Dnotifications');
+    const { router, user } = mount('/login?redirect=%2Fnotifications');
     await signInWith(user);
-    expect(await screen.findByRole('dialog', { name: Ar['notifications.title'] })).toBeInTheDocument();
-    expect(router.state.location.href).toBe('/?stack=notifications');
+    expect(await screen.findByRole('heading', { level: 1, name: Ar['notifications.title'] })).toBeInTheDocument();
+    expect(router.state.location.href).toBe('/notifications');
     const login = calls.find((call) => call.method === 'POST');
     expect(await login?.clone().json()).toEqual({ Email: 'sabry@future.dev', Password: PASSWORD });
     expect(useCsrfStore.getState().Token).toBe('csrf-from-me');

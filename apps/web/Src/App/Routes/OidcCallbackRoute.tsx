@@ -26,7 +26,7 @@ export const OidcCallbackRoute = () => {
   const { provider } = useParams({ from: OIDC_CALLBACK_PATH });
 
   const toAccount = () => {
-    void navigate({ to: '/', search: { stack: ['account'] }, replace: true });
+    void navigate({ to: '/account/security', replace: true });
   };
 
   return (

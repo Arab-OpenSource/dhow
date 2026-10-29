@@ -30,7 +30,7 @@ export const InviteRoute = () => {
         }}
         onCreated={() => {
           useInviteTokenStore.getState().Clear();
-          void navigate({ to: '/login', search: { redirect: '/?stack=account' } });
+          void navigate({ to: '/login', search: { redirect: '/account/security' } });
         }}
         onJoined={(accepted) => {
           useInviteTokenStore.getState().Clear();

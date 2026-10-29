@@ -59,7 +59,6 @@ export const AdminEn: Record<keyof typeof AdminAr, string> = {
   'orgTokens.loading': 'Loading the API tokens',
   'orgTokens.empty': 'This organization has no API tokens yet.',
   'orgTokens.new.subtitle': 'The token is for this organization. Pick its scopes and how long it lasts.',
-  'organization.tokens': 'API tokens',
   'organization.tokens.title': 'Organization API tokens',
   'organization.tokens.about': 'Review every token your members created, and revoke the ones you don’t need.',
   'organization.tokens.open': 'Open API tokens',
