@@ -33,7 +33,7 @@ describe('the audit log page', () => {
     expect(first).toHaveTextContent(Ar['audit.action.auth.login']);
     expect(first).toHaveTextContent('Sabry Dawood');
     expect(first).toHaveTextContent('203.0.113.1');
-    expect(first).toHaveTextContent('من 10 دقيقة');
+    expect(first).toHaveTextContent('منذ 10 دقيقة');
     expect(rows[2]).toHaveTextContent(Ar['audit.action.auth.login_failed']);
     expect(rows[2]).toHaveTextContent(Ar['audit.actor.visitor']);
     expect(within(dialog).getByText(Ar['audit.list.total'].replace('{count}', '45'))).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe('the audit log page', () => {
     const { user } = await mount({
       routes: [
         (_request, url) =>
-          failing && url.pathname.endsWith('/audit-events') ? backendFailure('INTERNAL', 'حصل خطأ في السيرفر.', 500) : undefined,
+          failing && url.pathname.endsWith('/audit-events') ? backendFailure('INTERNAL', 'حدث خطأ في السيرفر.', 500) : undefined,
       ],
     });
     expect(await screen.findByText(Ar['audit.error.title'])).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('verifying the chain', () => {
     });
     await user.click(await verifyButton());
     expect(await screen.findByText(Ar['audit.verify.broken.title'])).toBeInTheDocument();
-    expect(screen.getByText(/اتفحص 12 حدث/)).toBeInTheDocument();
+    expect(screen.getByText(/فحصنا 12 حدث/)).toBeInTheDocument();
     expect(screen.getByText('0198a000-0000-7000-8000-000000000013')).toBeInTheDocument();
     expect(screen.queryByText(Ar['audit.verify.intact.title'])).not.toBeInTheDocument();
   });
@@ -129,7 +129,7 @@ describe('verifying the chain', () => {
   it('shows a failed check and lets the person retry it', async () => {
     let failing = true;
     const { user } = await mount({
-      verify: () => (failing ? backendFailure('INTERNAL', 'حصل خطأ في السيرفر.', 500) : envelope({ Success: true, Data: { Valid: true, Checked: 45 } })),
+      verify: () => (failing ? backendFailure('INTERNAL', 'حدث خطأ في السيرفر.', 500) : envelope({ Success: true, Data: { Valid: true, Checked: 45 } })),
     });
     await user.click(await verifyButton());
     expect(await screen.findByText(Ar['audit.verify.error'])).toBeInTheDocument();
@@ -184,7 +184,7 @@ describe('who can open the audit log', () => {
 
   it('shows the same forbidden state when the server answers 403 anyway', async () => {
     await mount({
-      routes: [(_request, url) => (url.pathname.endsWith('/audit-events') ? backendFailure('FORBIDDEN', 'مش مسموح.', 403) : undefined)],
+      routes: [(_request, url) => (url.pathname.endsWith('/audit-events') ? backendFailure('FORBIDDEN', 'غير مسموح.', 403) : undefined)],
     });
     expect(await screen.findByText(Ar['audit.forbidden'])).toBeInTheDocument();
   });

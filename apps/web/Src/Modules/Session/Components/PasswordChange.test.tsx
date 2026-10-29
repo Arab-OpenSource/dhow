@@ -88,11 +88,11 @@ describe('changing the password', () => {
 describe('refused password changes', () => {
   it('shows a wrong current password on its own field and clears every field', async () => {
     const { user } = await mount({
-      passwordReply: () => backendFailure('INVALID_CURRENT_PASSWORD', 'كلمة السر الحالية مش صح.', 403),
+      passwordReply: () => backendFailure('INVALID_CURRENT_PASSWORD', 'كلمة السر الحالية غير صحيحة.', 403),
     });
     await type(user, 'wrong password 1', NEXT, NEXT);
     await submit(user);
-    expect(await screen.findByText('كلمة السر الحالية مش صح.')).toBeInTheDocument();
+    expect(await screen.findByText('كلمة السر الحالية غير صحيحة.')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByLabelText(Ar['password.current'])).toHaveFocus();
     });
@@ -104,7 +104,7 @@ describe('refused password changes', () => {
   it('counts down when the server throttles guesses of the current password', async () => {
     const { user, calls } = await mount({
       passwordReply: () =>
-        backendFailure('INVALID_CURRENT_PASSWORD', 'استنى شوية.', 403, { 'Retry-After': '30' }),
+        backendFailure('INVALID_CURRENT_PASSWORD', 'انتظر قليلًا.', 403, { 'Retry-After': '30' }),
     });
     await type(user, 'wrong password 1', NEXT, NEXT);
     await submit(user);
@@ -115,11 +115,11 @@ describe('refused password changes', () => {
 
   it('puts a breached password on the new-password field', async () => {
     const { user } = await mount({
-      passwordReply: () => backendFailure('PASSWORD_BREACHED', 'كلمة السر دي ظهرت في تسريب.', 422),
+      passwordReply: () => backendFailure('PASSWORD_BREACHED', 'ظهرت كلمة السر هذه في تسريب.', 422),
     });
     await type(user, CURRENT, NEXT, NEXT);
     await submit(user);
-    expect(await screen.findByText('كلمة السر دي ظهرت في تسريب.')).toBeInTheDocument();
+    expect(await screen.findByText('ظهرت كلمة السر هذه في تسريب.')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByLabelText(Ar['password.new'])).toHaveFocus();
     });
@@ -131,21 +131,21 @@ describe('refused password changes', () => {
         envelope(
           {
             Success: false,
-            Error: { Code: 'VALIDATION_FAILED', Message: 'x', Details: [{ Field: 'NewPassword', Message: 'كلمة السر الجديدة لازم تختلف.' }] },
+            Error: { Code: 'VALIDATION_FAILED', Message: 'x', Details: [{ Field: 'NewPassword', Message: 'يجب أن تختلف كلمة السر الجديدة.' }] },
           },
           422,
         ),
     });
     await type(user, CURRENT, NEXT, NEXT);
     await submit(user);
-    expect(await screen.findByText('كلمة السر الجديدة لازم تختلف.')).toBeInTheDocument();
+    expect(await screen.findByText('يجب أن تختلف كلمة السر الجديدة.')).toBeInTheDocument();
   });
 
   it('shows any other failure in an alert and keeps the slide open', async () => {
-    const { user, router } = await mount({ passwordReply: () => backendFailure('INTERNAL', 'حصل خطأ في السيرفر.', 500) });
+    const { user, router } = await mount({ passwordReply: () => backendFailure('INTERNAL', 'حدث خطأ في السيرفر.', 500) });
     await type(user, CURRENT, NEXT, NEXT);
     await submit(user);
-    expect(await screen.findByText('حصل خطأ في السيرفر.')).toBeInTheDocument();
+    expect(await screen.findByText('حدث خطأ في السيرفر.')).toBeInTheDocument();
     expect(router.state.location.href).toBe('/account/security?slide=account-password');
   });
 

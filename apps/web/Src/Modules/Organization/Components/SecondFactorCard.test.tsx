@@ -89,7 +89,7 @@ describe('the second-step rule of the organization', () => {
     const rules = ruleBackend('everyone');
     const refuse: TRouteHandler = (request, url) => {
       if (url.pathname !== RULE_PATH || request.method !== 'PUT') return undefined;
-      return envelope({ Success: false, Error: { Code: 'INVALID_CURRENT_FACTOR', Message: 'مقدرناش نتأكد إنه إنت.' } }, 403);
+      return envelope({ Success: false, Error: { Code: 'INVALID_CURRENT_FACTOR', Message: 'لم نتمكن من التأكد من هويتك.' } }, 403);
     };
     const { user, dialog } = await mountSettings({
       routes: [refuse, ...rules.routes],
@@ -99,7 +99,7 @@ describe('the second-step rule of the organization', () => {
     expect(within(dialog).getByText(Ar['organization.secondFactor.question.narrower'])).toBeInTheDocument();
     await user.type(await within(dialog).findByLabelText(Ar['factor.method.totp']), '000000');
     await user.click(within(dialog).getByRole('button', { name: Ar['organization.secondFactor.confirm.off'] }));
-    expect(await within(dialog).findByText('مقدرناش نتأكد إنه إنت.')).toBeInTheDocument();
+    expect(await within(dialog).findByText('لم نتمكن من التأكد من هويتك.')).toBeInTheDocument();
   });
 
   it('shows an admin the rule without a way to change it', async () => {

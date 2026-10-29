@@ -58,10 +58,10 @@ describe('the second sign-in step', () => {
   });
 
   it('shows the generic error for a wrong code and keeps the step open', async () => {
-    const { user } = await mount(['totp'], () => backendFailure('INVALID_MFA_CODE', 'الكود مش صح.', 401));
+    const { user } = await mount(['totp'], () => backendFailure('INVALID_MFA_CODE', 'الكود غير صحيح.', 401));
     await user.type(screen.getByLabelText(Ar['mfa.step.code']), '000000');
     await user.click(screen.getByRole('button', { name: Ar['mfa.step.submit'] }));
-    expect(await screen.findByText('الكود مش صح.')).toBeInTheDocument();
+    expect(await screen.findByText('الكود غير صحيح.')).toBeInTheDocument();
     expect(screen.getByLabelText(Ar['mfa.step.code'])).toHaveValue('');
   });
 

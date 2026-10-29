@@ -186,11 +186,11 @@ describe('the sign-in page', () => {
 
   it('shows the server message for wrong credentials, clears the password and focuses it', async () => {
     serve({
-      login: () => envelope({ Success: false, Error: { Code: 'INVALID_CREDENTIALS', Message: 'الإيميل أو كلمة السر مش صح.' } }, 401),
+      login: () => envelope({ Success: false, Error: { Code: 'INVALID_CREDENTIALS', Message: 'البريد أو كلمة السر غير صحيحة.' } }, 401),
     });
     const { user } = mount('/login');
     await signInWith(user);
-    expect(await screen.findByRole('alert')).toHaveTextContent('الإيميل أو كلمة السر مش صح.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('البريد أو كلمة السر غير صحيحة.');
     const password = screen.getByLabelText(Ar['field.password']);
     expect(password).toHaveValue('');
     await waitFor(() => {
