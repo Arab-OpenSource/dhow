@@ -3026,7 +3026,7 @@ components:
     OidcSettings:
       type: object
       additionalProperties: false
-      required: [Source, Locked, Env, CallbackBase, MaxProviders, IgnoredStored, Providers]
+      required: [Source, Locked, Env, CallbackBase, MaxProviders, IgnoredStored, IgnoredLinkedIdentities, Providers]
       properties:
         Source:
           $ref: "#/components/schemas/SettingSource"
@@ -3046,6 +3046,13 @@ components:
           format: int64
           minimum: 0
           description: Providers saved in the database that are unused because the environment sets the list.
+        IgnoredLinkedIdentities:
+          type: integer
+          format: int64
+          minimum: 0
+          description: >-
+            Accounts linked to those unused providers, counting only providers whose id the environment list does not
+            reuse. They cannot sign in with that provider while `DHOW_OIDC_PROVIDERS` is set. Zero when not locked.
         Providers:
           type: array
           items:

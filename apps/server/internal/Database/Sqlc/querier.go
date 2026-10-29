@@ -36,6 +36,7 @@ type Querier interface {
 	CountRegistrationTokens(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRunnerSessionSwitches(ctx context.Context, arg CountRunnerSessionSwitchesParams) (int64, error)
 	CountRunners(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountStrandedIdentities(ctx context.Context, active []string) (CountStrandedIdentitiesRow, error)
 	CountUsersOnlyOnProvider(ctx context.Context, arg CountUsersOnlyOnProviderParams) (int64, error)
 	CountUsersOutsideDomains(ctx context.Context, arg CountUsersOutsideDomainsParams) (int64, error)
 	CurrentProviderIssuer(ctx context.Context, provider string) (string, error)

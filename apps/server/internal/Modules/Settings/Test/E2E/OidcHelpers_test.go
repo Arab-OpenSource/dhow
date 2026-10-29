@@ -37,6 +37,8 @@ type oidcView struct {
 	MaxProviders  int
 	IgnoredStored int64
 	Providers     []oidcProviderView
+
+	IgnoredLinkedIdentities int64
 }
 
 func (v oidcView) find(t *testing.T, id string) oidcProviderView {

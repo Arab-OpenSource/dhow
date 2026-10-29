@@ -39,6 +39,7 @@ export const oidcFixture = (
   CallbackBase: BASE,
   MaxProviders: 10,
   IgnoredStored: 0,
+  IgnoredLinkedIdentities: 0,
   Providers: providers,
 });
 

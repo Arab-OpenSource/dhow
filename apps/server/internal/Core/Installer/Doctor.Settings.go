@@ -14,6 +14,27 @@ import (
 type SettingsReader interface {
 	StoredSettings(ctx context.Context, url string) (map[string]bool, error)
 	StoredProviders(ctx context.Context, url string) (int64, error)
+	StrandedIdentities(ctx context.Context, url string, active []string) (Stranded, error)
+}
+
+type Stranded struct {
+	Providers  int64
+	Identities int64
+}
+
+func (PostgresChecker) StrandedIdentities(ctx context.Context, url string, active []string) (Stranded, error) {
+	ctx, cancel := context.WithTimeout(ctx, databaseCheckTimeout)
+	defer cancel()
+	pool, err := config.OpenDatabase(ctx, url)
+	if err != nil {
+		return Stranded{}, err
+	}
+	defer pool.Close()
+	row, err := sqlc.New(pool).CountStrandedIdentities(ctx, active)
+	if err != nil {
+		return Stranded{}, fmt.Errorf("count accounts of unused sign-in providers: %w", err)
+	}
+	return Stranded{Providers: row.Providers, Identities: row.Identities}, nil
 }
 
 func (PostgresChecker) StoredProviders(ctx context.Context, url string) (int64, error) {
@@ -85,31 +106,59 @@ func (d Doctor) envSettings() map[string]bool {
 	return out
 }
 
-func (d Doctor) providerSource(ctx context.Context) Finding {
-	if list := strings.TrimSpace(EnvValue(d.envEntries(), config.EnvOIDCProviders)); list != "" {
-		return Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckProviders, len(strings.Split(list, ",")), d.M.T(KeySourceEnv))}
+func envProviderIDs(list string) []string {
+	ids := []string{}
+	for _, id := range strings.Split(list, ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			ids = append(ids, id)
+		}
 	}
-	unknown := Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckProvidersUnknown)}
+	return ids
+}
+
+func (d Doctor) databaseURL() (string, bool) {
 	if d.Settings == nil || d.A.Mode == ModeCompose {
-		return unknown
+		return "", false
 	}
 	url, err := d.secretContent(DatabaseURLPath)
-	if err != nil {
-		return unknown
+	return url, err == nil
+}
+
+func (d Doctor) providerSource(ctx context.Context) []Finding {
+	if list := strings.TrimSpace(EnvValue(d.envEntries(), config.EnvOIDCProviders)); list != "" {
+		ids := envProviderIDs(list)
+		out := []Finding{{Severity: SeverityInfo, Title: d.M.T(KeyCheckProviders, len(ids), d.M.T(KeySourceEnv))}}
+		return append(out, d.strandedIdentities(ctx, ids)...)
+	}
+	unknown := Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckProvidersUnknown)}
+	url, known := d.databaseURL()
+	if !known {
+		return []Finding{unknown}
 	}
 	n, err := d.Settings.StoredProviders(ctx, url)
 	if err != nil {
-		return unknown
+		return []Finding{unknown}
 	}
-	return Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckProviders, n, d.M.T(KeySourceDatabase))}
+	return []Finding{{Severity: SeverityInfo, Title: d.M.T(KeyCheckProviders, n, d.M.T(KeySourceDatabase))}}
+}
+
+func (d Doctor) strandedIdentities(ctx context.Context, active []string) []Finding {
+	url, known := d.databaseURL()
+	if !known {
+		return nil
+	}
+	s, err := d.Settings.StrandedIdentities(ctx, url, active)
+	if err != nil || s.Identities == 0 {
+		return nil
+	}
+	return []Finding{{
+		Severity: SeverityWarn, Title: d.M.T(KeyCheckStranded, s.Identities, s.Providers), Advice: d.M.T(KeyAdviceStranded),
+	}}
 }
 
 func (d Doctor) storedSettings(ctx context.Context) (map[string]bool, bool) {
-	if d.Settings == nil || d.A.Mode == ModeCompose {
-		return nil, false
-	}
-	url, err := d.secretContent(DatabaseURLPath)
-	if err != nil {
+	url, known := d.databaseURL()
+	if !known {
 		return nil, false
 	}
 	stored, err := d.Settings.StoredSettings(ctx, url)
@@ -137,5 +186,5 @@ func (d Doctor) settingSources(ctx context.Context) []Finding {
 		}
 		out = append(out, Finding{Severity: SeverityInfo, Title: d.M.T(KeyCheckSetting, k.Env, d.M.T(source))})
 	}
-	return append(out, d.providerSource(ctx))
+	return append(out, d.providerSource(ctx)...)
 }

@@ -92,6 +92,20 @@ describe('the sign-in providers card', () => {
     expect(screen.queryByRole('button', { name: Ar['settings.oidc.edit'] })).toBeNull();
     expect(screen.queryByRole('button', { name: Ar['settings.oidc.remove'] })).toBeNull();
     expect(screen.getByRole('button', { name: Ar['settings.oidc.test'] })).toBeEnabled();
+    expect(screen.queryByText(Ar['settings.oidc.stranded'])).toBeNull();
+  });
+
+  it('warns when the environment list leaves linked accounts without their provider', async () => {
+    mount({ ...oidcFixture([oidcProviderFixture('staff')], true), IgnoredStored: 1, IgnoredLinkedIdentities: 3 });
+    const note = (await screen.findByText(Ar['settings.oidc.stranded'])).closest('[role="note"]');
+    expect(note).not.toBeNull();
+    expect(note).toHaveTextContent(fill('settings.oidc.strandedAbout', { count: '3' }));
+  });
+
+  it('never warns about stranded accounts while the dashboard list is in effect', async () => {
+    mount({ ...oidcFixture([oidcProviderFixture()]), IgnoredLinkedIdentities: 3 });
+    expect(await screen.findByText(Ar['settings.oidc.title'])).toBeInTheDocument();
+    expect(screen.queryByText(Ar['settings.oidc.stranded'])).toBeNull();
   });
 
 });

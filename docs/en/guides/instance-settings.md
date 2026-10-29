@@ -48,7 +48,7 @@ The **Sign-in providers** card lists each provider with its type, its issuer and
 
 **Remove provider** names how many accounts are linked and asks for your second step. Linked accounts keep the link on their account page and can unlink it, but nobody signs in with it; open sessions stay open. If some account can sign in only with this provider, the card says how many and does not offer the removal: give those accounts another way to sign in first.
 
-When `DHOW_OIDC_PROVIDERS` is set in the environment, the whole list comes from there. The card says **Set by environment variables**, shows the providers read-only and only offers **Test the connection**. Dhow never mixes the two lists; see [Sign-in providers](../install/configuration.md#sign-in-providers).
+When `DHOW_OIDC_PROVIDERS` is set in the environment, the whole list comes from there. The card says **Set by environment variables**, shows the providers read-only and only offers **Test the connection**. If some accounts are linked to providers saved in the database that the variable does not list, a notice gives their number: those accounts cannot sign in with their provider until you add it to the variable with the same id, or remove the variable. Dhow never mixes the two lists; see [Sign-in providers](../install/configuration.md#sign-in-providers).
 
 Every add, change and removal writes `system.settings.changed` with the group `oidc`, the provider id, the operation and the names of the fields that changed. A client secret is never written anywhere.
 
