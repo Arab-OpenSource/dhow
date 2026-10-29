@@ -106,9 +106,10 @@ def subject_of(command, parts):
 
 
 def check_push(command):
-    if not common.find_git(IS_GIT_PUSH, command):
+    push = common.find_git(IS_GIT_PUSH, command)
+    if not push:
         return None
-    if NO_VERIFY.search(command):
+    if NO_VERIFY.search(command) or common.skips_hooks(command, push):
         return "Never skip git hooks (--no-verify)."
     if FORCE.search(command) and PROTECTED.search(command):
         return "Never force-push main. Work on a branch and open a pull request."
@@ -122,7 +123,7 @@ def check_message(command, cwd):
     is_commit = commit is not None
     head = STRINGS.sub(" ", command.split("<<")[0])
     tail = STRINGS.sub(" ", command[commit.end():].split("<<")[0]) if commit else ""
-    if is_commit and (NO_VERIFY.search(head) or COMMIT_SHORT_N.search(tail)):
+    if is_commit and (NO_VERIFY.search(head) or COMMIT_SHORT_N.search(tail) or common.skips_hooks(command, commit)):
         return "Never skip git hooks (--no-verify)."
     parts = message_parts(command, cwd)
     text = "\n".join(parts)

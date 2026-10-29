@@ -12,7 +12,61 @@ PREFIXES = (
     "git -c commit.gpgsign=false -C /tmp",
     "git -C '/tmp/a dir' --no-pager",
     "GIT_EDITOR=true git --no-pager -c core.quotepath=off",
+    "command git",
+    "env GIT_EDITOR=true A=1 git",
+    "env -i git",
+    "time git",
+    "sudo git",
+    "sudo -u root -E git",
+    "\\git",
+    "/usr/bin/git",
+    "./bin/git",
+    "git -p",
+    "git --bare",
+    "git --namespace=x",
+    "git --exec-path=/usr/lib/git-core",
+    "git -cfoo=bar",
+    "git -c foo=bar -C /tmp -p",
+    "git --git-dir /tmp/.git --work-tree /tmp",
 )
+
+WRAPPED = (
+    "{{ {cmd}; }}",
+    "! {cmd}",
+    "`{cmd}`",
+    'echo "$({cmd})"',
+    "true && {cmd}",
+    "if true; then {cmd}; fi",
+)
+
+
+class WaysToStartGit(unittest.TestCase):
+    def test_every_start_is_checked(self):
+        for wrap in WRAPPED:
+            for prefix in ("git", "env A=1 git", "/usr/bin/git -p"):
+                cmd = wrap.format(cmd=prefix + " commit -m 'update stuff'")
+                self.assertIn("Conventional", bash_rules.evaluate(cmd, "/") or "", cmd)
+
+    def test_a_config_key_named_commit_is_not_the_subcommand(self):
+        self.assertIsNone(bash_rules.evaluate("git -c commit.gpgsign=false log -m", "/"))
+        self.assertIsNone(bash_rules.evaluate("mygit commit -m 'update stuff'", "/"))
+        self.assertIsNone(bash_rules.evaluate("gitx commit -m 'update stuff'", "/"))
+
+
+class HooksPathSkipsHooks(unittest.TestCase):
+    def test_hooks_path_is_refused_on_commit_and_push(self):
+        for cmd in ('git -c core.hooksPath=/dev/null commit -m "fix: a"',
+                    'git -ccore.hookspath=/tmp commit -m "fix: a"',
+                    'git -c core.hooksPath="" -C /tmp commit -m "fix: a"',
+                    'GIT_CONFIG_PARAMETERS="\'core.hooksPath\'=\'/x\'" git commit -m "fix: a"',
+                    'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/x git commit -m "fix: a"',
+                    "git -c core.hooksPath=/dev/null push origin fix/a",
+                    "sudo git -c core.HooksPath=/x push -u origin fix/a"):
+            self.assertEqual("Never skip git hooks (--no-verify).", bash_rules.evaluate(cmd, "/"), cmd)
+
+    def test_other_config_is_allowed(self):
+        self.assertIsNone(bash_rules.evaluate('git -c core.quotepath=off commit -m "fix: a"', "/"))
+        self.assertIsNone(bash_rules.evaluate("git -c http.version=HTTP/1.1 push origin fix/a", "/"))
 
 
 class GlobalOptionsBeforeCommit(unittest.TestCase):
