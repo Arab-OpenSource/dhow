@@ -54,7 +54,7 @@
 
 | الشغل | الـ branch | الـ PR | اللي فاضل |
 |---|---|---|---|
-| M3.10 الجزء أ: أرشيفات الـ runner، ووحدة systemd (5.2 MEDIUM)، و`rotate-keys`، و`get.sh --component runner` (ADR-0064) | `feat/runner-packaging` | لسه | الـ PR، والـ CI (الـ suites تحت الوحدة والـ smoke محتاجين cgroup v2)، والمراجعة الأمنية |
+| M3.10 الجزء أ: أرشيفات الـ runner، ووحدة systemd (5.2 MEDIUM)، و`rotate-keys`، و`get.sh --component runner` (ADR-0065) | `feat/runner-packaging` | لسه | الـ PR، والـ CI (الـ suites تحت الوحدة والـ smoke محتاجين cgroup v2)، والمراجعة الأمنية |
 
 M2.6 وM3.6 والتطوير المحلي وإصلاحات مراجعة M3.6 وتغيير الاسم وM3.7 وتجهيز Windows وM3.9 اتدمجوا في 2026-10-28، ومن #35 لـ #51 اتدمجوا في 2026-10-28 و2026-10-29.
 

@@ -59,4 +59,4 @@ A rotation is safe to interrupt at any point: power loss, a killed process or a 
 | `the pending identity belongs to another runner or server` | `identity.pending` does not match `identity`. Someone copied files between state directories; remove `identity.pending` only if you are sure no rotation of this runner is unfinished. |
 | `RUNNER_REVOKED` | The runner was revoked. Register the host again. |
 
-The design is in [ADR-0064](../../Plan/ADR/0064-runner-packaging-part-a.md).
+The design is in [ADR-0065](../../Plan/ADR/0065-runner-packaging-part-a.md).

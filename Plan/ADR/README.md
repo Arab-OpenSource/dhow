@@ -65,4 +65,4 @@
 | [0061](0061-organization-overview-endpoint.md) | endpoint ملخّص المؤسسة: طلب واحد للرئيسية والعدّادات، وكل block بصلاحية قايمته و`null` للممنوع، و3 queries ثابتة بـ partial indexes |
 | [0062](0062-simple-arabic-for-users.md) | العربي المبسّط في كل نص بيقراه المستخدم: فصحى بجمل قصيرة، لا عامية ولا فصحى تقيلة، وجدول تبديل، وhook بيرفض العلامات العامية في الكتالوجات |
 | [0063](0063-instance-settings-in-the-database.md) | إعدادات السيرفر في قاعدة البيانات: الأساسيات في env، والباقي من «إعدادات السيرفر» لمالك السيرفر بخطوة تانية، وenv يكسب ويقفل، والأسرار مشفّرة وللكتابة بس. والجزء التاني: مزوّدي الدخول من اللوحة، وenv بيقفل القايمة كلها |
-| [0064](0064-runner-packaging-part-a.md) | تغليف الـ runner، الجزء أ: `rotate-keys` بمفاتيح بتتحفظ قبل ما السيرفر يعرفها والرجوع من أي وقعة، ووحدة systemd بتقوية متجرّبة مع Podman rootless (5.2 MEDIUM)، وأرشيفات الـ runner الموقّعة و`get.sh --component runner` |
+| [0065](0065-runner-packaging-part-a.md) | تغليف الـ runner، الجزء أ: `rotate-keys` بمفاتيح بتتحفظ قبل ما السيرفر يعرفها والرجوع من أي وقعة، ووحدة systemd بتقوية متجرّبة مع Podman rootless (5.2 MEDIUM)، وأرشيفات الـ runner الموقّعة و`get.sh --component runner` |
