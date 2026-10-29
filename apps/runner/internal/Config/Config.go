@@ -31,6 +31,7 @@ const (
 	EnvAllowUnpinned      = "DHOW_RUNNER_ALLOW_UNPINNED_IMAGES"
 	EnvRunscPath          = "DHOW_RUNNER_RUNSC_PATH"
 	EnvLogLevel           = "DHOW_RUNNER_LOG_LEVEL"
+	EnvCredentialsDir     = "CREDENTIALS_DIRECTORY"
 )
 
 type Limits struct {
@@ -57,12 +58,15 @@ type Config struct {
 	LogLevel            slog.Level
 	Dev                 bool
 	FakeRecording       string
+	CredentialsDir      string
+	Privileged          bool
 }
 
 type Options struct {
-	Dev     bool
-	URL     string
-	Machine Machine
+	Dev        bool
+	URL        string
+	Machine    Machine
+	Privileged bool
 }
 
 var (
@@ -81,7 +85,7 @@ var (
 func FromEnv() func(string) string { return os.Getenv }
 
 func Load(getenv func(string) string, o Options) (Config, error) {
-	cfg := Config{Dev: o.Dev}
+	cfg := Config{Dev: o.Dev, Privileged: o.Privileged}
 	var errs []error
 	add := func(name string, err error) {
 		if err != nil {
@@ -127,10 +131,12 @@ func Load(getenv func(string) string, o Options) (Config, error) {
 	add(EnvLogLevel, err)
 	cfg.FakeRecording, err = loadFake(getenv, cfg.Driver)
 	add(EnvDriver, err)
+	cfg.CredentialsDir, err = loadCredentialsDir(getenv(EnvCredentialsDir))
+	add(EnvCredentialsDir, err)
 	limits, limitErrs := loadLimits(getenv, o.Machine, cfg)
 	cfg.Limits = limits
 	errs = append(errs, limitErrs...)
-	if err := checkStateDir(cfg.StateDir); err != nil {
+	if err := checkStateDir(cfg.StateDir, o.Privileged); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvStateDir, err))
 	}
 	if err := errors.Join(errs...); err != nil {
@@ -143,6 +149,17 @@ func (c Config) IdentityPath() string { return filepath.Join(c.StateDir, Identit
 
 func (c Config) PendingIdentityPath() string { return filepath.Join(c.StateDir, PendingFileName) }
 
+func (c Config) SealedIdentityPath() string { return filepath.Join(c.StateDir, SealedIdentityFileName) }
+
+func (c Config) SealedPendingPath() string { return filepath.Join(c.StateDir, SealedPendingFileName) }
+
+func (c Config) CredentialPath() string {
+	if c.CredentialsDir == "" {
+		return ""
+	}
+	return filepath.Join(c.CredentialsDir, IdentityCredential)
+}
+
 func (c Config) LockPath() string { return filepath.Join(c.StateDir, LockFileName) }
 
 func (c Config) JournalPath() string { return filepath.Join(c.StateDir, JournalFileName) }
@@ -152,6 +169,16 @@ func (c Config) AttemptsDir() string { return filepath.Join(c.StateDir, Attempts
 func loadStateDir(v string) (string, error) {
 	if v == "" {
 		return DefaultStateDir, nil
+	}
+	if !filepath.IsAbs(v) {
+		return "", ErrRelativePath
+	}
+	return filepath.Clean(v), nil
+}
+
+func loadCredentialsDir(v string) (string, error) {
+	if v == "" {
+		return "", nil
 	}
 	if !filepath.IsAbs(v) {
 		return "", ErrRelativePath

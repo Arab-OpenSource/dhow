@@ -26,7 +26,7 @@ var (
 	ErrTooLarge     = errors.New("is too large for a runner state file")
 )
 
-func checkStateDir(dir string) error {
+func checkStateDir(dir string, privileged bool) error {
 	info, err := os.Lstat(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -39,6 +39,9 @@ func checkStateDir(dir string) error {
 	}
 	if info.Mode().Perm()&groupOtherW != 0 {
 		return fmt.Errorf("%s %w (mode %04o); run chmod 700 %s", dir, ErrSharedDir, info.Mode().Perm(), dir)
+	}
+	if privileged {
+		return nil
 	}
 	if err := checkOwner(dir, info); err != nil {
 		return err
@@ -109,7 +112,7 @@ func ReadPrivateFile(path string) ([]byte, error) {
 	if st.Mode&groupOtherW != 0 {
 		return nil, fmt.Errorf("%s %w (mode %04o)", dir, ErrSharedDir, st.Mode&0o777)
 	}
-	if int(st.Uid) != os.Geteuid() {
+	if !readableOwner(st.Uid) {
 		return nil, fmt.Errorf("%s %w (uid %d)", dir, ErrWrongOwner, st.Uid)
 	}
 	fd, err := unix.Openat(dirfd, name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
@@ -126,7 +129,7 @@ func ReadPrivateFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s %w", path, ErrNotFile)
 	case st.Mode&groupOtherBits != 0:
 		return nil, fmt.Errorf("%s %w (mode %04o); run chmod 600 %s", path, ErrOpenMode, st.Mode&0o777, path)
-	case int(st.Uid) != os.Geteuid():
+	case !readableOwner(st.Uid):
 		return nil, fmt.Errorf("%s %w (uid %d)", path, ErrWrongOwner, st.Uid)
 	}
 	data, err := io.ReadAll(io.LimitReader(f, maxStateFile+1))
@@ -146,7 +149,14 @@ func openErr(err error) error {
 	return err
 }
 
-func WriteFileAtomic(path string, data []byte) error {
+func readableOwner(uid uint32) bool {
+	euid := os.Geteuid()
+	return int(uid) == euid || euid == 0
+}
+
+func WriteFileAtomic(path string, data []byte) error { return WriteFileAtomicAs(path, data, NoOwner) }
+
+func WriteFileAtomicAs(path string, data []byte, owner Owner) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+".tmp-*")
 	if err != nil {
@@ -162,6 +172,11 @@ func WriteFileAtomic(path string, data []byte) error {
 	}()
 	if err := tmp.Chmod(PrivateFileMode); err != nil {
 		return fmt.Errorf("chmod %s: %w", name, err)
+	}
+	if owner.Set() {
+		if err := tmp.Chown(owner.UID, owner.GID); err != nil {
+			return fmt.Errorf("chown %s: %w", name, err)
+		}
 	}
 	if _, err := tmp.Write(data); err != nil {
 		return fmt.Errorf("write %s: %w", name, err)

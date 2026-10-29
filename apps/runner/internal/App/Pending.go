@@ -17,6 +17,7 @@ type Recovery struct {
 	Config  config.Config
 	Log     *slog.Logger
 	Backoff client.Backoff
+	Store   identity.Store
 	Promote func(pendingPath, path string, next *identity.Identity) error
 }
 
@@ -44,15 +45,17 @@ func clientFor(cfg config.Config, id *identity.Identity, log *slog.Logger) (*cli
 	return client.New(client.Options{BaseURL: u, CAFile: cfg.CAFile, Dev: cfg.Dev, Version: buildinfo.Get().Version, Identity: id, Log: log})
 }
 
-func loadPending(cfg config.Config, current *identity.Identity) (*identity.Identity, error) {
-	path := cfg.PendingIdentityPath()
-	exists, err := identity.Exists(path)
-	if err != nil || !exists {
+func loadPending(store identity.Store, current *identity.Identity) (*identity.Identity, error) {
+	path := store.PendingPath()
+	pending, err := store.LoadPending()
+	if errors.Is(err, identity.ErrPendingSealed) {
 		return nil, err
 	}
-	pending, err := identity.Load(path)
 	if err != nil {
 		return nil, fmt.Errorf("the new identity of an unfinished key rotation (%s): %w", path, err)
+	}
+	if pending == nil {
+		return nil, nil
 	}
 	if err := current.Matches(pending); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
@@ -102,21 +105,28 @@ func (r Recovery) Run(ctx context.Context, current *identity.Identity) (Recovere
 	if r.Log == nil {
 		r.Log = slog.New(slog.DiscardHandler)
 	}
+	if r.Store == nil {
+		r.Store = identity.NewFileStore(r.Config.StateDir)
+	}
 	if r.Promote == nil {
-		r.Promote = identity.Promote
+		store := r.Store
+		r.Promote = func(_, _ string, next *identity.Identity) error { return store.Promote(next) }
 	}
 	if r.Backoff == (client.Backoff{}) {
 		r.Backoff = client.DefaultBackoff()
 	}
-	if err := identity.RemoveStaleTemps(r.Config.StateDir); err != nil {
+	if err := r.Store.RemoveStaleTemps(); err != nil {
 		return Recovered{}, err
 	}
-	pending, err := loadPending(r.Config, current)
+	pending, err := loadPending(r.Store, current)
+	if errors.Is(err, identity.ErrPendingSealed) {
+		return r.resolveSealed(ctx, current)
+	}
 	if err != nil || pending == nil {
 		return Recovered{Identity: current}, err
 	}
 	if current.SameKeys(pending) {
-		if err := config.RemoveDurable(r.Config.PendingIdentityPath()); err != nil {
+		if err := r.Store.RemovePending(); err != nil {
 			return Recovered{}, fmt.Errorf("remove the finished pending identity: %w", err)
 		}
 		return Recovered{Identity: current}, nil
@@ -133,13 +143,13 @@ func (r Recovery) resolve(ctx context.Context, current, next *identity.Identity)
 		v, c, err := checkPending(ctx, r.Config, r.Log, current, next)
 		switch {
 		case err == nil && v == keepCurrent:
-			if err := identity.Discard(r.Config.PendingIdentityPath()); err != nil {
+			if err := r.Store.Discard(); err != nil {
 				return Recovered{}, err
 			}
 			r.Log.Warn("removed the new keys of a key rotation the server never took; the runner keeps its current key, and dhow-runner rotate-keys makes fresh ones")
 			return Recovered{Identity: current, Client: c}, nil
 		case err == nil && v == takePending:
-			if err := r.Promote(r.Config.PendingIdentityPath(), r.Config.IdentityPath(), next); err != nil {
+			if err := r.Promote(r.Store.PendingPath(), r.Store.Path(), next); err != nil {
 				c.CloseIdle()
 				return Recovered{}, err
 			}
@@ -153,6 +163,36 @@ func (r Recovery) resolve(ctx context.Context, current, next *identity.Identity)
 		}
 		r.Log.Warn("could not check an unfinished key rotation with the server yet", "code", client.Code(err).String(), "reason", client.Reason(err))
 		if err := r.Backoff.Sleep(ctx, n, err); err != nil {
+			return Recovered{}, err
+		}
+	}
+}
+
+func (r Recovery) resolveSealed(ctx context.Context, current *identity.Identity) (Recovered, error) {
+	c, err := clientFor(r.Config, current, r.Log)
+	if err != nil {
+		return Recovered{}, err
+	}
+	for n := 0; ; n++ {
+		err := c.Authenticate(ctx)
+		switch {
+		case err == nil:
+			if err := r.Store.Discard(); err != nil {
+				c.CloseIdle()
+				return Recovered{}, err
+			}
+			r.Log.Warn("removed the encrypted new keys of a key rotation the server never took; the runner keeps its current key")
+			return Recovered{Identity: current, Client: c}, nil
+		case errors.Is(err, client.ErrCredentials):
+			c.CloseIdle()
+			return Recovered{}, errors.Join(identity.ErrPendingSealed, err)
+		case client.Fatal(err) || !client.Transient(err):
+			c.CloseIdle()
+			return Recovered{}, err
+		}
+		r.Log.Warn("could not check an unfinished key rotation with the server yet", "code", client.Code(err).String(), "reason", client.Reason(err))
+		if err := r.Backoff.Sleep(ctx, n, err); err != nil {
+			c.CloseIdle()
 			return Recovered{}, err
 		}
 	}

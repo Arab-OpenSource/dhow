@@ -66,7 +66,11 @@ func runRun(ctx context.Context, args []string, env Env) error {
 		return err
 	}
 	log := newLogger(env.Stdio.Err, cfg.LogLevel)
-	if _, err := identity.Load(cfg.IdentityPath()); err != nil {
+	store, err := openStore(cfg, env)
+	if err != nil {
+		return err
+	}
+	if _, err := store.Load(); err != nil {
 		return err
 	}
 	lock, err := config.LockState(cfg.LockPath())
@@ -74,7 +78,7 @@ func runRun(ctx context.Context, args []string, env Env) error {
 		return err
 	}
 	defer func() { _ = lock.Release() }()
-	id, err := identity.Load(cfg.IdentityPath())
+	id, err := store.Load()
 	if err != nil {
 		return err
 	}
@@ -82,7 +86,7 @@ func runRun(ctx context.Context, args []string, env Env) error {
 	if err != nil {
 		return err
 	}
-	recovered, err := Recovery{Config: cfg, Log: log}.Run(ctx, id)
+	recovered, err := Recovery{Config: cfg, Log: log, Store: store}.Run(ctx, id)
 	if err != nil {
 		return err
 	}
