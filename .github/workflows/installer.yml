@@ -7,6 +7,7 @@ on:
       - apps/server/internal/Core/Installer/**
       - apps/server/internal/Config/**
       - apps/server/cmd/dhow-server/**
+      - apps/runner/cmd/dhow-runner/**
       - deploy/**
       - apps/web/vite.config.ts
       - apps/web/package.json
@@ -36,8 +37,8 @@ jobs:
           persist-credentials: false
       - name: Check the shell scripts
         run: |
-          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh deploy/dev/setup.sh deploy/dev/lib/*.sh deploy/dev/stack/*.sh
-          shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/release/dist.sh
+          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/install/e2e/get-runner.sh deploy/release/dist.sh deploy/systemd/*.sh deploy/dev/setup.sh deploy/dev/lib/*.sh deploy/dev/stack/*.sh
+          shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/install/e2e/get-runner.sh deploy/release/dist.sh deploy/systemd/*.sh
           shellcheck -x deploy/dev/setup.sh
           shellcheck deploy/dev/test/fresh.sh
           shellcheck -x deploy/dev/test/settings.sh
@@ -55,6 +56,27 @@ jobs:
         run: |
           systemd-analyze security --offline=yes --no-pager deploy/systemd/dhow.service | tail -1 | tee rating.txt
           grep -Eq 'exposure level for dhow.service: [0-9.]+ (OK|SAFE|PERFECT)' rating.txt
+      - name: Rate the runner systemd unit (MEDIUM or better, at most 6.9)
+        run: |
+          systemd-analyze security --offline=yes --no-pager deploy/systemd/dhow-runner.service | tail -1 | tee rating-runner.txt
+          grep -Eq 'exposure level for dhow-runner.service: [0-6]\.[0-9] (MEDIUM|OK|SAFE|PERFECT)' rating-runner.txt
+
+  get-runner:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: get.sh --component runner against a local release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build a runner-only release with dist.sh
+        run: DIST_DIR="$RUNNER_TEMP/dist" DIST_COMPONENTS=runner DIST_ARCHES=amd64 deploy/release/dist.sh 0.0.0-ci "$GITHUB_SHA"
+      - name: Install it with get.sh in a fresh container, and refuse tampered releases
+        run: deploy/install/e2e/get-runner.sh "$RUNNER_TEMP/dist"
 
   dev-setup-fresh:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft

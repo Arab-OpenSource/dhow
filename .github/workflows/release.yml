@@ -166,9 +166,17 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           (cd dist && sha256sum --check --strict SHA256SUMS)
+          for component in server runner; do
+            for arch in amd64 arm64; do
+              grep -Eq "^[0-9a-f]{64}  dhow-${component}_${VERSION}_linux_${arch}\.tar\.gz$" dist/SHA256SUMS
+            done
+          done
           tar -xzf "dist/dhow-server_${VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" dhow-server
           go version -m "$RUNNER_TEMP/dhow-server" | grep -q 'CGO_ENABLED=0'
           "$RUNNER_TEMP/dhow-server" install --help
+          tar -xzf "dist/dhow-runner_${VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" dhow-runner dhow-runner.service
+          go version -m "$RUNNER_TEMP/dhow-runner" | grep -q 'CGO_ENABLED=0'
+          "$RUNNER_TEMP/dhow-runner" version | grep -qF "dhow-runner $VERSION "
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dhow-binaries
@@ -188,6 +196,9 @@ jobs:
       VERSION: ${{ needs.binaries.outputs.version }}
       IDENTITY: ^https://github\.com/${{ github.repository }}/\.github/workflows/release\.yml@refs/tags/v
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dhow-binaries
@@ -207,6 +218,29 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --certificate-identity-regexp "$IDENTITY" \
             SHA256SUMS
+      - name: Install the signed runner archive with get.sh, as users will
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          site="$RUNNER_TEMP/site"
+          mkdir -p "$site/good/v$VERSION" "$site/forged/v$VERSION"
+          cp dist/dhow-runner_"${VERSION}"_linux_amd64.tar.gz dist/SHA256SUMS dist/SHA256SUMS.sigstore.json "$site/good/v$VERSION/"
+          cp "$site/good/v$VERSION/"* "$site/forged/v$VERSION/"
+          printf '%064d  dhow-extra.tar.gz\n' 0 >>"$site/forged/v$VERSION/SHA256SUMS"
+          openssl req -x509 -newkey ed25519 -nodes -days 1 -subj /CN=127.0.0.1 -addext subjectAltName=IP:127.0.0.1 \
+            -keyout "$RUNNER_TEMP/key.pem" -out "$RUNNER_TEMP/ca.pem" 2>/dev/null
+          (cd "$site" && exec openssl s_server -quiet -accept 127.0.0.1:18444 -cert "$RUNNER_TEMP/ca.pem" -key "$RUNNER_TEMP/key.pem" -WWW) >/dev/null 2>&1 &
+          sleep 1
+          export CURL_CA_BUNDLE="$RUNNER_TEMP/ca.pem" DHOW_REPO="$REPO"
+          DHOW_DOWNLOAD_URL=https://127.0.0.1:18444/good bash deploy/install/get.sh --component runner --version "$VERSION" 2>&1 | tee "$RUNNER_TEMP/get.log"
+          grep -q 'SHA256SUMS is signed by the dhow release workflow' "$RUNNER_TEMP/get.log"
+          /usr/local/bin/dhow-runner version | grep -qF "dhow-runner $VERSION "
+          systemd-analyze security --no-pager dhow-runner.service | tail -1
+          if DHOW_DOWNLOAD_URL=https://127.0.0.1:18444/forged bash deploy/install/get.sh --component runner --version "$VERSION" >"$RUNNER_TEMP/forged.log" 2>&1; then
+            echo "::error::get.sh accepted a SHA256SUMS the release workflow did not sign"
+            exit 1
+          fi
+          grep -q 'the signature on SHA256SUMS does not verify' "$RUNNER_TEMP/forged.log"
       - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         id: syft
       - name: Generate an SPDX SBOM per archive
