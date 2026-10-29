@@ -53,6 +53,12 @@ func newFake() *fakeSys {
 	}
 }
 
+func (f *fakeSys) resources(memTotalKiB, cpus string, free uint64) {
+	f.put(MemInfoPath, "MemTotal:       "+memTotalKiB+" kB\nMemFree:         1024 kB\n", 0o444)
+	f.put(CPUOnlinePath, cpus+"\n", 0o444)
+	f.free = free
+}
+
 func (f *fakeSys) put(p, content string, perm fs.FileMode) {
 	f.files[p] = &fakeFile{data: []byte(content), mode: FileMode{Perm: perm}}
 }
@@ -258,6 +264,7 @@ const readyBody = `{"Success":true,"Data":{"Status":"ok","Checks":[{"Name":"data
 
 func debianHost() *fakeSys {
 	f := newFake()
+	f.resources("8135536", "0-3", 100*gib)
 	f.put(OSReleasePath, debianRelease, 0o644)
 	f.files["/run/systemd/system"] = &fakeFile{dir: true, mode: FileMode{Perm: 0o755}}
 	f.put(f.exe, "dhow-server binary v1", 0o755)

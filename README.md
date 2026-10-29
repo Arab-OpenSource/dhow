@@ -44,6 +44,7 @@ See [docs/editions-and-licensing.md](docs/editions-and-licensing.md).
 
 Dhow installs with one Docker Compose file: `./init.sh` generates strong secrets, then `docker compose up -d` starts an empty, hardened instance with its own PostgreSQL. Images are signed with cosign and ship with an SBOM.
 See [docs/install/](docs/install/README.md) to choose a method, then the [Compose guide](docs/install/compose.md) for the quick start, upgrades, backups and signature verification.
+A host needs at least 1 CPU core, 2 GiB of memory and 5 GiB of free disk (2 cores, 4 GiB and 20 GiB recommended): see [Hardware requirements](docs/requirements.md).
 
 ## Documentation
 
@@ -55,6 +56,7 @@ See [docs/install/](docs/install/README.md) to choose a method, then the [Compos
 | [UI principles](docs/ui-principles.md) | Arabic-first design, navigation model, performance budgets |
 | [Editions & licensing](docs/editions-and-licensing.md) | Open-core model, feature matrix, license enforcement |
 | [Install](docs/install/README.md) | Choosing a method, Docker Compose, reverse proxies, local runs, configuration, troubleshooting |
+| [Hardware requirements](docs/requirements.md) | Measured CPU, memory and disk for the server, PostgreSQL and runners |
 | [Development](docs/development.md) | Running Dhow from source on Linux, macOS or Windows, with or without Docker, and the tests |
 | [Sign in with OIDC](docs/guides/oidc.md) | Google, Keycloak, GitHub and any OIDC provider, account linking, allowed domains |
 | [Follow jobs in the web app](docs/guides/jobs.md) | The job list, stuck jobs without a runner, stopping a job, the live log, attempts and settings |

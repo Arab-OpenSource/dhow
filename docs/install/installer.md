@@ -38,6 +38,18 @@ Debian 12, Ubuntu 24.04, Rocky Linux 9 and Fedora are tested end to end in CI (s
 
 The installer runs as root. Only `install --dry-run` works without it.
 
+### Host size
+
+The installer reads the CPU cores (`/sys/devices/system/cpu/online`), the memory (`MemTotal` in `/proc/meminfo`) and the free space in `/var/lib`, and compares them with the [hardware requirements](../requirements.md):
+
+| | Minimum | Recommended |
+|---|---|---|
+| CPU cores | 1 | 2 |
+| Memory | 2 GiB | 4 GiB |
+| Free disk in `/var/lib` | 5 GiB | 20 GiB |
+
+The kernel keeps some memory for itself, so a host passes the memory check when it reports at least 90% of the number above (a "2 GB" VPS reports about 1.9 GiB). Below the minimum, the plan stops with a message that names the measured minimum and links the requirements, and nothing is changed. Below the recommended size, the installer prints a warning and continues. A re-run on a host where Dhow is already installed, which is how upgrades work, only warns, so a security upgrade is never blocked; a new install on that host would be refused. The numbers live in one place, `apps/server/internal/Core/Installer/Requirements.go`.
+
 ## The questions
 
 The installer speaks English or Arabic. It follows `--lang en|ar`, then `lang` in an answers file, then the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`), and uses English when the terminal is not UTF-8. It first prints what it found: the distribution, systemd, root, Docker and Compose, PostgreSQL versions, nginx, Caddy and certbot, which of ports 80, 443 and 8080 are in use, ufw or firewalld, and an earlier Dhow install. On a re-run, the answers saved by the last run are the defaults.
@@ -157,7 +169,8 @@ install_packages: false
 - The service is enabled and running, and `/api/v1/health/ready` reports the database and the migrations as ready. It also says whether the first owner still has to be created.
 - `DHOW_TRUSTED_PROXIES`: not `0.0.0.0/0` or `::/0`, no very large public range, and it includes `127.0.0.1` when the proxy runs on this host.
 - Through the public URL: the proxy answers, the TLS certificate has at least 21 days left, the proxy passes `Origin` (a request with your origin is not refused with `CSRF_FAILED`, one with a foreign origin is), and the client address reaches Dhow (a probe request shows up in the log with a `client_ip` that is not the proxy's). For nginx it also checks that the site sets `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`. These checks are skipped with proxy `none`.
-- Free disk space in `/var/lib` and in the PostgreSQL data directory.
+- CPU cores and memory against the [hardware requirements](../requirements.md): below the minimum is a failure, below the recommended size a warning.
+- Free disk space in `/var/lib` and in the PostgreSQL data directory: less than 1 GiB is a failure, less than 5 GiB a warning.
 
 Every finding comes with its fix: a command, such as restarting the service, renewing the certificate or restoring a file mode, or advice when a person must decide. In a terminal doctor asks before each fix. `--fix` applies them all, and without a terminal doctor only lists them. It exits with status `0` when everything is fine.
 

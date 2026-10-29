@@ -31,20 +31,21 @@ type PostgresInfo struct {
 }
 
 type Detection struct {
-	Distro   Distro
-	Systemd  bool
-	Root     bool
-	Sudo     bool
-	Docker   bool
-	Compose  bool
-	Postgres PostgresInfo
-	Nginx    bool
-	Caddy    bool
-	Certbot  bool
-	BusyPort map[int]bool
-	Firewall string
-	SELinux  bool
-	Existing bool
+	Distro    Distro
+	Systemd   bool
+	Root      bool
+	Sudo      bool
+	Docker    bool
+	Compose   bool
+	Postgres  PostgresInfo
+	Nginx     bool
+	Caddy     bool
+	Certbot   bool
+	BusyPort  map[int]bool
+	Firewall  string
+	SELinux   bool
+	Existing  bool
+	Resources HostResources
 }
 
 func Detect(ctx context.Context, sys System) Detection {
@@ -67,6 +68,7 @@ func Detect(ctx context.Context, sys System) Detection {
 	d.Firewall = detectFirewall(ctx, sys)
 	d.SELinux = sys.LookPath("getenforce") && outputHas(ctx, sys, Cmd("getenforce"), "Enforcing")
 	d.Existing = exists(sys, UnitPath) || exists(sys, AnswersPath) || exists(sys, ComposeEnvPath)
+	d.Resources = ReadHostResources(sys)
 	return d
 }
 

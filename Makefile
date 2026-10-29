@@ -77,6 +77,19 @@ smoke: image ## Build the image, start a fresh Compose stack, check it, and remo
 proxy-check: image ## Build the image and test the documented nginx, Caddy and Traefik configs in Docker (local only)
 	deploy/proxy-check/run.sh $(IMAGE)
 
+BENCH_DIR  ?= bin/bench
+BENCH_ARGS ?=
+
+.PHONY: bench
+bench: image ## Build the image and measure the CPU, memory and disk Dhow needs under load (docs/requirements.md)
+	$(MAKE) bench-run
+
+.PHONY: bench-run
+bench-run: ## Measure an image that is already built (IMAGE=dhow:dev, BENCH_ARGS="-configs 2g:2g" for one run)
+	mkdir -p $(BENCH_DIR)
+	CGO_ENABLED=0 $(GO) build -trimpath -tags dhowtest -o $(BENCH_DIR)/dhow-runner ./apps/runner/cmd/dhow-runner
+	$(GO) run ./deploy/bench -image $(IMAGE) -runner $(BENCH_DIR)/dhow-runner -out $(BENCH_DIR)/results.json -work $(BENCH_DIR)/work $(BENCH_ARGS)
+
 .PHONY: tools
 tools: ## Build the pinned protoc plugins into bin/tools
 	GOBIN=$(abspath $(TOOLS_DIR)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOBUF_VERSION)

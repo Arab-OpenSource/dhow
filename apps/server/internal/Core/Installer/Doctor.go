@@ -143,6 +143,7 @@ func (d Doctor) Run(ctx context.Context) []Finding {
 	}
 	out = append(out, d.trustedProxies())
 	out = append(out, d.publicChecks(ctx)...)
+	out = append(out, d.resources()...)
 	out = append(out, d.disk()...)
 	return out
 }

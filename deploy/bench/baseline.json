@@ -1,0 +1,8 @@
+{
+  "Tolerance": 0.2,
+  "Phases": {
+    "idle": { "ServerPeakMiB": 120, "DBPeakMiB": 31 },
+    "light": { "ServerPeakMiB": 193, "DBPeakMiB": 121 },
+    "heavy": { "ServerPeakMiB": 241, "DBPeakMiB": 181 }
+  }
+}

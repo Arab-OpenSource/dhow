@@ -61,3 +61,4 @@
 | [0057](0057-egress-proxy-implementation.md) | تنفيذ الـ egress proxy في M3.7: القايمة ASCII وpunycode بس، وطبقة `Egress`، والـ forwarder في الـ agent، والـ helper `connect`، ونطاقات المشغّل |
 | [0058](0058-graded-kill-and-chaos-suite.md) | آخر مرحلة في القتل بالتدريج (`cgroup.kill`)، وsuite الفوضى على processes حقيقية بـ Podman وPostgres وregistry بـ TLS (M3.9) |
 | [0059](0059-ui-direction-control-room.md) | اتجاه التصميم «غرفة التشغيل»: صفحات كاملة بروابط، وقايمة جانبية بمجموعات، ورئيسية بحالة النظام، وخط Plex بمقاسات عربي صريحة. بيعدّل ADR-0034 وADR-0032 |
+| [0060](0060-host-size-check.md) | فحص حجم الجهاز: الحد الأدنى والموصى بيه من القياس، والتنصيب الجديد بيقف تحت الحد الأدنى، والترقية بتحذّر بس |

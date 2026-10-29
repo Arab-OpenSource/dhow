@@ -13,11 +13,9 @@ import (
 )
 
 const (
-	gib          = 1 << 30
-	diskWarnFree = 2 * gib
-	diskFailFree = gib / 4
-	minPublicV4  = 16
-	minPublicV6  = 32
+	gib         = 1 << 30
+	minPublicV4 = 16
+	minPublicV6 = 32
 )
 
 type permCheck struct {
