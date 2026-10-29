@@ -3,6 +3,7 @@ import { useCallback, type ReactNode } from 'react';
 
 import { isApiError } from '@/Core/Api/ApiError';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
+import { useCrumbTitle } from '@/Core/Hooks/useCrumbTitle';
 import { Button } from '@/Core/Ui/Button';
 import { Card } from '@/Core/Ui/Card';
 import { EmptyState } from '@/Core/Ui/EmptyState';
@@ -26,6 +27,7 @@ const JobContent = ({ organizationId, jobId, waitingFor }: IJobBodyProps & { org
   const client = useQueryClient();
   const role = useCurrentMembership()?.Role;
   const job = useJob(organizationId, jobId);
+  useCrumbTitle(jobId, job.data?.Job.Name);
   const HandleEnded = useCallback(() => {
     void client.invalidateQueries({ queryKey: jobKey(organizationId, jobId) });
   }, [client, organizationId, jobId]);

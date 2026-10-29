@@ -4,6 +4,7 @@ import { canManage, canManageMembers, secondFactorCovers, type TRole, type TSeco
 import { useMe } from '@/Core/Auth/useMe';
 import { useMembers, type TMember } from '@/Core/Auth/useMembers';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
+import { useCrumbTitle } from '@/Core/Hooks/useCrumbTitle';
 import { useRelativeTime } from '@/Core/Hooks/useRelativeTime';
 import { Avatar } from '@/Core/Ui/Avatar';
 import { Badge } from '@/Core/Ui/Badge';
@@ -126,6 +127,7 @@ export const MemberBody = ({ organizationId, actor, rule, userId, onRemove, onOp
   const me = useMe().data?.User.Id;
   const members = useMembers(organizationId, 1, ALL_MEMBERS);
   const member = members.data?.Items.find((item) => item.UserId === userId);
+  useCrumbTitle(userId, member?.Name);
 
   if (members.data !== undefined && member === undefined) {
     return (
