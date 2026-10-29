@@ -2,6 +2,7 @@ import { useNavigate, useRouter } from '@tanstack/react-router';
 
 import { OrganizationChip } from '@/App/Layout/OrganizationChip';
 import { GROUP_LABELS, MENU_GROUPS, sectionById, visibleSections, type ISection } from '@/App/Navigation/Sections';
+import { useCounters } from '@/App/Navigation/useCounters';
 import { useSection } from '@/App/Navigation/useSection';
 import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { useSignOut } from '@/Core/Auth/useSignOut';
@@ -18,6 +19,7 @@ export const ShellMenu = () => {
   const { SignOut, Pending } = useSignOut();
   const role = useCurrentMembership()?.Role;
   const currentId = match ? (match.section.parent ?? match.section.id) : null;
+  const counters = useCounters();
 
   const item = (section: ISection): IMenuItem => ({
     id: section.id,
@@ -25,6 +27,7 @@ export const ShellMenu = () => {
     label: t(section.label),
     href: section.path,
     current: currentId === section.id,
+    ...counters.menu[section.id],
     onSelect: () => {
       void navigate({ to: section.path });
     },

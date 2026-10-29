@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { member } from '@/App/Navigation/Gates';
 import { visibleSections, type TSectionPath } from '@/App/Navigation/Sections';
+import { useCounters } from '@/App/Navigation/useCounters';
 import { useSection } from '@/App/Navigation/useSection';
 import { canReadRunners } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership } from '@/Core/Auth/useMe';
@@ -15,6 +16,7 @@ export const ShellBottomBar = () => {
   const match = useSection();
   const role = useCurrentMembership()?.Role;
   const section = match?.section;
+  const { jobsDot } = useCounters();
   const orgPath = visibleSections(role, 'org').find((entry) => entry.menu)?.path ?? '/organizations';
 
   const entry = (id: string, icon: TIconName, label: string, path: TSectionPath, current: boolean): IBottomBarItem => ({
@@ -30,7 +32,7 @@ export const ShellBottomBar = () => {
 
   const items: IBottomBarItem[] = [
     entry('home', 'home', t('shell.nav.home'), '/', section?.id === 'home'),
-    ...(member(role) ? [entry('jobs', 'play', t('shell.nav.jobs'), '/jobs', section?.id === 'jobs')] : []),
+    ...(member(role) ? [{ ...entry('jobs', 'play', t('shell.nav.jobs'), '/jobs', section?.id === 'jobs'), dot: jobsDot }] : []),
     ...(canReadRunners(role)
       ? [entry('runners', 'server', t('shell.nav.runners'), '/runners', section?.id === 'runners' || section?.parent === 'runners')]
       : []),

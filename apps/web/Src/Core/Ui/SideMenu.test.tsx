@@ -122,3 +122,25 @@ describe('SideMenu', () => {
     expect(screen.getByRole('navigation')).toHaveClass('max-md:hidden', 'w-menu');
   });
 });
+
+describe('SideMenu counters', () => {
+  it('paints a warning counter in the warning tone', () => {
+    const props = build();
+    const [home, run] = props.groups;
+    const jobs = run?.items[0];
+    if (!home || !run || !jobs) throw new Error('missing fixture');
+    renderUi(<SideMenu {...props} groups={[home, { ...run, items: [{ ...jobs, count: 4, countLabel: '4 queued, 2 stuck', countTone: 'warn' }] }]} />);
+    const counter = screen.getByLabelText('4 queued, 2 stuck');
+    expect(counter).toHaveAttribute('data-tone', 'warn');
+    expect(counter).toHaveClass('text-warn-fg', 'text-caption');
+  });
+
+  it('hides a counter at zero', () => {
+    const props = build();
+    const [home, run] = props.groups;
+    const jobs = run?.items[0];
+    if (!home || !run || !jobs) throw new Error('missing fixture');
+    renderUi(<SideMenu {...props} groups={[home, { ...run, items: [{ ...jobs, count: 0, countLabel: '0 queued' }] }]} />);
+    expect(screen.queryByLabelText('0 queued')).not.toBeInTheDocument();
+  });
+});

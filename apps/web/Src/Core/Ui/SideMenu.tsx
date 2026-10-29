@@ -15,6 +15,7 @@ export interface IMenuItem {
   current?: boolean;
   count?: number;
   countLabel?: string;
+  countTone?: 'warn';
   onSelect: () => void;
   onIntent?: () => void;
 }
@@ -69,7 +70,11 @@ const MenuLink = ({ item }: { item: IMenuItem }) => (
     {item.count !== undefined && item.count > 0 ? (
       <span
         aria-label={item.countLabel}
-        className="min-w-6 rounded-pill border border-line-2 px-1.5 text-center text-caption font-medium text-secondary"
+        data-tone={item.countTone}
+        className={cx(
+          'min-w-6 rounded-pill border px-1.5 text-center text-caption font-medium tabular-nums',
+          item.countTone === 'warn' ? 'border-warn-line bg-warn-wash text-warn-fg' : 'border-line-2 text-secondary',
+        )}
       >
         {item.count}
       </span>
