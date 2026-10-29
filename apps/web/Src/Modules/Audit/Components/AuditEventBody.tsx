@@ -72,7 +72,9 @@ const EventDetail = ({ event, actor }: { event: TAuditEvent; actor: string }) =>
       </Card>
       <Card title={t('audit.detail.facts')} icon="file">
         <dl className="m-0 grid">
-          <Fact label={t('audit.detail.who')}>{actor}</Fact>
+          <Fact label={t('audit.detail.who')}>
+            <bdi>{actor}</bdi>
+          </Fact>
           <Fact label={t('audit.detail.when')}>
             <time dateTime={event.CreatedAt}>{time.full(event.CreatedAt)}</time>
             <span className="text-tertiary">{` · ${time.ago(event.CreatedAt)}`}</span>
