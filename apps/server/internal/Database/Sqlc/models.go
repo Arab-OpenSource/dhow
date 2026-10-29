@@ -238,6 +238,23 @@ type OidcFlow struct {
 	UsedAt     *time.Time
 }
 
+type OidcProvider struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	ProviderId     string
+	Type           string
+	Name           string
+	Issuer         string
+	ClientId       string
+	AllowedDomains []string
+	Secret         []byte
+	Version        int64
+	CreatedBy      *uuid.UUID
+	UpdatedBy      *uuid.UUID
+}
+
 type Organization struct {
 	Id                             uuid.UUID
 	CreatedAt                      time.Time

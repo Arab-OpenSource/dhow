@@ -23,6 +23,8 @@ const (
 	InvitationMaxSends          = 5
 	MailTestPerWindow           = 5
 	MailTestWindow              = 10 * time.Minute
+	OidcTestPerWindow           = 5
+	OidcTestWindow              = 10 * time.Minute
 )
 
 type RateLimits = settingspec.RateLimits

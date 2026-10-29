@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
@@ -33,6 +34,48 @@ func (e FactorMethod) Valid() bool {
 	case RecoveryCode:
 		return true
 	case Totp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OidcProviderType.
+const (
+	Github OidcProviderType = "github"
+	Oidc   OidcProviderType = "oidc"
+)
+
+// Valid indicates whether the value is a known member of the OidcProviderType enum.
+func (e OidcProviderType) Valid() bool {
+	switch e {
+	case Github:
+		return true
+	case Oidc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OidcTestCheckCheck.
+const (
+	Api       OidcTestCheckCheck = "api"
+	Discovery OidcTestCheckCheck = "discovery"
+	Endpoints OidcTestCheckCheck = "endpoints"
+	Keys      OidcTestCheckCheck = "keys"
+)
+
+// Valid indicates whether the value is a known member of the OidcTestCheckCheck enum.
+func (e OidcTestCheckCheck) Valid() bool {
+	switch e {
+	case Api:
+		return true
+	case Discovery:
+		return true
+	case Endpoints:
+		return true
+	case Keys:
 		return true
 	default:
 		return false
@@ -112,6 +155,26 @@ type BooleanSetting struct {
 	Value  bool          `json:"Value"`
 }
 
+// CreateOidcProviderRequest defines model for CreateOidcProviderRequest.
+type CreateOidcProviderRequest struct {
+	AllowedDomains *[]string `json:"AllowedDomains,omitempty"`
+	ClientId       string    `json:"ClientId"`
+	ClientSecret   *string   `json:"ClientSecret,omitempty"`
+
+	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+	CurrentFactor CurrentFactor `json:"CurrentFactor"`
+	Id            string        `json:"Id"`
+
+	// Issuer Required for `oidc`. Empty for `github` means https://github.com.
+	Issuer *string `json:"Issuer,omitempty"`
+
+	// Name The label on the sign-in button, at most 40 characters. Empty takes the id, or GitHub.
+	Name *string `json:"Name,omitempty"`
+
+	// Type `oidc` for any OpenID Connect provider, Google included; `github` for GitHub or GitHub Enterprise Server.
+	Type OidcProviderType `json:"Type"`
+}
+
 // CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
 type CurrentFactor struct {
 	// ChallengeId From `POST /me/mfa/passkey-options`, for method `passkey`.
@@ -138,7 +201,7 @@ type Envelope struct {
 
 // ErrorDetail defines model for ErrorDetail.
 type ErrorDetail struct {
-	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`, `SETTING_INVALID`, `MAIL_NOT_CONFIGURED` or `MAIL_TEST_FAILED`.
+	// Code Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`, `SETTING_INVALID`, `MAIL_NOT_CONFIGURED`, `MAIL_TEST_FAILED`, `OIDC_PROVIDER_EXISTS`, `OIDC_PROVIDER_LIMIT`, `OIDC_PROVIDER_LINKED` or `OIDC_PROVIDER_ONLY_SIGN_IN`.
 	//
 	// Example: INTERNAL
 	Code    string              `json:"Code"`
@@ -244,6 +307,98 @@ type MailTestResponse struct {
 	Success bool      `json:"Success"`
 }
 
+// OidcProviderSetting defines model for OidcProviderSetting.
+type OidcProviderSetting struct {
+	AllowedDomains []string `json:"AllowedDomains"`
+
+	// CallbackUrl The redirect URL to register at the identity provider.
+	CallbackUrl string `json:"CallbackUrl"`
+	ClientId    string `json:"ClientId"`
+
+	// ClientSecret A write-only secret. Its value never comes back, only whether one is set.
+	ClientSecret SecretSetting `json:"ClientSecret"`
+
+	// Enabled False when the client secret is cleared. The sign-in page shows enabled providers only.
+	Enabled          bool   `json:"Enabled"`
+	Id               string `json:"Id"`
+	Issuer           string `json:"Issuer"`
+	LinkedIdentities int64  `json:"LinkedIdentities"`
+	Name             string `json:"Name"`
+
+	// OnlySignInUsers Accounts that can sign in only with this provider.
+	OnlySignInUsers int64 `json:"OnlySignInUsers"`
+
+	// Type `oidc` for any OpenID Connect provider, Google included; `github` for GitHub or GitHub Enterprise Server.
+	Type      OidcProviderType `json:"Type"`
+	UpdatedAt *time.Time       `json:"UpdatedAt,omitempty"`
+	Version   int64            `json:"Version"`
+}
+
+// OidcProviderType `oidc` for any OpenID Connect provider, Google included; `github` for GitHub or GitHub Enterprise Server.
+type OidcProviderType string
+
+// OidcSettings defines model for OidcSettings.
+type OidcSettings struct {
+	// CallbackBase The callback URL without the provider id, such as `https://dhow.example.com/oidc/callback/`.
+	CallbackBase string `json:"CallbackBase"`
+
+	// Env Example: DHOW_OIDC_PROVIDERS
+	Env string `json:"Env"`
+
+	// IgnoredStored Providers saved in the database that are unused because the environment sets the list.
+	IgnoredStored int64 `json:"IgnoredStored"`
+
+	// Locked True when `DHOW_OIDC_PROVIDERS` is set. The whole list then comes from the environment.
+	Locked       bool                  `json:"Locked"`
+	MaxProviders int                   `json:"MaxProviders"`
+	Providers    []OidcProviderSetting `json:"Providers"`
+
+	// Source Where the value in effect comes from. An environment variable wins over the database.
+	Source SettingSource `json:"Source"`
+}
+
+// OidcSettingsResponse defines model for OidcSettingsResponse.
+type OidcSettingsResponse struct {
+	Data  *OidcSettings `json:"Data,omitempty"`
+	Error *ErrorDetail  `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
+// OidcTest defines model for OidcTest.
+type OidcTest struct {
+	Checks []OidcTestCheck `json:"Checks"`
+	Passed bool            `json:"Passed"`
+}
+
+// OidcTestCheck defines model for OidcTestCheck.
+type OidcTestCheck struct {
+	// Check `discovery`: the server reached the issuer and read its discovery document. `endpoints`: every endpoint in it uses https. `keys`: the signing keys were fetched. `api`: the GitHub API answered.
+	Check  OidcTestCheckCheck `json:"Check"`
+	Passed bool               `json:"Passed"`
+}
+
+// OidcTestCheckCheck `discovery`: the server reached the issuer and read its discovery document. `endpoints`: every endpoint in it uses https. `keys`: the signing keys were fetched. `api`: the GitHub API answered.
+type OidcTestCheckCheck string
+
+// OidcTestResponse defines model for OidcTestResponse.
+type OidcTestResponse struct {
+	Data  *OidcTest    `json:"Data,omitempty"`
+	Error *ErrorDetail `json:"Error,omitempty"`
+
+	// Message An i18n key such as `system.meta.loaded`. The client translates it.
+	//
+	// Example: system.meta.loaded
+	Message *string   `json:"Message,omitempty"`
+	Meta    *PageMeta `json:"Meta,omitempty"`
+	Success bool      `json:"Success"`
+}
+
 // OrganizationSettings defines model for OrganizationSettings.
 type OrganizationSettings struct {
 	Creation StringSetting `json:"Creation"`
@@ -269,6 +424,13 @@ type RateLimitSettings struct {
 	InvitesPerUser         IntegerSetting `json:"InvitesPerUser"`
 	Public                 IntegerSetting `json:"Public"`
 	Version                int64          `json:"Version"`
+}
+
+// RemoveOidcProviderRequest defines model for RemoveOidcProviderRequest.
+type RemoveOidcProviderRequest struct {
+	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+	CurrentFactor CurrentFactor `json:"CurrentFactor"`
+	Version       int64         `json:"Version"`
 }
 
 // SecretSetting A write-only secret. Its value never comes back, only whether one is set.
@@ -302,6 +464,14 @@ type StringSetting struct {
 	Value  string        `json:"Value"`
 }
 
+// TestOidcProviderRequest defines model for TestOidcProviderRequest.
+type TestOidcProviderRequest struct {
+	Issuer *string `json:"Issuer,omitempty"`
+
+	// Type `oidc` for any OpenID Connect provider, Google included; `github` for GitHub or GitHub Enterprise Server.
+	Type OidcProviderType `json:"Type"`
+}
+
 // UpdateLogSettingsRequest defines model for UpdateLogSettingsRequest.
 type UpdateLogSettingsRequest struct {
 	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
@@ -328,6 +498,24 @@ type UpdateMailSettingsRequest struct {
 
 // UpdateMailSettingsRequestTls defines model for UpdateMailSettingsRequest.Tls.
 type UpdateMailSettingsRequestTls string
+
+// UpdateOidcProviderRequest defines model for UpdateOidcProviderRequest.
+type UpdateOidcProviderRequest struct {
+	AllowedDomains *[]string `json:"AllowedDomains,omitempty"`
+	ClientId       *string   `json:"ClientId,omitempty"`
+
+	// ClientSecret Leave out to keep the secret, send a value to replace it, or send "" to clear it and turn the provider off.
+	ClientSecret *string `json:"ClientSecret,omitempty"`
+
+	// CurrentFactor Proof of a factor the user already has. `password` is accepted only while the account has no second factor; afterwards one of `totp`, `recovery_code` or `passkey` is required. A wrong factor answers `INVALID_CURRENT_FACTOR` and is throttled like a sign-in attempt.
+	CurrentFactor CurrentFactor `json:"CurrentFactor"`
+	Issuer        *string       `json:"Issuer,omitempty"`
+	Name          *string       `json:"Name,omitempty"`
+
+	// Type `oidc` for any OpenID Connect provider, Google included; `github` for GitHub or GitHub Enterprise Server.
+	Type    *OidcProviderType `json:"Type,omitempty"`
+	Version int64             `json:"Version"`
+}
 
 // UpdateOrganizationSettingsRequest defines model for UpdateOrganizationSettingsRequest.
 type UpdateOrganizationSettingsRequest struct {
@@ -363,6 +551,9 @@ type UpdateRateLimitSettingsRequest struct {
 // WebAuthnJson A W3C WebAuthn JSON structure (`PublicKeyCredentialCreationOptionsJSON`, `PublicKeyCredentialRequestOptionsJSON` or the `toJSON()` form of a `PublicKeyCredential`). It keeps the camelCase names of the WebAuthn specification, the only place where the API does not use PascalCase.
 type WebAuthnJson = json.RawMessage
 
+// ProviderId defines model for ProviderId.
+type ProviderId = string
+
 // Error defines model for Error.
 type Error = ErrorResponse
 
@@ -371,6 +562,18 @@ type UpdateLogSettingsJSONRequestBody = UpdateLogSettingsRequest
 
 // UpdateMailSettingsJSONRequestBody defines body for UpdateMailSettings for application/json ContentType.
 type UpdateMailSettingsJSONRequestBody = UpdateMailSettingsRequest
+
+// CreateOidcProviderJSONRequestBody defines body for CreateOidcProvider for application/json ContentType.
+type CreateOidcProviderJSONRequestBody = CreateOidcProviderRequest
+
+// TestOidcProviderJSONRequestBody defines body for TestOidcProvider for application/json ContentType.
+type TestOidcProviderJSONRequestBody = TestOidcProviderRequest
+
+// UpdateOidcProviderJSONRequestBody defines body for UpdateOidcProvider for application/json ContentType.
+type UpdateOidcProviderJSONRequestBody = UpdateOidcProviderRequest
+
+// RemoveOidcProviderJSONRequestBody defines body for RemoveOidcProvider for application/json ContentType.
+type RemoveOidcProviderJSONRequestBody = RemoveOidcProviderRequest
 
 // UpdateOrganizationSettingsJSONRequestBody defines body for UpdateOrganizationSettings for application/json ContentType.
 type UpdateOrganizationSettingsJSONRequestBody = UpdateOrganizationSettingsRequest
@@ -395,6 +598,21 @@ type ServerInterface interface {
 	// SendTestMail Send a test email to the caller
 	// (POST /instance/settings/mail/test)
 	SendTestMail(w http.ResponseWriter, r *http.Request)
+	// GetOidcSettings The sign-in providers, where they come from and how many accounts use each
+	// (GET /instance/settings/oidc)
+	GetOidcSettings(w http.ResponseWriter, r *http.Request)
+	// CreateOidcProvider Add a sign-in provider
+	// (POST /instance/settings/oidc)
+	CreateOidcProvider(w http.ResponseWriter, r *http.Request)
+	// TestOidcProvider Check that the server can reach an identity provider
+	// (POST /instance/settings/oidc/test)
+	TestOidcProvider(w http.ResponseWriter, r *http.Request)
+	// UpdateOidcProvider Change a sign-in provider
+	// (PUT /instance/settings/oidc/{providerId})
+	UpdateOidcProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId)
+	// RemoveOidcProvider Remove a sign-in provider
+	// (POST /instance/settings/oidc/{providerId}/remove)
+	RemoveOidcProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId)
 	// UpdateOrganizationSettings Choose who may create organizations
 	// (PUT /instance/settings/organizations)
 	UpdateOrganizationSettings(w http.ResponseWriter, r *http.Request)
@@ -431,6 +649,36 @@ func (_ Unimplemented) UpdateMailSettings(w http.ResponseWriter, r *http.Request
 // SendTestMail Send a test email to the caller
 // (POST /instance/settings/mail/test)
 func (_ Unimplemented) SendTestMail(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetOidcSettings The sign-in providers, where they come from and how many accounts use each
+// (GET /instance/settings/oidc)
+func (_ Unimplemented) GetOidcSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateOidcProvider Add a sign-in provider
+// (POST /instance/settings/oidc)
+func (_ Unimplemented) CreateOidcProvider(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// TestOidcProvider Check that the server can reach an identity provider
+// (POST /instance/settings/oidc/test)
+func (_ Unimplemented) TestOidcProvider(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateOidcProvider Change a sign-in provider
+// (PUT /instance/settings/oidc/{providerId})
+func (_ Unimplemented) UpdateOidcProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RemoveOidcProvider Remove a sign-in provider
+// (POST /instance/settings/oidc/{providerId}/remove)
+func (_ Unimplemented) RemoveOidcProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -508,6 +756,100 @@ func (siw *ServerInterfaceWrapper) SendTestMail(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SendTestMail(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetOidcSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetOidcSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetOidcSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateOidcProvider operation middleware
+func (siw *ServerInterfaceWrapper) CreateOidcProvider(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateOidcProvider(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// TestOidcProvider operation middleware
+func (siw *ServerInterfaceWrapper) TestOidcProvider(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TestOidcProvider(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateOidcProvider operation middleware
+func (siw *ServerInterfaceWrapper) UpdateOidcProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "providerId" -------------
+	var providerId ProviderId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "providerId", chi.URLParam(r, "providerId"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "providerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateOidcProvider(w, r, providerId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveOidcProvider operation middleware
+func (siw *ServerInterfaceWrapper) RemoveOidcProvider(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "providerId" -------------
+	var providerId ProviderId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "providerId", chi.URLParam(r, "providerId"), &providerId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "providerId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveOidcProvider(w, r, providerId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -693,6 +1035,21 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/instance/settings/logs", wrapper.UpdateLogSettings)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/instance/settings/oidc", wrapper.GetOidcSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/instance/settings/oidc", wrapper.CreateOidcProvider)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/instance/settings/oidc/test", wrapper.TestOidcProvider)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/instance/settings/oidc/{providerId}", wrapper.UpdateOidcProvider)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/instance/settings/oidc/{providerId}/remove", wrapper.RemoveOidcProvider)
+	})
 
 	return r
 }
@@ -853,6 +1210,202 @@ func (response SendTestMaildefaultJSONResponse) VisitSendTestMailResponse(w http
 	return err
 }
 
+type GetOidcSettingsRequestObject struct {
+}
+
+type GetOidcSettingsResponseObject interface {
+	VisitGetOidcSettingsResponse(w http.ResponseWriter) error
+}
+
+type GetOidcSettings200JSONResponse OidcSettingsResponse
+
+func (response GetOidcSettings200JSONResponse) VisitGetOidcSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetOidcSettingsdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response GetOidcSettingsdefaultJSONResponse) VisitGetOidcSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateOidcProviderRequestObject struct {
+	Body *CreateOidcProviderJSONRequestBody
+}
+
+type CreateOidcProviderResponseObject interface {
+	VisitCreateOidcProviderResponse(w http.ResponseWriter) error
+}
+
+type CreateOidcProvider200JSONResponse OidcSettingsResponse
+
+func (response CreateOidcProvider200JSONResponse) VisitCreateOidcProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateOidcProviderdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response CreateOidcProviderdefaultJSONResponse) VisitCreateOidcProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestOidcProviderRequestObject struct {
+	Body *TestOidcProviderJSONRequestBody
+}
+
+type TestOidcProviderResponseObject interface {
+	VisitTestOidcProviderResponse(w http.ResponseWriter) error
+}
+
+type TestOidcProvider200JSONResponse OidcTestResponse
+
+func (response TestOidcProvider200JSONResponse) VisitTestOidcProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TestOidcProviderdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response TestOidcProviderdefaultJSONResponse) VisitTestOidcProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOidcProviderRequestObject struct {
+	ProviderId ProviderId `json:"providerId"`
+	Body       *UpdateOidcProviderJSONRequestBody
+}
+
+type UpdateOidcProviderResponseObject interface {
+	VisitUpdateOidcProviderResponse(w http.ResponseWriter) error
+}
+
+type UpdateOidcProvider200JSONResponse OidcSettingsResponse
+
+func (response UpdateOidcProvider200JSONResponse) VisitUpdateOidcProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateOidcProviderdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response UpdateOidcProviderdefaultJSONResponse) VisitUpdateOidcProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveOidcProviderRequestObject struct {
+	ProviderId ProviderId `json:"providerId"`
+	Body       *RemoveOidcProviderJSONRequestBody
+}
+
+type RemoveOidcProviderResponseObject interface {
+	VisitRemoveOidcProviderResponse(w http.ResponseWriter) error
+}
+
+type RemoveOidcProvider200JSONResponse OidcSettingsResponse
+
+func (response RemoveOidcProvider200JSONResponse) VisitRemoveOidcProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveOidcProviderdefaultJSONResponse struct {
+	Body       ErrorResponse
+	StatusCode int
+}
+
+func (response RemoveOidcProviderdefaultJSONResponse) VisitRemoveOidcProviderResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UpdateOrganizationSettingsRequestObject struct {
 	Body *UpdateOrganizationSettingsJSONRequestBody
 }
@@ -984,6 +1537,21 @@ type StrictServerInterface interface {
 	// SendTestMail Send a test email to the caller
 	// (POST /instance/settings/mail/test)
 	SendTestMail(ctx context.Context, request SendTestMailRequestObject) (SendTestMailResponseObject, error)
+	// GetOidcSettings The sign-in providers, where they come from and how many accounts use each
+	// (GET /instance/settings/oidc)
+	GetOidcSettings(ctx context.Context, request GetOidcSettingsRequestObject) (GetOidcSettingsResponseObject, error)
+	// CreateOidcProvider Add a sign-in provider
+	// (POST /instance/settings/oidc)
+	CreateOidcProvider(ctx context.Context, request CreateOidcProviderRequestObject) (CreateOidcProviderResponseObject, error)
+	// TestOidcProvider Check that the server can reach an identity provider
+	// (POST /instance/settings/oidc/test)
+	TestOidcProvider(ctx context.Context, request TestOidcProviderRequestObject) (TestOidcProviderResponseObject, error)
+	// UpdateOidcProvider Change a sign-in provider
+	// (PUT /instance/settings/oidc/{providerId})
+	UpdateOidcProvider(ctx context.Context, request UpdateOidcProviderRequestObject) (UpdateOidcProviderResponseObject, error)
+	// RemoveOidcProvider Remove a sign-in provider
+	// (POST /instance/settings/oidc/{providerId}/remove)
+	RemoveOidcProvider(ctx context.Context, request RemoveOidcProviderRequestObject) (RemoveOidcProviderResponseObject, error)
 	// UpdateOrganizationSettings Choose who may create organizations
 	// (PUT /instance/settings/organizations)
 	UpdateOrganizationSettings(ctx context.Context, request UpdateOrganizationSettingsRequestObject) (UpdateOrganizationSettingsResponseObject, error)
@@ -1137,6 +1705,158 @@ func (sh *strictHandler) SendTestMail(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SendTestMailResponseObject); ok {
 		if err := validResponse.VisitSendTestMailResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetOidcSettings operation middleware
+func (sh *strictHandler) GetOidcSettings(w http.ResponseWriter, r *http.Request) {
+	var request GetOidcSettingsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetOidcSettings(ctx, request.(GetOidcSettingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetOidcSettings")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetOidcSettingsResponseObject); ok {
+		if err := validResponse.VisitGetOidcSettingsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateOidcProvider operation middleware
+func (sh *strictHandler) CreateOidcProvider(w http.ResponseWriter, r *http.Request) {
+	var request CreateOidcProviderRequestObject
+
+	var body CreateOidcProviderJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateOidcProvider(ctx, request.(CreateOidcProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateOidcProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateOidcProviderResponseObject); ok {
+		if err := validResponse.VisitCreateOidcProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// TestOidcProvider operation middleware
+func (sh *strictHandler) TestOidcProvider(w http.ResponseWriter, r *http.Request) {
+	var request TestOidcProviderRequestObject
+
+	var body TestOidcProviderJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TestOidcProvider(ctx, request.(TestOidcProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TestOidcProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TestOidcProviderResponseObject); ok {
+		if err := validResponse.VisitTestOidcProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateOidcProvider operation middleware
+func (sh *strictHandler) UpdateOidcProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId) {
+	var request UpdateOidcProviderRequestObject
+
+	request.ProviderId = providerId
+
+	var body UpdateOidcProviderJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateOidcProvider(ctx, request.(UpdateOidcProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateOidcProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateOidcProviderResponseObject); ok {
+		if err := validResponse.VisitUpdateOidcProviderResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveOidcProvider operation middleware
+func (sh *strictHandler) RemoveOidcProvider(w http.ResponseWriter, r *http.Request, providerId ProviderId) {
+	var request RemoveOidcProviderRequestObject
+
+	request.ProviderId = providerId
+
+	var body RemoveOidcProviderJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveOidcProvider(ctx, request.(RemoveOidcProviderRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveOidcProvider")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveOidcProviderResponseObject); ok {
+		if err := validResponse.VisitRemoveOidcProviderResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

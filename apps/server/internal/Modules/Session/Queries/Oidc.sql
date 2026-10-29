@@ -48,7 +48,8 @@ LIMIT 1;
 
 -- name: LockUserSignInMethods :one
 SELECT u."PasswordHash" <> '' AS "HasPassword",
-       (SELECT count(*) FROM "UserIdentities" i WHERE i."UserId" = u."Id" AND NOT i."IsDeleted") AS "Identities",
+       (SELECT count(*) FROM "UserIdentities" i
+        WHERE i."UserId" = u."Id" AND NOT i."IsDeleted" AND i."Provider" = ANY (@providers::text[])) AS "Identities",
        (SELECT count(*) FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted") AS "Passkeys"
 FROM "Users" u
 WHERE u."Id" = @id AND NOT u."IsDeleted"

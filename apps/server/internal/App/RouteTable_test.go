@@ -205,7 +205,9 @@ func policyFailure(res apptest.Response) bool {
 }
 
 func requestFor(rule policy.Rule, fx fixture, c *apptest.Client) apptest.Request {
-	path := strings.NewReplacer("{id}", fx.orgA, "{runnerId}", fx.runnerID, "{tokenId}", fx.tokenID, "{jobId}", fx.jobID).Replace(rule.Path)
+	path := strings.NewReplacer(
+		"{id}", fx.orgA, "{runnerId}", fx.runnerID, "{tokenId}", fx.tokenID, "{jobId}", fx.jobID, "{providerId}", "corp",
+	).Replace(rule.Path)
 	if strings.HasPrefix(rule.Path, "/organizations/{id}/") && !strings.Contains(rule.Path, "{runnerId}") && !strings.Contains(rule.Path, "{tokenId}") &&
 		!strings.Contains(rule.Path, "{jobId}") {
 		path = organizationPath(c.Env, fx, rule)

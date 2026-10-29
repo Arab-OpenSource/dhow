@@ -124,6 +124,10 @@ func (s *Service) linkConflict(ctx context.Context, q *sqlc.Queries, userID uuid
 	return apperrors.OidcIdentityInUse()
 }
 
+func (s *Service) lockSignInMethods(ctx context.Context, q *sqlc.Queries, userID uuid.UUID) (sqlc.LockUserSignInMethodsRow, error) {
+	return q.LockUserSignInMethods(ctx, sqlc.LockUserSignInMethodsParams{ID: userID, Providers: s.oidc.IDs()})
+}
+
 func signInMethods(m sqlc.LockUserSignInMethodsRow) int64 {
 	n := m.Identities + m.Passkeys
 	if m.HasPassword {
@@ -141,9 +145,12 @@ func (s *Service) RemoveIdentity(ctx context.Context, id uuid.UUID, factor model
 	if err != nil {
 		return 0, err
 	}
-	if !containsIdentity(owned, id) {
+	target, ok := findIdentity(owned, id)
+	if !ok {
 		return 0, apperrors.NotFound()
 	}
+	_, missing := s.oidc.Get(target.Provider)
+	active := missing == nil
 	if err := s.confirmFactor(ctx, p, factor); err != nil {
 		return 0, err
 	}
@@ -151,11 +158,11 @@ func (s *Service) RemoveIdentity(ctx context.Context, id uuid.UUID, factor model
 	var revoked int64
 	var provider string
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-		methods, err := q.LockUserSignInMethods(ctx, p.UserID)
+		methods, err := s.lockSignInMethods(ctx, q, p.UserID)
 		if err != nil {
 			return err
 		}
-		if signInMethods(methods) <= 1 {
+		if active && signInMethods(methods) <= 1 {
 			return apperrors.LastSignInMethod()
 		}
 		provider, err = q.RemoveUserIdentity(ctx, sqlc.RemoveUserIdentityParams{ID: id, UserID: p.UserID, Now: now})
@@ -176,11 +183,11 @@ func (s *Service) RemoveIdentity(ctx context.Context, id uuid.UUID, factor model
 	})
 }
 
-func containsIdentity(list []models.LinkedIdentity, id uuid.UUID) bool {
+func findIdentity(list []models.LinkedIdentity, id uuid.UUID) (models.LinkedIdentity, bool) {
 	for _, i := range list {
 		if i.ID == id {
-			return true
+			return i, true
 		}
 	}
-	return false
+	return models.LinkedIdentity{}, false
 }

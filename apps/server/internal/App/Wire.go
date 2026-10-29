@@ -110,7 +110,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	if err != nil {
 		return nil, err
 	}
-	external, err := externalAuth(in)
+	external, err := externalAuth(in, store)
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +164,10 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		CSRF:      csrf,
 		APITokens: external.apiTokens,
 		Limits:    ratelimit.NewLivePerClient(limiter, func() int { return limits().Public }, config.RateLimitPublicWindow, in.Log),
-		Settings: settings.NewService(settings.Options{
-			Store: store, DB: in.Pool, Factors: sessionService, Bus: bus, Mailer: mail, Limiter: limiter, Log: in.Log, Now: in.Now,
-		}),
-		Instance: store.Instance,
-		Now:      in.Now,
-		Web:      in.Web,
+		Settings:  settingsFor(in, store, sessionService, bus, mail, limiter, external.providers),
+		Instance:  store.Instance,
+		Now:       in.Now,
+		Web:       in.Web,
 	}
 	wired := &Wired{
 		Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool, Settings: store,
@@ -180,6 +178,16 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
 	}
 	return wired, nil
+}
+
+func settingsFor(
+	in Infra, store *instancesettings.Store, factors auth.FactorConfirmer, bus *eventbus.Bus, mail mailer.Sender,
+	limiter ratelimit.Limiter, providers *oidcauth.Registry,
+) *settings.Service {
+	return settings.NewService(settings.Options{
+		Store: store, DB: in.Pool, Factors: factors, Bus: bus, Mailer: mail, Limiter: limiter, Log: in.Log, Now: in.Now,
+		Providers: providers, CallbackBase: in.Config.PublicURL.String() + config.OidcCallbackPath, Dev: in.Config.Dev,
+	})
 }
 
 func buildJobs(
@@ -229,11 +237,16 @@ type externalDeps struct {
 	apiTokens *auth.APITokens
 }
 
-func externalAuth(in Infra) (externalDeps, error) {
-	providers, err := oidcauth.NewRegistry(in.Config.OIDCProviders, oidcauth.Options{Transport: in.OidcTransport, Now: in.Now, AllowHTTP: in.Config.Dev})
+func externalAuth(in Infra, store *instancesettings.Store) (externalDeps, error) {
+	providers, err := oidcauth.NewRegistry(store.Current().Oidc.Active(), oidcauth.Options{Transport: in.OidcTransport, Now: in.Now, AllowHTTP: in.Config.Dev})
 	if err != nil {
 		return externalDeps{}, err
 	}
+	store.Watch(func(snap *instancesettings.Snapshot) {
+		if err := providers.Replace(snap.Oidc.Active()); err != nil {
+			in.Log.Error("sign-in providers were not rebuilt; the previous ones stay in effect", "error", err)
+		}
+	})
 	oidcKey, err := appcrypto.DeriveKey(in.Config.SecretKey, config.OidcFlowKeyLabel)
 	if err != nil {
 		return externalDeps{}, err
@@ -278,7 +291,9 @@ func passwordsFor(in Infra, store *instancesettings.Store) *auth.PasswordPolicy 
 }
 
 func settingsStore(ctx context.Context, in Infra) (*instancesettings.Store, error) {
-	opts := instancesettings.Options{SecretKey: in.Config.SecretKey, Env: in.Config.Settings, Log: in.Log, Now: in.Now}
+	opts := instancesettings.Options{
+		SecretKey: in.Config.SecretKey, Env: in.Config.Settings, EnvOIDC: in.Config.OIDCProviders, Dev: in.Config.Dev, Log: in.Log, Now: in.Now,
+	}
 	if in.Pool != nil {
 		opts.DB = in.Pool
 		opts.Listen = instancesettings.Listener(listener(in.Pool))

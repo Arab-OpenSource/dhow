@@ -23,9 +23,11 @@ type Querier interface {
 	ConsumeRegistrationToken(ctx context.Context, arg ConsumeRegistrationTokenParams) (ConsumeRegistrationTokenRow, error)
 	CountActiveUserTokens(ctx context.Context, arg CountActiveUserTokensParams) (int64, error)
 	CountAuditEvents(ctx context.Context, arg CountAuditEventsParams) (int64, error)
+	CountIdentitiesByProvider(ctx context.Context) ([]CountIdentitiesByProviderRow, error)
 	CountJobs(ctx context.Context, arg CountJobsParams) (int64, error)
 	CountMatchingRunners(ctx context.Context, arg CountMatchingRunnersParams) (int64, error)
 	CountMembers(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountOidcProviders(ctx context.Context) (int64, error)
 	CountOtherActiveOwners(ctx context.Context, arg CountOtherActiveOwnersParams) (int64, error)
 	CountOverviewInvitations(ctx context.Context, arg CountOverviewInvitationsParams) (int64, error)
 	CountOverviewJobs(ctx context.Context, arg CountOverviewJobsParams) (CountOverviewJobsRow, error)
@@ -34,6 +36,7 @@ type Querier interface {
 	CountRegistrationTokens(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRunnerSessionSwitches(ctx context.Context, arg CountRunnerSessionSwitchesParams) (int64, error)
 	CountRunners(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountUsersOnlyOnProvider(ctx context.Context, arg CountUsersOnlyOnProviderParams) (int64, error)
 	DeleteTeam(ctx context.Context, arg DeleteTeamParams) (int64, error)
 	DeleteTeamBinding(ctx context.Context, arg DeleteTeamBindingParams) (int64, error)
 	DisableRunnerAsClone(ctx context.Context, arg DisableRunnerAsCloneParams) (int64, error)
@@ -100,6 +103,7 @@ type Querier interface {
 	InsertLogChunks(ctx context.Context, arg InsertLogChunksParams) (int64, error)
 	InsertMembership(ctx context.Context, arg InsertMembershipParams) error
 	InsertOidcFlow(ctx context.Context, arg InsertOidcFlowParams) (uuid.UUID, error)
+	InsertOidcProvider(ctx context.Context, arg InsertOidcProviderParams) (int64, error)
 	InsertOrganization(ctx context.Context, arg InsertOrganizationParams) (InsertOrganizationRow, error)
 	InsertPasskey(ctx context.Context, arg InsertPasskeyParams) (InsertPasskeyRow, error)
 	InsertRecoveryCode(ctx context.Context, arg InsertRecoveryCodeParams) error
@@ -129,6 +133,7 @@ type Querier interface {
 	ListLogChunks(ctx context.Context, arg ListLogChunksParams) ([]ListLogChunksRow, error)
 	ListMemberRoles(ctx context.Context, arg ListMemberRolesParams) ([]ListMemberRolesRow, error)
 	ListMembers(ctx context.Context, arg ListMembersParams) ([]ListMembersRow, error)
+	ListOidcProviders(ctx context.Context) ([]ListOidcProvidersRow, error)
 	ListOpenInvitations(ctx context.Context, arg ListOpenInvitationsParams) ([]ListOpenInvitationsRow, error)
 	ListOrganizationBindings(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationBindingsRow, error)
 	ListRegistrationTokens(ctx context.Context, arg ListRegistrationTokensParams) ([]RunnerRegistrationToken, error)
@@ -152,6 +157,7 @@ type Querier interface {
 	LockJobByID(ctx context.Context, id uuid.UUID) (Job, error)
 	LockLeaseForCompletion(ctx context.Context, arg LockLeaseForCompletionParams) (LockLeaseForCompletionRow, error)
 	LockMfaChallenge(ctx context.Context, arg LockMfaChallengeParams) (LockMfaChallengeRow, error)
+	LockOidcProviderList(ctx context.Context, lockKey int64) error
 	LockOpenInvitation(ctx context.Context, arg LockOpenInvitationParams) (LockOpenInvitationRow, error)
 	LockOrganization(ctx context.Context, id uuid.UUID) (LockOrganizationRow, error)
 	LockOrganizationQueue(ctx context.Context, organizationID string) error
@@ -166,7 +172,8 @@ type Querier interface {
 	LockUsableInvitation(ctx context.Context, arg LockUsableInvitationParams) (LockUsableInvitationRow, error)
 	LockUsableSetupToken(ctx context.Context, arg LockUsableSetupTokenParams) (uuid.UUID, error)
 	LockUserForTokens(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
-	LockUserSignInMethods(ctx context.Context, id uuid.UUID) (LockUserSignInMethodsRow, error)
+	LockUserSignInMethods(ctx context.Context, arg LockUserSignInMethodsParams) (LockUserSignInMethodsRow, error)
+	LockUsersOfProvider(ctx context.Context, provider string) ([]uuid.UUID, error)
 	LogPartitionReady(ctx context.Context) (bool, error)
 	MarkInstanceOwner(ctx context.Context, arg MarkInstanceOwnerParams) error
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) (int64, error)
@@ -187,6 +194,7 @@ type Querier interface {
 	PickOverdueLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
 	PickRevokedRunnerLease(ctx context.Context) (uuid.UUID, error)
 	PickUnstartedLease(ctx context.Context, startSeconds float64) (uuid.UUID, error)
+	ProviderIdentityIssuers(ctx context.Context, arg ProviderIdentityIssuersParams) (ProviderIdentityIssuersRow, error)
 	PurgeAuthChallenges(ctx context.Context, arg PurgeAuthChallengesParams) (int64, error)
 	PurgeInvitations(ctx context.Context, arg PurgeInvitationsParams) (int64, error)
 	PurgeLoginThrottles(ctx context.Context, arg PurgeLoginThrottlesParams) (int64, error)
@@ -204,6 +212,7 @@ type Querier interface {
 	RemoveAllTeamMembers(ctx context.Context, arg RemoveAllTeamMembersParams) error
 	RemoveMemberTeams(ctx context.Context, arg RemoveMemberTeamsParams) error
 	RemoveMembership(ctx context.Context, arg RemoveMembershipParams) (int64, error)
+	RemoveOidcProvider(ctx context.Context, arg RemoveOidcProviderParams) (int64, error)
 	RemovePasskey(ctx context.Context, arg RemovePasskeyParams) (int64, error)
 	RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) (int64, error)
 	RemoveUserIdentity(ctx context.Context, arg RemoveUserIdentityParams) (string, error)
@@ -255,6 +264,7 @@ type Querier interface {
 	TryRetentionLock(ctx context.Context, lockKey int64) (bool, error)
 	UnreadableLogPartitions(ctx context.Context) ([]string, error)
 	UpdateInstanceSetting(ctx context.Context, arg UpdateInstanceSettingParams) (int64, error)
+	UpdateOidcProvider(ctx context.Context, arg UpdateOidcProviderParams) (int64, error)
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
 	UpdateRunner(ctx context.Context, arg UpdateRunnerParams) (Runner, error)
 	UpdateRunnerThrottle(ctx context.Context, arg UpdateRunnerThrottleParams) error

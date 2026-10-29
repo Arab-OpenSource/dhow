@@ -236,7 +236,7 @@ func (s *Service) RemovePasskey(ctx context.Context, id uuid.UUID, factor models
 	}
 	var change models.MfaChange
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-		methods, err := q.LockUserSignInMethods(ctx, p.UserID)
+		methods, err := s.lockSignInMethods(ctx, q, p.UserID)
 		if err != nil {
 			return err
 		}

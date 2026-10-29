@@ -2327,6 +2327,147 @@ paths:
                 $ref: "#/components/schemas/InstanceSettingsResponse"
         default:
           $ref: "#/components/responses/Error"
+  /instance/settings/oidc:
+    get:
+      operationId: getOidcSettings
+      tags: [settings]
+      summary: The sign-in providers, where they come from and how many accounts use each
+      description: >-
+        Needs `instance.settings.manage`. When `DHOW_OIDC_PROVIDERS` is set in the environment, every provider comes
+        from the environment (`Source: env`, `Locked: true`) and the dashboard cannot change them; providers saved in
+        the database are then unused and only counted in `IgnoredStored`. Otherwise the providers come from the
+        database. A client secret never comes back: it is `{Set, Saved, Locked, Env}` only. `LinkedIdentities` counts
+        the accounts linked to the provider, and `OnlySignInUsers` counts the accounts that can sign in with nothing
+        else, so removing or disabling the provider would lock them out.
+      security:
+        - SessionCookie: []
+      responses:
+        "200":
+          description: The sign-in providers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createOidcProvider
+      tags: [settings]
+      summary: Add a sign-in provider
+      description: >-
+        Needs `instance.settings.manage`, a second factor on the caller's account and a fresh `CurrentFactor`. The `Id`
+        is part of the callback URL and of linked accounts, so it never changes later. Providers from the environment
+        answer `409 SETTING_LOCKED_BY_ENV`, an `Id` in use answers `409 OIDC_PROVIDER_EXISTS`, an eleventh provider
+        answers `409 OIDC_PROVIDER_LIMIT`, an `Id` whose old linked accounts use another issuer answers
+        `409 OIDC_PROVIDER_LINKED`, and a bad value answers `400 SETTING_INVALID` with the field and the reason.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOidcProviderRequest"
+      responses:
+        "200":
+          description: Every provider, after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/oidc/test:
+    post:
+      operationId: testOidcProvider
+      tags: [settings]
+      summary: Check that the server can reach an identity provider
+      description: >-
+        Needs `instance.settings.manage`. For `oidc`, fetches the discovery document of `Issuer`, checks that its
+        endpoints use https, and fetches the signing keys. For `github`, calls the API of `Issuer`. The client secret is
+        never sent anywhere. Five tests per user in ten minutes (`429 RATE_LIMITED` after that). An issuer that is not
+        valid, or that points at a link-local or cloud metadata address, answers `400 SETTING_INVALID`. The reason for a
+        failed check is in the server log, never in the response.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestOidcProviderRequest"
+      responses:
+        "200":
+          description: Which checks passed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcTestResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/oidc/{providerId}:
+    put:
+      operationId: updateOidcProvider
+      tags: [settings]
+      summary: Change a sign-in provider
+      description: >-
+        Same rules as `POST /instance/settings/oidc`, with the provider's `Version` (`409 SETTING_CHANGED` when stale).
+        Send only the fields you change. `Type` and `Issuer` cannot change once accounts are linked to the provider
+        (`409 OIDC_PROVIDER_LINKED`): add a new provider instead. For `ClientSecret`, leave it out to keep it, send a
+        value to replace it, or send "" to clear it, which turns the provider off. Turning off a provider that some
+        accounts need to sign in answers `409 OIDC_PROVIDER_ONLY_SIGN_IN` with the number of accounts in `Details`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/ProviderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOidcProviderRequest"
+      responses:
+        "200":
+          description: Every provider, after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /instance/settings/oidc/{providerId}/remove:
+    post:
+      operationId: removeOidcProvider
+      tags: [settings]
+      summary: Remove a sign-in provider
+      description: >-
+        Needs `instance.settings.manage` and a fresh `CurrentFactor`, with the provider's `Version`. The provider is
+        soft deleted: accounts linked to it keep the link, see it on their account page and can unlink it. When some
+        accounts can sign in with nothing else, the server refuses with `409 OIDC_PROVIDER_ONLY_SIGN_IN` and the number
+        of accounts in `Details`. Sessions that are already open stay open.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+      parameters:
+        - $ref: "#/components/parameters/ProviderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoveOidcProviderRequest"
+      responses:
+        "200":
+          description: Every provider, after the change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcSettingsResponse"
+        default:
+          $ref: "#/components/responses/Error"
 components:
   securitySchemes:
     SessionCookie:
@@ -2344,6 +2485,13 @@ components:
         A personal API token. Accepted only on the routes that list it, never together with a session cookie, and
         without the CSRF token or the Origin check because a browser never sends it on its own.
   parameters:
+    ProviderId:
+      name: providerId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-z][a-z0-9]{0,31}$"
     Id:
       name: id
       in: path
@@ -2812,6 +2960,207 @@ components:
           properties:
             Data:
               $ref: "#/components/schemas/MailTest"
+    OidcProviderType:
+      type: string
+      enum: [oidc, github]
+      description: "`oidc` for any OpenID Connect provider, Google included; `github` for GitHub or GitHub Enterprise Server."
+    OidcProviderSetting:
+      type: object
+      additionalProperties: false
+      required: [Id, Type, Name, Issuer, ClientId, ClientSecret, AllowedDomains, Enabled, Version, LinkedIdentities, OnlySignInUsers, CallbackUrl]
+      properties:
+        Id:
+          type: string
+        Type:
+          $ref: "#/components/schemas/OidcProviderType"
+        Name:
+          type: string
+        Issuer:
+          type: string
+        ClientId:
+          type: string
+        ClientSecret:
+          $ref: "#/components/schemas/SecretSetting"
+        AllowedDomains:
+          type: array
+          items:
+            type: string
+        Enabled:
+          type: boolean
+          description: False when the client secret is cleared. The sign-in page shows enabled providers only.
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        LinkedIdentities:
+          type: integer
+          format: int64
+          minimum: 0
+        OnlySignInUsers:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Accounts that can sign in only with this provider.
+        CallbackUrl:
+          type: string
+          description: The redirect URL to register at the identity provider.
+        UpdatedAt:
+          type: string
+          format: date-time
+    OidcSettings:
+      type: object
+      additionalProperties: false
+      required: [Source, Locked, Env, CallbackBase, MaxProviders, IgnoredStored, Providers]
+      properties:
+        Source:
+          $ref: "#/components/schemas/SettingSource"
+        Locked:
+          type: boolean
+          description: True when `DHOW_OIDC_PROVIDERS` is set. The whole list then comes from the environment.
+        Env:
+          type: string
+          example: DHOW_OIDC_PROVIDERS
+        CallbackBase:
+          type: string
+          description: The callback URL without the provider id, such as `https://dhow.example.com/oidc/callback/`.
+        MaxProviders:
+          type: integer
+        IgnoredStored:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Providers saved in the database that are unused because the environment sets the list.
+        Providers:
+          type: array
+          items:
+            $ref: "#/components/schemas/OidcProviderSetting"
+    OidcSettingsResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/OidcSettings"
+    CreateOidcProviderRequest:
+      type: object
+      additionalProperties: false
+      required: [CurrentFactor, Id, Type, ClientId, ClientSecret]
+      properties:
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+        Id:
+          type: string
+          pattern: "^[a-z][a-z0-9]{0,31}$"
+        Type:
+          $ref: "#/components/schemas/OidcProviderType"
+        Name:
+          type: string
+          maxLength: 40
+          description: The label on the sign-in button, at most 40 characters. Empty takes the id, or GitHub.
+        Issuer:
+          type: string
+          maxLength: 2048
+          description: Required for `oidc`. Empty for `github` means https://github.com.
+        ClientId:
+          type: string
+          maxLength: 512
+        ClientSecret:
+          type: string
+          format: password
+          writeOnly: true
+          maxLength: 1024
+        AllowedDomains:
+          type: array
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 253
+    UpdateOidcProviderRequest:
+      type: object
+      additionalProperties: false
+      required: [Version, CurrentFactor]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+        Type:
+          $ref: "#/components/schemas/OidcProviderType"
+        Name:
+          type: string
+          maxLength: 40
+        Issuer:
+          type: string
+          maxLength: 2048
+        ClientId:
+          type: string
+          maxLength: 512
+        ClientSecret:
+          type: string
+          format: password
+          writeOnly: true
+          maxLength: 1024
+          description: Leave out to keep the secret, send a value to replace it, or send "" to clear it and turn the provider off.
+        AllowedDomains:
+          type: array
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 253
+    RemoveOidcProviderRequest:
+      type: object
+      additionalProperties: false
+      required: [Version, CurrentFactor]
+      properties:
+        Version:
+          type: integer
+          format: int64
+          minimum: 0
+        CurrentFactor:
+          $ref: "#/components/schemas/CurrentFactor"
+    TestOidcProviderRequest:
+      type: object
+      additionalProperties: false
+      required: [Type]
+      properties:
+        Type:
+          $ref: "#/components/schemas/OidcProviderType"
+        Issuer:
+          type: string
+          maxLength: 2048
+    OidcTestCheck:
+      type: object
+      additionalProperties: false
+      required: [Check, Passed]
+      properties:
+        Check:
+          type: string
+          enum: [discovery, endpoints, keys, api]
+          description: >-
+            `discovery`: the server reached the issuer and read its discovery document. `endpoints`: every endpoint in
+            it uses https. `keys`: the signing keys were fetched. `api`: the GitHub API answered.
+        Passed:
+          type: boolean
+    OidcTest:
+      type: object
+      additionalProperties: false
+      required: [Passed, Checks]
+      properties:
+        Passed:
+          type: boolean
+        Checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/OidcTestCheck"
+    OidcTestResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/OidcTest"
     Envelope:
       type: object
       required: [Success]
@@ -2874,7 +3223,8 @@ components:
             `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`,
             `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`,
             `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`,
-            `SETTING_INVALID`, `MAIL_NOT_CONFIGURED` or `MAIL_TEST_FAILED`.
+            `SETTING_INVALID`, `MAIL_NOT_CONFIGURED`, `MAIL_TEST_FAILED`, `OIDC_PROVIDER_EXISTS`, `OIDC_PROVIDER_LIMIT`,
+            `OIDC_PROVIDER_LINKED` or `OIDC_PROVIDER_ONLY_SIGN_IN`.
           example: INTERNAL
         Message:
           type: string
@@ -4431,7 +4781,7 @@ components:
           maxLength: 40
         Name:
           type: string
-          maxLength: 160
+          maxLength: 40
         Colors:
           $ref: "#/components/schemas/ThemeColors"
     SavePreferencesRequest:

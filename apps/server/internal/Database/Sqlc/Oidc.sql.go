@@ -221,12 +221,18 @@ func (q *Queries) ListUserIdentities(ctx context.Context, userID uuid.UUID) ([]L
 
 const lockUserSignInMethods = `-- name: LockUserSignInMethods :one
 SELECT u."PasswordHash" <> '' AS "HasPassword",
-       (SELECT count(*) FROM "UserIdentities" i WHERE i."UserId" = u."Id" AND NOT i."IsDeleted") AS "Identities",
+       (SELECT count(*) FROM "UserIdentities" i
+        WHERE i."UserId" = u."Id" AND NOT i."IsDeleted" AND i."Provider" = ANY ($1::text[])) AS "Identities",
        (SELECT count(*) FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted") AS "Passkeys"
 FROM "Users" u
-WHERE u."Id" = $1 AND NOT u."IsDeleted"
+WHERE u."Id" = $2 AND NOT u."IsDeleted"
 FOR UPDATE OF u
 `
+
+type LockUserSignInMethodsParams struct {
+	Providers []string
+	ID        uuid.UUID
+}
 
 type LockUserSignInMethodsRow struct {
 	HasPassword bool
@@ -234,8 +240,8 @@ type LockUserSignInMethodsRow struct {
 	Passkeys    int64
 }
 
-func (q *Queries) LockUserSignInMethods(ctx context.Context, id uuid.UUID) (LockUserSignInMethodsRow, error) {
-	row := q.db.QueryRow(ctx, lockUserSignInMethods, id)
+func (q *Queries) LockUserSignInMethods(ctx context.Context, arg LockUserSignInMethodsParams) (LockUserSignInMethodsRow, error) {
+	row := q.db.QueryRow(ctx, lockUserSignInMethods, arg.Providers, arg.ID)
 	var i LockUserSignInMethodsRow
 	err := row.Scan(&i.HasPassword, &i.Identities, &i.Passkeys)
 	return i, err

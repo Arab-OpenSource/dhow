@@ -44,7 +44,7 @@ func TestEachSettingResolvesFromTheEnvironmentThenTheDatabaseThenTheDefault(t *t
 			if tt.stored != nil {
 				stored[settingspec.GroupRateLimits] = Stored{Raw: tt.stored, Version: 1}
 			}
-			snap, err := s.build(stored)
+			snap, err := s.build(stored, s.emptyOidc())
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantSource, snap.Sources[settingspec.EnvRateLimitPublic])
 			assert.Equal(t, tt.wantValue, snap.Values.RateLimits.Public)
@@ -59,7 +59,7 @@ func TestASecretIsSetFromEitherSourceAndNeverShownAsText(t *testing.T) {
 	s.env = settingspec.Raw{settingspec.EnvSMTPPassword: "from-env"}
 	snap, err := s.build(map[settingspec.Group]Stored{settingspec.GroupMail: {Raw: settingspec.Raw{
 		settingspec.EnvSMTPHost: "smtp.example.com", settingspec.EnvSMTPFrom: "dhow@example.com", settingspec.EnvSMTPUsername: "dhow",
-	}}})
+	}}}, s.emptyOidc())
 	require.NoError(t, err)
 	assert.True(t, snap.SecretSet(settingspec.EnvSMTPPassword))
 	assert.True(t, snap.Locked(settingspec.EnvSMTPPassword))

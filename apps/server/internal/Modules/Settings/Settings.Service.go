@@ -16,6 +16,7 @@ import (
 	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
 	i18n "github.com/Khaymah/dhow/apps/server/internal/Core/I18n"
 	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
+	oidcauth "github.com/Khaymah/dhow/apps/server/internal/Core/Oidc"
 	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
 	instancesettings "github.com/Khaymah/dhow/apps/server/internal/Core/Settings"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
@@ -34,25 +35,31 @@ type Publisher interface {
 }
 
 type Options struct {
-	Store   *instancesettings.Store
-	DB      sqlc.DBTX
-	Factors auth.FactorConfirmer
-	Bus     Publisher
-	Mailer  mailer.Sender
-	Limiter ratelimit.Limiter
-	Log     *slog.Logger
-	Now     func() time.Time
+	Store        *instancesettings.Store
+	DB           sqlc.DBTX
+	Factors      auth.FactorConfirmer
+	Bus          Publisher
+	Mailer       mailer.Sender
+	Limiter      ratelimit.Limiter
+	Providers    *oidcauth.Registry
+	CallbackBase string
+	Dev          bool
+	Log          *slog.Logger
+	Now          func() time.Time
 }
 
 type Service struct {
-	store   *instancesettings.Store
-	db      sqlc.DBTX
-	factors auth.FactorConfirmer
-	bus     Publisher
-	mailer  mailer.Sender
-	limiter ratelimit.Limiter
-	log     *slog.Logger
-	now     func() time.Time
+	store        *instancesettings.Store
+	db           sqlc.DBTX
+	factors      auth.FactorConfirmer
+	bus          Publisher
+	mailer       mailer.Sender
+	limiter      ratelimit.Limiter
+	providers    *oidcauth.Registry
+	callbackBase string
+	dev          bool
+	log          *slog.Logger
+	now          func() time.Time
 }
 
 func NewService(o Options) *Service {
@@ -69,7 +76,8 @@ func NewService(o Options) *Service {
 		mail = mailer.Disabled{}
 	}
 	return &Service{
-		store: o.Store, db: o.DB, factors: o.Factors, bus: o.Bus, mailer: mail, limiter: limiter, log: o.Log, now: now,
+		store: o.Store, db: o.DB, factors: o.Factors, bus: o.Bus, mailer: mail, limiter: limiter, providers: o.Providers,
+		callbackBase: o.CallbackBase, dev: o.Dev, log: o.Log, now: now,
 	}
 }
 
@@ -101,14 +109,7 @@ func (s *Service) Update(
 	if err := s.store.Check(g, version, changes); err != nil {
 		return nil, err
 	}
-	state, err := sqlc.New(s.db).GetUserMfaState(ctx, p.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if !state.HasTotp && !state.HasPasskey {
-		return nil, apperrors.SettingsSecondFactorMissing()
-	}
-	if err := s.factors.ConfirmFactor(ctx, p, factor); err != nil {
+	if err := s.confirm(ctx, p, factor); err != nil {
 		return nil, err
 	}
 	res, err := s.store.Update(ctx, g, version, changes, p.UserID)
@@ -119,6 +120,17 @@ func (s *Service) Update(
 		return res.Snapshot, nil
 	}
 	return res.Snapshot, s.audit(ctx, p.UserID, g, res)
+}
+
+func (s *Service) confirm(ctx context.Context, p auth.Principal, factor auth.Factor) error {
+	state, err := sqlc.New(s.db).GetUserMfaState(ctx, p.UserID)
+	if err != nil {
+		return err
+	}
+	if !state.HasTotp && !state.HasPasskey {
+		return apperrors.SettingsSecondFactorMissing()
+	}
+	return s.factors.ConfirmFactor(ctx, p, factor)
 }
 
 func (s *Service) audit(ctx context.Context, actor uuid.UUID, g settingspec.Group, res instancesettings.Result) error {
