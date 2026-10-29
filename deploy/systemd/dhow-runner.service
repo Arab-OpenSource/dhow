@@ -22,12 +22,13 @@ KillMode=control-group
 MemorySwapMax=0
 LimitCORE=0
 
-CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_SYS_ADMIN
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE CAP_SYS_ADMIN CAP_SYS_PTRACE
 AmbientCapabilities=
 ProtectSystem=strict
 ReadWritePaths=/var/lib/dhow-runner
 ProtectHome=yes
 PrivateTmp=yes
+ProtectProc=invisible
 PrivateIPC=yes
 ProtectKernelModules=yes
 ProtectClock=yes
