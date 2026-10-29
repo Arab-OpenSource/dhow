@@ -12,6 +12,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	settingspec "github.com/Khaymah/dhow/apps/server/internal/Config/Settings"
 )
 
 const (
@@ -23,7 +25,7 @@ const (
 	EnvLogLevel       = "DHOW_LOG_LEVEL"
 	EnvDev            = "DHOW_DEV"
 
-	EnvBreachedPasswordCheck = "DHOW_BREACHED_PASSWORD_CHECK" //nolint:gosec // The name of an environment variable, not a credential.
+	EnvBreachedPasswordCheck = settingspec.EnvBreachedPasswordCheck
 )
 
 type Config struct {
@@ -35,8 +37,6 @@ type Config struct {
 	LogLevel       slog.Level
 	Dev            bool
 
-	BreachedPasswordCheck bool
-
 	RunnerListenAddr  string
 	RunnerTLSCertFile string
 	RunnerTLSKeyFile  string
@@ -44,12 +44,9 @@ type Config struct {
 
 	Logs Logs
 
-	SMTP                        SMTP
-	AnyUserCreatesOrganizations bool
+	Settings settingspec.Raw
 
 	OIDCProviders []OIDCProvider
-
-	RateLimits RateLimits
 }
 
 func LoadFromEnv() (Config, error) { return Load(os.Getenv) }
@@ -64,9 +61,6 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	cfg.Dev = dev
 
-	if cfg.BreachedPasswordCheck, err = parseBoolDefault(getenv(EnvBreachedPasswordCheck), true); err != nil {
-		errs = append(errs, fmt.Errorf("%s: %w", EnvBreachedPasswordCheck, err))
-	}
 	if cfg.SecretKey, err = loadSecretKey(getenv); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvSecretKey, err))
 	}
@@ -99,16 +93,11 @@ func Load(getenv func(string) string) (Config, error) {
 	if cfg.LogLevel, err = parseLogLevel(getenv(EnvLogLevel)); err != nil {
 		errs = append(errs, fmt.Errorf("%s: %w", EnvLogLevel, err))
 	}
-	if cfg.SMTP, err = loadSMTP(getenv); err != nil {
-		errs = append(errs, err)
-	}
-	if cfg.AnyUserCreatesOrganizations, err = parseOrgCreation(getenv(EnvOrgCreation)); err != nil {
-		errs = append(errs, fmt.Errorf("%s: %w", EnvOrgCreation, err))
+	var settingErrs []error
+	if cfg.Settings, settingErrs = loadSettings(getenv); len(settingErrs) > 0 {
+		errs = append(errs, settingErrs...)
 	}
 	if cfg.OIDCProviders, err = loadOIDCProviders(getenv, dev); err != nil {
-		errs = append(errs, err)
-	}
-	if cfg.RateLimits, err = loadRateLimits(getenv); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -146,13 +135,6 @@ func parseBool(v string) (bool, error) {
 		return false, errors.New("must be true or false")
 	}
 	return b, nil
-}
-
-func parseBoolDefault(v string, def bool) (bool, error) {
-	if strings.TrimSpace(v) == "" {
-		return def, nil
-	}
-	return parseBool(strings.TrimSpace(v))
 }
 
 var placeholderMarkers = []string{

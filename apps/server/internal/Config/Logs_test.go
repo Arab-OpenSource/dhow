@@ -16,11 +16,11 @@ func TestLogSettings(t *testing.T) {
 		want    config.Logs
 		wantErr string
 	}{
-		{"unset takes the defaults", nil, config.Logs{MaxBytes: 64 << 20, RetentionDays: 30, MaxStreams: 2000, ReadConns: 4}, ""},
+		{"unset takes the defaults", nil, config.Logs{MaxStreams: 2000, ReadConns: 4}, ""},
 		{"every value inside its bounds", map[string]string{
 			config.EnvJobLogMaxBytes: "1048576", config.EnvLogRetentionDays: "3650", config.EnvSSEMaxStreams: "1",
 			config.EnvLogReadConns: "20",
-		}, config.Logs{MaxBytes: 1 << 20, RetentionDays: 3650, MaxStreams: 1, ReadConns: 20}, ""},
+		}, config.Logs{MaxStreams: 1, ReadConns: 20}, ""},
 		{"no log read connection fails closed", map[string]string{config.EnvLogReadConns: "0"}, config.Logs{}, config.EnvLogReadConns},
 		{"more log read connections than the main pool fails closed", map[string]string{config.EnvLogReadConns: "21"}, config.Logs{}, config.EnvLogReadConns},
 		{"the cap stops at 1 GiB", map[string]string{config.EnvJobLogMaxBytes: "1073741825"}, config.Logs{}, config.EnvJobLogMaxBytes},
@@ -47,6 +47,17 @@ func TestLogSettings(t *testing.T) {
 			assert.Equal(t, tt.want, cfg.Logs)
 		})
 	}
+}
+
+func TestJobLogSettings(t *testing.T) {
+	cfg, err := resolve(valid())
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultLogSettings(), cfg.Logs)
+	m := valid()
+	m[config.EnvJobLogMaxBytes], m[config.EnvLogRetentionDays] = "1048576", "3650"
+	cfg, err = resolve(m)
+	require.NoError(t, err)
+	assert.Equal(t, config.LogSettings{JobLogMaxBytes: 1 << 20, RetentionDays: 3650}, cfg.Logs)
 }
 
 func TestTheOrganizationStreamShareStaysWellBelowTheInstanceLimit(t *testing.T) {

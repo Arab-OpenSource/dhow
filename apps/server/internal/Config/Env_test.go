@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	settingspec "github.com/Khaymah/dhow/apps/server/internal/Config/Settings"
 )
 
 const (
@@ -21,6 +22,18 @@ const (
 
 func env(m map[string]string) func(string) string {
 	return func(k string) string { return m[k] }
+}
+
+func resolve(m map[string]string) (settingspec.Settings, error) {
+	cfg, err := config.Load(env(m))
+	if err != nil {
+		return settingspec.Settings{}, err
+	}
+	s, errs := settingspec.Parse(cfg.Settings)
+	if len(errs) > 0 {
+		return settingspec.Settings{}, settingspec.Join(errs)
+	}
+	return s, nil
 }
 
 func valid() map[string]string {
@@ -269,7 +282,7 @@ func TestBreachedPasswordCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := valid()
 			m[config.EnvBreachedPasswordCheck] = tt.value
-			cfg, err := config.Load(env(m))
+			cfg, err := resolve(m)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), config.EnvBreachedPasswordCheck)

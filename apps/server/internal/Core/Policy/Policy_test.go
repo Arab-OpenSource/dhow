@@ -177,6 +177,9 @@ func TestCanInstance(t *testing.T) {
 		{"any user when the instance allows it", member, policy.OrgCreate, policy.InstanceSettings{AnyUserCreatesOrganizations: true}, true},
 		{"anonymous even when the instance allows it", policy.Subject{}, policy.OrgCreate, policy.InstanceSettings{AnyUserCreatesOrganizations: true}, false},
 		{"organization action through the instance check", owner, policy.OrgRead, policy.InstanceSettings{}, false},
+		{"instance owner manages the settings", owner, policy.InstanceSettingsManage, policy.InstanceSettings{}, true},
+		{"an organization owner never manages the settings", member, policy.InstanceSettingsManage, policy.InstanceSettings{AnyUserCreatesOrganizations: true}, false},
+		{"anonymous never manages the settings", policy.Subject{}, policy.InstanceSettingsManage, policy.InstanceSettings{}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -243,6 +246,7 @@ func TestTokenSubjectIsTheIntersectionOfRoleAndScopes(t *testing.T) {
 	owner := token(policy.RoleOwner, policy.OrgRead)
 	owner.InstanceOwner = true
 	assert.False(t, policy.CanInstance(owner, policy.OrgCreate, policy.InstanceSettings{AnyUserCreatesOrganizations: true}))
+	assert.False(t, policy.CanInstance(owner, policy.InstanceSettingsManage, policy.InstanceSettings{}), "a token never manages the settings")
 }
 
 func TestTokenRules(t *testing.T) {
