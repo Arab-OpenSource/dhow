@@ -40,3 +40,15 @@
 | Workspace / Home | الرئيسية |
 | Settings | الإعدادات |
 | Appearance | المظهر والألوان |
+| Instance owner | صاحب النسخة |
+| Control plane | لوحة التحكم (control plane) |
+| Sandbox | البيئة المعزولة |
+| Container | حاوية |
+| Reverse proxy | وكيل عكسي |
+| Trusted proxies | الوكلاء الموثوقون |
+| Rate limits | حدود الطلبات |
+| Artifact | الملف الناتج |
+| Lease (job) | حجز |
+| Heartbeat | نبضة |
+| Issuer (OIDC) | المُصدِر |
+| Migrations | تحديثات قاعدة البيانات |

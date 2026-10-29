@@ -1,20 +1,22 @@
-# Security Policy
+[English](SECURITY.en.md)
 
-## Reporting a vulnerability
+# سياسة الأمان
 
-**Do not open public issues for security problems.**
+## الإبلاغ عن ثغرة
 
-Report privately through **GitHub Security Advisories** for this repository (Security tab → "Report a vulnerability").
+**لا تفتح issue عامًا لأي مشكلة أمنية.**
 
-When reporting:
-- Include the affected version or commit, the impact, and the steps to reproduce.
-- Expect an acknowledgement within 3 business days.
-- We aim to agree on a fix and disclosure timeline with you, typically within 90 days. Reporters are credited unless they prefer otherwise.
+أبلغ بشكل خاص عبر **GitHub Security Advisories** في هذا المستودع (تبويب Security ← "Report a vulnerability").
 
-## Scope
+عند الإبلاغ:
+- اذكر الإصدار أو الـ commit المتأثر، والأثر، وخطوات إعادة المشكلة.
+- سنؤكد استلام بلاغك خلال 3 أيام عمل.
+- نسعى إلى الاتفاق معك على الإصلاح وموعد الإفصاح، عادةً خلال 90 يومًا. نذكر اسم من أبلغ، إلا إذا فضّل غير ذلك.
 
-The scope is the Dhow control plane, runner, CLI, official plugins, install artifacts and the docs site.
+## النطاق
 
-## Supported versions
+النطاق هو لوحة التحكم (control plane) في داو (Dhow)، وجهاز التشغيل (runner)، والـ CLI، والإضافات الرسمية، وملفات التثبيت، وموقع الوثائق.
 
-There are no released versions yet; Dhow is in the design phase. A support table will be added at the first release.
+## الإصدارات المدعومة
+
+لا توجد إصدارات منشورة بعد، فداو في مرحلة التصميم. سنضيف جدول الدعم مع أول إصدار.

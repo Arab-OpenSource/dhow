@@ -1,50 +1,52 @@
-# Put Dhow behind a reverse proxy
+[English](../en/install/reverse-proxy.md)
 
-Dhow speaks plain HTTP and expects a reverse proxy in front of it to terminate TLS. This page has complete configurations for [nginx](#nginx-with-certbot), [Caddy](#caddy) and [Traefik](#traefik-in-the-compose-stack), explains [`DHOW_TRUSTED_PROXIES`](#trusted-proxies), and shows [how to check the result](#verify-the-setup).
+# ضع داو خلف وكيل عكسي
 
-Every configuration on this page is the exact file that `make proxy-check` runs in Docker, see [How these configurations are tested](#how-these-configurations-are-tested). Replace `dhow.example.com` with your domain everywhere it appears.
+يتكلم داو (Dhow) بـ HTTP العادي، ويتوقع أمامه وكيلًا عكسيًا (reverse proxy) يتولى TLS. في هذه الصفحة إعدادات كاملة لـ [nginx](#nginx-مع-certbot) و[Caddy](#caddy) و[Traefik](#traefik-داخل-حزمة-compose)، وشرح [`DHOW_TRUSTED_PROXIES`](#الوكلاء-الموثوقون)، و[طريقة التحقق من النتيجة](#تحقق-من-الإعداد).
 
-## What Dhow needs from a proxy
+كل إعداد في هذه الصفحة هو الملف نفسه الذي يشغّله `make proxy-check` في Docker. راجع [كيف نختبر هذه الإعدادات](#كيف-نختبر-هذه-الإعدادات). استبدل `dhow.example.com` بنطاقك في كل مكان يظهر فيه.
 
-| Requirement | Why |
+## ما يحتاجه داو من الوكيل
+
+| المتطلب | السبب |
 |---|---|
-| A whole host name, such as `dhow.example.com` | The session cookie is `__Host-dhow_session`. See [No sub-path](#no-sub-path). |
-| TLS, and `DHOW_PUBLIC_URL` set to the `https://` address users open | Dhow refuses to start with an `http://` public URL, and browsers only send the `Secure` session cookie over HTTPS. |
-| `Host` and `Origin` passed through unchanged | Every request that is not `GET`, `HEAD` or `OPTIONS` must carry an `Origin` equal to `DHOW_PUBLIC_URL`, or Dhow answers `403 CSRF_FAILED`. A proxy that drops or rewrites `Origin` breaks setup, sign-in and every change. |
-| `X-Forwarded-For` with the client address appended, and `X-Forwarded-Proto` | Dhow records the client address in the access log and the audit log, and throttles sign-in attempts per address. It reads `X-Forwarded-For` only from the proxies listed in `DHOW_TRUSTED_PROXIES`. |
-| A request body limit a little above 1 MiB | Dhow rejects bodies over 1 MiB with `413 PAYLOAD_TOO_LARGE`. The configurations below stop anything over 2 MB at the proxy and leave the exact error to Dhow. |
-| No response buffering and a long read timeout on the log stream | Live job logs stream from `/api/v1/organizations/<id>/jobs/<jobId>/logs/stream` as server-sent events. A buffering proxy holds events back until its buffer fills, so logs arrive late and in bursts. Dhow sends a comment every 15 seconds, but a quiet build step can still outlast a short read timeout, so the stream path gets one hour. Dhow also sends `X-Accel-Buffering: no` on the stream, which nginx honors on its own. |
-| A read timeout above 25 seconds on `/runner-api/` | Runners wait for work with long polls that hold a request open for up to 25 seconds, and send log batches of up to 1 MiB. The configurations below give the runner plane 90 seconds. |
-| HSTS | Dhow sends `Strict-Transport-Security` itself. The proxies below also set it, so it is present on responses the proxy makes on its own, such as redirects and errors while Dhow restarts, and they replace Dhow's copy so the header appears exactly once. |
+| اسم نطاق كامل، مثل `dhow.example.com` | كوكي الجلسة اسمه `__Host-dhow_session`. راجع [لا مسار فرعي](#لا-مسار-فرعي). |
+| TLS، وضبط `DHOW_PUBLIC_URL` على عنوان `https://` الذي يفتحه المستخدمون | يرفض داو البدء بعنوان عام `http://`، والمتصفحات لا ترسل كوكي الجلسة `Secure` إلا عبر HTTPS. |
+| تمرير `Host` و`Origin` بلا تغيير | كل طلب غير `GET` و`HEAD` و`OPTIONS` يجب أن يحمل `Origin` مساويًا لـ `DHOW_PUBLIC_URL`، وإلا يرد داو بـ `403 CSRF_FAILED`. الوكيل الذي يحذف `Origin` أو يغيّره يعطّل الإعداد وتسجيل الدخول وكل تعديل. |
+| `X-Forwarded-For` مع إضافة عنوان العميل في آخره، و`X-Forwarded-Proto` | يسجّل داو عنوان العميل في سجل الوصول وفي سجل الأحداث، ويحدّ محاولات الدخول لكل عنوان. لا يقرأ `X-Forwarded-For` إلا من الوكلاء المذكورين في `DHOW_TRUSTED_PROXIES`. |
+| حد لحجم الطلب أكبر قليلًا من 1 MiB | يرفض داو الطلب الأكبر من 1 MiB بـ `413 PAYLOAD_TOO_LARGE`. الإعدادات التالية توقف أي طلب أكبر من 2 MB عند الوكيل، وتترك الخطأ الدقيق لداو. |
+| بلا تخزين مؤقت للرد (buffering) ومهلة قراءة طويلة لبث السجل | سجلات التشغيلات المباشرة تُبث من `/api/v1/organizations/<id>/jobs/<jobId>/logs/stream` كـ server-sent events. الوكيل الذي يخزّن الرد يؤخر الأحداث حتى يمتلئ المخزن، فتصل السجلات متأخرة ودفعة واحدة. يرسل داو تعليقًا كل 15 ثانية، لكن خطوة بناء هادئة قد تطول أكثر من مهلة قراءة قصيرة. لذلك يأخذ مسار البث ساعة واحدة. ويرسل داو أيضًا `X-Accel-Buffering: no` على البث، وnginx يحترمها وحده. |
+| مهلة قراءة أكثر من 25 ثانية على `/runner-api/` | تنتظر أجهزة التشغيل العمل بطلبات طويلة (long polls) تبقى مفتوحة حتى 25 ثانية، وترسل دفعات سجلات حتى 1 MiB. الإعدادات التالية تعطي مسار أجهزة التشغيل 90 ثانية. |
+| HSTS | يرسل داو `Strict-Transport-Security` بنفسه. الوكلاء التاليون يضبطونها أيضًا، حتى تظهر في الردود التي يصنعها الوكيل بنفسه، مثل التحويلات والأخطاء أثناء إعادة تشغيل داو. ويستبدلون نسخة داو حتى تظهر الترويسة مرة واحدة بالضبط. |
 
-Dhow listens on `127.0.0.1:8080` by default (`DHOW_LISTEN_ADDR`), and the [Compose stack](compose.md) publishes it on `127.0.0.1:8080` of the host. The nginx and Caddy configurations below proxy to that address, so they work for both.
+يستمع داو على `127.0.0.1:8080` افتراضيًا (`DHOW_LISTEN_ADDR`)، و[حزمة Compose](compose.md) تنشره على `127.0.0.1:8080` في الجهاز. إعدادات nginx وCaddy التالية توجّه الطلبات إلى هذا العنوان، فتعمل مع الطريقتين.
 
-## No sub-path
+## لا مسار فرعي
 
-Dhow cannot be served under a path such as `https://example.com/dhow/`. Give it its own host name, for example a sub-domain.
+لا يمكن تشغيل داو تحت مسار مثل `https://example.com/dhow/`. أعطه اسم نطاق خاصًا به، مثل نطاق فرعي.
 
-- The session cookie uses the `__Host-` prefix. Browsers accept such a cookie only with `Secure`, `Path=/` and no `Domain`, so it always belongs to the whole host.
-- The web app, its assets and the API are served from `/`, `/assets/` and `/api/v1/`.
-- The `Origin` that browsers send never contains a path, and Dhow compares it with `DHOW_PUBLIC_URL`.
+- كوكي الجلسة يستخدم البادئة `__Host-`. المتصفحات تقبل هذا الكوكي فقط مع `Secure` و`Path=/` وبدون `Domain`، فهو دائمًا للنطاق كله.
+- الواجهة وملفاتها والـ API تُخدم من `/` و`/assets/` و`/api/v1/`.
+- الترويسة `Origin` التي ترسلها المتصفحات لا تحتوي مسارًا أبدًا، ويقارنها داو بـ `DHOW_PUBLIC_URL`.
 
-## nginx with certbot
+## nginx مع certbot
 
-This needs nginx 1.25.1 or newer for the `http2 on;` directive. On an older nginx, such as 1.24 on Ubuntu 24.04, delete the `http2 on;` line and change `listen 443 ssl;` to `listen 443 ssl http2;`.
+هذا يحتاج إلى nginx 1.25.1 أو أحدث، بسبب التوجيه `http2 on;`. في nginx أقدم، مثل 1.24 في Ubuntu 24.04، احذف السطر `http2 on;` وغيّر `listen 443 ssl;` إلى `listen 443 ssl http2;`.
 
-1. Point the DNS record of `dhow.example.com` at the host and allow ports 80 and 443 in the firewall.
-2. Install nginx and certbot with its nginx plugin. On Debian and Ubuntu:
+1. وجّه سجل DNS لـ `dhow.example.com` إلى الجهاز، واسمح بالمنفذين 80 و443 في جدار الحماية.
+2. ثبّت nginx وcertbot مع إضافة nginx الخاصة به. في Debian وUbuntu:
 
    ```sh
    sudo apt install nginx certbot python3-certbot-nginx
    ```
 
-3. Get the certificate while nginx still runs its default site. `certonly` leaves your nginx files alone:
+3. احصل على الشهادة بينما يشغّل nginx موقعه الافتراضي. الأمر `certonly` لا يغيّر ملفات nginx:
 
    ```sh
    sudo certbot certonly --nginx -d dhow.example.com
    ```
 
-4. Save this as `/etc/nginx/conf.d/dhow.conf`:
+4. احفظ هذا في `/etc/nginx/conf.d/dhow.conf`:
 
 ```nginx
 map $http_upgrade $dhow_connection {
@@ -102,14 +104,14 @@ server {
 }
 ```
 
-5. Check the file and load it:
+5. افحص الملف وحمّله:
 
    ```sh
    sudo nginx -t
    sudo systemctl reload nginx
    ```
 
-6. Reload nginx whenever certbot renews the certificate:
+6. أعد تحميل nginx كلما جدّد certbot الشهادة:
 
    ```sh
    printf '#!/bin/sh\nsystemctl reload nginx\n' | sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-nginx
@@ -117,26 +119,26 @@ server {
    sudo certbot renew --dry-run
    ```
 
-7. Set `DHOW_PUBLIC_URL=https://dhow.example.com` and `DHOW_TRUSTED_PROXIES` as described in [Trusted proxies](#trusted-proxies), then restart Dhow.
+7. اضبط `DHOW_PUBLIC_URL=https://dhow.example.com` و`DHOW_TRUSTED_PROXIES` كما في [الوكلاء الموثوقون](#الوكلاء-الموثوقون)، ثم أعد تشغيل داو.
 
-What the configuration does:
+ماذا يفعل هذا الإعداد:
 
-- `proxy_set_header Host $http_host` forwards the `Host` header exactly as the browser sent it, port included. `$host` would drop the port.
-- nginx forwards `Origin`, cookies and every other request header unchanged by default. Do not add `proxy_set_header Origin` or `proxy_hide_header` for request headers.
-- `$proxy_add_x_forwarded_for` appends the client address to any `X-Forwarded-For` the client sent. Dhow reads the list from the right, so a forged entry on the left changes nothing. `X-Forwarded-Proto` carries `https`.
-- `client_max_body_size 2m` stops oversized bodies before they reach Dhow.
-- The regular-expression location matches only the log stream. It turns off `proxy_buffering` and raises the read and send timeouts to one hour, so every event reaches the browser at once and a quiet build step does not cut the stream. Every other response keeps nginx's buffering.
-- The `/runner-api/` location gives runner long polls (up to 25 seconds) and log uploads 90 seconds. The `map` and the `Upgrade` and `Connection` headers let WebSocket upgrades through as well.
-- `proxy_hide_header` and `add_header ... always` replace Dhow's `Strict-Transport-Security` with one copy that is also sent on nginx's own responses.
-- To accept IPv6 clients, add `listen [::]:80;` and `listen [::]:443 ssl;` next to the IPv4 `listen` lines. The proxy check runs without IPv6, so those two lines are not part of the tested file.
+- `proxy_set_header Host $http_host` يمرّر ترويسة `Host` كما أرسلها المتصفح تمامًا، مع المنفذ. أما `$host` فيحذف المنفذ.
+- يمرّر nginx الترويسة `Origin` والكوكيز وكل ترويسات الطلب الأخرى بلا تغيير افتراضيًا. لا تضف `proxy_set_header Origin` ولا `proxy_hide_header` لترويسات الطلب.
+- `$proxy_add_x_forwarded_for` يضيف عنوان العميل إلى آخر أي `X-Forwarded-For` أرسله العميل. يقرأ داو القائمة من اليمين، فالقيمة المزوّرة في أولها لا تغيّر شيئًا. و`X-Forwarded-Proto` يحمل `https`.
+- `client_max_body_size 2m` يوقف الطلبات الكبيرة قبل أن تصل إلى داو.
+- الـ location الذي يستخدم تعبيرًا نمطيًا (regular expression) يطابق بث السجل فقط. يوقف `proxy_buffering` ويرفع مهلتي القراءة والإرسال إلى ساعة. هكذا يصل كل حدث إلى المتصفح فورًا، ولا تقطع خطوة بناء هادئة البث. كل الردود الأخرى تبقى مع التخزين المؤقت في nginx.
+- الـ location الخاص بـ `/runner-api/` يعطي طلبات أجهزة التشغيل الطويلة (حتى 25 ثانية) ورفع السجلات 90 ثانية. والـ `map` مع ترويستي `Upgrade` و`Connection` يسمحان بترقيات WebSocket أيضًا.
+- `proxy_hide_header` و`add_header ... always` يستبدلان `Strict-Transport-Security` من داو بنسخة واحدة تُرسل أيضًا في ردود nginx نفسه.
+- لقبول عملاء IPv6، أضف `listen [::]:80;` و`listen [::]:443 ssl;` بجوار أسطر `listen` الخاصة بـ IPv4. فحص الوكيل يعمل بدون IPv6، لذلك هذان السطران ليسا جزءًا من الملف المختبَر.
 
 ## Caddy
 
-Caddy gets and renews the certificate on its own.
+يحصل Caddy على الشهادة ويجدّدها بنفسه.
 
-1. Point the DNS record of `dhow.example.com` at the host and allow ports 80 and 443 in the firewall.
-2. Install Caddy from its [official packages](https://caddyserver.com/docs/install).
-3. Save this as `/etc/caddy/Caddyfile`:
+1. وجّه سجل DNS لـ `dhow.example.com` إلى الجهاز، واسمح بالمنفذين 80 و443 في جدار الحماية.
+2. ثبّت Caddy من [حزمه الرسمية](https://caddyserver.com/docs/install).
+3. احفظ هذا في `/etc/caddy/Caddyfile`:
 
 ```caddyfile
 dhow.example.com {
@@ -162,23 +164,23 @@ dhow.example.com {
 }
 ```
 
-4. Load it with `sudo systemctl reload caddy`.
-5. Set `DHOW_PUBLIC_URL=https://dhow.example.com` and `DHOW_TRUSTED_PROXIES` as described in [Trusted proxies](#trusted-proxies), then restart Dhow.
+4. حمّله بـ `sudo systemctl reload caddy`.
+5. اضبط `DHOW_PUBLIC_URL=https://dhow.example.com` و`DHOW_TRUSTED_PROXIES` كما في [الوكلاء الموثوقون](#الوكلاء-الموثوقون)، ثم أعد تشغيل داو.
 
-What the configuration does:
+ماذا يفعل هذا الإعداد:
 
-- `reverse_proxy` forwards `Host`, `Origin` and cookies unchanged and sets `X-Forwarded-For` and `X-Forwarded-Proto` itself. It replaces any `X-Forwarded-For` that a client sends, unless you list that client in Caddy's own `trusted_proxies` option.
-- `request_body` stops bodies over 2 MB.
-- The `@logstream` matcher sends the log stream through its own `reverse_proxy` with `flush_interval -1`, which writes every event to the browser at once, and `read_timeout 1h`, which keeps a quiet stream open.
-- Every other request goes through the second `reverse_proxy`, whose `read_timeout 90s` covers runner long polls of up to 25 seconds on `/runner-api/`.
-- `header >Strict-Transport-Security` sets HSTS after the response comes back from Dhow, so it replaces Dhow's copy instead of adding a second one.
+- `reverse_proxy` يمرّر `Host` و`Origin` والكوكيز بلا تغيير، ويضبط `X-Forwarded-For` و`X-Forwarded-Proto` بنفسه. ويستبدل أي `X-Forwarded-For` يرسله العميل، إلا إذا ذكرت هذا العميل في خيار `trusted_proxies` الخاص بـ Caddy.
+- `request_body` يوقف الطلبات الأكبر من 2 MB.
+- المطابِق `@logstream` يرسل بث السجل عبر `reverse_proxy` خاص به، مع `flush_interval -1` الذي يكتب كل حدث إلى المتصفح فورًا، و`read_timeout 1h` الذي يُبقي البث الهادئ مفتوحًا.
+- كل طلب آخر يمر عبر `reverse_proxy` الثاني، ومهلته `read_timeout 90s` تكفي طلبات أجهزة التشغيل الطويلة حتى 25 ثانية على `/runner-api/`.
+- `header >Strict-Transport-Security` يضبط HSTS بعد أن يعود الرد من داو، فيستبدل نسخة داو بدل أن يضيف نسخة ثانية.
 
-## Traefik in the Compose stack
+## Traefik داخل حزمة Compose
 
-Traefik runs as one more service of the [Compose stack](compose.md), finds Dhow through Docker labels, and gets the certificate from Let's Encrypt with the TLS-ALPN challenge.
+يعمل Traefik كخدمة إضافية في [حزمة Compose](compose.md)، ويجد داو عبر Docker labels، ويحصل على الشهادة من Let's Encrypt بتحدي TLS-ALPN.
 
-1. Point the DNS record of `dhow.example.com` at the host and allow ports 80 and 443 in the firewall. Nothing else on the host may listen on them.
-2. Save this as `compose.traefik.yaml` next to `compose.yaml`, and replace `dhow.example.com` in the router rule:
+1. وجّه سجل DNS لـ `dhow.example.com` إلى الجهاز، واسمح بالمنفذين 80 و443 في جدار الحماية. لا يجوز أن يستمع عليهما أي برنامج آخر على الجهاز.
+2. احفظ هذا في `compose.traefik.yaml` بجوار `compose.yaml`، واستبدل `dhow.example.com` في قاعدة الـ router:
 
 ```yaml
 services:
@@ -240,7 +242,7 @@ volumes:
   letsencrypt: {}
 ```
 
-3. Add these lines to `.env`. `COMPOSE_FILE` makes every `docker compose` command in the directory use both files:
+3. أضف هذه الأسطر إلى `.env`. المتغير `COMPOSE_FILE` يجعل كل أمر `docker compose` في المجلد يستخدم الملفين:
 
    ```sh
    COMPOSE_FILE=compose.yaml:compose.traefik.yaml
@@ -248,40 +250,40 @@ volumes:
    DHOW_PUBLIC_URL=https://dhow.example.com
    ```
 
-4. Apply it with `docker compose up -d`.
+4. طبّقه بـ `docker compose up -d`.
 
-What the configuration does:
+ماذا يفعل هذا الإعداد:
 
-- Traefik passes `Host`, `Origin` and cookies through unchanged. It sets `X-Forwarded-For` and `X-Forwarded-Proto` itself and drops the `X-Forwarded-*` headers that clients send.
-- Traefik has a fixed address, `172.30.250.2`, on its own `dhow_proxy` network, and the file sets `DHOW_TRUSTED_PROXIES` to it. If `172.30.250.0/24` is already used on the host, change the subnet, `ipv4_address` and `DHOW_TRUSTED_PROXIES` together.
-- Traefik streams responses without buffering by default, so the log stream needs no rule of its own. `writeTimeout=0s` makes sure a long stream is never cut, and `readTimeout=60s` limits how long a client may take to send its request, a 1 MiB log batch from a runner included. Traefik sets no timeout on the response from Dhow, so runner long polls on `/runner-api/` need nothing either.
-- Traefik has no body limit of its own that leaves responses alone: its buffering middleware would also buffer responses and break log streams. Dhow's own 1 MiB limit applies instead.
-- The `dhow-hsts` middleware sets HSTS, and the response carries it once.
-- `ACME_CA_SERVER` defaults to Let's Encrypt production. To try the setup first, set `ACME_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory` in `.env`. When it works, remove that line, run `docker compose down`, delete the `dhow_letsencrypt` volume so the staging certificate is gone, and start again.
-- Traefik reads the Docker socket to find the labels. Access to that socket is root access to the host, so keep the Traefik image pinned and up to date. Pin it by digest the same way as [the Dhow image](compose.md#verify-an-image).
+- يمرّر Traefik الترويسات `Host` و`Origin` والكوكيز بلا تغيير. ويضبط `X-Forwarded-For` و`X-Forwarded-Proto` بنفسه، ويحذف ترويسات `X-Forwarded-*` التي يرسلها العملاء.
+- لـ Traefik عنوان ثابت، `172.30.250.2`، على شبكته الخاصة `dhow_proxy`، والملف يضبط `DHOW_TRUSTED_PROXIES` عليه. إذا كان `172.30.250.0/24` مستخدمًا على الجهاز، فغيّر الشبكة الفرعية و`ipv4_address` و`DHOW_TRUSTED_PROXIES` معًا.
+- يبث Traefik الردود بلا تخزين مؤقت افتراضيًا، فلا يحتاج بث السجل إلى قاعدة خاصة. `writeTimeout=0s` يضمن ألا يُقطع البث الطويل أبدًا، و`readTimeout=60s` يحدّ الوقت الذي يأخذه العميل لإرسال طلبه، ومنه دفعة سجلات 1 MiB من جهاز تشغيل. لا يضع Traefik مهلة على الرد من داو، فلا تحتاج طلبات أجهزة التشغيل الطويلة على `/runner-api/` إلى شيء أيضًا.
+- ليس لدى Traefik حد لحجم الطلب يترك الردود كما هي، فالـ middleware الخاص بالتخزين المؤقت سيخزّن الردود أيضًا ويعطّل بث السجلات. لذلك يعمل حد داو نفسه، 1 MiB.
+- الـ middleware المسمى `dhow-hsts` يضبط HSTS، والرد يحملها مرة واحدة.
+- القيمة الافتراضية لـ `ACME_CA_SERVER` هي خادم Let's Encrypt الحقيقي. لتجربة الإعداد أولًا، اضبط `ACME_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory` في `.env`. عندما يعمل، احذف هذا السطر، وشغّل `docker compose down`، واحذف الـ volume المسمى `dhow_letsencrypt` حتى تختفي شهادة التجربة، ثم ابدأ مرة أخرى.
+- يقرأ Traefik الـ Docker socket ليجد الـ labels. الوصول إلى هذا الـ socket وصول root إلى الجهاز، فثبّت صورة Traefik وحدّثها دائمًا. ثبّتها بالـ digest بالطريقة نفسها التي تثبّت بها [صورة داو](compose.md#تحقق-من-صورة).
 
-## Trusted proxies
+## الوكلاء الموثوقون
 
-Dhow takes the client address from the TCP connection. When that connection comes from an address in `DHOW_TRUSTED_PROXIES`, Dhow reads `X-Forwarded-For` from right to left and takes the first address that is not trusted. The value is a comma-separated list of IP addresses and CIDR ranges.
+يأخذ داو عنوان العميل من اتصال TCP. عندما يأتي هذا الاتصال من عنوان في `DHOW_TRUSTED_PROXIES`، يقرأ داو `X-Forwarded-For` من اليمين إلى اليسار، ويأخذ أول عنوان غير موثوق. القيمة قائمة عناوين IP ونطاقات CIDR مفصولة بفواصل.
 
-| Setup | `DHOW_TRUSTED_PROXIES` |
+| الإعداد | `DHOW_TRUSTED_PROXIES` |
 |---|---|
-| nginx or Caddy on the same host as a Dhow binary on `127.0.0.1:8080` | `127.0.0.1` |
-| nginx or Caddy on the host in front of the Compose stack | The gateway of the `dhow_edge` network, printed by `docker network inspect dhow_edge --format '{{(index .IPAM.Config 0).Gateway}}'`, for example `172.18.0.1` |
-| Traefik from `compose.traefik.yaml` | `172.30.250.2`, already set in the file |
-| A proxy on another machine | That machine's address as Dhow sees it, for example `10.0.0.5` |
-| Cloudflare in front of nginx | The nginx address and every Cloudflare range, see below |
+| nginx أو Caddy على الجهاز نفسه مع ملف داو التنفيذي على `127.0.0.1:8080` | `127.0.0.1` |
+| nginx أو Caddy على الجهاز أمام حزمة Compose | بوابة شبكة `dhow_edge`، ويطبعها `docker network inspect dhow_edge --format '{{(index .IPAM.Config 0).Gateway}}'`، مثل `172.18.0.1` |
+| Traefik من `compose.traefik.yaml` | `172.30.250.2`، وهو مضبوط في الملف بالفعل |
+| وكيل على جهاز آخر | عنوان ذلك الجهاز كما يراه داو، مثل `10.0.0.5` |
+| Cloudflare أمام nginx | عنوان nginx وكل نطاقات Cloudflare. راجع ما يلي |
 
-Get it right in both directions:
+اضبطه صحيحًا في الاتجاهين:
 
-- **Too narrow.** If the proxy in front of Dhow is missing from the list, every request seems to come from the proxy. The audit log shows the proxy's address for every user, and the sign-in throttle counts everyone's failed attempts against that one address: after 20 failures from anyone, sign-in is locked for everyone, for 30 seconds at first and up to 15 minutes.
-- **Too wide.** Never trust a range that clients can connect from, such as `0.0.0.0/0` or a whole office network. A client in a trusted range can put any address in `X-Forwarded-For`, which hides it from the throttle and writes a false address into the audit log.
+- **ضيّق جدًا.** إذا لم يكن الوكيل الذي أمام داو في القائمة، فسيبدو أن كل طلب يأتي من الوكيل. يعرض سجل الأحداث عنوان الوكيل لكل المستخدمين، ويحسب حد الدخول محاولات الجميع الفاشلة على هذا العنوان الواحد. بعد 20 محاولة فاشلة من أي شخص، يُقفل الدخول على الجميع، 30 ثانية في البداية وحتى 15 دقيقة.
+- **واسع جدًا.** لا تثق أبدًا بنطاق يتصل منه العملاء، مثل `0.0.0.0/0` أو شبكة مكتب كاملة. العميل في نطاق موثوق يستطيع وضع أي عنوان في `X-Forwarded-For`. هذا يخفيه عن حد الدخول، ويكتب عنوانًا مزيفًا في سجل الأحداث.
 
-### A chain of proxies (Cloudflare in front of nginx)
+### سلسلة وكلاء (Cloudflare أمام nginx)
 
-With a CDN or load balancer in front of your proxy, every hop between the client and Dhow must be trusted. Cloudflare appends the client address to `X-Forwarded-For`, nginx appends Cloudflare's address, and Dhow walks back over nginx and Cloudflare to the client. If Cloudflare's ranges are missing, Dhow stops at a Cloudflare address, and every visitor who reaches you through the same Cloudflare data center shares one address in the audit log and the throttle.
+مع CDN أو موزّع حمل أمام وكيلك، يجب أن تثق بكل خطوة بين العميل وداو. يضيف Cloudflare عنوان العميل إلى `X-Forwarded-For`، ويضيف nginx عنوان Cloudflare، ثم يرجع داو عبر nginx وCloudflare حتى يصل إلى العميل. إذا لم تكن نطاقات Cloudflare في القائمة، يتوقف داو عند عنوان من Cloudflare. عندها يشترك كل زائر يصل إليك عبر مركز بيانات Cloudflare نفسه في عنوان واحد، في سجل الأحداث وفي حد الدخول.
 
-Cloudflare [publishes its ranges](https://www.cloudflare.com/ips/). Build the value from the current lists on the Dhow host:
+ينشر Cloudflare [نطاقاته](https://www.cloudflare.com/ips/). ابنِ القيمة من القوائم الحالية على جهاز داو:
 
 ```sh
 printf 'DHOW_TRUSTED_PROXIES=127.0.0.1,%s,%s\n' \
@@ -289,25 +291,25 @@ printf 'DHOW_TRUSTED_PROXIES=127.0.0.1,%s,%s\n' \
   "$(curl -fsS https://www.cloudflare.com/ips-v6 | paste -sd, -)"
 ```
 
-Use the address from the table above instead of `127.0.0.1` if nginx reaches Dhow another way, and refresh the list when Cloudflare changes it. The nginx configuration needs no change: `$proxy_add_x_forwarded_for` keeps the addresses Cloudflare sent. A client that bypasses Cloudflare and connects to nginx directly cannot forge its address, because nginx appends the real one and Dhow does not trust it.
+استخدم العنوان من الجدول السابق بدل `127.0.0.1` إذا كان nginx يصل إلى داو بطريقة أخرى، وحدّث القائمة عندما يغيّرها Cloudflare. إعداد nginx لا يحتاج إلى تغيير: `$proxy_add_x_forwarded_for` يحتفظ بالعناوين التي أرسلها Cloudflare. العميل الذي يتجاوز Cloudflare ويتصل بـ nginx مباشرة لا يستطيع تزوير عنوانه، لأن nginx يضيف العنوان الحقيقي، وداو لا يثق به.
 
-Caddy and Traefik replace the `X-Forwarded-For` they receive from untrusted senders, so behind Cloudflare they need the Cloudflare ranges too: the `trusted_proxies static ...` option in Caddy's global `servers` block, or `--entrypoints.websecure.forwardedHeaders.trustedIPs=...` in Traefik. The proxy check covers the chain with nginx only.
+يستبدل Caddy وTraefik ترويسة `X-Forwarded-For` التي تصل من مرسلين غير موثوقين. لذلك يحتاجان أيضًا إلى نطاقات Cloudflare خلفه: الخيار `trusted_proxies static ...` في كتلة `servers` العامة في Caddy، أو `--entrypoints.websecure.forwardedHeaders.trustedIPs=...` في Traefik. فحص الوكيل يختبر السلسلة مع nginx فقط.
 
-## Verify the setup
+## تحقق من الإعداد
 
-1. **Health over HTTPS.** This must print `"Status":"ok"`:
+1. **الصحة عبر HTTPS.** يجب أن يطبع هذا `"Status":"ok"`:
 
    ```sh
    curl -sS https://dhow.example.com/api/v1/health/ready
    ```
 
-2. **One HSTS header.** This must print exactly one line:
+2. **ترويسة HSTS واحدة.** يجب أن يطبع هذا سطرًا واحدًا بالضبط:
 
    ```sh
    curl -sSI https://dhow.example.com/ | grep -i '^strict-transport-security'
    ```
 
-3. **`Origin` gets through.** Send a setup request with a made-up token. Any answer except `CSRF_FAILED` means the proxy kept `Origin`: `SETUP_TOKEN_INVALID` before setup, `SETUP_COMPLETED` after it. The request changes nothing:
+3. **`Origin` يمر.** أرسل طلب إعداد برمز مخترَع. أي رد غير `CSRF_FAILED` يعني أن الوكيل حافظ على `Origin`: `SETUP_TOKEN_INVALID` قبل الإعداد، و`SETUP_COMPLETED` بعده. الطلب لا يغيّر شيئًا:
 
    ```sh
    curl -sS -X POST https://dhow.example.com/api/v1/setup \
@@ -315,25 +317,25 @@ Caddy and Traefik replace the `X-Forwarded-For` they receive from untrusted send
      -d '{"SetupToken":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","OwnerName":"Check","Email":"check@example.com","Password":"check-only-password","OrganizationName":"Check","OrganizationSlug":"check"}'
    ```
 
-4. **The client address.** Every request appears in Dhow's log as an `http request` line with a `client_ip` field. With the Compose stack:
+4. **عنوان العميل.** كل طلب يظهر في سجل داو كسطر `http request` فيه حقل `client_ip`. مع حزمة Compose:
 
    ```sh
    docker compose logs dhow | grep '"path":"/api/v1/health/ready"' | tail -1
    ```
 
-   `client_ip` must be the address of the machine you ran `curl` on, as the internet sees it. If it is the proxy's address, fix `DHOW_TRUSTED_PROXIES`.
+   يجب أن يكون `client_ip` عنوان الجهاز الذي شغّلت عليه `curl`، كما يراه الإنترنت. إذا كان عنوان الوكيل، فأصلح `DHOW_TRUSTED_PROXIES`.
 
-5. **Sign in from a browser.** Open `https://dhow.example.com`, create the owner with the setup link (see [Create the first owner](compose.md#create-the-first-owner)) or sign in. In the browser's developer tools, the cookie `__Host-dhow_session` must be listed with `Secure` and `HttpOnly`. The sign-in event in the audit log must show your address.
+5. **سجّل الدخول من المتصفح.** افتح `https://dhow.example.com`، وأنشئ حساب صاحب النسخة برابط الإعداد (راجع [أنشئ حساب صاحب النسخة الأول](compose.md#أنشئ-حساب-صاحب-النسخة-الأول)) أو سجّل الدخول. في أدوات المطوّر في المتصفح، يجب أن يظهر الكوكي `__Host-dhow_session` مع `Secure` و`HttpOnly`. وحدث الدخول في سجل الأحداث يجب أن يعرض عنوانك.
 
-## How these configurations are tested
+## كيف نختبر هذه الإعدادات
 
-`make proxy-check` builds the Dhow image and runs [`deploy/proxy-check/run.sh`](../../deploy/proxy-check/run.sh). It needs Docker, `curl` and `openssl`, and the free local ports 18443, 18080 and 18081. For each of nginx, nginx behind a second proxy that stands in for Cloudflare, Caddy and Traefik, it starts PostgreSQL 18 with TLS and Dhow with `DHOW_PUBLIC_URL=https://dhow.example.com:18443`, behind the configuration files shown on this page. nginx uses a self-signed certificate, Caddy its internal CA, and Traefik a certificate it gets over ACME from a local [Pebble](https://github.com/letsencrypt/pebble) server. Then it checks, through the proxy:
+`make proxy-check` يبني صورة داو ويشغّل [`deploy/proxy-check/run.sh`](../../deploy/proxy-check/run.sh). يحتاج إلى Docker و`curl` و`openssl`، وإلى المنافذ المحلية الفارغة 18443 و18080 و18081. لكل من nginx، وnginx خلف وكيل ثانٍ يقوم بدور Cloudflare، وCaddy، وTraefik، يشغّل PostgreSQL 18 مع TLS، وداو مع `DHOW_PUBLIC_URL=https://dhow.example.com:18443`، خلف ملفات الإعداد المعروضة في هذه الصفحة. يستخدم nginx شهادة موقّعة ذاتيًا، وCaddy سلطة الشهادات الداخلية الخاصة به، وTraefik شهادة يحصل عليها عبر ACME من خادم [Pebble](https://github.com/letsencrypt/pebble) محلي. ثم يتحقق، عبر الوكيل، من:
 
-- `/api/v1/health/ready` over verified TLS, one HSTS header, and the HTTP to HTTPS redirect.
-- `POST /api/v1/setup` from a foreign `Origin` is `CSRF_FAILED`, and the real setup with the right `Origin` succeeds.
-- The `Host`, `Origin`, `X-Forwarded-For` and `X-Forwarded-Proto` headers as they reach Dhow's socket, captured with `tcpdump` next to Dhow.
-- The client address in Dhow's access log and in the audit event of a sign-in, with a forged `X-Forwarded-For` in the request.
-- The `__Host-dhow_session` cookie attributes, the cookie reaching Dhow, and a 3 MiB body refused with `413`.
-- The runner plane answering through the proxy on `/runner-api/`, and the log stream path reaching Dhow with the session cookie.
+- `/api/v1/health/ready` عبر TLS موثّق، وترويسة HSTS واحدة، والتحويل من HTTP إلى HTTPS.
+- `POST /api/v1/setup` من `Origin` غريب يرد بـ `CSRF_FAILED`، والإعداد الحقيقي مع `Origin` الصحيح ينجح.
+- ترويسات `Host` و`Origin` و`X-Forwarded-For` و`X-Forwarded-Proto` كما تصل إلى socket داو، ونلتقطها بـ `tcpdump` بجوار داو.
+- عنوان العميل في سجل الوصول في داو، وفي حدث الدخول في سجل الأحداث، مع `X-Forwarded-For` مزوّر في الطلب.
+- خصائص الكوكي `__Host-dhow_session`، ووصول الكوكي إلى داو، ورفض طلب حجمه 3 MiB بـ `413`.
+- رد مسار أجهزة التشغيل عبر الوكيل على `/runner-api/`، ووصول مسار بث السجل إلى داو مع كوكي الجلسة.
 
-A Go test in `deploy/proxy-check` fails if a configuration on this page differs from the file the script runs. The check does not run certbot, Let's Encrypt or Cloudflare, and it runs without IPv6.
+يفشل اختبار Go في `deploy/proxy-check` إذا اختلف إعداد في هذه الصفحة عن الملف الذي يشغّله السكربت. الفحص لا يشغّل certbot ولا Let's Encrypt ولا Cloudflare، ويعمل بدون IPv6.

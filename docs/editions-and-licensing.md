@@ -1,81 +1,83 @@
-# Editions and licensing
+[English](en/editions-and-licensing.md)
 
-Status: **Draft**. Decisions: ADR-0017 to ADR-0020.
+# النسخ والترخيص
 
-## 1. Principle
+الحالة: **مسودة**. القرارات: من ADR-0017 إلى ADR-0020.
 
-> **Community = one team can run Dhow in production, securely and without limits.**
-> **Paid = an organization needs governance, compliance, scale or support across many teams.**
+## 1. المبدأ
 
-**Security basics are never paywalled.** Every edition includes 2FA, Passkeys, encryption, isolation, basic RBAC, the audit log, security fixes, backups and upgrades.
+> **Community = فريق واحد يستطيع تشغيل داو (Dhow) في الإنتاج، بأمان وبلا حدود.**
+> **المدفوع = مؤسسة تحتاج إلى حوكمة، أو امتثال (compliance)، أو حجم كبير، أو دعم لعدة فرق.**
 
-## 2. Licensing model (ADR-0017)
+**أساسيات الأمان ليست مدفوعة أبدًا.** كل نسخة فيها التحقق بخطوتين، ومفاتيح المرور، والتشفير، والعزل، والصلاحيات الأساسية (RBAC)، وسجل الأحداث، والإصلاحات الأمنية، والنسخ الاحتياطي، والترقيات.
 
-- **Core:** AGPL-3.0.
-  - Companies may use it commercially, for free, without restriction.
-  - Anyone who offers a modified Dhow as a network service must publish their changes.
-- **`ee/` directory:** commercial license. Its source is visible in the same repository, but using it requires a valid license file.
-- **Contributions:** made under the DCO (Developer Certificate of Origin). *Open question:* whether a CLA is needed to keep relicensing options. Decide this before accepting external contributions to `ee/`.
+## 2. نموذج الترخيص (ADR-0017)
 
-## 3. Feature matrix
+- **الأساس (Core):** AGPL-3.0.
+  - تستطيع الشركات استخدامه تجاريًا، مجانًا، وبلا قيود.
+  - من يقدّم داو معدّلًا كخدمة عبر الشبكة يجب أن ينشر تعديلاته.
+- **المجلد `ee/`:** ترخيص تجاري. الكود المصدري ظاهر في المستودع نفسه، لكن استخدامه يحتاج إلى ملف ترخيص صالح.
+- **المساهمات:** تتم تحت DCO (Developer Certificate of Origin). *سؤال مفتوح:* هل نحتاج إلى CLA لنحتفظ بخيارات تغيير الترخيص؟ يجب حسم ذلك قبل قبول مساهمات خارجية في `ee/`.
 
-| Capability | Community | Business | Enterprise |
+## 3. جدول الميزات
+
+| الميزة | Community | Business | Enterprise |
 |---|:-:|:-:|:-:|
-| Users, projects, runners, deployments | Unlimited | Unlimited | Unlimited |
-| Isolated runners (rootless containers, gVisor) | ✅ | ✅ | ✅ |
-| Firecracker microVM isolation | — | — | ✅ |
-| `.dhow.yml` + visual editor, matrix, artifacts, cache | ✅ | ✅ | ✅ |
-| All targets (SSH, Docker, Kubernetes, Static/CDN/SFTP) | ✅ | ✅ | ✅ |
-| Atomic releases, health checks, auto-rollback | ✅ | ✅ | ✅ |
-| Password + TOTP + Passkeys + OIDC login | ✅ | ✅ | ✅ |
-| SAML 2.0, SCIM, group→team sync | — | ✅ | ✅ |
-| Fixed roles + Teams | ✅ | ✅ | ✅ |
-| Custom roles | — | ✅ | ✅ |
-| OPA policies (deploy policy-as-code) | — | — | ✅ |
-| Environments + protection rules (branches, single reviewer) | ✅ | ✅ | ✅ |
-| Multiple required reviewers, deployment windows, freezes | — | ✅ | ✅ |
-| Canary / blue-green / rolling with analysis | Rolling | ✅ | ✅ |
-| Built-in envelope-encrypted secrets, workload OIDC | ✅ | ✅ | ✅ |
-| HashiCorp Vault / AWS, GCP, Azure KMS / HSM | — | — | ✅ |
-| Audit log | 90 days | 1 year + export | Custom retention + SIEM streaming + tamper-evidence verification tooling |
-| High availability (multiple control-plane replicas) | — | ✅ | ✅ |
-| Air-gapped install bundle | — | — | ✅ |
-| Notifications: Email, webhook, Slack, Teams, Telegram, Discord, WhatsApp | ✅ | ✅ | ✅ |
-| Interactive approvals in Slack and Teams | — | ✅ | ✅ |
-| Support | Community | Email, next business day | 24/7 SLA, onboarding, Arabic support |
+| المستخدمون، والمشاريع، وأجهزة التشغيل، والنشر | بلا حد | بلا حد | بلا حد |
+| أجهزة تشغيل معزولة (حاويات بلا root، وgVisor) | ✅ | ✅ | ✅ |
+| عزل Firecracker microVM | — | — | ✅ |
+| `.dhow.yml` + المحرر المرئي، وmatrix، والملفات الناتجة، والـ cache | ✅ | ✅ | ✅ |
+| كل الأهداف (SSH، وDocker، وKubernetes، وStatic/CDN/SFTP) | ✅ | ✅ | ✅ |
+| الإصدارات الذرية، وفحوص الصحة، والرجوع التلقائي | ✅ | ✅ | ✅ |
+| الدخول بكلمة السر + TOTP + مفاتيح المرور + OIDC | ✅ | ✅ | ✅ |
+| SAML 2.0، وSCIM، ومزامنة المجموعات مع الفرق | — | ✅ | ✅ |
+| الأدوار الثابتة + الفرق | ✅ | ✅ | ✅ |
+| الأدوار المخصصة | — | ✅ | ✅ |
+| سياسات OPA (سياسة النشر ككود) | — | — | ✅ |
+| البيئات + قواعد الحماية (الفروع، ومراجع واحد) | ✅ | ✅ | ✅ |
+| عدة مراجعين مطلوبين، ونوافذ النشر، وفترات التجميد | — | ✅ | ✅ |
+| Canary / blue-green / rolling مع التحليل | Rolling | ✅ | ✅ |
+| أسرار مدمجة بالتشفير المغلّف، وOIDC للأحمال | ✅ | ✅ | ✅ |
+| HashiCorp Vault / AWS وGCP وAzure KMS / HSM | — | — | ✅ |
+| سجل الأحداث | 90 يومًا | سنة + تصدير | مدة احتفاظ مخصصة + بث إلى SIEM + أدوات التحقق من عدم التلاعب |
+| التوفر العالي (عدة نسخ من لوحة التحكم) | — | ✅ | ✅ |
+| حزمة تثبيت بلا إنترنت (air-gapped) | — | — | ✅ |
+| الإشعارات: البريد، وwebhook، وSlack، وTeams، وTelegram، وDiscord، وWhatsApp | ✅ | ✅ | ✅ |
+| موافقات تفاعلية في Slack وTeams | — | ✅ | ✅ |
+| الدعم | المجتمع | بالبريد، في يوم العمل التالي | 24/7 مع SLA، ومساعدة في البداية، ودعم بالعربية |
 
-The matrix is a draft. The rule for moving any line is the principle in §1.
+الجدول مسودة. قاعدة نقل أي سطر هي المبدأ في §1.
 
-## 4. Pricing (ADR-0018, ADR-0019)
+## 4. التسعير (ADR-0018، ADR-0019)
 
-- **Business:** priced per **active user** per month, billed monthly or yearly. An active user is anyone who signed in or triggered an action during the billing period. Bots and API tokens are free.
-- **Enterprise:** custom contracts.
-- **Community** has **no numeric limits** at all. The difference between editions is capabilities only.
+- **Business:** السعر لكل **مستخدم نشط** في الشهر، بفاتورة شهرية أو سنوية. المستخدم النشط هو كل من سجّل الدخول أو بدأ إجراءً خلال فترة الفاتورة. البوتات ومفاتيح API مجانية.
+- **Enterprise:** عقود مخصصة.
+- **Community** ليس فيها **أي حدود رقمية** أبدًا. الفرق بين النسخ في الميزات فقط.
 
-## 5. License enforcement
+## 5. تطبيق الترخيص
 
-- A **license file** is a JSON payload signed with Ed25519. It contains the org, edition, seat count, expiry and feature flags. The public key is embedded in the binary, so verification works **offline** and never needs to phone home. This matters for air-gapped customers.
-- Code checks entitlements in **one place**: `entitlements.Has(feature.MultiReviewerApprovals)`. Feature code never parses license files.
-- **Expiry and overage:**
-  - The admin gets warnings 30 days before expiry, then a 14-day grace period.
-  - After that, paid features **degrade to Community behaviour**. Existing configuration is kept, read-only.
-  - Dhow **never stops deployments, never locks users out, and never deletes data** because of licensing.
-- **Enforcement philosophy:** we accept that the check can be patched out. Dhow targets honest organizations. Real enforcement is the license terms plus the value of support and updates, not DRM.
+- **ملف الترخيص** بيانات JSON موقّعة بـ Ed25519. فيه المؤسسة، والنسخة، وعدد المقاعد، وتاريخ الانتهاء، والميزات المفعّلة. المفتاح العام مدمج في الملف التنفيذي، لذلك يعمل التحقق **بلا إنترنت**، ولا يحتاج أبدًا إلى الاتصال بنا. هذا مهم للعملاء الذين يعملون بلا إنترنت.
+- يفحص الكود الاستحقاقات في **مكان واحد**: `entitlements.Has(feature.MultiReviewerApprovals)`. كود الميزات لا يقرأ ملفات الترخيص أبدًا.
+- **الانتهاء والتجاوز:**
+  - يحصل المدير على تحذيرات قبل الانتهاء بـ 30 يومًا، ثم مهلة 14 يومًا.
+  - بعد ذلك، **ترجع الميزات المدفوعة إلى سلوك Community**. نحتفظ بالإعدادات الموجودة للقراءة فقط.
+  - داو **لا يوقف النشر أبدًا، ولا يقفل المستخدمين أبدًا، ولا يحذف البيانات أبدًا** بسبب الترخيص.
+- **فلسفة التطبيق:** نقبل أن الفحص يمكن تعطيله بتعديل الكود. داو موجّه للمؤسسات الأمينة. التطبيق الحقيقي هو شروط الترخيص، مع قيمة الدعم والتحديثات، وليس DRM.
 
-## 6. Telemetry
+## 6. بيانات الاستخدام (Telemetry)
 
-- Telemetry is **opt-in**, anonymous and aggregate: version, edition, approximate counts and feature usage. It never includes code, names, hostnames or secrets.
-- Exactly what is sent is documented, and admins can see the full payload in the UI.
+- بيانات الاستخدام **اختيارية**، ومجهولة، ومجمّعة: الإصدار، والنسخة، وأعداد تقريبية، واستخدام الميزات. لا تحتوي أبدًا الكود أو الأسماء أو أسماء الأجهزة أو الأسرار.
+- ما نرسله موثّق بالضبط، ويستطيع المديرون رؤية البيانات الكاملة في الواجهة.
 
-## 7. Managed cloud (ADR-0020)
+## 7. السحابة المُدارة (ADR-0020)
 
-Dhow will later offer a **hosted control plane, with runners on the customer's infrastructure** (the Buildkite model). It will launch only after the self-hosted product is stable. The architecture already supports it:
-- multi-org;
-- outbound-only runners;
-- secrets decrypted only for leased jobs.
+سيقدّم داو لاحقًا **لوحة تحكم مستضافة، مع أجهزة تشغيل على بنية العميل** (نموذج Buildkite). لن نطلقها إلا بعد أن يستقر المنتج الذي يثبّته العميل بنفسه. المعمارية تدعمها بالفعل:
+- تعدد المؤسسات؛
+- أجهزة تشغيل تتصل إلى الخارج فقط؛
+- أسرار لا تُفك إلا للتشغيلات المحجوزة.
 
-## 8. Revenue lines (priority order)
+## 8. مصادر الدخل (بترتيب الأولوية)
 
-1. Business and Enterprise licenses for self-hosted installs.
-2. The managed control plane (later).
-3. Services: onboarding, migration from Jenkins or custom scripts, and Arabic-language support.
+1. تراخيص Business وEnterprise للتثبيتات عند العملاء.
+2. لوحة التحكم المُدارة (لاحقًا).
+3. الخدمات: المساعدة في البداية، والانتقال من Jenkins أو السكربتات الخاصة، والدعم باللغة العربية.

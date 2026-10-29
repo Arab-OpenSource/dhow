@@ -1,26 +1,28 @@
-# Chaos scenarios
+[English](../en/runner/chaos.md)
 
-The chaos suite (`apps/runner/Test/Chaos`) runs the real `dhow-server` and `dhow-runner` as processes, with the Podman driver, against PostgreSQL 18. It then breaks things on purpose and checks that a job never runs twice at once and that nothing is left behind. The design is in [ADR-0058](../../Plan/ADR/0058-graded-kill-and-chaos-suite.md).
+# سيناريوهات الفوضى
 
-## What it checks
+مجموعة اختبارات الفوضى (`apps/runner/Test/Chaos`) تشغّل `dhow-server` و`dhow-runner` الحقيقيين كعمليات، مع مشغّل Podman، وقاعدة PostgreSQL 18. ثم تعطّل أشياء عن قصد، وتتأكد أن التشغيل (job) لا يعمل مرتين في الوقت نفسه أبدًا، وأن لا شيء يبقى بعده. التصميم في [ADR-0058](../../Plan/ADR/0058-graded-kill-and-chaos-suite.md).
 
-| Scenario | Expected outcome |
+## ما تفحصه
+
+| السيناريو | النتيجة المتوقعة |
 |---|---|
-| A step ignores `SIGTERM` | It dies by `SIGKILL` after `DHOW_RUNNER_CANCEL_GRACE`, and the job ends `canceled`. |
-| A step forks a process out of its process group | The process dies with the sandbox, and no process of a job user namespace is left on the host. |
-| `kill -9` of the runner during a step that is not mutating | The sandbox is gone within 3 seconds. The restarted runner reports the attempt, the job runs once more and succeeds, and the two attempts never overlap. |
-| `kill -9` of the runner after a mutating step began | The job ends `lost` with `LOST_AFTER_MUTATION` and is never run again. |
-| The server is down for 20 seconds | The job carries on without a retry. |
-| The server is down for 90 seconds | The runner fences itself and kills the sandbox within 35 seconds. When the server comes back, it retries the job once, with no overlap. |
-| The network between the runner and the server is a blackhole for 60 seconds | Same as the 90-second outage. |
-| PostgreSQL restarts during a job | The job succeeds without a retry. |
-| The job is canceled while its image is still being pulled | The job ends `canceled`, and no sandbox starts. |
+| خطوة تتجاهل `SIGTERM` | تموت بـ `SIGKILL` بعد `DHOW_RUNNER_CANCEL_GRACE`، وينتهي التشغيل بـ `canceled`. |
+| خطوة تنشئ عملية خارج مجموعة عملياتها | تموت العملية مع البيئة المعزولة، ولا تبقى على الجهاز أي عملية من user namespace لتشغيل. |
+| `kill -9` لجهاز التشغيل أثناء خطوة لا تغيّر شيئًا | تختفي البيئة المعزولة خلال 3 ثوانٍ. يبلغ جهاز التشغيل بعد إعادة تشغيله عن المحاولة، ويعمل التشغيل مرة أخرى وينجح، ولا تتداخل المحاولتان أبدًا. |
+| `kill -9` لجهاز التشغيل بعد بدء خطوة تغيّر شيئًا | ينتهي التشغيل بـ `lost` مع `LOST_AFTER_MUTATION`، ولا يعمل مرة أخرى أبدًا. |
+| السيرفر متوقف 20 ثانية | يستمر التشغيل بدون إعادة محاولة. |
+| السيرفر متوقف 90 ثانية | يوقف جهاز التشغيل نفسه ويقتل البيئة المعزولة خلال 35 ثانية. عندما يعود السيرفر، يعيد محاولة التشغيل مرة واحدة، بلا تداخل. |
+| الشبكة بين جهاز التشغيل والسيرفر تبتلع كل شيء (blackhole) 60 ثانية | مثل توقف 90 ثانية. |
+| PostgreSQL يُعاد تشغيله أثناء تشغيل | ينجح التشغيل بدون إعادة محاولة. |
+| إلغاء التشغيل بينما صورته ما زالت تُسحب | ينتهي التشغيل بـ `canceled`، ولا تبدأ أي بيئة معزولة. |
 
-To detect two attempts running at the same time, each job calls a small HTTP sink on the host once a second through its egress proxy. Every call carries `DHOW_ATTEMPT_ID` and `DHOW_FENCING_TOKEN`. If an older attempt makes a call after a newer one has started, that is an overlap, and the test fails.
+لاكتشاف محاولتين تعملان في الوقت نفسه، يتصل كل تشغيل بخادم HTTP صغير على الجهاز مرة كل ثانية، عبر وكيل الخروج الخاص به. كل اتصال يحمل `DHOW_ATTEMPT_ID` و`DHOW_FENCING_TOKEN`. إذا اتصلت محاولة أقدم بعد أن بدأت محاولة أحدث، فهذا تداخل، ويفشل الاختبار.
 
-## Running it
+## تشغيلها
 
-It needs a Linux host like the [isolation suite](README.md#the-sandbox) does: Podman 5.4 or newer, `crun`, `passt`, `uidmap`, cgroup v2 delegation and sub-ids. It also needs Internet access to pull `postgres:18` and `registry:2`, and an `/etc/hosts` entry for the sink:
+تحتاج إلى جهاز Linux مثل الذي تحتاجه [مجموعة العزل](README.md#البيئة-المعزولة): Podman 5.4 أو أحدث، و`crun`، و`passt`، و`uidmap`، وتفويض cgroup v2، وsub-ids. وتحتاج أيضًا إلى اتصال بالإنترنت لسحب `postgres:18` و`registry:2`، وإلى سطر في `/etc/hosts` للخادم الصغير:
 
 ```bash
 echo "127.0.0.1 sink.dhow.test" | sudo tee -a /etc/hosts
@@ -30,12 +32,12 @@ echo "127.0.0.1 sink.dhow.test" | sudo tee -a /etc/hosts
 make runner-chaos CHAOS_RUN="systemd-run --user --pipe --wait --collect -p Delegate=yes --"
 ```
 
-The suite takes 10 to 15 minutes. It sets up everything it needs in a fresh directory under `/tmp`:
+تأخذ المجموعة من 10 إلى 15 دقيقة. تجهّز كل ما تحتاجه في مجلد جديد تحت `/tmp`:
 
-- a throwaway CA;
-- a TLS registry on `localhost:5000`, with a slow path on `localhost:5001`;
-- the server, and a runner registered through the real API.
+- سلطة شهادات مؤقتة؛
+- سجل صور مع TLS على `localhost:5000`، ومسار بطيء على `localhost:5001`؛
+- السيرفر، وجهاز تشغيل مسجّل عبر الـ API الحقيقي.
 
-It removes all of this when it ends. If a scenario fails, the server and runner logs are in that directory.
+تحذف كل ذلك عندما تنتهي. إذا فشل سيناريو، فسجلات السيرفر وجهاز التشغيل في ذلك المجلد.
 
-In CI the suite runs nightly, on demand from the Actions tab, and on any pull request that carries the `chaos` label.
+في CI تعمل المجموعة كل ليلة، وعند الطلب من تبويب Actions، ومع أي pull request عليه الوسم `chaos`.

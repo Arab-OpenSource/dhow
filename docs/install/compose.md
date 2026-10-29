@@ -1,14 +1,16 @@
-# Install with Docker Compose
+[English](../en/install/compose.md)
 
-This is the default install method ([ADR-0024](../../Plan/ADR/0024-install-methods.md)). It starts Dhow and its own PostgreSQL 18 on one host, with secure defaults and no manual secret handling. For other methods and the requirements they share, see [Choose an install method](README.md).
+# التثبيت بـ Docker Compose
 
-## Requirements
+هذه هي طريقة التثبيت الافتراضية ([ADR-0024](../../Plan/ADR/0024-install-methods.md)). تشغّل داو (Dhow) ومعه PostgreSQL 18 الخاص به على جهاز واحد، بإعدادات آمنة افتراضيًا، ومن غير أن تتعامل مع الأسرار بيدك. للطرق الأخرى والمتطلبات المشتركة بينها، راجع [اختر طريقة التثبيت](README.md).
 
-- Docker Engine 24 or newer with the Compose plugin (`docker compose version`).
-- `openssl` and `bash` on the host, for `init.sh`.
-- A reverse proxy that terminates TLS in front of Dhow. Dhow itself speaks plain HTTP on port 8080 and refuses to start with an `http://` public URL. [Put Dhow behind a reverse proxy](reverse-proxy.md) has tested configurations for nginx, Caddy and Traefik.
+## المتطلبات
 
-## Quick start
+- Docker Engine 24 أو أحدث، مع Compose plugin (`docker compose version`).
+- `openssl` و`bash` على الجهاز، لتشغيل `init.sh`.
+- وكيل عكسي (reverse proxy) أمام داو يتولى TLS. داو نفسه يتكلم HTTP العادي على المنفذ 8080، ويرفض أن يبدأ إذا كان العنوان العام `http://`. في [ضع داو خلف وكيل عكسي](reverse-proxy.md) إعدادات مجرَّبة لـ nginx وCaddy وTraefik.
+
+## البدء السريع
 
 ```sh
 git clone --depth 1 https://github.com/Khaymah/dhow.git
@@ -17,40 +19,40 @@ cd dhow/deploy/compose
 docker compose up -d
 ```
 
-To avoid cloning the repository, download `compose.yaml` and `init.sh` from the `deploy/compose` directory of a release tag into an empty directory, then run `chmod +x init.sh`.
+إذا كنت لا تريد نسخ المستودع (repository) كله، فنزّل `compose.yaml` و`init.sh` من مجلد `deploy/compose` في وسم إصدار (release tag) إلى مجلد فارغ، ثم شغّل `chmod +x init.sh`.
 
-`init.sh` writes `.env` next to the Compose file with:
+يكتب `init.sh` الملف `.env` بجوار ملف Compose، وفيه:
 
-| Variable | Value |
+| المتغير | القيمة |
 |---|---|
-| `POSTGRES_PASSWORD` | 24 random bytes as hex. |
-| `DHOW_SECRET_KEY` | 32 random bytes as hex. |
-| `DHOW_PUBLIC_URL` | The URL you passed. It defaults to `https://dhow.localhost`, which is only a placeholder for a first look. |
+| `POSTGRES_PASSWORD` | 24 بايت عشوائية بصيغة hex. |
+| `DHOW_SECRET_KEY` | 32 بايت عشوائية بصيغة hex. |
+| `DHOW_PUBLIC_URL` | العنوان الذي مرّرته. قيمته الافتراضية `https://dhow.localhost`، وهي مجرد قيمة مؤقتة لإلقاء نظرة أولى. |
 
-The file has mode `0600`, and `init.sh` refuses to overwrite an existing `.env`. Back up `DHOW_SECRET_KEY` somewhere safe: without it, stored secrets cannot be decrypted, and a new key cannot read old data.
+صلاحيات الملف `0600`، و`init.sh` يرفض الكتابة فوق ملف `.env` موجود. احفظ نسخة من `DHOW_SECRET_KEY` في مكان آمن. بدونه لا يمكن فك الأسرار المحفوظة، والمفتاح الجديد لا يقرأ البيانات القديمة.
 
-`docker compose up -d` waits for PostgreSQL to be healthy, applies the database migrations, and starts Dhow. Check it:
+ينتظر `docker compose up -d` حتى يصبح PostgreSQL جاهزًا، ثم يطبّق تحديثات قاعدة البيانات (migrations)، ثم يشغّل داو. تحقّق من ذلك:
 
 ```sh
 docker compose ps
 curl -s http://127.0.0.1:8080/api/v1/health/ready
 ```
 
-Dhow is published on the loopback interface only, so it is not reachable from the network until you put a reverse proxy in front of it. Opening `http://127.0.0.1:8080` on the same host shows the web app, but setup and sign-in only work from the `DHOW_PUBLIC_URL` address: the browser sends that address as `Origin`, and the session cookie needs HTTPS.
+داو منشور على واجهة loopback فقط، فلا يصل إليه أحد من الشبكة حتى تضع أمامه وكيلًا عكسيًا. إذا فتحت `http://127.0.0.1:8080` على الجهاز نفسه سترى الواجهة، لكن الإعداد وتسجيل الدخول لا يعملان إلا من عنوان `DHOW_PUBLIC_URL`. السبب أن المتصفح يرسل هذا العنوان في `Origin`، وكوكي الجلسة يحتاج إلى HTTPS.
 
-Follow [Put Dhow behind a reverse proxy](reverse-proxy.md) for nginx, Caddy or Traefik. It covers the headers Dhow needs, `DHOW_TRUSTED_PROXIES` and how to check the result. Traefik can run inside this Compose project as an extra file. Set `DHOW_PUBLIC_URL` in `.env` to the public `https://` address and run `docker compose up -d` again to apply it.
+اتبع [ضع داو خلف وكيل عكسي](reverse-proxy.md) لإعداد nginx أو Caddy أو Traefik. يشرح الدليل الترويسات (headers) التي يحتاجها داو، و`DHOW_TRUSTED_PROXIES`، وكيف تتحقق من النتيجة. يمكن تشغيل Traefik داخل مشروع Compose هذا بملف إضافي. اضبط `DHOW_PUBLIC_URL` في `.env` على عنوان `https://` العام، ثم شغّل `docker compose up -d` مرة أخرى لتطبيقه.
 
-## Create the first owner
+## أنشئ حساب صاحب النسخة الأول
 
-A new instance has no users, and public registration is closed. On every start without an owner, Dhow logs a one-time setup link. It is valid for one hour and works once:
+السيرفر الجديد ليس فيه مستخدمون، والتسجيل العام مغلق. في كل تشغيل من غير صاحب نسخة، يكتب داو في السجل رابط إعداد يعمل مرة واحدة. صلاحيته ساعة واحدة:
 
 ```sh
 docker compose logs dhow | grep setup_url
 ```
 
-The token is the part after the `#`. Open the whole link in a browser. The setup page reads the token, removes it from the address bar at once, and asks for your name, email, password and the organization name. When you submit, it creates the owner and the first organization and signs you in. The page works only from this link: opening `/setup` without the token explains where to find it.
+الرمز (token) هو الجزء الذي بعد `#`. افتح الرابط كاملًا في المتصفح. صفحة الإعداد تقرأ الرمز وتحذفه من شريط العنوان فورًا، ثم تطلب اسمك وبريدك وكلمة السر واسم المؤسسة. عند الإرسال تنشئ حساب صاحب النسخة وأول مؤسسة، وتسجّل دخولك. الصفحة تعمل من هذا الرابط فقط. إذا فتحت `/setup` من غير الرمز، فستشرح لك أين تجده.
 
-The same step is one API call if you prefer a terminal. The `Origin` header must equal `DHOW_PUBLIC_URL`:
+الخطوة نفسها طلب API واحد إذا كنت تفضّل الطرفية. يجب أن تكون ترويسة `Origin` مساوية لـ `DHOW_PUBLIC_URL`:
 
 ```sh
 curl -sS -X POST https://dhow.example.com/api/v1/setup \
@@ -58,53 +60,53 @@ curl -sS -X POST https://dhow.example.com/api/v1/setup \
   -d '{"SetupToken":"<token>","OwnerName":"Mona","Email":"mona@example.com","Password":"<12 to 128 characters>","OrganizationName":"Acme","OrganizationSlug":"acme"}'
 ```
 
-If the hour runs out, or you lose the link, restart Dhow with `docker compose restart dhow` to get a new one. The older link stops working at once. After setup the link is gone and `GET /api/v1/meta` reports `SetupRequired: false`.
+إذا انتهت الساعة أو أضعت الرابط، فأعد تشغيل داو بـ `docker compose restart dhow` لتحصل على رابط جديد. الرابط القديم يتوقف فورًا. بعد الإعداد يختفي الرابط، ويُرجع `GET /api/v1/meta` القيمة `SetupRequired: false`.
 
-Sign-in uses a cookie that lives for at most 7 days and ends after 12 hours without activity (4 hours for owners and admins), so keep your reverse proxy forwarding cookies and the `Origin` header unchanged.
+يستخدم تسجيل الدخول كوكي يعيش 7 أيام بالأكثر، وينتهي بعد 12 ساعة بلا نشاط (4 ساعات لأصحاب المؤسسات والمديرين). لذلك اجعل الوكيل العكسي يمرّر الكوكيز وترويسة `Origin` كما هي.
 
-## Configuration
+## الإعدادات
 
-Set these in `.env`. Compose reads the file automatically, and values exported in your shell take precedence. [Configuration](configuration.md) describes every `DHOW_*` variable and its validation. The mail, organization, password, rate-limit and log settings can also be changed by the instance owner in **Server settings**. Leave them empty in `.env` to do that: a value set here wins and shows read-only in the dashboard.
+اضبط هذه القيم في `.env`. يقرأ Compose الملف تلقائيًا، والقيم المصدَّرة في الـ shell لها الأولوية. صفحة [الإعدادات](configuration.md) تشرح كل متغير `DHOW_*` وكيف نتحقق منه. يستطيع صاحب النسخة أيضًا تغيير إعدادات البريد والمؤسسات وكلمات السر وحدود الطلبات والسجلات من **إعدادات السيرفر**. لتفعل ذلك، اترك هذه القيم فارغة في `.env`. القيمة المضبوطة هنا هي التي تُطبَّق، وتظهر في الواجهة للقراءة فقط.
 
-| Variable | Default | Meaning |
+| المتغير | القيمة الافتراضية | المعنى |
 |---|---|---|
-| `POSTGRES_PASSWORD` | generated | Password of the `dhow` database user. Use URL-safe characters only. |
-| `DHOW_SECRET_KEY` | generated | Encrypts secrets at rest. Hex or base64, at least 32 bytes. Placeholder-looking and low-variety keys stop the server from booting. |
-| `DHOW_PUBLIC_URL` | generated | The `https://` address users open. |
-| `DHOW_PUBLISH` | `127.0.0.1:8080` | Host address and port that Dhow is published on. Use `0.0.0.0:8080` only when something else filters access to the port. |
-| `DHOW_TRUSTED_PROXIES` | empty | Comma-separated IPs or CIDRs of reverse proxies whose `X-Forwarded-For` header is trusted. A proxy on the same host reaches the container from the Docker bridge gateway, not from `127.0.0.1`: `docker network inspect dhow_edge --format '{{(index .IPAM.Config 0).Gateway}}'` prints it. See [Trusted proxies](reverse-proxy.md#trusted-proxies). |
-| `DHOW_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
-| `DHOW_BREACHED_PASSWORD_CHECK` | `true` | Rejects new passwords found in known breaches, using the Have I Been Pwned range API. Only the first 5 characters of the password's SHA-1 leave the server, and the check is skipped with a log warning when the service cannot be reached. Set `false` on networks without internet access. |
-| `DHOW_IMAGE` | `ghcr.io/khaymah/dhow:latest` | The image to run. Pin it by digest, see [Verify an image](#verify-an-image). |
+| `POSTGRES_PASSWORD` | مولَّدة | كلمة سر مستخدم قاعدة البيانات `dhow`. استخدم حروفًا آمنة في الروابط فقط. |
+| `DHOW_SECRET_KEY` | مولَّدة | يشفّر الأسرار المحفوظة. بصيغة hex أو base64، و32 بايت على الأقل. المفتاح الذي يشبه قيمة مؤقتة أو قليل التنوع يمنع السيرفر من البدء. |
+| `DHOW_PUBLIC_URL` | مولَّدة | عنوان `https://` الذي يفتحه المستخدمون. |
+| `DHOW_PUBLISH` | `127.0.0.1:8080` | عنوان الجهاز والمنفذ الذي يُنشر عليه داو. استخدم `0.0.0.0:8080` فقط إذا كان شيء آخر يتحكم في الوصول إلى المنفذ. |
+| `DHOW_TRUSTED_PROXIES` | فارغة | عناوين IP أو نطاقات CIDR للوكلاء العكسيين الذين نثق بترويسة `X-Forwarded-For` منهم، مفصولة بفواصل. الوكيل على الجهاز نفسه يصل إلى الحاوية من بوابة شبكة Docker bridge، وليس من `127.0.0.1`. الأمر `docker network inspect dhow_edge --format '{{(index .IPAM.Config 0).Gateway}}'` يطبعها. راجع [الوكلاء الموثوقون](reverse-proxy.md#الوكلاء-الموثوقون). |
+| `DHOW_LOG_LEVEL` | `info` | `debug` أو `info` أو `warn` أو `error`. |
+| `DHOW_BREACHED_PASSWORD_CHECK` | `true` | يرفض كلمات السر الجديدة الموجودة في تسريبات معروفة، عبر range API من Have I Been Pwned. أول 5 حروف فقط من SHA-1 لكلمة السر تخرج من السيرفر. إذا لم نصل إلى الخدمة نتخطى الفحص ونكتب تحذيرًا في السجل. اضبطه على `false` في الشبكات بلا إنترنت. |
+| `DHOW_IMAGE` | `ghcr.io/khaymah/dhow:latest` | الصورة التي نشغّلها. ثبّتها بالـ digest، كما في [تحقق من صورة](#تحقق-من-صورة). |
 
-`DHOW_DEV` is not needed and the Compose file never sets it. The database connection uses TLS (`sslmode=require`) and the public URL is `https://`, so the server's strict checks pass without it. `DHOW_DEV=true` relaxes those checks for local development only. Never set it on a host that other people can reach.
+لا تحتاج إلى `DHOW_DEV`، وملف Compose لا يضبطه أبدًا. الاتصال بقاعدة البيانات يستخدم TLS (`sslmode=require`)، والعنوان العام `https://`، فتنجح الفحوص الصارمة في السيرفر بدونه. `DHOW_DEV=true` يخفّف هذه الفحوص للتطوير المحلي فقط. لا تضبطه أبدًا على جهاز يصل إليه غيرك.
 
-## What the stack hardens
+## ما تحميه الحزمة
 
-- PostgreSQL sits on an internal Docker network with no route to the outside and no published port. The connection from Dhow uses TLS with a certificate generated at each start. This encrypts the traffic but does not authenticate the server, which is acceptable on a network that only the two containers share.
-- Both containers run with a read-only root filesystem, `tmpfs` for temporary files, all capabilities dropped, `no-new-privileges`, and CPU, memory and process limits.
-- The Dhow image is built from `distroless/static` and runs as user `65532`. It has no shell and no package manager, so `docker exec dhow sh` fails by design.
-- Dhow starts only after PostgreSQL reports healthy, and Compose restarts both containers unless you stop them.
+- PostgreSQL على شبكة Docker داخلية، بلا طريق إلى الخارج وبلا منفذ منشور. اتصال داو به يستخدم TLS بشهادة مولَّدة في كل تشغيل. هذا يشفّر البيانات المنقولة لكنه لا يثبت هوية السيرفر، وهذا مقبول على شبكة لا يشترك فيها غير الحاويتين.
+- الحاويتان تعملان بنظام ملفات جذري للقراءة فقط، و`tmpfs` للملفات المؤقتة، وبلا أي capabilities، ومع `no-new-privileges`، وبحدود للمعالج والذاكرة وعدد العمليات.
+- صورة داو مبنية من `distroless/static` وتعمل بالمستخدم `65532`. ليس فيها shell ولا مدير حزم، لذلك يفشل `docker exec dhow sh` عن قصد.
+- يبدأ داو بعد أن يصبح PostgreSQL جاهزًا فقط، ويعيد Compose تشغيل الحاويتين ما لم توقفهما أنت.
 
-Container environment variables, including the secret key, are visible to anyone who can run `docker inspect`. Treat access to the Docker socket as root access to the instance.
+متغيرات البيئة في الحاوية، ومنها المفتاح السري، يراها أي شخص يستطيع تشغيل `docker inspect`. تعامل مع الوصول إلى Docker socket كأنه وصول root إلى السيرفر.
 
-## Upgrade
+## الترقية
 
-1. Back up first, see [Back up and restore](#back-up-and-restore).
-2. Read the release notes for the new version.
-3. Verify the new image, see [Verify an image](#verify-an-image).
-4. Set `DHOW_IMAGE` in `.env` to the new tag or digest, then:
+1. خذ نسخة احتياطية أولًا، كما في [النسخ الاحتياطي والاسترجاع](#النسخ-الاحتياطي-والاسترجاع).
+2. اقرأ ملاحظات الإصدار الجديد.
+3. تحقق من الصورة الجديدة، كما في [تحقق من صورة](#تحقق-من-صورة).
+4. اضبط `DHOW_IMAGE` في `.env` على الوسم أو الـ digest الجديد، ثم:
 
 ```sh
 docker compose pull
 docker compose up -d
 ```
 
-Database migrations run automatically when Dhow starts, under a lock, so only one container migrates at a time. If a migration fails the server does not start and the old schema stays in place. Migrations only move forward: to go back to an older version, restore the backup you took in step 1.
+تحديثات قاعدة البيانات تعمل تلقائيًا عند بدء داو، تحت قفل، فلا تطبّقها إلا حاوية واحدة في كل مرة. إذا فشل تحديث، لا يبدأ السيرفر ويبقى الجدول القديم كما هو. التحديثات تتقدم فقط. للرجوع إلى نسخة أقدم، استرجع النسخة الاحتياطية التي أخذتها في الخطوة 1.
 
-## Back up and restore
+## النسخ الاحتياطي والاسترجاع
 
-Back up the database and `.env`. The database dump is useless without `DHOW_SECRET_KEY`.
+خذ نسخة من قاعدة البيانات ومن `.env`. نسخة قاعدة البيانات لا فائدة منها بدون `DHOW_SECRET_KEY`.
 
 ```sh
 docker compose exec -T postgres pg_dump -U dhow -d dhow --format=custom > dhow-$(date +%F).dump
@@ -112,7 +114,7 @@ cp .env dhow-env-$(date +%F).backup
 chmod 600 dhow-env-*.backup
 ```
 
-To restore into the running stack, stop Dhow so nothing writes during the restore, empty the schema so the result matches the dump exactly, then load the dump. The `DROP SCHEMA` step deletes everything in the database:
+للاسترجاع في الحزمة التي تعمل: أوقف داو حتى لا يكتب شيء أثناء الاسترجاع، ثم أفرغ الـ schema حتى تطابق النتيجة النسخة تمامًا، ثم حمّل النسخة. خطوة `DROP SCHEMA` تحذف كل شيء في قاعدة البيانات:
 
 ```sh
 docker compose stop dhow
@@ -121,11 +123,11 @@ docker compose exec -T postgres pg_restore -U dhow -d dhow --no-owner < dhow-202
 docker compose start dhow
 ```
 
-To restore on a new host, run `./init.sh`, replace the generated `DHOW_SECRET_KEY` in `.env` with the one from your backup, start only PostgreSQL with `docker compose up -d postgres`, run the `pg_restore` command, and then run `docker compose up -d`.
+للاسترجاع على جهاز جديد: شغّل `./init.sh`، واستبدل `DHOW_SECRET_KEY` المولَّد في `.env` بالمفتاح من نسختك الاحتياطية. ثم شغّل PostgreSQL وحده بـ `docker compose up -d postgres`، وشغّل أمر `pg_restore`، ثم شغّل `docker compose up -d`.
 
-## Verify an image
+## تحقق من صورة
 
-Release images are signed with [cosign](https://docs.sigstore.dev/) keyless signing from the release workflow in this repository. Anyone can check the signature without a key:
+صور الإصدارات موقّعة بـ [cosign](https://docs.sigstore.dev/) بتوقيع بلا مفتاح (keyless) من workflow الإصدار في هذا المستودع. يستطيع أي شخص التحقق من التوقيع بلا مفتاح:
 
 ```sh
 cosign verify ghcr.io/khaymah/dhow:1.0.0 \
@@ -133,37 +135,37 @@ cosign verify ghcr.io/khaymah/dhow:1.0.0 \
   --certificate-identity-regexp '^https://github\.com/Khaymah/dhow/\.github/workflows/release\.yml@refs/tags/v'
 ```
 
-The command fails unless a certificate issued to that workflow, on a `v*` tag of this repository, signed the image. The SPDX SBOM and the SLSA build provenance are attached to the image as signed attestations:
+يفشل الأمر ما لم توقّع الصورة شهادةٌ صادرة لهذا الـ workflow، على وسم `v*` من هذا المستودع. قائمة المكوّنات SPDX SBOM وإثبات البناء SLSA مرفقان بالصورة كإثباتات موقّعة (attestations):
 
 ```sh
 gh attestation verify oci://ghcr.io/khaymah/dhow:1.0.0 --repo Khaymah/dhow
 ```
 
-Once an image verifies, pin it by digest so a tag can never be moved under you:
+بعد أن تنجح الصورة في التحقق، ثبّتها بالـ digest حتى لا يُنقل الوسم إلى صورة أخرى من غير علمك:
 
 ```sh
 docker buildx imagetools inspect ghcr.io/khaymah/dhow:1.0.0 | sed -n 's/^Digest: *//p'
 ```
 
-Put the result in `.env` as `DHOW_IMAGE=ghcr.io/khaymah/dhow@sha256:<digest>`.
+ضع النتيجة في `.env` هكذا: `DHOW_IMAGE=ghcr.io/khaymah/dhow@sha256:<digest>`.
 
-## Uninstall
+## إزالة التثبيت
 
 ```sh
 docker compose down
 ```
 
-stops and removes the containers and the networks but keeps the database volume. To delete the data as well, which cannot be undone:
+يوقف الحاويات والشبكات ويحذفها، لكنه يحتفظ بمساحة تخزين قاعدة البيانات (volume). لحذف البيانات أيضًا، ولا يمكن التراجع عن ذلك:
 
 ```sh
 docker compose down --volumes
 ```
 
-Then remove the directory that holds `.env`, and the image with `docker image rm`.
+ثم احذف المجلد الذي فيه `.env`، واحذف الصورة بـ `docker image rm`.
 
-## Troubleshooting
+## حل المشكلات
 
-- **`run ./init.sh to create .env`**: Compose cannot find the required variables. Run `./init.sh` in the same directory as `compose.yaml`.
-- **Dhow exits right after starting**: `docker compose logs dhow` prints every invalid setting, for example a public URL that is not `https://`. The server refuses to run with a missing, placeholder or low-variety secret key.
-- **Port 8080 is taken**: set `DHOW_PUBLISH=127.0.0.1:9090` in `.env`.
-- **Anything about `CSRF_FAILED`, cookies, `sslmode` or the wrong client address**: see [Troubleshooting](troubleshooting.md).
+- **`run ./init.sh to create .env`**: لم يجد Compose المتغيرات المطلوبة. شغّل `./init.sh` في مجلد `compose.yaml` نفسه.
+- **يتوقف داو بعد بدئه مباشرة**: الأمر `docker compose logs dhow` يطبع كل إعداد غير صالح، مثل عنوان عام ليس `https://`. يرفض السيرفر العمل إذا كان المفتاح السري ناقصًا، أو قيمة مؤقتة، أو قليل التنوع.
+- **المنفذ 8080 مشغول**: اضبط `DHOW_PUBLISH=127.0.0.1:9090` في `.env`.
+- **أي شيء عن `CSRF_FAILED` أو الكوكيز أو `sslmode` أو عنوان العميل الخاطئ**: راجع [حل المشكلات](troubleshooting.md).

@@ -5,7 +5,7 @@
 ## المشروع
 
 داو منصة Continuous Deployment آمنة بتتنصّب عند العميل. فيها control plane بـ Go، وrunners بـ Go بتشغّل الـ jobs في sandbox معزول، وواجهة React عربي أولاً.
-- **الوثائق العامة** (بالإنجليزي) في `docs/`.
+- **الوثائق العامة** بالعربي المبسّط في `docs/` والإنجليزي في `docs/en/` (ADR-0064). العربي هو المرجع، وأي تغيير بيتكتب في النسختين في نفس الـ commit.
 - **القرارات** (ADRs بالعربي) في `Plan/ADR/`. اقرا الـ ADR الخاص بأي جزء قبل ما تغيّر فيه، وأي قرار جديد يبقى ADR جديد مش تعديل في القديم.
 - **السجل اليومي** في `Plan/Progress/YYYY-MM-DD.md`.
 - **الحالة** (اللي اتعمل واللي شغّال واللي لسه) في `Plan/Status.md`. ابدأ منها في أي جلسة جديدة، وحدّثها بعد أي merge.
@@ -23,7 +23,7 @@
 | `internal/` | packages Go مشتركة بين التطبيقات |
 | `ee/` | المميزات التجارية (Dhow Enterprise License)، وكل الباقي AGPL-3.0 |
 | `deploy/` | Dockerfiles وCompose وHelm |
-| `docs/` | وثائق عامة بالإنجليزي |
+| `docs/` | وثائق عامة بالعربي المبسّط، ونسختها الإنجليزي في `docs/en/` بنفس المسارات (ADR-0064) |
 | `Plan/` | خطط وADRs وسجل يومي، بالعربي |
 
 ### هيكل `apps/server/internal` (Modular Monolith، ADR-0030)
@@ -62,11 +62,12 @@
 - الـ CSP هي `'self'`: ممنوع inline scripts أو styles، وممنوع `Dialog.Overlay` من Radix لأنه بيحقن `<style>` (استخدم الـ backdrop اللي في `SlideStack`، واختبارات `SlideStack` و`CommandPalette` بتتأكد إن مفيش `<style>` اتحقن). وzod لازم يشتغل بـ `z.config({ jitless: true })` (في `ThemeForm.ts`) لأن الـ JIT بيجرّب `new Function` وده بيطلّع violation.
 - `Schema.d.ts` بيتولّد بـ `pnpm gen:api` من `packages/openapi/openapi.yaml`، و`Tokens.css` بـ `pnpm gen:tokens`، وممنوع تعديلهم بإيدك.
 
-ممنوع ملفات Markdown بره `docs/` و`Plan/` و`.github/` و`.claude/`. الاستثناء: README وREADME.ar وCLAUDE وCONTRIBUTING وSECURITY وLICENSE في الـ root.
+ممنوع ملفات Markdown بره `docs/` و`Plan/` و`.github/` و`.claude/`. الاستثناء: README وCONTRIBUTING وSECURITY (بالعربي) وجنبهم README.en وCONTRIBUTING.en وSECURITY.en، وCLAUDE وLICENSE في الـ root. ومفيش README.ar، لأن README نفسه بقى العربي.
 
 ## الأوامر
 
-- `make check`: lint وactionlint واختبارات Go بـ `-race` وgovulncheck واختبارات الـ hooks. الـ CI بيشغّل نفس الـ targets، فشغّلها قبل أي push.
+- `make check`: lint وactionlint واختبارات Go بـ `-race` وgovulncheck واختبارات الـ hooks و`make docs-check`. الـ CI بيشغّل نفس الـ targets، فشغّلها قبل أي push.
+- `make docs-check`: بيتأكد إن `docs/` و`docs/en/` (وملفات الـ root وجنبها `.en.md`) فيهم نفس الملفات، ونفس عدد العناوين في كل مستوى، ونفس الجداول والصفوف، ونفس الـ code blocks بالحرف، وإن كل رابط وanchor بيوصل جوه نسخته، وإن روابط الكود للوثائق موجودة (`deploy/docs-check`).
 - `make help` بيعرض كل الـ targets. نسخة Go مثبّتة في `go.mod`، والـ Makefile بيبني الأدوات بيها.
 - الواجهة: جوه `apps/web` شغّل `pnpm lint` و`pnpm typecheck` و`pnpm test` و`pnpm build` و`pnpm size` (ميزانية الحجم: JS أقل من 180 KB gzip وCSS أقل من 30 KB).
 - `make web` بيبني الواجهة وينسخها في `apps/server/internal/App/WebDist/` (مش بيتعمله commit)، و`make release` بيبني الـ binary بيها. `make check` و`make build` Go بس، من غير الواجهة، والـ CI بيشغّل job الواجهة (`web`) لوحده.
@@ -83,7 +84,8 @@
 - الخصائص الفيزيائية (left/right) في الواجهة.
 - مكان ملفات `apps/web/Src` وتسمية PascalCase (والـ hooks بـ `use`)، واتجاه الاستيراد بين `App` و`Core` و`I18n` و`Styles` و`Modules`.
 - أي نص عربي أو إنجليزي مكتوب في JSX أو في `aria-label` و`title` و`placeholder` بره `I18n/Locales/` والاختبارات.
-- العامية المصرية والفصحى التقيلة في كتالوجات الرسائل العربي (ADR-0062).
+- العامية المصرية والفصحى التقيلة في كتالوجات الرسائل العربي (ADR-0062)، وفي الوثائق العربي: `docs/` بره `docs/en/`، وREADME وCONTRIBUTING وSECURITY (من غير الـ code blocks والـ inline code).
+- الوثائق في النسختين: أي `git commit` فيه ملف تحت `docs/` من غير مقابله في `docs/en/` (أو العكس، أو ملف root من غير `.en.md` بتاعه) بيترفض ويقول الملف الناقص. الـ rename من `docs/X` لـ `docs/en/X` بيتحسب الاتنين (ADR-0064).
 - الملفات المتولّدة.
 - الأسرار.
 - مكان الـ Markdown.
@@ -134,6 +136,6 @@
 
 ## التواصل
 
-- مع الـ maintainer بالعربي دائمًا ومن غير استثناء، بما فيها أسئلة `AskUserQuestion` نفسها (السؤال والـ header والخيارات ووصفها) ورسايل الحالة. الإنجليزي بس جوه الكود والـ commits والـ PRs والوثائق العامة، والـ `Plan/` بالعربي.
+- مع الـ maintainer بالعربي دائمًا ومن غير استثناء، بما فيها أسئلة `AskUserQuestion` نفسها (السؤال والـ header والخيارات ووصفها) ورسايل الحالة. الإنجليزي بس جوه الكود والـ commits والـ PRs، والـ `Plan/` بالعربي.
 - أي سؤال للـ maintainer يبقى من خلال `AskUserQuestion` بخيارات ومعاها trade-offs، ومع توصية واضحة.
 - الـ subagents بـ `model: "sonnet"`.

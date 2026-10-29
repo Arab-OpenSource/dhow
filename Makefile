@@ -81,7 +81,7 @@ BENCH_DIR  ?= bin/bench
 BENCH_ARGS ?=
 
 .PHONY: bench
-bench: image ## Build the image and measure the CPU, memory and disk Dhow needs under load (docs/requirements.md)
+bench: image ## Build the image and measure the CPU, memory and disk Dhow needs under load (docs/en/requirements.md)
 	$(MAKE) bench-run
 
 .PHONY: bench-run
@@ -141,7 +141,7 @@ dev-env: ## Write .env.dev once: DHOW_DEV, a fresh secret key and the local data
 
 .PHONY: dev-db
 dev-db: ## Start PostgreSQL 18 with the dhow and dhow_test databases in Docker or Podman (DEV_DB_ENGINE=podman)
-	@test -n "$(DEV_DB_ENGINE)" || { echo "dev-db: found neither docker nor podman; install PostgreSQL 18 natively (docs/development.md)" >&2; exit 1; }
+	@test -n "$(DEV_DB_ENGINE)" || { echo "dev-db: found neither docker nor podman; install PostgreSQL 18 natively (docs/en/development.md)" >&2; exit 1; }
 	@if $(DEV_DB_ENGINE) container inspect $(DEV_DB_NAME) >/dev/null 2>&1; then $(DEV_DB_ENGINE) start $(DEV_DB_NAME) >/dev/null; \
 	else $(DEV_DB_ENGINE) run -d --name $(DEV_DB_NAME) -e POSTGRES_USER=dhow -e POSTGRES_PASSWORD=$(DEV_DB_PASSWORD) -e POSTGRES_DB=dhow \
 		-p 127.0.0.1:$(DEV_DB_PORT):5432 -v $(DEV_DB_VOLUME):/var/lib/postgresql docker.io/library/postgres:18 >/dev/null; fi
@@ -172,7 +172,7 @@ help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
 .PHONY: check
-check: lint lint-runner lint-actions proto-lint test test-runner vuln hooks-test ## Everything CI checks
+check: lint lint-runner lint-actions proto-lint test test-runner vuln hooks-test docs-check ## Everything CI checks
 
 .PHONY: fmt
 fmt: ## Format Go code
@@ -189,6 +189,10 @@ lint-runner: ## Run golangci-lint on the runner with the fake driver build tag
 .PHONY: lint-actions
 lint-actions: ## Lint GitHub Actions workflows
 	$(GO) run github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
+
+.PHONY: docs-check
+docs-check: ## Check that the Arabic docs and their English mirror in docs/en have the same files, headings, tables, code and links
+	$(GO) test -count=1 ./deploy/docs-check/
 
 .PHONY: hooks-test
 hooks-test: ## Test the Claude Code project hooks
@@ -242,7 +246,7 @@ CHAOS_BUSYBOX ?= /bin/busybox
 CHAOS_RUN     ?=
 
 .PHONY: runner-chaos
-runner-chaos: ## Run the chaos scenarios: the real server and runner on Podman, Postgres and a TLS registry (see docs/runner/chaos.md)
+runner-chaos: ## Run the chaos scenarios: the real server and runner on Podman, Postgres and a TLS registry (see docs/en/runner/chaos.md)
 	mkdir -p $(CHAOS_DIR)
 	CGO_ENABLED=0 $(GO) build -trimpath -o $(CHAOS_DIR)/dhow-server ./apps/server/cmd/dhow-server
 	CGO_ENABLED=0 $(GO) build -trimpath -o $(CHAOS_DIR)/dhow-runner ./apps/runner/cmd/dhow-runner

@@ -1,76 +1,73 @@
-# Dhow
+[English](README.en.md)
 
-> **Ship to your own servers — safely.**
-> A secure, self-hosted continuous deployment platform. Arabic-first.
+# داو (Dhow)
 
-**Status:** 🧱 Foundations (milestone M1 of the [roadmap](docs/roadmap.md)). `docker compose up` boots an empty,
-hardened instance with the web shell and health endpoints. Sign-in, projects, runners and deployments come in the next
-milestones, so Dhow is not usable for real work yet. Feedback is welcome through issues and discussions.
+> **انشر على سيرفراتك أنت… بأمان.**
+> منصة نشر مستمر (Continuous Deployment) آمنة تثبّتها عندك، ومصممة بالعربية أولًا.
+
+**الحالة:** 🧱 الأساسات (المرحلة M1 في [خريطة الطريق](docs/roadmap.md)). الأمر `docker compose up` يشغّل نسخة فارغة ومحصّنة، فيها إطار الواجهة ومسارات فحص الصحة. تسجيل الدخول والمشاريع وأجهزة التشغيل والنشر تأتي في المراحل التالية، لذلك داو ليس جاهزًا للعمل الحقيقي بعد. نرحب بملاحظاتك عبر issues وdiscussions.
 
 ---
 
-## What Dhow is
+## ما هو داو
 
-Dhow is a **self-hosted Continuous Deployment control plane**. It takes your code or a built artifact and
-delivers it to infrastructure you own (VPS, on-prem servers, Docker hosts, Kubernetes, static/CDN), with:
+داو **لوحة تحكم للنشر المستمر تثبّتها عندك**. يأخذ الكود أو الملف الناتج الجاهز (artifact) وينشره على بنيتك أنت: خوادم VPS، أو سيرفرات داخلية، أو أجهزة Docker، أو Kubernetes، أو مواقع ثابتة وCDN. ومعه:
 
-- **Isolated runners.** Every job runs in an ephemeral, sandboxed container (microVM optional). Nothing runs on the control plane host.
-- **Pipeline-as-code.** A `.dhow.yml` file in your repo, plus a visual editor that writes the YAML and opens a PR.
-- **Environments and approvals.** Protection rules, required reviewers and deployment windows.
-- **Instant rollback.** Atomic releases with health checks and automatic rollback.
-- **Scoped, encrypted secrets.** Secrets are injected only at runtime. Workload OIDC removes the need for long-lived cloud keys.
-- **Audit by default.** An append-only, tamper-evident log of who deployed what, where, and when.
+- **أجهزة تشغيل معزولة (runners).** كل تشغيل يعمل في حاوية مؤقتة ومعزولة (وmicroVM اختياريًا). لا شيء يعمل على جهاز لوحة التحكم نفسه.
+- **خطوات النشر ككود (pipeline-as-code).** ملف `.dhow.yml` في مستودعك، ومعه محرر مرئي يكتب الـ YAML ويفتح PR.
+- **البيئات والموافقات.** قواعد حماية، ومراجعون مطلوبون، ونوافذ زمنية للنشر.
+- **رجوع فوري.** إصدارات ذرية مع فحوص صحة ورجوع تلقائي إلى الإصدار السابق.
+- **أسرار مشفّرة ومحدودة النطاق.** تصل الأسرار وقت التشغيل فقط. وOIDC للأحمال يغنيك عن مفاتيح السحابة طويلة العمر.
+- **سجل أحداث من البداية.** سجل للإضافة فقط، يكشف أي تلاعب، فيه من نشر ماذا، وأين، ومتى.
 
-Dhow **integrates with** your CI. It does not try to replace it. Build inside Dhow, or let GitHub Actions /
-GitLab CI build and hand Dhow the artifact through an official action.
+داو **يتكامل** مع CI الخاص بك، ولا يحاول أن يحل محله. ابنِ داخل داو، أو اترك GitHub Actions أو GitLab CI يبني ثم يسلّم الملف الناتج لداو عبر action رسمية.
 
-## Who it is for
+## لمن داو
 
-- Developers worldwide who want a secure, open-source way to deploy to their own infrastructure.
-- Small and mid-size companies and agencies running VPS fleets or on-prem servers.
-- The Arabic-speaking market. The UI is designed **Arabic-first** (RTL first, LTR second), not as a mirrored English UI.
+- المطوّرون في كل مكان الذين يريدون طريقة آمنة ومفتوحة المصدر للنشر على بنيتهم.
+- الشركات الصغيرة والمتوسطة والوكالات التي تدير مجموعات VPS أو سيرفرات داخلية.
+- السوق العربي. الواجهة مصممة **بالعربية أولًا** (من اليمين إلى اليسار أولًا، ثم من اليسار إلى اليمين)، وليست واجهة إنجليزية معكوسة.
 
-## Editions
+## النسخ
 
-| Edition | License | Summary |
+| النسخة | الترخيص | باختصار |
 |---|---|---|
-| **Community** | AGPL-3.0 | Free for any use, including commercial. No limits on users, projects or runners. Includes all security basics. |
-| **Business** | Commercial (`ee/`) | Governance for many teams: SAML/SCIM, custom roles, multi-reviewer approvals, canary/blue-green, HA, long audit retention. Priced per active user. |
-| **Enterprise** | Commercial (`ee/`) | Compliance and scale: Vault/KMS, microVM isolation, air-gapped install, SIEM export, OPA policies, SLA support. |
+| **Community** | AGPL-3.0 | مجانية لأي استخدام، ومنه التجاري. بلا حدود على المستخدمين أو المشاريع أو أجهزة التشغيل. فيها كل أساسيات الأمان. |
+| **Business** | تجاري (`ee/`) | حوكمة لفرق كثيرة: SAML/SCIM، وأدوار مخصصة، وموافقات من عدة مراجعين، وcanary/blue-green، وHA، واحتفاظ طويل بسجل الأحداث. السعر لكل مستخدم نشط. |
+| **Enterprise** | تجاري (`ee/`) | الامتثال والحجم الكبير: Vault/KMS، وعزل microVM، وتثبيت بلا إنترنت، وتصدير إلى SIEM، وسياسات OPA، ودعم مع SLA. |
 
-See [docs/editions-and-licensing.md](docs/editions-and-licensing.md).
+راجع [docs/editions-and-licensing.md](docs/editions-and-licensing.md).
 
-## Install
+## التثبيت
 
-Dhow installs with one Docker Compose file: `./init.sh` generates strong secrets, then `docker compose up -d` starts an empty, hardened instance with its own PostgreSQL. Images are signed with cosign and ship with an SBOM.
-See [docs/install/](docs/install/README.md) to choose a method, then the [Compose guide](docs/install/compose.md) for the quick start, upgrades, backups and signature verification.
-A host needs at least 1 CPU core, 2 GiB of memory and 5 GiB of free disk (2 cores, 4 GiB and 20 GiB recommended): see [Hardware requirements](docs/requirements.md).
+يُثبَّت داو بملف Docker Compose واحد: `./init.sh` يولّد أسرارًا قوية، ثم `docker compose up -d` يشغّل نسخة فارغة ومحصّنة مع PostgreSQL خاص بها. الصور موقّعة بـ cosign وتأتي مع SBOM.
+راجع [docs/install/](docs/install/README.md) لتختار طريقة، ثم [دليل Compose](docs/install/compose.md) للبدء السريع والترقيات والنسخ الاحتياطية والتحقق من التوقيع.
+يحتاج الجهاز إلى نواة معالج واحدة على الأقل، و2 GiB ذاكرة، و5 GiB مساحة فارغة (ننصح بنواتين و4 GiB و20 GiB). راجع [متطلبات الأجهزة](docs/requirements.md).
 
-## Documentation
+## الوثائق
 
-| Doc | Contents |
+| الوثيقة | المحتوى |
 |---|---|
-| [Architecture](docs/architecture.md) | Components, data model, job lifecycle, storage, targets, install methods |
-| [Security model](docs/security-model.md) | Threat model, secure defaults, authn/authz, isolation, lessons learned |
-| [Pipeline spec](docs/pipeline-spec.md) | `.dhow.yml` schema v1 (draft) |
-| [UI principles](docs/ui-principles.md) | Arabic-first design, navigation model, performance budgets |
-| [Editions & licensing](docs/editions-and-licensing.md) | Open-core model, feature matrix, license enforcement |
-| [Install](docs/install/README.md) | Choosing a method, Docker Compose, reverse proxies, local runs, configuration, troubleshooting |
-| [Hardware requirements](docs/requirements.md) | Measured CPU, memory and disk for the server, PostgreSQL and runners |
-| [Development](docs/development.md) | Running Dhow from source on Linux, macOS or Windows, with or without Docker, and the tests |
-| [Sign in with OIDC](docs/guides/oidc.md) | Google, Keycloak, GitHub and any OIDC provider, account linking, allowed domains |
-| [The home page](docs/guides/home.md) | What is running, what needs attention, the sidebar counters, and the overview API behind them |
-| [Follow jobs in the web app](docs/guides/jobs.md) | The job list, stuck jobs without a runner, stopping a job, the live log, attempts and settings |
-| [Your organization and your account](docs/guides/organization.md) | Members and teams beside their details, invitations, API keys, organization settings, and your profile and security |
-| [Server settings](docs/guides/instance-settings.md) | Mail, organization creation, the breached-password check, rate limits and log limits from the dashboard, and how the environment locks them |
-| [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
-| [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
+| [المعمارية](docs/architecture.md) | المكوّنات، ونموذج البيانات، ودورة حياة التشغيل، والتخزين، والأهداف، وطرق التثبيت |
+| [نموذج الأمان](docs/security-model.md) | نموذج التهديدات، والإعدادات الآمنة الافتراضية، والمصادقة والصلاحيات، والعزل، والدروس المستفادة |
+| [مواصفات خطوات النشر](docs/pipeline-spec.md) | مخطط `.dhow.yml` الإصدار 1 (مسودة) |
+| [مبادئ الواجهة](docs/ui-principles.md) | التصميم بالعربية أولًا، ونموذج التنقل، وميزانيات الأداء |
+| [النسخ والترخيص](docs/editions-and-licensing.md) | نموذج open-core، وجدول الميزات، وتطبيق الترخيص |
+| [التثبيت](docs/install/README.md) | اختيار الطريقة، وDocker Compose، والوكلاء العكسيون، والتشغيل على جهازك، والإعدادات، وحل المشكلات |
+| [متطلبات الأجهزة](docs/requirements.md) | المعالج والذاكرة والقرص المقيسة للسيرفر وPostgreSQL وأجهزة التشغيل |
+| [التطوير](docs/development.md) | تشغيل داو من الكود على Linux أو macOS أو Windows، مع Docker أو بدونه، والاختبارات |
+| [تسجيل الدخول بـ OIDC](docs/guides/oidc.md) | Google وKeycloak وGitHub وأي مزوّد OIDC، وربط الحسابات، والنطاقات المسموحة |
+| [الصفحة الرئيسية](docs/guides/home.md) | ما يعمل، وما يحتاج إلى انتباه، وعدّادات القائمة الجانبية، والـ API الذي خلفها |
+| [تابع التشغيلات في الواجهة](docs/guides/jobs.md) | قائمة التشغيلات، والتشغيلات العالقة بلا جهاز تشغيل، وإيقاف التشغيل، والسجل المباشر، والمحاولات والإعدادات |
+| [مؤسستك وحسابك](docs/guides/organization.md) | الأعضاء والفرق بجوار تفاصيلهم، والدعوات، ومفاتيح API، وإعدادات المؤسسة، وملفك الشخصي وأمانك |
+| [إعدادات السيرفر](docs/guides/instance-settings.md) | البريد، وإنشاء المؤسسات، وفحص كلمات السر المسرّبة، وحدود الطلبات والسجلات من الواجهة، وكيف تقفلها البيئة |
+| [خريطة الطريق](docs/roadmap.md) | المراحل حتى v1.0 |
+| [الـ ADRs](Plan/ADR/) | كل قرار معماري وقرار منتج، مع البدائل |
 
-## Relationship to Deploy Center
+## علاقته بـ Deploy Center
 
-Dhow is the from-scratch successor to **Deploy Center v3**. Deploy Center receives security fixes only,
-and a migration tool will import its projects into Dhow. See [ADR-0002](Plan/ADR/0002-rewrite-with-v3-hotfix.md).
+داو هو الخليفة المبني من الصفر لـ **Deploy Center v3**. يحصل Deploy Center على الإصلاحات الأمنية فقط، وستنقل أداة استيراد مشاريعه إلى داو. راجع [ADR-0002](Plan/ADR/0002-rewrite-with-v3-hotfix.md).
 
-## License
+## الترخيص
 
-Core: AGPL-3.0. Code under `ee/`: commercial license. See [LICENSE.md](LICENSE.md).
+الأساس: AGPL-3.0. الكود تحت `ee/`: ترخيص تجاري. راجع [LICENSE.md](LICENSE.md).

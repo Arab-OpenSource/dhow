@@ -1,104 +1,106 @@
-# Hardware requirements
+[English](en/requirements.md)
 
-This page says how much CPU, memory and disk Dhow needs, and how those numbers were measured. The installer and `dhow-server doctor` check the same numbers on the host (see [Below the minimum](#below-the-minimum)).
+# متطلبات الأجهزة
 
-A Dhow install has two parts that size differently:
+تقول هذه الصفحة كم يحتاج داو (Dhow) من المعالج والذاكرة والقرص، وكيف قسنا هذه الأرقام. يفحص المثبّت و`dhow-server doctor` الأرقام نفسها على الجهاز (راجع [تحت الحد الأدنى](#تحت-الحد-الأدنى)).
 
-- **The control plane:** the `dhow-server` process and PostgreSQL 18. One host runs both with the [Compose stack](install/compose.md) or the [installer](install/installer.md).
-- **Runners**, which run the jobs in a rootless Podman sandbox, on [hosts of their own](runner/install.md).
+لتثبيت داو جزءان يختلف حجم كل منهما:
 
-## Server and PostgreSQL
+- **لوحة التحكم (control plane):** العملية `dhow-server` وPostgreSQL 18. جهاز واحد يشغّلهما معًا مع [حزمة Compose](install/compose.md) أو [المثبّت](install/installer.md).
+- **أجهزة التشغيل (runners)**، التي تنفّذ التشغيلات في بيئة Podman معزولة بلا root، على [أجهزة خاصة بها](runner/install.md).
 
-| | Minimum | Recommended | Larger installs |
+## السيرفر وPostgreSQL
+
+| | الحد الأدنى | الموصى به | التثبيتات الأكبر |
 |---|---|---|---|
-| **CPU cores** | 1 | 2 | 4 or more |
-| **Memory** | 2 GiB | 4 GiB | 8 GiB or more |
-| **Free disk** (in `/var/lib`) | 5 GiB | 20 GiB | 50 GiB or more, on SSD |
-| **Fits** | About 10 people and a few jobs at once | About 50 people and 20 jobs at once, the heaviest load measured | More than that; consider PostgreSQL on its own host |
+| **أنوية المعالج** | 1 | 2 | 4 أو أكثر |
+| **الذاكرة** | 2 GiB | 4 GiB | 8 GiB أو أكثر |
+| **المساحة الفارغة** (في `/var/lib`) | 5 GiB | 20 GiB | 50 GiB أو أكثر، على SSD |
+| **يكفي لـ** | حوالي 10 أشخاص وبضعة تشغيلات في الوقت نفسه | حوالي 50 شخصًا و20 تشغيلًا في الوقت نفسه، وهو أثقل حمل قسناه | أكثر من ذلك. فكّر في وضع PostgreSQL على جهاز خاص به |
 
-The minimum and recommended columns rest on the measurements below. The larger column is an estimate, not a measurement: scale it from the per-job and per-sign-in numbers, and run the [benchmark](#how-the-numbers-were-measured) with your own load.
+عمودا الحد الأدنى والموصى به مبنيان على القياسات التالية. أما عمود التثبيتات الأكبر فتقدير وليس قياسًا: احسبه من أرقام التشغيل الواحد وتسجيل الدخول الواحد، وشغّل [اختبار الأداء](#كيف-قسنا-الأرقام) بالحمل الخاص بك.
 
-These numbers are for the whole host, so they leave room for the operating system, Docker and the reverse proxy. Dhow and PostgreSQL themselves used less than this in the [benchmark](#how-the-numbers-were-measured):
+هذه الأرقام للجهاز كله، فتترك مكانًا لنظام التشغيل وDocker والوكيل العكسي. داو وPostgreSQL نفسهما استخدما أقل من ذلك في [اختبار الأداء](#كيف-قسنا-الأرقام):
 
-| Load | Server memory, peak | PostgreSQL memory, peak | Server CPU, average / peak | PostgreSQL CPU, average / peak |
+| الحمل | ذاكرة السيرفر، الذروة | ذاكرة PostgreSQL، الذروة | معالج السيرفر، المتوسط / الذروة | معالج PostgreSQL، المتوسط / الذروة |
 |---|---|---|---|---|
-| Idle after setup | 101 MiB | 25 MiB | 0.00 / 0.04 cores | 0.02 / 0.10 cores |
-| Light: 10 people, 3 jobs at once | 161 MiB | 88 MiB | 0.05 / 0.86 cores | 0.05 / 0.27 cores |
-| Heavy: 50 people, 20 jobs at once | 201 MiB | 129 MiB | 0.19 / 1.94 cores | 0.13 / 0.40 cores |
+| خامل بعد الإعداد | 101 MiB | 25 MiB | 0.00 / 0.04 نواة | 0.02 / 0.10 نواة |
+| خفيف: 10 أشخاص، و3 تشغيلات في الوقت نفسه | 161 MiB | 88 MiB | 0.05 / 0.86 نواة | 0.05 / 0.27 نواة |
+| ثقيل: 50 شخصًا، و20 تشغيلًا في الوقت نفسه | 201 MiB | 129 MiB | 0.19 / 1.94 نواة | 0.13 / 0.40 نواة |
 
-The smallest memory limit each load still ran under, without an error or an out-of-memory kill:
+أصغر حد للذاكرة عمل تحته كل حمل، بدون خطأ أو قتل بسبب نفاد الذاكرة:
 
-| Load | Server alone | PostgreSQL alone | Both together | First failure |
+| الحمل | السيرفر وحده | PostgreSQL وحده | الاثنان معًا | أول فشل |
 |---|---|---|---|---|
-| Idle | 128 MiB | 128 MiB | 320 MiB (192 + 128) | not reached at 128 MiB |
-| Light | 192 MiB | 128 MiB | 320 MiB (192 + 128) | server at 128 MiB |
-| Heavy | 256 MiB | 192 MiB | 512 MiB (256 + 256) | server at 192 MiB; PostgreSQL at 128 MiB, alone and with the server at 192 MiB |
+| خامل | 128 MiB | 128 MiB | 320 MiB (192 + 128) | لم يحدث عند 128 MiB |
+| خفيف | 192 MiB | 128 MiB | 320 MiB (192 + 128) | السيرفر عند 128 MiB |
+| ثقيل | 256 MiB | 192 MiB | 512 MiB (256 + 256) | السيرفر عند 192 MiB. وPostgreSQL عند 128 MiB، وحده ومع السيرفر عند 192 MiB |
 
-What the numbers mean:
+ماذا تعني الأرقام:
 
-- **Memory peaks come from sign-ins.** Passwords are hashed with Argon2id, which takes 19 MiB per sign-in and runs as many at once as the host has CPU cores. Fifty people signing in within a few seconds is what pushed the server to its peak and what killed it at 192 MiB. Browsing and job traffic keep it near 30 to 60 MiB.
-- **The Compose limits fit the heavy load.** [`compose.yaml`](../deploy/compose/compose.yaml) limits the server to 256 MiB and PostgreSQL to 512 MiB, and the heavy load passed at 256 MiB with peaks of 193 to 226 MiB. Raise the server limit before you grow past about 50 people.
-- **Idle memory depends on the last burst.** The idle server used between 13 and 120 MiB across runs, depending on how much memory the Go runtime had handed back to the system after setup.
-- **CPU is idle most of the time.** The averages stay under a quarter of a core even under the heavy load. Short peaks of about two cores during sign-in bursts make responses slower on a one-core host, but no request failed (see [CPU](#cpu)).
-- **Why 2 GiB and not less.** Under the heavy load the two containers need up to about 0.5 GiB together. The operating system, Docker or systemd, the reverse proxy, the page cache that keeps PostgreSQL fast, and PostgreSQL's own background work need the rest. The benchmark did not measure a whole host, so the minimum keeps a wide margin: on a 1 GiB host without swap the kernel kills the server or PostgreSQL as soon as several people sign in at once.
+- **ذروة الذاكرة تأتي من تسجيل الدخول.** نحوّل كلمات السر بـ Argon2id، الذي يأخذ 19 MiB لكل دخول، ويعمل منه في الوقت نفسه بقدر عدد أنوية المعالج. خمسون شخصًا يدخلون خلال ثوانٍ قليلة هو ما دفع السيرفر إلى ذروته، وهو ما قتله عند 192 MiB. التصفح وطلبات التشغيلات تُبقيه قرب 30 إلى 60 MiB.
+- **حدود Compose تناسب الحمل الثقيل.** [`compose.yaml`](../deploy/compose/compose.yaml) يحدّ السيرفر بـ 256 MiB وPostgreSQL بـ 512 MiB، ونجح الحمل الثقيل عند 256 MiB بذروة من 193 إلى 226 MiB. ارفع حد السيرفر قبل أن تتجاوز حوالي 50 شخصًا.
+- **الذاكرة في الخمول تعتمد على آخر ضغط.** استخدم السيرفر الخامل بين 13 و120 MiB في التجارب المختلفة، حسب كمية الذاكرة التي أعادتها بيئة تشغيل Go إلى النظام بعد الإعداد.
+- **المعالج خامل أغلب الوقت.** يبقى المتوسط أقل من ربع نواة حتى مع الحمل الثقيل. الذروات القصيرة بحوالي نواتين أثناء موجات الدخول تجعل الردود أبطأ على جهاز بنواة واحدة، لكن لم يفشل أي طلب (راجع [المعالج](#المعالج)).
+- **لماذا 2 GiB وليس أقل.** مع الحمل الثقيل تحتاج الحاويتان معًا إلى حوالي 0.5 GiB. والباقي يحتاجه نظام التشغيل، وDocker أو systemd، والوكيل العكسي، وذاكرة التخزين المؤقت للصفحات التي تُبقي PostgreSQL سريعًا، وأعمال PostgreSQL الخلفية. لم يقس اختبار الأداء الجهاز كله، لذلك يترك الحد الأدنى هامشًا واسعًا. على جهاز بـ 1 GiB بلا swap، تقتل النواة السيرفر أو PostgreSQL بمجرد أن يدخل عدة أشخاص في الوقت نفسه.
 
-### Disk
+### القرص
 
-- **Images:** the server image takes 40 MiB and the PostgreSQL 18 image 614 MiB.
-- **Database:** an empty database takes 10 MiB, and the data directory 49 MiB with its write-ahead log (WAL). The WAL alone can grow to about 1 GiB before a checkpoint (PostgreSQL's default `max_wal_size`), so keep at least that much free at all times.
-- **Growth:** in the benchmark, a job with one step and about 19 KiB of log added about 40 KiB to the database (logs, attempts and audit events). A team that runs 1,000 such jobs a day adds roughly 40 MiB a day, before compaction of old logs (M4).
-- **Logs:** the Compose stack keeps at most 30 MiB of container logs per service.
+- **الصور:** صورة السيرفر تأخذ 40 MiB، وصورة PostgreSQL 18 تأخذ 614 MiB.
+- **قاعدة البيانات:** قاعدة البيانات الفارغة تأخذ 10 MiB، ومجلد البيانات 49 MiB مع سجل الكتابة المسبقة (WAL). الـ WAL وحده قد يكبر إلى حوالي 1 GiB قبل نقطة الحفظ (checkpoint) (القيمة الافتراضية لـ `max_wal_size` في PostgreSQL)، لذلك أبقِ هذه المساحة فارغة دائمًا على الأقل.
+- **النمو:** في اختبار الأداء، أضاف التشغيل الذي فيه خطوة واحدة وحوالي 19 KiB من السجلات حوالي 40 KiB إلى قاعدة البيانات (السجلات، والمحاولات، وأحداث سجل الأحداث). الفريق الذي يشغّل 1,000 تشغيل مثله في اليوم يضيف حوالي 40 MiB يوميًا، قبل ضغط السجلات القديمة (M4).
+- **السجلات:** حزمة Compose تحتفظ بـ 30 MiB بالأكثر من سجلات الحاوية لكل خدمة.
 
-`dhow-server doctor` fails when less than 1 GiB is free in `/var/lib` or in the PostgreSQL data directory, and warns below 5 GiB.
+يفشل `dhow-server doctor` عندما تكون المساحة الفارغة أقل من 1 GiB في `/var/lib` أو في مجلد بيانات PostgreSQL، ويحذّر تحت 5 GiB.
 
-### CPU
+### المعالج
 
-The benchmark ran each container with a limit of 2 cores and then repeated the reference run with less:
+شغّل اختبار الأداء كل حاوية بحد نواتين، ثم كرّر التجربة المرجعية بأقل من ذلك:
 
-| CPU limit per container | Heavy load result | p95 / p99 response time |
+| حد المعالج لكل حاوية | نتيجة الحمل الثقيل | زمن الرد p95 / p99 |
 |---|---|---|
-| 2 cores | passed | 7 / 122 ms |
-| 1 core, with the Compose memory limits (256 and 512 MiB) | passed | 6 / 108 ms |
-| 0.5 cores | passed | 7 / 394 ms |
+| نواتان | نجح | 7 / 122 ms |
+| نواة واحدة، مع حدود الذاكرة في Compose (256 و512 MiB) | نجح | 6 / 108 ms |
+| 0.5 نواة | نجح | 7 / 394 ms |
 
-So one core for both containers carries the heavy load without errors. A smaller CPU share costs a slower tail: with 0.5 cores each, 1% of the requests under the light load took more than 2 seconds. Sign-ins are the requests that need the CPU (password hashing), so two cores keep a burst of sign-ins short.
+إذن نواة واحدة لكل من الحاويتين تحمل الحمل الثقيل بدون أخطاء. حصة المعالج الأصغر تعني ردودًا أبطأ في الأطراف: مع 0.5 نواة لكل حاوية، أخذ 1% من الطلبات في الحمل الخفيف أكثر من ثانيتين. طلبات الدخول هي التي تحتاج إلى المعالج (تحويل كلمات السر)، لذلك تُبقي النواتان موجة الدخول قصيرة.
 
-## Runners
+## أجهزة التشغيل
 
-A runner host needs memory for the runner process and for every job it runs at once (`DHOW_RUNNER_CAPACITY`):
+يحتاج جهاز التشغيل إلى ذاكرة لعملية جهاز التشغيل، ولكل تشغيل يعمل في الوقت نفسه (`DHOW_RUNNER_CAPACITY`):
 
-| | Per runner | Per concurrent job |
+| | لكل جهاز تشغيل | لكل تشغيل متزامن |
 |---|---|---|
-| **Runner process** (measured) | 12 MiB of memory when idle | about 1 MiB more |
-| **The job itself** (its limits) | | 1 CPU, 2 GiB of memory and a 4 GiB `/workspace` by default |
-| **Disk** | the runner binary and its state directory | a 256 MiB log spill file, plus the job's images in Podman's storage |
+| **عملية جهاز التشغيل** (مقيسة) | 12 MiB من الذاكرة في الخمول | حوالي 1 MiB إضافي |
+| **التشغيل نفسه** (حدوده) | | معالج واحد، و2 GiB ذاكرة، و`/workspace` بـ 4 GiB افتراضيًا |
+| **القرص** | الملف التنفيذي لجهاز التشغيل ومجلد حالته | ملف فائض سجلات بـ 256 MiB، وصور التشغيل في تخزين Podman |
 
-- **The job's own limits are the big number.** By default a job may use 1 CPU and 2 GiB of memory, and its `/workspace` is a 4 GiB tmpfs that is charged to memory too, so each concurrent job can take up to 6 GiB. The runner refuses to start if one job's limits are more than the host has. Lower them with `DHOW_RUNNER_MAX_CPU`, `DHOW_RUNNER_MAX_MEMORY` and `DHOW_RUNNER_MAX_DISK`, and size the host as the runner process plus `DHOW_RUNNER_CAPACITY` times the job limits. See [Runner configuration](runner/configuration.md).
-- **A small runner:** with capacity 1 and the default limits, a runner host needs about 1 CPU core and 8 GiB of memory (6 GiB for the job, the rest for the system and Podman). With jobs limited to 1 GiB of memory and a 1 GiB workspace, 4 GiB is enough.
-- **Not measured yet:** the memory Podman, `conmon` and `crun` use per container, and the image storage per job. The Podman driver needs cgroup v2 with delegation for rootless Podman, and the benchmark host runs cgroup v1, so the runner numbers above come from the runner process with its test-only fake driver, which runs no container. The job numbers are the configured limits, which the sandbox enforces, not measurements.
+- **حدود التشغيل نفسه هي الرقم الكبير.** افتراضيًا يستطيع التشغيل استخدام معالج واحد و2 GiB ذاكرة، و`/workspace` الخاص به tmpfs بـ 4 GiB يُحسب على الذاكرة أيضًا. لذلك قد يأخذ كل تشغيل متزامن حتى 6 GiB. يرفض جهاز التشغيل البدء إذا كانت حدود التشغيل الواحد أكبر مما في الجهاز. اخفضها بـ `DHOW_RUNNER_MAX_CPU` و`DHOW_RUNNER_MAX_MEMORY` و`DHOW_RUNNER_MAX_DISK`، واحسب حجم الجهاز كعملية جهاز التشغيل زائد `DHOW_RUNNER_CAPACITY` مضروبًا في حدود التشغيل. راجع [إعدادات جهاز التشغيل](runner/configuration.md).
+- **جهاز تشغيل صغير:** مع السعة 1 والحدود الافتراضية، يحتاج جهاز التشغيل إلى حوالي نواة واحدة و8 GiB ذاكرة (6 GiB للتشغيل، والباقي للنظام وPodman). مع تشغيلات محدودة بـ 1 GiB ذاكرة و1 GiB مساحة عمل، تكفي 4 GiB.
+- **لم نقسه بعد:** الذاكرة التي يستخدمها Podman و`conmon` و`crun` لكل حاوية، وتخزين الصور لكل تشغيل. مشغّل Podman يحتاج إلى cgroup v2 مع التفويض لـ Podman بلا root، وجهاز اختبار الأداء يعمل بـ cgroup v1. لذلك أرقام جهاز التشغيل السابقة من عملية جهاز التشغيل مع المشغّل الوهمي الخاص بالاختبار، الذي لا يشغّل أي حاوية. أرقام التشغيل هي الحدود المضبوطة، التي تفرضها البيئة المعزولة، وليست قياسات.
 
-## Below the minimum
+## تحت الحد الأدنى
 
-- **The installer refuses a new install.** On a host with fewer cores, less memory or less free disk than the minimum, `dhow-server install` stops before it changes anything and names the resource, the minimum and this page. The kernel keeps a little memory for itself, so a host passes when it reports at least 90% of the minimum (a "2 GB" VPS reports about 1.9 GiB). Below the recommended size it warns and continues. A re-run on a host where Dhow is already installed, which is how upgrades work, only warns, so a security upgrade is never blocked.
-- **`dhow-server doctor`** fails below the minimum memory or cores and warns below the recommended size.
-- **What breaks.** Below the measured limits the kernel kills the server or PostgreSQL for running out of memory, and every request fails until the container restarts (Compose and systemd restart it, but sign-ins and job updates in flight are lost, and it happens again at the next peak). A server with too little memory dies during sign-in bursts first; PostgreSQL with too little memory died under the heavy load. With too little disk, PostgreSQL stops accepting writes, so sign-ins, new jobs and job logs fail.
+- **المثبّت يرفض التثبيت الجديد.** على جهاز بأنوية أو ذاكرة أو مساحة فارغة أقل من الحد الأدنى، يتوقف `dhow-server install` قبل أن يغيّر أي شيء، ويذكر المورد والحد الأدنى وهذه الصفحة. تحجز النواة جزءًا صغيرًا من الذاكرة لنفسها، لذلك ينجح الجهاز إذا أظهر 90% على الأقل من الحد الأدنى (خادم VPS بـ "2 GB" يُظهر حوالي 1.9 GiB). تحت الحجم الموصى به يحذّر ويكمل. إعادة التشغيل على جهاز فيه داو مثبّت، وهي طريقة الترقية، تحذّر فقط، حتى لا تُمنع ترقية أمنية أبدًا.
+- **`dhow-server doctor`** يفشل تحت الحد الأدنى للذاكرة أو الأنوية، ويحذّر تحت الحجم الموصى به.
+- **ما الذي يتعطل.** تحت الحدود المقيسة، تقتل النواة السيرفر أو PostgreSQL لنفاد الذاكرة، ويفشل كل طلب حتى تُعاد الحاوية (يعيد Compose وsystemd تشغيلها، لكن عمليات الدخول وتحديثات التشغيلات الجارية تضيع، ويتكرر ذلك في الذروة التالية). السيرفر الذي ذاكرته قليلة يموت أولًا أثناء موجات الدخول. وPostgreSQL الذي ذاكرته قليلة مات مع الحمل الثقيل. ومع مساحة قرص قليلة، يتوقف PostgreSQL عن قبول الكتابة، فيفشل الدخول والتشغيلات الجديدة وسجلات التشغيلات.
 
-The numbers live in one place in the code, [`Requirements.go`](../apps/server/internal/Core/Installer/Requirements.go).
+الأرقام في مكان واحد في الكود: [`Requirements.go`](../apps/server/internal/Core/Installer/Requirements.go).
 
-## How the numbers were measured
+## كيف قسنا الأرقام
 
-- **Date:** 2026-10-28.
-- **Versions:** Dhow at commit `be0f272` (the server image built from that commit), PostgreSQL 18.6 (the image pinned in `deploy/compose/compose.yaml`), Docker Engine 29.9.2 with cgroup v1, Linux 6.18 on a 4-core, 16 GiB virtual machine.
-- **Stack:** the production [`compose.yaml`](../deploy/compose/compose.yaml) with the overrides in [`deploy/bench/compose.yaml`](../deploy/bench/compose.yaml): a memory limit with no swap for each container, 2 CPUs each, no restart, and higher [rate limits](install/configuration.md) so the load is not refused. Each run starts from an empty database.
-- **Load:** a Go driver, [`deploy/bench`](../deploy/bench), uses the real HTTP API. It takes the setup link from the server log, creates the owner, invites 70 members (20 admins who create jobs and 50 developers who browse), and signs every member in with its own session and CSRF token at the start of each phase. Each member uses its own client address through `X-Forwarded-For`, as people behind a reverse proxy would.
-  - **Idle:** 30 seconds after setup, with one runner connected.
-  - **Light:** 60 seconds. 10 people sign in and then read their account, the organization, members, teams, runners and job lists, one page a second each. 3 admins each create a job, follow it until it ends, read its log and list the jobs, again and again.
-  - **Heavy:** 90 seconds. 50 people browse at one page every half second, and 20 admins run jobs as above.
-- **Jobs** run end to end through the real runner protocol on `dhow-runner` built with the fake sandbox driver (`-tags dhowtest`): leases, heartbeats and 200 log lines of about 95 bytes over 5 seconds per job. One runner with capacity 3 serves the light load, and two with capacity 10 the heavy load.
-- **Measurements:** once a second, the memory (the working set: usage without inactive page cache, as `docker stats` shows it) and CPU time of each container from the Docker Engine API, and the runner's resident memory from `/proc`. After each phase, the database size, out-of-memory events and container state. A phase fails on any failed request, out-of-memory event or stopped container.
-- **Limits tried:** the server at 512, 384, 256, 192 and 128 MiB with PostgreSQL at 2 GiB; PostgreSQL at 512, 384, 256, 192 and 128 MiB with the server at 2 GiB; both at 256 and at 384 MiB; the Compose limits (256 and 512 MiB) and 192 + 128 MiB with 1 CPU each; and 2 GiB each with 0.5 CPUs each.
+- **التاريخ:** 2026-10-28.
+- **الإصدارات:** داو عند الـ commit `be0f272` (صورة السيرفر مبنية منه)، وPostgreSQL 18.6 (الصورة المثبّتة في `deploy/compose/compose.yaml`)، وDocker Engine 29.9.2 مع cgroup v1، وLinux 6.18 على آلة افتراضية بـ 4 أنوية و16 GiB.
+- **الحزمة:** [`compose.yaml`](../deploy/compose/compose.yaml) الخاص بالإنتاج، مع التعديلات في [`deploy/bench/compose.yaml`](../deploy/bench/compose.yaml): حد ذاكرة بلا swap لكل حاوية، ومعالجان لكل منها، وبلا إعادة تشغيل، و[حدود طلبات](install/configuration.md) أعلى حتى لا يُرفض الحمل. كل تجربة تبدأ من قاعدة بيانات فارغة.
+- **الحمل:** برنامج بلغة Go، [`deploy/bench`](../deploy/bench)، يستخدم HTTP API الحقيقي. يأخذ رابط الإعداد من سجل السيرفر، وينشئ حساب صاحب النسخة، ويدعو 70 عضوًا (20 مديرًا ينشئون التشغيلات، و50 مطوّرًا يتصفحون)، ويُدخل كل عضو بجلسته ورمز CSRF الخاص به في بداية كل مرحلة. كل عضو يستخدم عنوان عميل خاصًا به عبر `X-Forwarded-For`، كما يحدث مع الناس خلف وكيل عكسي.
+  - **خامل:** 30 ثانية بعد الإعداد، مع جهاز تشغيل واحد متصل.
+  - **خفيف:** 60 ثانية. يدخل 10 أشخاص ثم يقرؤون حساباتهم، والمؤسسة، والأعضاء، والفرق، وأجهزة التشغيل، وقوائم التشغيلات، صفحة في الثانية لكل منهم. و3 مديرين ينشئ كل منهم تشغيلًا، ويتابعه حتى ينتهي، ويقرأ سجله، ويعرض قائمة التشغيلات، مرة بعد مرة.
+  - **ثقيل:** 90 ثانية. يتصفح 50 شخصًا بمعدل صفحة كل نصف ثانية، و20 مديرًا يشغّلون التشغيلات كما سبق.
+- **التشغيلات** تعمل من البداية إلى النهاية عبر بروتوكول أجهزة التشغيل الحقيقي، على `dhow-runner` مبني مع المشغّل الوهمي (`-tags dhowtest`): حجوزات، ونبضات، و200 سطر سجل بحوالي 95 بايت على مدى 5 ثوانٍ لكل تشغيل. يخدم الحمل الخفيف جهاز تشغيل واحد بسعة 3، والحمل الثقيل جهازان بسعة 10.
+- **القياسات:** مرة كل ثانية، الذاكرة (مجموعة العمل: الاستخدام بدون ذاكرة الصفحات غير النشطة، كما يعرضها `docker stats`) ووقت المعالج لكل حاوية من Docker Engine API، والذاكرة المقيمة لجهاز التشغيل من `/proc`. بعد كل مرحلة: حجم قاعدة البيانات، وأحداث نفاد الذاكرة، وحالة الحاويات. تفشل المرحلة مع أي طلب فاشل، أو حدث نفاد ذاكرة، أو حاوية متوقفة.
+- **الحدود التي جرّبناها:** السيرفر عند 512 و384 و256 و192 و128 MiB مع PostgreSQL عند 2 GiB. وPostgreSQL عند 512 و384 و256 و192 و128 MiB مع السيرفر عند 2 GiB. والاثنان عند 256 وعند 384 MiB. وحدود Compose (256 و512 MiB)، و192 + 128 MiB، مع معالج واحد لكل منهما. و2 GiB لكل منهما مع 0.5 معالج لكل منهما.
 
-Reproduce it with:
+أعد القياس بهذه الأوامر:
 
 ```sh
 make bench                                          # builds dhow:dev, then measures it
@@ -106,4 +108,4 @@ make bench-run IMAGE=ghcr.io/khaymah/dhow:1.2.3     # measures an image you alre
 make bench-run BENCH_ARGS="-configs 2g:2g -baseline deploy/bench/baseline.json"
 ```
 
-The first run takes about an hour. It writes `bin/bench/results.json` and prints a table. `-configs` takes `server:postgres` memory limits, `-cpus` the CPU limit of each container, and `-baseline` fails the run when a peak is more than 20% over [`baseline.json`](../deploy/bench/baseline.json), the highest peaks of the published runs. Run it again when a change could move these numbers, and update this page and `Requirements.go` together.
+التجربة الأولى تأخذ حوالي ساعة. تكتب `bin/bench/results.json` وتطبع جدولًا. `-configs` يأخذ حدود الذاكرة بصيغة `server:postgres`، و`-cpus` حد المعالج لكل حاوية، و`-baseline` يُفشل التجربة عندما تزيد ذروة أكثر من 20% على [`baseline.json`](../deploy/bench/baseline.json)، وهو أعلى الذروات في التجارب المنشورة. أعد التجربة عندما يمكن لتغيير أن يحرّك هذه الأرقام، وحدّث هذه الصفحة و`Requirements.go` معًا.

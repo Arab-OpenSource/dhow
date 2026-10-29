@@ -8,10 +8,9 @@ import (
 )
 
 const (
-	RequirementsURL = "https://github.com/Khaymah/dhow/blob/main/docs/requirements.md"
-	MemInfoPath     = "/proc/meminfo"
-	CPUOnlinePath   = "/sys/devices/system/cpu/online"
-	DataRoot        = "/var/lib"
+	MemInfoPath   = "/proc/meminfo"
+	CPUOnlinePath = "/sys/devices/system/cpu/online"
+	DataRoot      = "/var/lib"
 
 	MinimumCPUs         = 1
 	RecommendedCPUs     = 2
@@ -180,11 +179,11 @@ func CheckResources(h HostResources, m Messages) ResourceChecks {
 func (c ResourceCheck) Message(m Messages) string {
 	switch c.Level {
 	case LevelBelowMinimum:
-		return m.T(KeyResourceTooLow, c.Title, c.Have, c.Minimum, RequirementsURL)
+		return m.T(KeyResourceTooLow, c.Title, c.Have, c.Minimum, m.T(KeyRequirementsURL))
 	case LevelBelowRecommended:
-		return m.T(KeyResourceLow, c.Title, c.Have, c.Recommended, RequirementsURL)
+		return m.T(KeyResourceLow, c.Title, c.Have, c.Recommended, m.T(KeyRequirementsURL))
 	case LevelUnknown:
-		return m.T(KeyResourceUnknown, c.Title, RequirementsURL)
+		return m.T(KeyResourceUnknown, c.Title, m.T(KeyRequirementsURL))
 	default:
 		return m.T(KeyResourceEnough, c.Have, c.Minimum, c.Recommended)
 	}

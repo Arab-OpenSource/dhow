@@ -1,39 +1,41 @@
-# Runner configuration
+[English](../en/runner/configuration.md)
 
-The runner reads its settings from the environment, usually `/etc/dhow-runner/runner.env` through systemd's `EnvironmentFile=`. Every value is checked when the runner starts, and any problem stops it with a message that names the variable (fail closed). Nothing here is a secret: the runner's keys live in its state directory, not in the environment.
+# إعدادات جهاز التشغيل
 
-| Variable | Default | Example | Meaning |
+يقرأ جهاز التشغيل (runner) إعداداته من متغيرات البيئة، عادةً من `/etc/dhow-runner/runner.env` عبر `EnvironmentFile=` في systemd. نفحص كل قيمة عند بدء جهاز التشغيل، وأي مشكلة توقفه برسالة تذكر اسم المتغير (الإغلاق عند الخطأ). لا شيء هنا سري: مفاتيح جهاز التشغيل في مجلد الحالة، وليست في متغيرات البيئة.
+
+| المتغير | القيمة الافتراضية | مثال | المعنى |
 |---|---|---|---|
-| `DHOW_RUNNER_URL` | the address used at registration | `https://dhow.example.com` | The server address. `https://` with a host name and optional port only, no path. Plain `http://` is allowed only with `--dev` and only for `localhost`, `127.0.0.1` or `[::1]`. |
-| `DHOW_RUNNER_CA_FILE` | system roots | `/etc/dhow-runner/ca.pem` | A PEM bundle that replaces the system roots, so the runner trusts that CA and nothing else. It must hold at least one certificate. |
-| `DHOW_RUNNER_SERVER_ORIGIN` | the origin of `DHOW_RUNNER_URL` | `https://dhow.example.com` | The server's public origin (`DHOW_PUBLIC_URL`), which the runner's signatures name. Set it at registration when the runner talks to a separate runner listener. It is pinned in the identity, and later runs use the pinned value. |
-| `DHOW_RUNNER_STATE_DIR` | `/var/lib/dhow-runner` | | An absolute path to the state directory. It must belong to the runner user and not be writable by others, and its `identity`, `identity.pending` and `journal` files must be regular files that only the runner user can read. It also holds `lock`, which `run` and `rotate-keys` hold while they work. With the Podman driver, every directory above it must let others enter (mode `o+x`), because crun reaches the state directory from the job's user namespace. A home directory with mode `0750` does not; the runner refuses to start there and names the directory to fix. |
-| `DHOW_RUNNER_DRIVER` | `podman` | `kubernetes` | The sandbox driver: `podman` (M3.6) or `kubernetes` (M3.11). Test builds also accept `fake`. A driver missing from the build stops the runner. |
-| `DHOW_RUNNER_CAPACITY` | `1` | `4` | How many jobs run at once, from 1 to 16. |
-| `DHOW_RUNNER_MAX_CPU` | every CPU of the host | `2`, `0.5` | The most CPU one job may ask for, in CPUs (0.1 to 64). |
-| `DHOW_RUNNER_MAX_MEMORY` | `2GiB` | `4GiB` | The most memory one job may ask for, from 64 MiB to 64 GiB. Sizes take `KiB`, `MiB`, `GiB` or `TiB` (or plain bytes). |
-| `DHOW_RUNNER_MAX_DISK` | `4GiB` | `10GiB` | The most `/workspace` space one job may ask for, from 64 MiB to 100 GiB. |
-| `DHOW_RUNNER_MAX_PIDS` | `1024` | `4096` | The most processes one job may ask for, from 32 to 32768. |
-| `DHOW_RUNNER_MAX_TIMEOUT` | `6h` | `2h` | The longest `TimeoutSeconds` a job may ask for, from `1m` to `24h`. |
-| `DHOW_RUNNER_DISK_MODE` | `tmpfs` | `tmpfs` | `tmpfs` puts `/workspace` in memory with a hard limit, so memory plus disk must fit the host's memory. `directory` is refused for now: it has no enforced disk limit yet, so one job could fill the runner's disk ([ADR-0056](../../Plan/ADR/0056-sandbox-hardening-after-the-m3-6-review.md)). |
-| `DHOW_RUNNER_CANCEL_GRACE` | `10s` | `30s` | How long a step has between `SIGTERM` and `SIGKILL` when it is canceled or times out, from `1s` to `60s`. |
-| `DHOW_RUNNER_EGRESS_ALLOW_PRIVATE_CIDRS` | none | `10.20.0.0/16,fd00::/8` | Private ranges the egress proxy may reach, comma separated, for an internal registry or mirror. A range written here also opens the runner host's own addresses inside it. Cloud metadata and credential addresses stay denied even when a range covers them: AWS (`169.254.169.254`, `169.254.170.2`, `169.254.170.23`, `fd00:ec2::254`, `fd00:ec2::23`), Azure (`168.63.129.16`), Alibaba (`100.100.100.200`), Oracle (`192.0.0.192`, `fd00:c1::a9fe:a9fe`) and Google (`fd20:ce::254`). A range broader than `/8` for IPv4 or `/7` for IPv6 stops the runner. A job still reaches these hosts only by a name in its `network.egress` list, never by IP. The runner treats its interface addresses as its own; a public address that reaches the host through 1:1 NAT is not known to it, so keep services on that address behind your firewall. |
-| `DHOW_RUNNER_ALLOW_UNPINNED_IMAGES` | `false` | `true` | Reserved for the Podman driver (M3.6). Jobs must pin images by digest either way. |
-| `DHOW_RUNNER_RUNSC_PATH` | none | `/usr/local/bin/runsc` | An absolute path to an executable `runsc`. When set with the Podman driver, the runner offers the `gvisor` isolation level (M3.8). |
-| `DHOW_RUNNER_LOG_LEVEL` | `info` | `debug` | `debug`, `info`, `warn` or `error`. |
+| `DHOW_RUNNER_URL` | العنوان المستخدم عند التسجيل | `https://dhow.example.com` | عنوان السيرفر. `https://` مع اسم جهاز ومنفذ اختياري فقط، بلا مسار. نسمح بـ `http://` العادي فقط مع `--dev`، وفقط لـ `localhost` أو `127.0.0.1` أو `[::1]`. |
+| `DHOW_RUNNER_CA_FILE` | شهادات الجذر في النظام | `/etc/dhow-runner/ca.pem` | حزمة PEM تحل محل شهادات الجذر في النظام، فيثق جهاز التشغيل بسلطة الشهادات هذه ولا شيء غيرها. يجب أن تحتوي شهادة واحدة على الأقل. |
+| `DHOW_RUNNER_SERVER_ORIGIN` | مصدر `DHOW_RUNNER_URL` | `https://dhow.example.com` | المصدر العام للسيرفر (`DHOW_PUBLIC_URL`)، الذي تذكره توقيعات جهاز التشغيل. اضبطه عند التسجيل إذا كان جهاز التشغيل يتصل بعنوان استماع منفصل لأجهزة التشغيل. يُثبَّت في الهوية، وكل تشغيل لاحق يستخدم القيمة المثبّتة. |
+| `DHOW_RUNNER_STATE_DIR` | `/var/lib/dhow-runner` | | مسار مطلق لمجلد الحالة. يجب أن يملكه مستخدم جهاز التشغيل، وألا يستطيع غيره الكتابة فيه، وأن تكون الملفات `identity` و`identity.pending` و`journal` ملفات عادية لا يقرؤها إلا مستخدم جهاز التشغيل. وفيه أيضًا `lock`، الذي يحجزه `run` و`rotate-keys` أثناء عملهما. مع مشغّل Podman، يجب أن يسمح كل مجلد فوقه للآخرين بالدخول (الصلاحية `o+x`)، لأن crun يصل إلى مجلد الحالة من user namespace الخاص بالتشغيل. المجلد المنزلي بالصلاحيات `0750` لا يسمح بذلك، فيرفض جهاز التشغيل البدء هناك ويذكر المجلد الذي يجب إصلاحه. |
+| `DHOW_RUNNER_DRIVER` | `podman` | `kubernetes` | مشغّل البيئة المعزولة: `podman` (M3.6) أو `kubernetes` (M3.11). نسخ الاختبار تقبل أيضًا `fake`. المشغّل غير الموجود في النسخة يوقف جهاز التشغيل. |
+| `DHOW_RUNNER_CAPACITY` | `1` | `4` | عدد التشغيلات التي تعمل في الوقت نفسه، من 1 إلى 16. |
+| `DHOW_RUNNER_MAX_CPU` | كل معالجات الجهاز | `2`، `0.5` | أقصى ما يطلبه التشغيل الواحد من المعالج، بعدد المعالجات (من 0.1 إلى 64). |
+| `DHOW_RUNNER_MAX_MEMORY` | `2GiB` | `4GiB` | أقصى ذاكرة يطلبها التشغيل الواحد، من 64 MiB إلى 64 GiB. الأحجام تقبل `KiB` أو `MiB` أو `GiB` أو `TiB` (أو بايتات بلا وحدة). |
+| `DHOW_RUNNER_MAX_DISK` | `4GiB` | `10GiB` | أقصى مساحة `/workspace` يطلبها التشغيل الواحد، من 64 MiB إلى 100 GiB. |
+| `DHOW_RUNNER_MAX_PIDS` | `1024` | `4096` | أقصى عدد عمليات يطلبه التشغيل الواحد، من 32 إلى 32768. |
+| `DHOW_RUNNER_MAX_TIMEOUT` | `6h` | `2h` | أطول `TimeoutSeconds` يطلبه التشغيل، من `1m` إلى `24h`. |
+| `DHOW_RUNNER_DISK_MODE` | `tmpfs` | `tmpfs` | `tmpfs` يضع `/workspace` في الذاكرة بحد صارم، فيجب أن تتسع ذاكرة الجهاز للذاكرة والقرص معًا. نرفض `directory` الآن، لأنه بلا حد قرص مطبَّق بعد، فقد يملأ تشغيل واحد قرص جهاز التشغيل ([ADR-0056](../../Plan/ADR/0056-sandbox-hardening-after-the-m3-6-review.md)). |
+| `DHOW_RUNNER_CANCEL_GRACE` | `10s` | `30s` | المهلة بين `SIGTERM` و`SIGKILL` للخطوة عند إلغائها أو انتهاء مهلتها، من `1s` إلى `60s`. |
+| `DHOW_RUNNER_EGRESS_ALLOW_PRIVATE_CIDRS` | لا يوجد | `10.20.0.0/16,fd00::/8` | نطاقات خاصة يصل إليها وكيل الخروج، مفصولة بفواصل، لسجل صور أو مرآة داخلية. النطاق المكتوب هنا يفتح أيضًا عناوين جهاز التشغيل نفسه التي داخله. عناوين metadata وبيانات الدخول السحابية تبقى ممنوعة حتى إذا غطّاها نطاق: AWS (`169.254.169.254`، `169.254.170.2`، `169.254.170.23`، `fd00:ec2::254`، `fd00:ec2::23`)، وAzure (`168.63.129.16`)، وAlibaba (`100.100.100.200`)، وOracle (`192.0.0.192`، `fd00:c1::a9fe:a9fe`)، وGoogle (`fd20:ce::254`). النطاق الأوسع من `/8` لـ IPv4 أو `/7` لـ IPv6 يوقف جهاز التشغيل. ولا يصل التشغيل إلى هذه الأجهزة إلا باسم في قائمة `network.egress` الخاصة به، وليس بعنوان IP أبدًا. يعتبر جهاز التشغيل عناوين واجهاته الشبكية عناوينه. أما العنوان العام الذي يصل إلى الجهاز عبر NAT بنسبة 1:1 فلا يعرفه، لذلك أبقِ الخدمات على هذا العنوان خلف جدار الحماية. |
+| `DHOW_RUNNER_ALLOW_UNPINNED_IMAGES` | `false` | `true` | محجوز لمشغّل Podman (M3.6). يجب أن تثبّت التشغيلات الصور بالـ digest في كل الأحوال. |
+| `DHOW_RUNNER_RUNSC_PATH` | لا يوجد | `/usr/local/bin/runsc` | مسار مطلق لملف `runsc` قابل للتنفيذ. عند ضبطه مع مشغّل Podman، يعرض جهاز التشغيل مستوى العزل `gvisor` (M3.8). |
+| `DHOW_RUNNER_LOG_LEVEL` | `info` | `debug` | `debug` أو `info` أو `warn` أو `error`. |
 
-## Limits and the machine
+## الحدود والجهاز
 
-Every `MAX_*` value is a ceiling for one job, and the runner refuses to start if a ceiling is more than the host has: CPUs from the kernel, processes from `/proc/sys/kernel/pid_max`, memory from `sysinfo`, and free disk under the state directory. With the default `tmpfs` disk mode, memory plus disk counts against memory, because tmpfs pages are charged to the job's memory. The defaults (2 GiB of memory and a 4 GiB tmpfs disk) therefore need a host with at least 6 GiB of memory. On a smaller host, lower `DHOW_RUNNER_MAX_MEMORY` and `DHOW_RUNNER_MAX_DISK`.
+كل قيمة `MAX_*` سقف للتشغيل الواحد. يرفض جهاز التشغيل البدء إذا كان سقف أكبر مما في الجهاز: المعالجات من النواة، والعمليات من `/proc/sys/kernel/pid_max`، والذاكرة من `sysinfo`، والمساحة الفارغة تحت مجلد الحالة. مع وضع القرص الافتراضي `tmpfs`، تُحسب الذاكرة والقرص معًا من الذاكرة، لأن صفحات tmpfs تُحسب على ذاكرة التشغيل. لذلك القيم الافتراضية (2 GiB ذاكرة وقرص tmpfs بـ 4 GiB) تحتاج إلى جهاز فيه 6 GiB ذاكرة على الأقل. على جهاز أصغر، اخفض `DHOW_RUNNER_MAX_MEMORY` و`DHOW_RUNNER_MAX_DISK`.
 
-The state directory must also have room for one 256 MiB log spill file per job slot (`DHOW_RUNNER_CAPACITY`).
+يجب أن يتسع مجلد الحالة أيضًا لملف فائض سجلات بحجم 256 MiB لكل مكان تشغيل (`DHOW_RUNNER_CAPACITY`).
 
-A job that asks for more than a ceiling fails on this runner with `RESOURCE_REQUEST_EXCEEDS_RUNNER` before it starts, and the server gives it to another runner. The default job request (1 CPU, 2 GiB, 1024 processes, 4 GiB of disk, one hour) fits the default ceilings.
+التشغيل الذي يطلب أكثر من سقف يفشل على جهاز التشغيل هذا بـ `RESOURCE_REQUEST_EXCEEDS_RUNNER` قبل أن يبدأ، ويعطيه السيرفر لجهاز تشغيل آخر. طلب التشغيل الافتراضي (معالج واحد، و2 GiB، و1024 عملية، و4 GiB قرص، وساعة واحدة) يناسب الأسقف الافتراضية.
 
-## Command line flags
+## خيارات سطر الأوامر
 
-- `dhow-runner register --url <server> --token-file <path|-> [--name <name>] [--dev]`: see [Register a runner](register.md).
-- `dhow-runner run [--dev]`: see [Run a runner](run.md).
+- `dhow-runner register --url <server> --token-file <path|-> [--name <name>] [--dev]`: راجع [تسجيل جهاز تشغيل](register.md).
+- `dhow-runner run [--dev]`: راجع [بدء جهاز التشغيل](run.md).
 - `dhow-runner version`.
 
-`--dev` is a flag on purpose, not a variable, so that a production `runner.env` cannot turn plain HTTP on.
+`--dev` خيار في سطر الأوامر عن قصد، وليس متغيرًا، حتى لا يستطيع ملف `runner.env` في الإنتاج تفعيل HTTP العادي.

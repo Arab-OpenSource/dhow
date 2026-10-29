@@ -1,49 +1,51 @@
-# Run a runner
+[English](../en/runner/run.md)
+
+# بدء جهاز التشغيل
 
 ```sh
 sudo systemctl enable --now dhow-runner
 journalctl -u dhow-runner -f
 ```
 
-or, by hand, `sudo -u dhow-runner dhow-runner run`. The runner logs JSON lines to stderr. They carry IDs, result codes and error codes, never job output, environment values or secrets.
+أو يدويًا: `sudo -u dhow-runner dhow-runner run`. يكتب جهاز التشغيل (runner) سجله أسطر JSON على stderr. فيها معرّفات، وأكواد نتائج، وأكواد أخطاء. ولا فيها أبدًا مخرجات التشغيلات، أو قيم متغيرات البيئة، أو أسرار.
 
-## On start
+## عند البدء
 
-1. It checks its [configuration](configuration.md) and refuses to start on any problem: a limit above what the machine has, a state file that other users can read, a plain `http://` address, a missing driver.
-2. It signs in, removes any sandbox and attempt directory left by an earlier run, and reports every lease still in its journal. A job whose result was known is reported with that result. A job that was cut off is reported as `lost` with `RUNNER_RESTARTED`, using its old fencing token, so the server retries it at once if no step that changes a deploy target had started.
-3. It starts asking for work, up to `DHOW_RUNNER_CAPACITY` jobs at a time.
+1. يفحص [إعداداته](configuration.md)، ويرفض البدء مع أي مشكلة: حد أكبر مما في الجهاز، أو ملف حالة يقرؤه مستخدمون آخرون، أو عنوان `http://` عادي، أو مشغّل (driver) ناقص.
+2. يدخل إلى السيرفر، ويحذف أي بيئة معزولة أو مجلد محاولة تركه تشغيل سابق، ويبلغ عن كل حجز ما زال في سجله الخاص (journal). التشغيل الذي نعرف نتيجته نبلغ عنه بهذه النتيجة. والتشغيل الذي انقطع نبلغ عنه كـ `lost` مع `RUNNER_RESTARTED`، برقم الحجز (fencing token) القديم. هكذا يعيد السيرفر محاولته فورًا، إذا لم تكن قد بدأت أي خطوة تغيّر هدف نشر.
+3. يبدأ في طلب العمل، حتى `DHOW_RUNNER_CAPACITY` تشغيل في الوقت نفسه.
 
-## For each job
+## مع كل تشغيل
 
-- **The grant is checked first.** A grant that is not signed by the server key pinned at registration, that names another runner or organization, that was issued more than 15 minutes from the runner's clock, or whose fencing token is not above every one the runner has seen before (a replay), is refused and never runs. Nothing about it is written to disk, and the server treats the lease as lost.
-- **The job is checked again.** A spec that fails validation fails with `SPEC_REJECTED`. A job that asks for more CPU, memory, processes, disk or time than this runner allows fails with `RESOURCE_REQUEST_EXCEEDS_RUNNER` before it starts, and the server gives it to another runner.
-- **Secrets** arrive encrypted for this runner's key and this attempt only, stay in memory, and reach only the steps that list them. No process outlives its step, but every step shares `/workspace`, so a secret scoped to one step is only as safe as the steps before it. Each step also gets `DHOW_FENCING_TOKEN`, `DHOW_JOB_ID`, `DHOW_ATTEMPT_ID` and `DHOW_STEP_INDEX`.
-- **Output** goes through the masker before anything else: the secret itself, its base64 (at every offset, with and without padding), URL, hex and JSON forms, and each line of a multi-line secret, all become `***`. A secret shorter than 4 characters cannot be masked, and the job log says so by name. A secret longer than 4 KiB, or one that is not text, is masked as is and line by line, without the encoded forms. A secret over 64 KiB, or secrets over 1 MiB together, cannot be masked safely, so the job fails with `SPEC_REJECTED` before any step runs. Output is sent in ordered chunks of up to 64 KiB, at least every 250 ms.
-- **When the server is slow or unreachable,** output waits in memory (8 MiB) and then in a spill file in the attempt directory (256 MiB, mode `0600`, masked text only). When both are full, the job blocks on its next write instead of losing output. If the disk itself fills up, the attempt fails with `RUNNER_DISK_FULL` and is retried elsewhere.
-- **When the server truncates the log** at its limit, the job keeps running and later output is dropped.
+- **نتحقق من المنحة أولًا.** نرفض المنحة ولا نشغّلها أبدًا إذا لم يوقّعها مفتاح السيرفر المثبّت عند التسجيل، أو ذكرت جهاز تشغيل أو مؤسسة أخرى، أو صدرت على بُعد أكثر من 15 دقيقة من ساعة جهاز التشغيل، أو لم يكن رقم الحجز فيها أكبر من كل رقم رآه جهاز التشغيل من قبل (إعادة إرسال). لا نكتب شيئًا عنها على القرص، ويعامل السيرفر الحجز كمفقود.
+- **نتحقق من التشغيل مرة أخرى.** المواصفات (spec) التي تفشل في التحقق تفشل بـ `SPEC_REJECTED`. والتشغيل الذي يطلب معالجًا أو ذاكرة أو عمليات أو قرصًا أو وقتًا أكثر مما يسمح به جهاز التشغيل هذا يفشل بـ `RESOURCE_REQUEST_EXCEEDS_RUNNER` قبل أن يبدأ، ويعطيه السيرفر لجهاز تشغيل آخر.
+- **الأسرار** تصل مشفّرة لمفتاح جهاز التشغيل هذا ولهذه المحاولة فقط، وتبقى في الذاكرة، ولا تصل إلا إلى الخطوات التي تذكرها. لا تعيش أي عملية بعد خطوتها، لكن كل الخطوات تشترك في `/workspace`. لذلك السر المحصور في خطوة واحدة آمن بقدر أمان الخطوات التي قبلها. وكل خطوة تحصل أيضًا على `DHOW_FENCING_TOKEN` و`DHOW_JOB_ID` و`DHOW_ATTEMPT_ID` و`DHOW_STEP_INDEX`.
+- **المخرجات** تمر على أداة الإخفاء قبل أي شيء آخر. السر نفسه، وصيغته base64 (عند كل إزاحة، مع الحشو وبدونه)، وصيغ URL وhex وJSON، وكل سطر من سر متعدد الأسطر، كلها تصبح `***`. السر الأقصر من 4 حروف لا يمكن إخفاؤه، ويذكره سجل التشغيل باسمه. السر الأطول من 4 KiB، أو الذي ليس نصًا، نخفيه كما هو وسطرًا بسطر، بدون الصيغ المرمّزة. السر الأكبر من 64 KiB، أو الأسرار التي يتجاوز مجموعها 1 MiB، لا يمكن إخفاؤها بأمان، فيفشل التشغيل بـ `SPEC_REJECTED` قبل أي خطوة. نرسل المخرجات في أجزاء مرتّبة حتى 64 KiB، كل 250 ms على الأقل.
+- **عندما يكون السيرفر بطيئًا أو لا يرد،** تنتظر المخرجات في الذاكرة (8 MiB)، ثم في ملف فائض في مجلد المحاولة (256 MiB، بالصلاحيات `0600`، ونص مُخفى فقط). عندما يمتلئ الاثنان، ينتظر التشغيل عند كتابته التالية بدل أن يضيع المخرجات. إذا امتلأ القرص نفسه، تفشل المحاولة بـ `RUNNER_DISK_FULL`، ونعيد محاولتها في مكان آخر.
+- **عندما يقطع السيرفر السجل** عند حده، يستمر التشغيل، ونتجاهل المخرجات التي بعده.
 
-## Cancel, time-outs and failures
+## الإلغاء وانتهاء المهلة والأعطال
 
-| Event | What the runner does | Result |
+| الحدث | ما يفعله جهاز التشغيل | النتيجة |
 |---|---|---|
-| Someone cancels the job | `SIGTERM` to the step, `SIGKILL` after `DHOW_RUNNER_CANCEL_GRACE`, the whole sandbox 5 seconds later | `canceled` |
-| The job runs past its `TimeoutSeconds` | The same sequence | `timed_out` |
-| A step runs past its own timeout | The same sequence, then stop | `failed` (`STEP_FAILED`), the step `TIMED_OUT` |
-| A step exits non-zero | Stops at that step | `failed`, never retried |
-| No heartbeat gets through for 35 seconds | Kills the sandbox at once, about 10 seconds before the lease expires | `lost`, retried if nothing was changed |
-| The server says the lease is lost | Kills the sandbox at once | decided by the server |
-| The runner is stopped or restarted | Kills the sandboxes, reports them on the way down or on the next start | `lost` (`RUNNER_RESTARTED`) |
+| شخص يلغي التشغيل | `SIGTERM` للخطوة، و`SIGKILL` بعد `DHOW_RUNNER_CANCEL_GRACE`، والبيئة المعزولة كلها بعد 5 ثوانٍ | `canceled` |
+| التشغيل يتجاوز `TimeoutSeconds` الخاص به | التسلسل نفسه | `timed_out` |
+| خطوة تتجاوز مهلتها الخاصة | التسلسل نفسه، ثم يتوقف | `failed` (`STEP_FAILED`)، والخطوة `TIMED_OUT` |
+| خطوة تخرج بقيمة غير صفر | يتوقف عند هذه الخطوة | `failed`، ولا نعيد المحاولة أبدًا |
+| لا تصل أي نبضة لمدة 35 ثانية | يقتل البيئة المعزولة فورًا، قبل حوالي 10 ثوانٍ من انتهاء الحجز | `lost`، ونعيد المحاولة إذا لم يتغير شيء |
+| السيرفر يقول إن الحجز مفقود | يقتل البيئة المعزولة فورًا | يقررها السيرفر |
+| جهاز التشغيل يتوقف أو يُعاد تشغيله | يقتل البيئات المعزولة، ويبلغ عنها أثناء التوقف أو عند البدء التالي | `lost` (`RUNNER_RESTARTED`) |
 
-A job that sits idle sees a cancel within 10 seconds (the heartbeat interval). One that prints output sees it within a second.
+التشغيل الخامل يرى الإلغاء خلال 10 ثوانٍ (فترة النبضة). والتشغيل الذي يطبع مخرجات يراه خلال ثانية.
 
-## Troubleshooting
+## حل المشكلات
 
-| Log message | Meaning |
+| رسالة السجل | المعنى |
 |---|---|
-| `the server revoked this runner` | An admin revoked it. The runner exits; register it again with a new token. |
-| `an administrator disabled this runner` | It was disabled, possibly as a suspected clone. It keeps retrying and resumes once re-enabled. |
-| `refused a lease grant and did not run it` | A grant failed the signature check. Check for a proxy rewriting traffic, or a server whose `DHOW_SECRET_KEY` changed (which needs every runner to register again). |
-| `no heartbeat reached the server in time` | The network or the server was down for over 35 seconds. The job was stopped on purpose. |
-| `the job log did not reach the server before the attempt closed` | The server was unreachable when the job ended. The result is still reported; the tail of the log may be missing. |
-| `the server does not accept logs` | The server is older than the runner's log protocol. Jobs run, their output is not stored. |
-| `... is not built into this dhow-runner yet` | This build has no sandbox driver for `DHOW_RUNNER_DRIVER`. See the [status](README.md#status). |
+| `the server revoked this runner` | ألغاه مدير. يخرج جهاز التشغيل. سجّله مرة أخرى برمز جديد. |
+| `an administrator disabled this runner` | أُوقف، ربما لأنه يُشتبه أنه منسوخ. يستمر في المحاولة، ويكمل عندما يُفعَّل مرة أخرى. |
+| `refused a lease grant and did not run it` | فشلت منحة في فحص التوقيع. ابحث عن وكيل يعيد كتابة البيانات المنقولة، أو سيرفر تغيّر `DHOW_SECRET_KEY` فيه (وهذا يحتاج إلى تسجيل كل أجهزة التشغيل مرة أخرى). |
+| `no heartbeat reached the server in time` | توقفت الشبكة أو السيرفر أكثر من 35 ثانية. أُوقف التشغيل عن قصد. |
+| `the job log did not reach the server before the attempt closed` | لم يكن السيرفر متاحًا عندما انتهى التشغيل. ما زلنا نبلغ عن النتيجة، لكن آخر السجل قد يكون ناقصًا. |
+| `the server does not accept logs` | السيرفر أقدم من بروتوكول السجلات في جهاز التشغيل. التشغيلات تعمل، لكن مخرجاتها لا تُحفظ. |
+| `... is not built into this dhow-runner yet` | هذه النسخة ليس فيها مشغّل بيئة معزولة لـ `DHOW_RUNNER_DRIVER`. راجع [الحالة](README.md#الحالة). |

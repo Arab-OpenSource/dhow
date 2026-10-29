@@ -78,6 +78,8 @@ jobs:
         run: make build-runner
       - name: Test Claude Code hooks
         run: make hooks-test
+      - name: Check the Arabic and English docs
+        run: make docs-check
 
   timing:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft

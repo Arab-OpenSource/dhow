@@ -1,6 +1,6 @@
 [Unit]
 Description=Dhow runner
-Documentation=https://github.com/Khaymah/dhow/blob/main/docs/runner/install.md
+Documentation=https://github.com/Khaymah/dhow/blob/main/docs/en/runner/install.md
 Wants=network-online.target
 After=network-online.target
 

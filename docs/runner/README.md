@@ -1,40 +1,42 @@
-# Dhow runners
+[English](../en/runner/README.md)
 
-A runner is the `dhow-runner` process that takes jobs from a Dhow server and runs each one in a fresh, isolated sandbox. It only ever connects out to the server, over HTTPS, so it can sit behind a firewall or NAT. The design is in [ADR-0041](../../Plan/ADR/0041-runner-identity-and-registration.md), [ADR-0042](../../Plan/ADR/0042-runner-protocol-and-leasing.md), [ADR-0043](../../Plan/ADR/0043-job-sandbox-rootless-podman.md) and [ADR-0053](../../Plan/ADR/0053-runner-implementation.md).
+# أجهزة التشغيل في داو
 
-| Guide | What it covers |
+جهاز التشغيل (runner) هو العملية `dhow-runner` التي تأخذ التشغيلات (jobs) من سيرفر داو (Dhow)، وتشغّل كل واحد منها في بيئة معزولة (sandbox) جديدة. يتصل جهاز التشغيل بالسيرفر في اتجاه واحد فقط، من الداخل إلى الخارج عبر HTTPS، لذلك يمكن أن يكون خلف جدار حماية أو NAT. التصميم في [ADR-0041](../../Plan/ADR/0041-runner-identity-and-registration.md) و[ADR-0042](../../Plan/ADR/0042-runner-protocol-and-leasing.md) و[ADR-0043](../../Plan/ADR/0043-job-sandbox-rootless-podman.md) و[ADR-0053](../../Plan/ADR/0053-runner-implementation.md).
+
+| الدليل | ما يشرحه |
 |---|---|
-| [Install a runner](install.md) | `get.sh --component runner` or a release archive, the user and directories it needs, and the hardened systemd unit |
-| [Register a runner](register.md) | Creating a registration token and turning it into a runner identity |
-| [Rotate a runner's keys](keys.md) | When and how to replace the runner's key pairs, and why a crash in the middle is safe |
-| [Run a runner](run.md) | Starting it, what it does with each job, and what happens when the network or the runner fails |
-| [Runner configuration](configuration.md) | Every `DHOW_RUNNER_*` variable, its default and its limits |
+| [ثبّت جهاز تشغيل](install.md) | `get.sh --component runner` أو أرشيف إصدار، والمستخدم والمجلدات التي يحتاجها، وخدمة systemd المحصّنة |
+| [سجّل جهاز تشغيل](register.md) | إنشاء رمز تسجيل وتحويله إلى هوية جهاز تشغيل |
+| [دوّر مفاتيح جهاز التشغيل](keys.md) | متى وكيف تستبدل أزواج المفاتيح، ولماذا الانقطاع في المنتصف آمن |
+| [ابدأ جهاز التشغيل](run.md) | تشغيله، وما يفعله مع كل تشغيل، وما يحدث عند فشل الشبكة أو جهاز التشغيل |
+| [إعدادات جهاز التشغيل](configuration.md) | كل متغير `DHOW_RUNNER_*`، وقيمته الافتراضية، وحدوده |
 
-## Status
+## الحالة
 
-The runner registers, signs in, takes jobs, fences itself, masks secrets and ships logs, and runs each job in rootless Podman at the `container` isolation level (M3.6), with network egress only through its own proxy (M3.7). gVisor (M3.8) and the Kubernetes driver (M3.11) come next. Test builds (`-tags dhowtest`) carry a fake driver that replays recorded output and runs no process.
+جهاز التشغيل يسجّل نفسه، ويدخل، ويأخذ التشغيلات، ويوقف نفسه عند فقد الاتصال (self-fencing)، ويخفي الأسرار، ويرسل السجلات. ويشغّل كل تشغيل في Podman بلا root على مستوى العزل `container` (M3.6)، ولا يخرج إلى الشبكة إلا عبر الوكيل الخاص به (M3.7). بعد ذلك يأتي gVisor (M3.8) ومشغّل Kubernetes (M3.11). نسخ الاختبار (`-tags dhowtest`) فيها مشغّل وهمي يعيد مخرجات مسجّلة ولا يشغّل أي عملية.
 
-## The sandbox
+## البيئة المعزولة
 
-Each job gets a fresh container that the runner creates with its own Podman configuration, never the machine's:
+كل تشغيل يحصل على حاوية (container) جديدة، ينشئها جهاز التشغيل بإعدادات Podman الخاصة به، وليس بإعدادات الجهاز أبدًا:
 
-- **No privileges.** No capabilities, `no-new-privileges`, an embedded seccomp profile that also blocks `unshare` and `setns`, keyrings, BPF, `io_uring`, `perf_event_open`, `ptrace`, every mount call and every socket family but Unix, IPv4, IPv6 and netlink (so no vsock), and a user namespace of its own with 65536 sub-ids that never maps the runner's user or host root.
-- **Nothing from the host.** A read-only root filesystem, no network, private IPC, PID, UTS and cgroup namespaces, `/workspace` and `/tmp` on size-limited tmpfs, and only two read-only mounts: the runner binary as the agent and the control channel. The host's default mounts (such as `/run/secrets` on RHEL) are turned off.
-- **Nothing from the image but its files.** The image is pulled from its registry by its full name (short names are refused) and the container is created from the image ID, so no other transport can stand in. The image's environment never reaches the agent, and an image that sets a runtime annotation (`run.oci.*` and the like) is refused.
-- **Egress through the runner.** A job with a `network.egress` list gets a proxy on `127.0.0.1:3128` inside the container. The agent carries each connection over a per-attempt Unix socket to the runner. The runner matches the host against the list, resolves the name itself, refuses private, host and metadata addresses, and connects to the address it checked, so DNS rebinding cannot slip through. Each decision shows up once a minute as a `dhow: egress …` line in the job log. A job without a list has no proxy at all.
-- **Limits that fail closed.** CPU, memory without swap, processes and disk come from cgroup v2. After `podman create` the runner inspects the container and refuses to run anything if one setting differs from what it asked for.
-- **An agent as PID 1.** The runner binary runs inside as the agent: it turns off ptrace on itself, ignores the signals a job could send it, runs each step as `/bin/sh -e -s` with the script on stdin, keeps secret files on a `noexec` tmpfs only for the step, and exits when the runner's control channel closes, so the container dies with the runner. When a step's shell exits, the agent kills every process the step left behind before it reports the step, so nothing started in one step can read the secrets of a later one. `/workspace` is shared, though: a step can still change files a later step runs.
+- **بلا صلاحيات.** بلا capabilities، ومع `no-new-privileges`، وملف seccomp مدمج يمنع أيضًا `unshare` و`setns` والـ keyrings وBPF و`io_uring` و`perf_event_open` و`ptrace` وكل استدعاءات mount، وكل أنواع الـ sockets إلا Unix وIPv4 وIPv6 وnetlink (فلا vsock). ولها user namespace خاص بها فيه 65536 sub-id، لا يربط أبدًا مستخدم جهاز التشغيل ولا root الجهاز.
+- **لا شيء من الجهاز.** نظام ملفات جذري للقراءة فقط، وبلا شبكة، وnamespaces خاصة لـ IPC وPID وUTS وcgroup، و`/workspace` و`/tmp` على tmpfs محدود الحجم. وهناك فقط نقطتا ربط (mounts) للقراءة فقط: الملف التنفيذي لجهاز التشغيل كوكيل (agent)، وقناة التحكم. ونوقف نقاط الربط الافتراضية في الجهاز (مثل `/run/secrets` في RHEL).
+- **لا شيء من الصورة غير ملفاتها.** نسحب الصورة من سجلها (registry) باسمها الكامل (نرفض الأسماء المختصرة)، وننشئ الحاوية من معرّف الصورة (image ID)، فلا يمكن أن تحل محلها وسيلة نقل أخرى. متغيرات البيئة في الصورة لا تصل إلى الوكيل أبدًا، ونرفض الصورة التي تضبط runtime annotation (`run.oci.*` وما يشبهها).
+- **الخروج إلى الشبكة عبر جهاز التشغيل.** التشغيل الذي له قائمة `network.egress` يحصل على وكيل على `127.0.0.1:3128` داخل الحاوية. ينقل الوكيل (agent) كل اتصال عبر Unix socket خاص بكل محاولة إلى جهاز التشغيل. يطابق جهاز التشغيل اسم الجهاز مع القائمة، ويحل الاسم بنفسه، ويرفض العناوين الخاصة وعناوين الجهاز وعناوين metadata، ثم يتصل بالعنوان الذي فحصه، فلا يمر DNS rebinding. كل قرار يظهر مرة في الدقيقة كسطر `dhow: egress …` في سجل التشغيل. التشغيل الذي ليس له قائمة لا يحصل على وكيل أبدًا.
+- **حدود تُغلق عند الخطأ.** المعالج، والذاكرة بلا swap، والعمليات، والقرص، كلها من cgroup v2. بعد `podman create` يفحص جهاز التشغيل الحاوية، ويرفض تشغيل أي شيء إذا اختلف إعداد واحد عمّا طلبه.
+- **وكيل كـ PID 1.** الملف التنفيذي لجهاز التشغيل يعمل في الداخل كوكيل (agent). يوقف ptrace على نفسه، ويتجاهل الإشارات التي قد يرسلها التشغيل إليه، ويشغّل كل خطوة كـ `/bin/sh -e -s` والسكربت على stdin. ويحفظ ملفات الأسرار على tmpfs بخاصية `noexec` أثناء الخطوة فقط، ويخرج عندما تُغلق قناة التحكم مع جهاز التشغيل، فتموت الحاوية مع جهاز التشغيل. عندما ينتهي shell الخطوة، يقتل الوكيل كل عملية تركتها الخطوة قبل أن يبلغ عنها. لذلك لا يستطيع شيء بدأ في خطوة أن يقرأ أسرار خطوة لاحقة. لكن `/workspace` مشترك، فالخطوة ما زالت تستطيع تغيير ملفات تشغّلها خطوة لاحقة.
 
-The escape and limits suites (`apps/runner/Test/Isolation`, `make runner-isolation`) run a probe inside a real container and fail if any escape works. CI runs them on every pull request that touches the runner. The decisions are in [ADR-0043](../../Plan/ADR/0043-job-sandbox-rootless-podman.md) and [ADR-0055](../../Plan/ADR/0055-podman-driver-and-agent-implementation.md) and [ADR-0056](../../Plan/ADR/0056-sandbox-hardening-after-the-m3-6-review.md).
+مجموعتا اختبار الهروب والحدود (`apps/runner/Test/Isolation`، `make runner-isolation`) تشغّلان أداة فحص داخل حاوية حقيقية، وتفشلان إذا نجحت أي طريقة هروب. يشغّلهما CI في كل pull request يلمس جهاز التشغيل. القرارات في [ADR-0043](../../Plan/ADR/0043-job-sandbox-rootless-podman.md) و[ADR-0055](../../Plan/ADR/0055-podman-driver-and-agent-implementation.md) و[ADR-0056](../../Plan/ADR/0056-sandbox-hardening-after-the-m3-6-review.md).
 
-## How a runner works
+## كيف يعمل جهاز التشغيل
 
-1. **Registration.** An organization owner or admin creates a one-time registration token. `dhow-runner register` generates two key pairs on the runner (Ed25519 for its identity, MLKEM768-X25519 for receiving secrets), sends the public halves with the token, and stores the private halves in its state directory. The private keys never leave the machine.
-2. **Sign-in.** The runner signs a fresh server challenge with its private key and receives an access token that lives 15 minutes. It renews it after 10.
-3. **Leasing.** The runner asks for work with a long poll of up to 25 seconds. A job comes as a lease grant signed by the server. The runner checks that signature against the server key it pinned at registration, so a compromised proxy cannot inject jobs.
-4. **Running.** The runner records the lease in its journal, prepares the sandbox, starts the attempt (receiving the job's secrets encrypted for its key alone), runs each step, sends a heartbeat every 10 seconds, and reports the result.
-5. **Self-fencing.** If no heartbeat gets through for 35 seconds, the runner kills the sandbox about 10 seconds before the server would give the job to another runner, so two attempts of one job never run at the same time.
+1. **التسجيل.** صاحب المؤسسة أو المدير ينشئ رمز تسجيل يعمل مرة واحدة. الأمر `dhow-runner register` يولّد زوجين من المفاتيح على جهاز التشغيل (Ed25519 للهوية، وMLKEM768-X25519 لاستلام الأسرار)، ويرسل النصفين العامّين مع الرمز، ويحفظ النصفين الخاصّين في مجلد الحالة. المفاتيح الخاصة لا تغادر الجهاز أبدًا.
+2. **الدخول.** يوقّع جهاز التشغيل تحديًا جديدًا من السيرفر بمفتاحه الخاص، ويحصل على رمز وصول يعيش 15 دقيقة. ويجدّده بعد 10 دقائق.
+3. **الحجز (leasing).** يطلب جهاز التشغيل العمل بطلب طويل (long poll) حتى 25 ثانية. يأتي التشغيل كمنحة حجز (lease grant) يوقّعها السيرفر. يتحقق جهاز التشغيل من هذا التوقيع بمفتاح السيرفر الذي ثبّته عند التسجيل، فلا يستطيع وكيل مخترَق أن يدسّ تشغيلات.
+4. **التنفيذ.** يسجّل جهاز التشغيل الحجز في سجله الخاص (journal)، ويجهّز البيئة المعزولة، ويبدأ المحاولة (ويستلم أسرار التشغيل مشفّرة لمفتاحه وحده)، وينفّذ كل خطوة، ويرسل نبضة (heartbeat) كل 10 ثوانٍ، ويبلغ عن النتيجة.
+5. **الإيقاف الذاتي (self-fencing).** إذا لم تصل أي نبضة لمدة 35 ثانية، يقتل جهاز التشغيل البيئة المعزولة قبل حوالي 10 ثوانٍ من إعطاء السيرفر التشغيل لجهاز آخر. لذلك لا تعمل محاولتان للتشغيل نفسه في الوقت نفسه أبدًا.
 
-## Security in one paragraph
+## الأمان في فقرة واحدة
 
-The runner refuses plain HTTP outside local development, trusts only the system roots or the one CA you give it, never follows redirects, and refuses any grant not signed by the pinned server key. Its identity and journal files must be private to the runner user, or it does not start. Secrets live in memory only, every known encoding of a secret is masked before output is written anywhere (the spill file on disk included), and the journal holds lease and attempt IDs only. The runner turns off core dumps and ptrace on itself.
+يرفض جهاز التشغيل HTTP العادي خارج التطوير المحلي، ولا يثق إلا بشهادات الجذر في النظام أو بسلطة الشهادات الوحيدة التي تعطيه إياها، ولا يتبع التحويلات (redirects) أبدًا، ويرفض أي منحة لم يوقّعها مفتاح السيرفر المثبّت. يجب أن تكون ملفات الهوية والسجل الخاص به خاصة بمستخدم جهاز التشغيل، وإلا لا يبدأ. الأسرار تعيش في الذاكرة فقط، وكل ترميز معروف لأي سر يُخفى قبل كتابة المخرجات في أي مكان (ومنها ملف الفائض على القرص). والسجل الخاص (journal) يحفظ معرّفات الحجز والمحاولات فقط. يوقف جهاز التشغيل core dumps وptrace على نفسه.

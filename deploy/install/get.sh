@@ -117,7 +117,7 @@ get.sh: installed dhow-runner $version:
   /etc/systemd/system/dhow-runner.service (not enabled yet)
 
 This script does not run 'dhow-runner install' yet; that comes in a later release.
-Finish the setup as in https://github.com/$repo/blob/main/docs/runner/install.md:
+Finish the setup as in https://github.com/$repo/blob/main/docs/en/runner/install.md:
 
   1. Create the user, its sub-ids and directories:
        sudo useradd --system --home-dir /var/lib/dhow-runner --shell /usr/sbin/nologin dhow-runner

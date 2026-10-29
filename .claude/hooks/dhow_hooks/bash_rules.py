@@ -2,6 +2,8 @@ import os
 import re
 import subprocess
 
+from . import docs_rules
+
 ARABIC = re.compile(r"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
 
 BANNED = (
@@ -149,4 +151,4 @@ def check_message(command, cwd):
 
 
 def evaluate(command, cwd):
-    return check_push(command) or check_message(command, cwd)
+    return check_push(command) or check_message(command, cwd) or docs_rules.check_docs_pairs(command, cwd, workdir)

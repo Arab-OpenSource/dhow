@@ -124,6 +124,7 @@ var arMessages = map[Key]string{ //nolint:gosec // User-facing text that names s
 	KeyPurgeLocalDatabase:    "سنحذف أيضًا قاعدة بيانات dhow والـ role الخاص بها.",
 	KeyPurgeType:             "لتحذف كل شيء، اكتب بالضبط",
 	KeyPurgeWarning:          "سيحذف هذا %s و%s نهائيًا، ومعهما المفتاح السري. دون نسخة احتياطية لن تعود البيانات.",
+	KeyRequirementsURL:       "https://github.com/Khaymah/dhow/blob/main/docs/requirements.md",
 	KeyRerunHint:             "أصلح السبب وشغّل installer مرة أخرى: الخطوات التي اكتملت تبقى كما هي، وسيتخطاها.",
 	KeyResourceEnough:        "%s (الحد الأدنى %s، والموصى به %s)",
 	KeyResourceLow:           "%s: في هذا السيرفر %s، وهذا أقل من القيمة الموصى بها وهي %s. سيعمل داو، لكنه قد يصبح بطيئًا أو يفشل تحت الضغط. التفاصيل في %s",

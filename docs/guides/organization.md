@@ -1,69 +1,71 @@
-# Your organization and your account
+[English](../en/guides/organization.md)
 
-The **Organization** group in the side menu holds Members, Teams, Invitations, API keys and Organization settings. Your own account is at the bottom of the side menu: Profile, Security and Preferences. Each page has at most one primary button, and each list shows a skeleton while it loads, an error with **Try again** when it cannot load, and a plain sentence when it is empty.
+# مؤسستك وحسابك
 
-## Who can do what
+مجموعة **المؤسسة** في القائمة الجانبية فيها الأعضاء، والفرق، والدعوات، ومفاتيح API، وإعدادات المؤسسة. وحسابك أنت في أسفل القائمة الجانبية: الملف الشخصي، والأمان، والتفضيلات. في كل صفحة زر أساسي واحد بالأكثر. وكل قائمة تعرض هيكلًا فارغًا أثناء التحميل، وخطأ مع **حاول مرة أخرى** عندما لا تتمكن من التحميل، وجملة بسيطة عندما تكون فارغة.
 
-| Page or action | Owner | Admin | Maintainer | Developer | Viewer |
+## من يستطيع ماذا
+
+| الصفحة أو الإجراء | صاحب المؤسسة | مدير | مسؤول مشاريع | مطوّر | مشاهد |
 |---|---|---|---|---|---|
-| See members and teams | ✓ | ✓ | ✓ | ✓ | |
-| See a member's second step | ✓ | ✓ | | | |
-| Change a role, reset a second step, remove a member | ✓ | ✓ (not owners) | | | |
-| Create, edit and delete teams, add and remove team members | ✓ | ✓ | | | |
-| Invitations, organization API keys | ✓ | ✓ | | | |
-| Rename the organization | ✓ | ✓ | | | |
-| Change the second-step rule, transfer ownership | ✓ | | | | |
-| Leave the organization | ✓ | ✓ | ✓ | ✓ | ✓ |
+| رؤية الأعضاء والفرق | ✓ | ✓ | ✓ | ✓ | |
+| رؤية الخطوة الثانية لعضو | ✓ | ✓ | | | |
+| تغيير الدور، وإعادة ضبط الخطوة الثانية، وإزالة عضو | ✓ | ✓ (ليس لأصحاب المؤسسة) | | | |
+| إنشاء الفرق وتعديلها وحذفها، وإضافة أعضاء الفريق وإزالتهم | ✓ | ✓ | | | |
+| الدعوات، ومفاتيح API للمؤسسة | ✓ | ✓ | | | |
+| تغيير اسم المؤسسة | ✓ | ✓ | | | |
+| تغيير قاعدة الخطوة الثانية، ونقل الملكية | ✓ | | | | |
+| مغادرة المؤسسة | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-A page your role cannot open shows the not-found page. A button you cannot use is not shown.
+الصفحة التي لا يستطيع دورك فتحها تعرض صفحة "غير موجود". والزر الذي لا تستطيع استخدامه لا يظهر.
 
-## Members (`/org/members`)
+## الأعضاء (`/org/members`)
 
-The list shows each member's name, email, role and join date. Owners and admins also see a badge for a missing second step: amber when the organization requires one for that role, grey otherwise.
+تعرض القائمة اسم كل عضو، وبريده، ودوره، وتاريخ انضمامه. يرى صاحب المؤسسة والمديرون أيضًا علامة عند غياب الخطوة الثانية: كهرمانية عندما تطلبها المؤسسة لهذا الدور، ورمادية في غير ذلك.
 
-Pick a member to open their details (`/org/members/<id>`):
+اختر عضوًا لتفتح تفاصيله (`/org/members/<id>`):
 
-- **On screens 1280px wide and up,** the details open beside the list. The selected row is highlighted, and the list keeps its place and page while you move between members.
-- **On smaller screens,** the details take the whole page, with **All members** at the top to go back.
+- **على الشاشات بعرض 1280px فأكثر،** تفتح التفاصيل بجوار القائمة. يُميَّز الصف المختار، وتحتفظ القائمة بمكانها وصفحتها أثناء انتقالك بين الأعضاء.
+- **على الشاشات الأصغر،** تأخذ التفاصيل الصفحة كلها، مع **كل الأعضاء** في الأعلى للرجوع.
 
-The details show the role (and the higher role a team grants, if any), the second step (owners and admins only), the member's teams, each a link to the team, and the join date. The teams come with the members list (`Teams` on each member), so opening a member sends no extra request. Owners and admins can also:
+تعرض التفاصيل الدور (والدور الأعلى الذي يمنحه فريق، إن وجد)، والخطوة الثانية (لصاحب المؤسسة والمديرين فقط)، وفرق العضو وكل فريق رابط إلى صفحته، وتاريخ الانضمام. الفرق تأتي مع قائمة الأعضاء (`Teams` في كل عضو)، فلا يرسل فتح العضو أي طلب إضافي. ويستطيع صاحب المؤسسة والمديرون أيضًا:
 
-- **Change the role** from a list. Giving or taking the owner role asks for your current factor. The member is signed out everywhere so the new role applies at once.
-- **Reset the second step** of a member who lost every factor and recovery code.
-- **Remove the member.** A slide asks you to confirm before anything is sent. An owner must be given another role first.
+- **تغيير الدور** من قائمة. منح دور صاحب المؤسسة أو سحبه يطلب خطوتك الحالية. نُخرج العضو من كل أجهزته حتى يعمل الدور الجديد فورًا.
+- **إعادة ضبط الخطوة الثانية** لعضو فقد كل خطواته وأكواد الطوارئ.
+- **إزالة العضو.** تطلب لوحة جانبية تأكيدك قبل إرسال أي شيء. يجب إعطاء صاحب المؤسسة دورًا آخر أولًا.
 
-On your own row, the page points to your Security settings instead.
+في صفك أنت، تشير الصفحة إلى إعدادات الأمان الخاصة بك بدلًا من ذلك.
 
-The web app does not show when a member was last active, because the API does not return it yet.
+لا تعرض الواجهة آخر نشاط للعضو، لأن الـ API لا يُرجعه بعد.
 
-## Teams (`/org/teams`)
+## الفرق (`/org/teams`)
 
-A team groups members and can grant them one role in the organization; a member gets the higher of their own role and their teams' roles. Teams work like members: the team opens beside the list from 1280px up, and alone with **All teams** below that. Owners and admins can rename a team, add and remove members, change its role and delete it. **New team** is the page's primary button.
+الفريق يجمع أعضاء، ويمكن أن يمنحهم دورًا واحدًا في المؤسسة. يحصل العضو على الأعلى بين دوره ودور فرقه. الفرق تعمل مثل الأعضاء: يفتح الفريق بجوار القائمة من 1280px فأكثر، ووحده مع **كل الفرق** تحت ذلك. يستطيع صاحب المؤسسة والمديرون تغيير اسم الفريق، وإضافة الأعضاء وإزالتهم، وتغيير دوره، وحذفه. **فريق جديد** هو الزر الأساسي في الصفحة.
 
-## Invitations (`/org/invitations`)
+## الدعوات (`/org/invitations`)
 
-One list holds the pending invitations first and the expired ones after them, each with its role, its expiry date and who sent it. **New link** replaces the link with a fresh one valid for 7 days, so the old one stops working, and emails it when email is set up (at most 5 sends per invitation). **Revoke** stops the link at once. **Invite a member** opens the invite slide. Accepted invitations are not listed: the member appears in Members instead.
+قائمة واحدة فيها الدعوات المعلّقة أولًا، ثم المنتهية بعدها، مع دور كل دعوة، وتاريخ انتهائها، ومن أرسلها. **رابط جديد** يستبدل الرابط برابط جديد صالح 7 أيام، فيتوقف القديم، ويرسله بالبريد إذا كان البريد مضبوطًا (5 إرسالات بالأكثر لكل دعوة). **ألغِ** يوقف الرابط فورًا. **ادعُ عضوًا** يفتح لوحة الدعوة. الدعوات المقبولة لا تظهر في القائمة، لأن العضو يظهر في الأعضاء.
 
-## API keys (`/org/api-keys`)
+## مفاتيح API (`/org/api-keys`)
 
-Every API key a member created in the organization, with its scopes, creator, creation date, last use and expiry. Owners and admins can revoke any of them; **New key** opens the create slide.
+كل مفتاح API أنشأه عضو في المؤسسة، مع صلاحياته، ومن أنشأه، وتاريخ إنشائه، وآخر استخدام، وتاريخ انتهائه. يستطيع صاحب المؤسسة والمديرون إلغاء أي منها. **مفتاح جديد** يفتح لوحة الإنشاء.
 
-## Organization settings (`/org/settings`)
+## إعدادات المؤسسة (`/org/settings`)
 
-- **General:** the name (owners and admins can change it), the short link (slug) and the creation date.
-- **Security:** who must use a second step. Only an owner can change the rule; everyone else sees it.
-- **Danger zone:** transfer ownership (owners only) and leave the organization. Each opens a slide that asks you to confirm. If you are the last owner, the server refuses to let you leave until you transfer the ownership.
+- **عام:** الاسم (يستطيع صاحب المؤسسة والمديرون تغييره)، والرابط القصير (slug)، وتاريخ الإنشاء.
+- **الأمان:** من يجب أن يستخدم خطوة ثانية. صاحب المؤسسة وحده يستطيع تغيير القاعدة، والباقون يرونها.
+- **منطقة الخطر:** نقل الملكية (لصاحب المؤسسة فقط) ومغادرة المؤسسة. كل منهما يفتح لوحة تطلب تأكيدك. إذا كنت آخر صاحب للمؤسسة، يرفض السيرفر مغادرتك حتى تنقل الملكية.
 
-## Your account
+## حسابك
 
-- **Profile (`/account/profile`):** your name, email, avatar initial, language and your role in the current organization. The name and email cannot be changed from the web app yet.
-- **Security (`/account/security`):** a status line at the top is amber until you turn on a second step, and **Turn on the second step** is the page's primary button until then. The page has four sections:
-  - **Password and sign-in:** change the password (your other devices are signed out) and link or unlink single sign-on accounts.
-  - **Second step:** authenticator codes, recovery codes and passkeys.
-  - **Signed-in devices:** sign out one device, or every device but this one.
-  - **Personal API tokens:** keys that act as you in one organization, never with more than your role.
-- **Preferences (`/account/preferences`):** the language and the theme. The theme editor opens in a slide.
+- **الملف الشخصي (`/account/profile`):** اسمك، وبريدك، والحرف الأول في صورتك، ولغتك، ودورك في المؤسسة الحالية. لا يمكن تغيير الاسم والبريد من الواجهة بعد.
+- **الأمان (`/account/security`):** سطر الحالة في الأعلى كهرماني حتى تفعّل خطوة ثانية، و**فعّل الخطوة الثانية** هو الزر الأساسي في الصفحة حتى ذلك الحين. في الصفحة أربعة أقسام:
+  - **كلمة السر وتسجيل الدخول:** غيّر كلمة السر (فتخرج أجهزتك الأخرى)، واربط حسابات الدخول الموحّد أو افصلها.
+  - **الخطوة الثانية:** أكواد تطبيق المصادقة، وأكواد الطوارئ، ومفاتيح المرور.
+  - **الأجهزة المتصلة:** أخرج جهازًا واحدًا، أو كل الأجهزة إلا هذا الجهاز.
+  - **مفاتيح API الشخصية:** مفاتيح تعمل باسمك في مؤسسة واحدة، ولا تتجاوز دورك أبدًا.
+- **التفضيلات (`/account/preferences`):** اللغة والمظهر. محرر المظهر يفتح في لوحة جانبية.
 
-## Names in mixed text
+## الأسماء في النص المختلط
 
-Names, emails, team names and addresses are isolated from the text around them, so an Arabic name in the English interface (or an English one in Arabic) keeps the sentence in order, for example `صبري داود · 127.0.0.1 · 1 minute ago` in the audit log.
+نعزل الأسماء وعناوين البريد وأسماء الفرق والعناوين عن النص الذي حولها. لذلك الاسم العربي في الواجهة الإنجليزية (أو الإنجليزي في العربية) لا يخلط ترتيب الجملة، مثل `صبري داود · 127.0.0.1 · 1 minute ago` في سجل الأحداث.

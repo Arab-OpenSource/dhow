@@ -1,18 +1,20 @@
-# Develop Dhow on your machine
+[English](en/development.md)
 
-This page gets you from a fresh clone to a running server, the web app with live reload, and the full test suite. There are two ways in:
+# تطوير داو على جهازك
 
-- **[Docker only](#quickest-start-docker-only):** one command, and nothing to install but Git and Docker. Start here.
-- **[Native tools](#the-setup-script):** Go, Node.js, pnpm and PostgreSQL on your machine (through WSL2 on Windows), for `make check`, the runner sandbox and your editor's Go and TypeScript tooling.
+تأخذك هذه الصفحة من نسخة جديدة من المستودع إلى سيرفر يعمل، وواجهة مع إعادة التحميل المباشر، ومجموعة الاختبارات الكاملة. هناك طريقان:
 
-To try the released image instead, see [Run Dhow locally](install/local.md#the-compose-stack).
+- **[Docker فقط](#أسرع-بداية-docker-فقط):** أمر واحد، ولا تثبّت شيئًا غير Git وDocker. ابدأ من هنا.
+- **[الأدوات المباشرة](#سكربت-الإعداد):** Go وNode.js وpnpm وPostgreSQL على جهازك (عبر WSL2 على Windows)، لأجل `make check`، والبيئة المعزولة لجهاز التشغيل، وأدوات Go وTypeScript في محررك.
+
+لتجربة الصورة المنشورة بدلًا من ذلك، راجع [شغّل داو على جهازك](install/local.md#حزمة-compose).
 
 > [!WARNING]
-> Everything here runs with `DHOW_DEV=true`: plain HTTP and a database connection without TLS. It is for your own machine only. Never set it on a server or anything other people can reach.
+> كل شيء هنا يعمل مع `DHOW_DEV=true`: HTTP العادي، واتصال بقاعدة البيانات بدون TLS. هذا لجهازك أنت فقط. لا تضبطه أبدًا على سيرفر أو أي شيء يصل إليه غيرك.
 
-## Quickest start: Docker only
+## أسرع بداية: Docker فقط
 
-All you need is Git and Docker: [Docker Desktop](https://www.docker.com/products/docker-desktop/) on Windows and macOS, or Docker Engine with the Compose plugin on Linux. Go, Node.js, pnpm and PostgreSQL run in containers, so there is nothing else to install, and Windows needs no WSL setup of your own. In a terminal (PowerShell on Windows):
+كل ما تحتاجه Git وDocker: [Docker Desktop](https://www.docker.com/products/docker-desktop/) على Windows وmacOS، أو Docker Engine مع Compose plugin على Linux. يعمل Go وNode.js وpnpm وPostgreSQL في حاويات، فلا تثبّت أي شيء آخر، ولا يحتاج Windows إلى إعداد WSL بنفسك. في الطرفية (PowerShell على Windows):
 
 ```sh
 git clone https://github.com/Khaymah/dhow.git
@@ -20,7 +22,7 @@ cd dhow
 docker compose -f deploy/dev/compose.yaml up
 ```
 
-The first start downloads the images (about 600 MB) and the Go and web dependencies, so it takes a few minutes. Later starts take seconds. When everything is up, the log shows a box like this:
+التشغيل الأول ينزّل الصور (حوالي 600 MB) واعتماديات Go والواجهة، فيأخذ بضع دقائق. التشغيلات التالية تأخذ ثوانٍ. عندما يعمل كل شيء، يعرض السجل إطارًا مثل هذا:
 
 ```text
 ==================================================================
@@ -29,63 +31,63 @@ The first start downloads the images (about 600 MB) and the Go and web dependenc
 ==================================================================
 ```
 
-Open that link in Chrome or Firefox to create the owner account. From then on, use `http://localhost:5173`.
+افتح هذا الرابط في Chrome أو Firefox لتنشئ حساب صاحب النسخة. بعد ذلك استخدم `http://localhost:5173`.
 
-- **Go:** save any file under `apps/server`, `internal` or `packages/proto/gen/go`, and the server rebuilds and restarts within a few seconds. If the build fails, the error appears in the log, the old server keeps running, and the next save tries again.
-- **Web:** save any file under `apps/web` and the browser updates in place.
+- **Go:** احفظ أي ملف تحت `apps/server` أو `internal` أو `packages/proto/gen/go`، فيعيد السيرفر البناء والتشغيل خلال ثوانٍ. إذا فشل البناء، يظهر الخطأ في السجل، ويستمر السيرفر القديم في العمل، والحفظ التالي يحاول مرة أخرى.
+- **الواجهة:** احفظ أي ملف تحت `apps/web` فيتحدث المتصفح في مكانه.
 
-| Service | What it does | On your machine |
+| الخدمة | ماذا تفعل | على جهازك |
 |---|---|---|
-| `db` | PostgreSQL 18 with the databases `dhow` and `dhow_test` | `127.0.0.1:55432` |
-| `init` | Writes `.env.dev` with a new secret key the first time, then exits | |
-| `server` | Builds and runs the server from your clone, and watches the Go files (it checks every second, which works on Windows and macOS too) | `http://localhost:8080` (the API only) |
-| `web` | Vite with live reload, forwarding `/api` to `server` | `http://localhost:5173` |
+| `db` | PostgreSQL 18 مع قاعدتي البيانات `dhow` و`dhow_test` | `127.0.0.1:55432` |
+| `init` | تكتب `.env.dev` بمفتاح سري جديد في المرة الأولى، ثم تخرج | |
+| `server` | تبني السيرفر من نسختك وتشغّله، وتراقب ملفات Go (تفحص كل ثانية، وهذا يعمل على Windows وmacOS أيضًا) | `http://localhost:8080` (الـ API فقط) |
+| `web` | Vite مع إعادة التحميل المباشر، وتوجّه `/api` إلى `server` | `http://localhost:5173` |
 
-Everyday commands, from the root of the clone:
+الأوامر اليومية، من جذر المستودع:
 
-| Command | What it does |
+| الأمر | ماذا يفعل |
 |---|---|
-| `docker compose -f deploy/dev/compose.yaml up -d` | Starts in the background |
-| `docker compose -f deploy/dev/compose.yaml logs -f server` | Follows the server log, including the setup link |
-| `docker compose -f deploy/dev/compose.yaml restart server` | Restarts the server, which prints a new setup link while there is no owner yet |
-| `docker compose -f deploy/dev/compose.yaml restart web` | Reinstalls the web dependencies after `package.json` or the lockfile changed (a `git pull`, for example) |
-| `docker compose -f deploy/dev/compose.yaml exec server go test ./apps/server/...` | Runs Go tests against `dhow_test` |
-| `docker compose -f deploy/dev/compose.yaml exec web pnpm test` | Runs the web tests |
-| `docker compose -f deploy/dev/compose.yaml down` | Stops and removes the containers, keeping the database |
-| `docker compose -f deploy/dev/compose.yaml down --volumes` | Also deletes the database and the dependency caches |
+| `docker compose -f deploy/dev/compose.yaml up -d` | يبدأ في الخلفية |
+| `docker compose -f deploy/dev/compose.yaml logs -f server` | يتابع سجل السيرفر، ومنه رابط الإعداد |
+| `docker compose -f deploy/dev/compose.yaml restart server` | يعيد تشغيل السيرفر، فيطبع رابط إعداد جديدًا ما دام لا يوجد صاحب نسخة بعد |
+| `docker compose -f deploy/dev/compose.yaml restart web` | يعيد تثبيت اعتماديات الواجهة بعد تغيّر `package.json` أو ملف القفل (بعد `git pull` مثلًا) |
+| `docker compose -f deploy/dev/compose.yaml exec server go test ./apps/server/...` | يشغّل اختبارات Go على `dhow_test` |
+| `docker compose -f deploy/dev/compose.yaml exec web pnpm test` | يشغّل اختبارات الواجهة |
+| `docker compose -f deploy/dev/compose.yaml down` | يوقف الحاويات ويحذفها، ويحتفظ بقاعدة البيانات |
+| `docker compose -f deploy/dev/compose.yaml down --volumes` | يحذف أيضًا قاعدة البيانات وcaches الاعتماديات |
 
-`Ctrl+C` stops a stack started without `-d`.
+`Ctrl+C` يوقف الحزمة التي بدأت بدون `-d`.
 
-**`.env.dev`.** `init` writes it once with mode 600, in the same form as `make dev-env`, so the [native path](#quick-start) can use it too, and it never touches an existing one. The stack takes the secret key and any setting you add yourself (SMTP, for example) from it. The addresses, `DHOW_DEV=true` and the database URLs come from the stack itself. Keep the file: stored secrets need the same key at every start. Delete it only together with the database (`down --volumes`).
+**`.env.dev`.** تكتبه `init` مرة واحدة بالصلاحيات 600، بالشكل نفسه الذي يكتبه `make dev-env`، فيستطيع [المسار المباشر](#البدء-السريع) استخدامه أيضًا، ولا تلمس ملفًا موجودًا أبدًا. تأخذ الحزمة منه المفتاح السري وأي إعداد تضيفه بنفسك (SMTP مثلًا). أما العناوين و`DHOW_DEV=true` وروابط قاعدة البيانات فتأتي من الحزمة نفسها. احتفظ بالملف: الأسرار المحفوظة تحتاج إلى المفتاح نفسه في كل تشغيل. احذفه فقط مع قاعدة البيانات (`down --volumes`).
 
-**Settings.** Set these in your shell before `up`, or in `deploy/dev/.env` (Compose reads it from there, and Git ignores it):
+**الإعدادات.** اضبط هذه في الـ shell قبل `up`، أو في `deploy/dev/.env` (يقرؤه Compose من هناك، ويتجاهله Git):
 
-| Variable | Default | Use |
+| المتغير | القيمة الافتراضية | الاستخدام |
 |---|---|---|
-| `DHOW_DEV_WEB_PORT` | `5173` | The web app, and the address the setup link uses |
-| `DHOW_DEV_HTTP_PORT` | `8080` | The server, for `curl` and API clients |
-| `DHOW_DEV_DB_PORT` | `55432` | PostgreSQL, for `psql` or the native tools. It is not 5432, so a PostgreSQL already installed on the machine does not block it. `.env.dev` keeps the port of the first start |
-| `DHOW_DEV_POLL_SECONDS` | `1` | How often the server checks the Go files |
-| `DHOW_DEV_POSTGRES_IMAGE`, `DHOW_DEV_GO_IMAGE`, `DHOW_DEV_NODE_IMAGE` | `postgres:18`, `golang:1.27.3-bookworm`, `node:26-bookworm-slim` | Another registry or mirror, such as `mirror.gcr.io/library/postgres:18` |
+| `DHOW_DEV_WEB_PORT` | `5173` | الواجهة، والعنوان الذي يستخدمه رابط الإعداد |
+| `DHOW_DEV_HTTP_PORT` | `8080` | السيرفر، لـ `curl` وعملاء الـ API |
+| `DHOW_DEV_DB_PORT` | `55432` | PostgreSQL، لـ `psql` أو الأدوات المباشرة. ليس 5432، حتى لا يمنعه PostgreSQL مثبّت على الجهاز. يحتفظ `.env.dev` بمنفذ أول تشغيل |
+| `DHOW_DEV_POLL_SECONDS` | `1` | كم مرة يفحص السيرفر ملفات Go |
+| `DHOW_DEV_POSTGRES_IMAGE`، `DHOW_DEV_GO_IMAGE`، `DHOW_DEV_NODE_IMAGE` | `postgres:18`، `golang:1.27.3-bookworm`، `node:26-bookworm-slim` | سجل صور أو مرآة أخرى، مثل `mirror.gcr.io/library/postgres:18` |
 
-On Linux and macOS, `DHOW_DEV_DB_PORT=55433 docker compose -f deploy/dev/compose.yaml up`. In PowerShell, `$env:DHOW_DEV_DB_PORT = "55433"` first.
+على Linux وmacOS: `DHOW_DEV_DB_PORT=55433 docker compose -f deploy/dev/compose.yaml up`. وفي PowerShell: `$env:DHOW_DEV_DB_PORT = "55433"` أولًا.
 
-### When something goes wrong
+### عندما يحدث خطأ
 
-| Symptom | Cause and fix |
+| العَرَض | السبب والإصلاح |
 |---|---|
-| `port is already allocated`, or `ports are not available` on Windows | Another program uses 55432, 5173 or 8080. `docker ps` shows whether an old container holds it, such as `dhow-dev-postgres` from `make dev-db`; remove it with `docker rm -f dhow-dev-postgres`. Otherwise pick another port with the variables above. When the database does not start, the `web` log shows `ENOTFOUND server`, because the server waits for it. |
-| No setup box in the log | The owner already exists, so there is nothing to set up: sign in on `http://localhost:5173`. Otherwise run `docker compose -f deploy/dev/compose.yaml logs server` and look for the box or for `setup_url`. |
-| `CSRF_FAILED` at setup or sign-in | Open the app on `http://localhost:5173` (or your `DHOW_DEV_WEB_PORT`), not on port 8080 and not on `127.0.0.1`. |
-| The web app reports a missing package after a `git pull` | Run `docker compose -f deploy/dev/compose.yaml restart web`. |
-| Builds and reloads are slow on Windows | Files under `C:\` reach the containers through a slower bridge. For more speed, clone inside WSL2 and run the same command from a WSL2 shell, with Docker Desktop's WSL integration turned on (Settings, then Resources, then WSL integration). |
-| On Linux, `apps/web/node_modules` is an empty folder owned by root | Docker created it as the mount point for the dependencies volume. Before you switch to the native path, remove it with `sudo rm -rf apps/web/node_modules`. |
+| `port is already allocated`، أو `ports are not available` على Windows | برنامج آخر يستخدم 55432 أو 5173 أو 8080. يعرض `docker ps` هل تحجزه حاوية قديمة، مثل `dhow-dev-postgres` من `make dev-db`. احذفها بـ `docker rm -f dhow-dev-postgres`. وإلا اختر منفذًا آخر بالمتغيرات السابقة. عندما لا تبدأ قاعدة البيانات، يعرض سجل `web` الرسالة `ENOTFOUND server`، لأن السيرفر ينتظرها. |
+| لا يوجد إطار الإعداد في السجل | صاحب النسخة موجود بالفعل، فلا يوجد ما تُعدّه: سجّل الدخول على `http://localhost:5173`. وإلا شغّل `docker compose -f deploy/dev/compose.yaml logs server` وابحث عن الإطار أو عن `setup_url`. |
+| `CSRF_FAILED` عند الإعداد أو الدخول | افتح التطبيق على `http://localhost:5173` (أو `DHOW_DEV_WEB_PORT` الخاص بك)، وليس على المنفذ 8080 وليس على `127.0.0.1`. |
+| الواجهة تقول إن حزمة ناقصة بعد `git pull` | شغّل `docker compose -f deploy/dev/compose.yaml restart web`. |
+| البناء وإعادة التحميل بطيئان على Windows | الملفات تحت `C:\` تصل إلى الحاويات عبر جسر أبطأ. لسرعة أكبر، انسخ المستودع داخل WSL2 وشغّل الأمر نفسه من shell في WSL2، مع تفعيل تكامل WSL في Docker Desktop (Settings، ثم Resources، ثم WSL integration). |
+| على Linux، `apps/web/node_modules` مجلد فارغ يملكه root | أنشأه Docker كنقطة ربط لمساحة تخزين الاعتماديات. قبل أن تنتقل إلى المسار المباشر، احذفه بـ `sudo rm -rf apps/web/node_modules`. |
 
-## The setup script
+## سكربت الإعداد
 
-One script prepares the whole machine. It installs what is missing, asks only for the settings that are yours to choose, and generates every secret itself.
+سكربت واحد يجهّز الجهاز كله. يثبّت ما ينقص، ويسأل فقط عن الإعدادات التي تختارها أنت، ويولّد كل سر بنفسه.
 
-**Linux and macOS:**
+**Linux وmacOS:**
 
 ```sh
 git clone https://github.com/Khaymah/dhow.git
@@ -93,61 +95,61 @@ cd dhow
 make dev-setup
 ```
 
-**Windows**, in PowerShell from a clone or a downloaded copy of `deploy/dev/setup.ps1`:
+**Windows**، في PowerShell من نسخة من المستودع أو من نسخة منزّلة من `deploy/dev/setup.ps1`:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy\dev\setup.ps1
 ```
 
-On Windows, the script:
+على Windows، يفعل السكربت ما يلي:
 
-1. Installs WSL2 with Ubuntu 24.04 if it is missing. Create your Linux user when it opens, then run the script again.
-2. Clones the repository into `~/src/dhow` inside it. If the clone is already there, the script updates it with `git pull --ff-only` instead. When that fails because of local changes or another branch, it warns and carries on with the clone as it is.
-3. Runs the Linux script there. That script ignores the Windows entries WSL adds to `PATH`, so a Node.js installed on Windows does not get in the way.
+1. يثبّت WSL2 مع Ubuntu 24.04 إذا كان ناقصًا. أنشئ مستخدم Linux عندما يفتح، ثم شغّل السكربت مرة أخرى.
+2. ينسخ المستودع إلى `~/src/dhow` داخله. إذا كانت النسخة موجودة، يحدّثها السكربت بـ `git pull --ff-only` بدلًا من ذلك. إذا فشل ذلك بسبب تغييرات محلية أو فرع آخر، يحذّرك ويكمل بالنسخة كما هي.
+3. يشغّل سكربت Linux هناك. هذا السكربت يتجاهل مسارات Windows التي يضيفها WSL إلى `PATH`، فلا يعترض طريقك Node.js المثبّت على Windows.
 
-For a PostgreSQL container, turn on Docker Desktop's WSL integration for Ubuntu 24.04: Settings, then Resources, then WSL integration.
+لحاوية PostgreSQL، فعّل تكامل WSL في Docker Desktop لـ Ubuntu 24.04: Settings، ثم Resources، ثم WSL integration.
 
-`make` and the tools live inside Ubuntu, not in PowerShell. Run them from a shell there (`wsl -d Ubuntu-24.04 --cd ~`, then `cd src/dhow`), or straight from PowerShell:
+`make` والأدوات داخل Ubuntu، وليست في PowerShell. شغّلها من shell هناك (`wsl -d Ubuntu-24.04 --cd ~`، ثم `cd src/dhow`)، أو مباشرة من PowerShell:
 
 ```powershell
 wsl -d Ubuntu-24.04 --cd ~ -- bash -lc 'cd src/dhow && make dev'
 ```
 
-`bash -l` reads `~/.profile`, where the script put Go and Node.js on `PATH`.
+`bash -l` يقرأ `~/.profile`، حيث وضع السكربت Go وNode.js في `PATH`.
 
-What the script does, asking before anything that needs `sudo` or changes your system:
+ما يفعله السكربت، ويسأل قبل أي شيء يحتاج إلى `sudo` أو يغيّر نظامك:
 
-| Step | What happens |
+| الخطوة | ماذا يحدث |
 |---|---|
-| Tools | Checks Git, Make, curl, Python 3 and `libatomic` (which Node.js needs), and installs them with `apt` or `dnf` (on macOS, the Xcode Command Line Tools). Installs Go and Node.js LTS when missing or too old: with Homebrew on macOS, otherwise from go.dev and nodejs.org into `~/.local/share/dhow-dev`, each archive checked against the checksum its site publishes. Then pnpm at the version `apps/web/package.json` names. |
-| PostgreSQL 18 | `container` runs it in Docker or Podman, `native` installs it from the PostgreSQL project's repository (Debian, Ubuntu, Fedora, RHEL family) or Homebrew (macOS), and `url` uses a database you already have. It refuses anything older than 18. |
-| Questions | The server port (8080), the PostgreSQL port (5432), and whether to send email through an SMTP server (host, port, TLS mode, user, password typed hidden, sender). |
-| Generated | `DHOW_SECRET_KEY` (32 random bytes) and a random password for the `dhow` database user. |
-| Written | `.env.dev`, mode 600, ignored by Git. Run the script again to change a setting: it keeps the secret key and the database password unless you ask for new ones. |
-| Last | Builds the web app, offers to add the new tools to `PATH` in your shell profile, and prints the next commands. |
+| الأدوات | يفحص Git وMake وcurl وPython 3 و`libatomic` (الذي يحتاجه Node.js)، ويثبّتها بـ `apt` أو `dnf` (وعلى macOS، أدوات Xcode Command Line Tools). يثبّت Go وNode.js LTS إذا كانا ناقصين أو قديمين: بـ Homebrew على macOS، وإلا من go.dev وnodejs.org إلى `~/.local/share/dhow-dev`، مع فحص كل أرشيف مقابل الـ checksum الذي ينشره موقعه. ثم pnpm بالإصدار المذكور في `apps/web/package.json`. |
+| PostgreSQL 18 | `container` يشغّله في Docker أو Podman، و`native` يثبّته من مستودع مشروع PostgreSQL (Debian، وUbuntu، وFedora، وعائلة RHEL) أو Homebrew (macOS)، و`url` يستخدم قاعدة بيانات لديك. يرفض أي إصدار أقدم من 18. |
+| الأسئلة | منفذ السيرفر (8080)، ومنفذ PostgreSQL (5432)، وهل ترسل البريد عبر خادم SMTP (الخادم، والمنفذ، ونوع TLS، والمستخدم، وكلمة السر مخفية أثناء الكتابة، والمرسل). |
+| ما يولّده | `DHOW_SECRET_KEY` (32 بايت عشوائية)، وكلمة سر عشوائية لمستخدم قاعدة البيانات `dhow`. |
+| ما يكتبه | `.env.dev`، بالصلاحيات 600، ويتجاهله Git. شغّل السكربت مرة أخرى لتغيير إعداد: يحتفظ بالمفتاح السري وكلمة سر قاعدة البيانات ما لم تطلب قيمًا جديدة. |
+| في النهاية | يبني الواجهة، ويعرض إضافة الأدوات الجديدة إلى `PATH` في ملف الـ shell الخاص بك، ويطبع الأوامر التالية. |
 
-`deploy/dev/test/fresh.sh` runs the whole script on a bare container image as a new user, with Windows shims for `node`, `npm` and `corepack` on `PATH` like WSL has. CI runs it on Ubuntu 24.04, Ubuntu 22.04, Debian 12 and Fedora:
+السكربت `deploy/dev/test/fresh.sh` يشغّل السكربت كله على صورة حاوية فارغة كمستخدم جديد، مع بدائل Windows لـ `node` و`npm` و`corepack` في `PATH` كما في WSL. يشغّله CI على Ubuntu 24.04 وUbuntu 22.04 وDebian 12 وFedora:
 
 ```bash
 docker run --rm -v "$PWD":/repo:ro ubuntu:24.04 /repo/deploy/dev/test/fresh.sh --yes --db=url --db-url=postgres://u:p@127.0.0.1/dhow --test-db-url=postgres://u:p@127.0.0.1/dhow_test
 ```
 
-Options: `--yes` takes every default without asking, `--db=container|native|url` picks the database, `--db-url=` and `--test-db-url=` give one, `--port=` and `--db-port=` set the ports, `--skip-web` skips the web build, and `--check` only reports which tools are there. With `make`, pass them as `make dev-setup SETUP_ARGS="--db=native"`. The [quick start](#quick-start) below does the same steps by hand.
+الخيارات: `--yes` يأخذ كل القيم الافتراضية بدون سؤال، و`--db=container|native|url` يختار قاعدة البيانات، و`--db-url=` و`--test-db-url=` يعطيان رابطًا، و`--port=` و`--db-port=` يضبطان المنافذ، و`--skip-web` يتخطى بناء الواجهة، و`--check` يذكر فقط الأدوات الموجودة. مع `make`، مرّرها هكذا: `make dev-setup SETUP_ARGS="--db=native"`. [البدء السريع](#البدء-السريع) التالي ينفّذ الخطوات نفسها يدويًا.
 
-## What you need
+## ما تحتاجه
 
-| Tool | Why | Notes |
+| الأداة | لماذا | ملاحظات |
 |---|---|---|
-| Git | The repository | |
-| Go | Server, runner, tests | Any recent Go. The `go` command downloads the exact version pinned in `go.mod` by itself. |
-| Node.js LTS with pnpm | The web app (`apps/web`) | Run `corepack enable`, then `corepack prepare pnpm@10.28.0 --activate` (the version in `apps/web/package.json`). |
-| **PostgreSQL 18** | The server and the database tests | Exactly 18 or newer: the migrations use the built-in `uuidv7()`. Docker or Podman, or a native install, see [below](#postgresql-18). |
-| Python 3 | `make check` runs the tests of the Claude Code hooks | Any Python 3. |
-| GNU Make and a POSIX shell | The `make` targets | Already there on Linux and macOS, and in WSL2. |
+| Git | المستودع | |
+| Go | السيرفر، وجهاز التشغيل، والاختبارات | أي إصدار حديث من Go. الأمر `go` ينزّل بنفسه الإصدار الدقيق المثبّت في `go.mod`. |
+| Node.js LTS مع pnpm | الواجهة (`apps/web`) | شغّل `corepack enable`، ثم `corepack prepare pnpm@10.28.0 --activate` (الإصدار في `apps/web/package.json`). |
+| **PostgreSQL 18** | السيرفر واختبارات قاعدة البيانات | 18 أو أحدث بالضبط: التحديثات تستخدم `uuidv7()` المدمجة. Docker أو Podman، أو تثبيت مباشر. راجع [ما يلي](#postgresql-18). |
+| Python 3 | `make check` يشغّل اختبارات hooks الخاصة بـ Claude Code | أي Python 3. |
+| GNU Make وshell متوافق مع POSIX | أهداف `make` | موجودة بالفعل على Linux وmacOS، وفي WSL2. |
 
-**Windows:** the [setup script](#the-setup-script) prepares WSL2 for you. By hand: work inside WSL2 with Ubuntu 24.04 or newer, and clone the repository into the Linux file system (`~/src/dhow`), not under `/mnt/c`, which is much slower. Everything on this page then works as on Linux, and the browser on Windows reaches `http://localhost:8080` in WSL2.
+**Windows:** [سكربت الإعداد](#سكربت-الإعداد) يجهّز WSL2 لك. يدويًا: اعمل داخل WSL2 مع Ubuntu 24.04 أو أحدث، وانسخ المستودع إلى نظام ملفات Linux (`~/src/dhow`)، وليس تحت `/mnt/c`، فهو أبطأ بكثير. عندها يعمل كل شيء في هذه الصفحة كما على Linux، ويصل المتصفح على Windows إلى `http://localhost:8080` في WSL2.
 
-## Quick start
+## البدء السريع
 
 ```sh
 make dev-env
@@ -156,31 +158,31 @@ make web
 make dev
 ```
 
-1. `make dev-env` writes `.env.dev` once, with `DHOW_DEV=true`, a fresh secret key, `DHOW_PUBLIC_URL=http://localhost:8080` and the two database URLs. Git ignores it. Keep it: stored secrets need the same key at every start. Delete it only together with the database.
-2. `make dev-db` starts PostgreSQL 18 in Docker, or Podman if Docker is missing, on `127.0.0.1:5432`, with the databases `dhow` and `dhow_test`. It is safe to run again. Without Docker or Podman, install PostgreSQL natively instead ([below](#postgresql-18)).
-3. `make web` builds the web app into the server. Without it the server still runs, but `/` answers 404. For live reload, skip it and see [The web app with live reload](#the-web-app-with-live-reload).
-4. `make dev` starts the server from source. It applies the migrations, logs a `setup_url` line such as `http://localhost:8080/setup#...`, and listens on `127.0.0.1:8080`.
+1. `make dev-env` يكتب `.env.dev` مرة واحدة، مع `DHOW_DEV=true`، ومفتاح سري جديد، و`DHOW_PUBLIC_URL=http://localhost:8080`، ورابطي قاعدة البيانات. يتجاهله Git. احتفظ به: الأسرار المحفوظة تحتاج إلى المفتاح نفسه في كل تشغيل. احذفه فقط مع قاعدة البيانات.
+2. `make dev-db` يشغّل PostgreSQL 18 في Docker، أو Podman إذا لم يوجد Docker، على `127.0.0.1:5432`، مع قاعدتي البيانات `dhow` و`dhow_test`. تشغيله مرة أخرى آمن. بدون Docker أو Podman، ثبّت PostgreSQL مباشرة بدلًا من ذلك ([كما يلي](#postgresql-18)).
+3. `make web` يبني الواجهة داخل السيرفر. بدونه يعمل السيرفر، لكن `/` يرد بـ 404. لإعادة التحميل المباشر، تخطَّه وراجع [الواجهة مع إعادة التحميل المباشر](#الواجهة-مع-إعادة-التحميل-المباشر).
+4. `make dev` يشغّل السيرفر من الكود. يطبّق التحديثات، ويكتب سطر `setup_url` مثل `http://localhost:8080/setup#...`، ويستمع على `127.0.0.1:8080`.
 
-Open the setup link in Chrome or Firefox within an hour to create the owner account. Restart the server for a new link. Check the server from another terminal with `curl -s http://localhost:8080/api/v1/health/ready`.
+افتح رابط الإعداد في Chrome أو Firefox خلال ساعة لتنشئ حساب صاحب النسخة. أعد تشغيل السيرفر لتحصل على رابط جديد. افحص السيرفر من طرفية أخرى بـ `curl -s http://localhost:8080/api/v1/health/ready`.
 
 ## PostgreSQL 18
 
-Pick one. They all end with the same user, password and databases, so `.env.dev` works with any of them.
+اختر طريقة واحدة. كلها تنتهي بالمستخدم وكلمة السر وقواعد البيانات نفسها، فيعمل `.env.dev` مع أي منها.
 
-### Docker or Podman
+### Docker أو Podman
 
-`make dev-db` uses `docker` if it is installed and `podman` otherwise. Choose one with `make dev-db DEV_DB_ENGINE=podman`. If port 5432 is taken, pick another port for both the database and the URLs, before the first `make dev-env`:
+`make dev-db` يستخدم `docker` إذا كان مثبّتًا، وإلا `podman`. اختر أحدهما بـ `make dev-db DEV_DB_ENGINE=podman`. إذا كان المنفذ 5432 مشغولًا، فاختر منفذًا آخر لقاعدة البيانات وللروابط معًا، قبل أول `make dev-env`:
 
 ```sh
 make dev-env DEV_DB_PORT=5433
 make dev-db DEV_DB_PORT=5433
 ```
 
-`make dev-db-reset` deletes the container and its data.
+`make dev-db-reset` يحذف الحاوية وبياناتها.
 
-### Native install
+### التثبيت المباشر
 
-**Debian and Ubuntu (and WSL2)**, from the PostgreSQL project's own repository, because the distribution may ship an older version:
+**Debian وUbuntu (وWSL2)**، من مستودع مشروع PostgreSQL نفسه، لأن التوزيعة قد تأتي بإصدار أقدم:
 
 ```sh
 sudo apt install -y postgresql-common
@@ -189,11 +191,11 @@ sudo apt install -y postgresql-18
 sudo service postgresql start
 ```
 
-**Fedora, RHEL, Rocky and Alma:** add the repository from [postgresql.org/download/linux/redhat](https://www.postgresql.org/download/linux/redhat/), then install and start `postgresql18-server` as that page shows.
+**Fedora وRHEL وRocky وAlma:** أضف المستودع من [postgresql.org/download/linux/redhat](https://www.postgresql.org/download/linux/redhat/)، ثم ثبّت `postgresql18-server` وشغّله كما تعرض تلك الصفحة.
 
-**macOS:** `brew install postgresql@18`, then `brew services start postgresql@18`. [Postgres.app](https://postgresapp.com/) with PostgreSQL 18 works too.
+**macOS:** `brew install postgresql@18`، ثم `brew services start postgresql@18`. يعمل أيضًا [Postgres.app](https://postgresapp.com/) مع PostgreSQL 18.
 
-Then create the user and the two databases once. On Linux run `sudo -u postgres psql`, on macOS run `psql postgres`, and enter:
+ثم أنشئ المستخدم وقاعدتي البيانات مرة واحدة. على Linux شغّل `sudo -u postgres psql`، وعلى macOS شغّل `psql postgres`، واكتب:
 
 ```sql
 CREATE ROLE dhow LOGIN PASSWORD 'dhow-dev-only';
@@ -201,15 +203,15 @@ CREATE DATABASE dhow OWNER dhow;
 CREATE DATABASE dhow_test OWNER dhow;
 ```
 
-Check it with `psql 'postgres://dhow:dhow-dev-only@127.0.0.1:5432/dhow' -c 'SELECT version()'`. It must say 18 or newer.
+تحقق بـ `psql 'postgres://dhow:dhow-dev-only@127.0.0.1:5432/dhow' -c 'SELECT version()'`. يجب أن يقول 18 أو أحدث.
 
-### A hosted database
+### قاعدة بيانات مستضافة
 
-Any PostgreSQL 18 works if you put its URL in `.env.dev` (with `sslmode=require`). It is slower, needs the internet, and the tests create and drop a schema per test, so use a database of its own for `DHOW_TEST_DATABASE_URL`.
+أي PostgreSQL 18 يعمل إذا وضعت رابطه في `.env.dev` (مع `sslmode=require`). هذا أبطأ، ويحتاج إلى الإنترنت، والاختبارات تنشئ schema لكل اختبار وتحذفها. لذلك استخدم قاعدة بيانات خاصة لـ `DHOW_TEST_DATABASE_URL`.
 
-## The web app with live reload
+## الواجهة مع إعادة التحميل المباشر
 
-Run two terminals:
+شغّل طرفيتين:
 
 ```sh
 make dev-vite
@@ -220,27 +222,27 @@ pnpm -C apps/web install
 pnpm -C apps/web dev
 ```
 
-Then open `http://localhost:5173`. Vite serves the web app and forwards `/api` to the server on port 8080. `make dev-vite` starts the server with `DHOW_PUBLIC_URL=http://localhost:5173`, because Dhow compares the browser's `Origin` with it character for character. Open the setup link on port 5173 too.
+ثم افتح `http://localhost:5173`. يخدم Vite الواجهة ويوجّه `/api` إلى السيرفر على المنفذ 8080. `make dev-vite` يشغّل السيرفر مع `DHOW_PUBLIC_URL=http://localhost:5173`، لأن داو (Dhow) يقارن `Origin` من المتصفح به حرفًا بحرف. افتح رابط الإعداد على المنفذ 5173 أيضًا.
 
-## Tests and checks
+## الاختبارات والفحوص
 
 ```sh
 make dev-check
 ```
 
-`make dev-check` runs `make check` (lint, workflow lint, the runner protocol checks, every Go test with the race detector, the vulnerability scan and the hooks tests) with the test database from `.env.dev`.
+`make dev-check` يشغّل `make check` (الـ lint، وlint الـ workflows، وفحوص بروتوكول جهاز التشغيل، وكل اختبارات Go مع كاشف السباقات، وفحص الثغرات، واختبارات الـ hooks، وفحص الوثائق) مع قاعدة بيانات الاختبار من `.env.dev`.
 
 > [!IMPORTANT]
-> Use `make dev-check`, not a bare `make check`. Without `DHOW_TEST_DATABASE_URL` the database tests **skip themselves**, so `make check` can pass on your machine while most server tests never ran. CI always sets it.
+> استخدم `make dev-check`، وليس `make check` وحده. بدون `DHOW_TEST_DATABASE_URL` **تتخطى اختبارات قاعدة البيانات نفسها**، فقد ينجح `make check` على جهازك بينما لم تعمل أغلب اختبارات السيرفر. CI يضبطه دائمًا.
 
-For one package, load the file first:
+لحزمة واحدة، حمّل الملف أولًا:
 
 ```sh
 set -a; . ./.env.dev; set +a
 go test -race -count=1 ./apps/server/internal/Modules/Session/...
 ```
 
-For changes to `apps/web`, also run what its CI job runs:
+للتغييرات في `apps/web`، شغّل أيضًا ما يشغّله الـ CI job الخاص بها:
 
 ```sh
 pnpm -C apps/web lint
@@ -250,46 +252,46 @@ pnpm -C apps/web build
 pnpm -C apps/web size
 ```
 
-`make gen` regenerates the code from `packages/openapi/openapi.yaml` and the SQL queries, and `pnpm -C apps/web gen:api` regenerates the web API types. Never edit generated files by hand.
+`make gen` يعيد توليد الكود من `packages/openapi/openapi.yaml` واستعلامات SQL، و`pnpm -C apps/web gen:api` يعيد توليد أنواع الـ API في الواجهة. لا تعدّل الملفات المولَّدة يدويًا أبدًا.
 
-## The runner
+## جهاز التشغيل
 
-What you can do depends on your system:
+ما تستطيع فعله يعتمد على نظامك:
 
-| | Linux | macOS and Windows |
+| | Linux | macOS وWindows |
 |---|---|---|
-| Runner tests with the fake driver (`make test-runner`) | ✅ | ✅ (Windows in WSL2) |
-| Register against your local server | ✅ | ✅ |
-| Run jobs in the rootless Podman sandbox, and `make runner-isolation` | ✅ with the requirements below | In a Linux VM only |
+| اختبارات جهاز التشغيل مع المشغّل الوهمي (`make test-runner`) | ✅ | ✅ (Windows في WSL2) |
+| التسجيل على السيرفر المحلي | ✅ | ✅ |
+| تشغيل التشغيلات في بيئة Podman المعزولة بلا root، و`make runner-isolation` | ✅ مع المتطلبات التالية | في آلة Linux افتراضية فقط |
 
-- **Tests.** `make test-runner` builds the runner with the `dhowtest` tag, which adds a fake sandbox driver that replays recorded output and runs no process. Most runner work is covered there.
-- **Registration.** Create a registration token as in [Register a runner](runner/register.md), then register with `--dev`, which allows `http://` on `localhost` only, and a state directory of your own:
+- **الاختبارات.** `make test-runner` يبني جهاز التشغيل مع الوسم `dhowtest`، الذي يضيف مشغّل بيئة معزولة وهميًا يعيد مخرجات مسجّلة ولا يشغّل أي عملية. أغلب العمل على جهاز التشغيل تغطيه هذه الاختبارات.
+- **التسجيل.** أنشئ رمز تسجيل كما في [تسجيل جهاز تشغيل](runner/register.md)، ثم سجّل مع `--dev`، الذي يسمح بـ `http://` على `localhost` فقط، ومع مجلد حالة خاص بك:
 
   ```sh
   DHOW_RUNNER_STATE_DIR="$HOME/.local/state/dhow-runner-dev" \
     go run ./apps/runner/cmd/dhow-runner register --dev --url http://localhost:8080 --token-file -
   ```
 
-- **The sandbox.** Jobs run in rootless Podman. It needs Linux with Podman 5.4 or newer, `crun`, `uidmap`, cgroup v2 with the `cpu`, `io`, `memory` and `pids` controllers delegated to the runner (run it under systemd with `Delegate=yes`), at least 65536 sub-ids per job in `/etc/subuid` and `/etc/subgid`, and user namespaces (on Ubuntu 24.04 and newer, `kernel.apparmor_restrict_unprivileged_userns=0`). See [Install a runner](runner/install.md). On macOS and Windows, use a Linux VM with systemd, such as [Lima](https://lima-vm.io/) or Multipass on macOS, or WSL2 with systemd turned on, and run the runner there against the server on your machine.
-- **The isolation suites.** `make runner-isolation` builds the runner and an escape probe, runs them in real rootless containers, and fails if any escape works or a limit is not enforced. It needs the sandbox requirements above and `busybox-static`. CI runs it on `ubuntu-26.04` as a dedicated user under `systemd-run -p Delegate=yes` (see the `isolation` job in `.github/workflows/ci.yml`); copy that setup on your machine with `make runner-isolation ISOLATION_RUN="sudo systemd-run --uid=$USER --pipe --wait --collect -p Delegate=yes --"`.
+- **البيئة المعزولة.** التشغيلات تعمل في Podman بلا root. يحتاج إلى Linux مع Podman 5.4 أو أحدث، و`crun`، و`uidmap`، وcgroup v2 مع تفويض المتحكمات `cpu` و`io` و`memory` و`pids` إلى جهاز التشغيل (شغّله تحت systemd مع `Delegate=yes`)، و65536 sub-id على الأقل لكل تشغيل في `/etc/subuid` و`/etc/subgid`، وuser namespaces (على Ubuntu 24.04 وأحدث، `kernel.apparmor_restrict_unprivileged_userns=0`). راجع [تثبيت جهاز تشغيل](runner/install.md). على macOS وWindows، استخدم آلة Linux افتراضية مع systemd، مثل [Lima](https://lima-vm.io/) أو Multipass على macOS، أو WSL2 مع تفعيل systemd، وشغّل جهاز التشغيل هناك مع السيرفر الذي على جهازك.
+- **مجموعات اختبار العزل.** `make runner-isolation` يبني جهاز التشغيل وأداة فحص للهروب، ويشغّلهما في حاويات حقيقية بلا root، ويفشل إذا نجحت أي طريقة هروب أو لم يُفرض حد. يحتاج إلى متطلبات البيئة المعزولة السابقة و`busybox-static`. يشغّله CI على `ubuntu-26.04` كمستخدم مخصص تحت `systemd-run -p Delegate=yes` (راجع الـ job المسمى `isolation` في `.github/workflows/ci.yml`). كرّر هذا الإعداد على جهازك بـ `make runner-isolation ISOLATION_RUN="sudo systemd-run --uid=$USER --pipe --wait --collect -p Delegate=yes --"`.
 
-## Common problems
+## مشكلات شائعة
 
-| Symptom | Cause and fix |
+| العَرَض | السبب والإصلاح |
 |---|---|
-| The migrations fail at the first start | PostgreSQL is older than 18 (no `uuidv7()`). Check `SELECT version()`. |
-| `CSRF_FAILED` at setup or sign-in | The address in the browser is not exactly `DHOW_PUBLIC_URL`: `localhost` and `127.0.0.1` differ, and so do ports 8080 and 5173. |
-| Sign-in seems to do nothing from another device | The session cookie is `Secure`, and only `localhost` is a secure context over HTTP. Use the machine itself, or HTTPS. See [Run Dhow locally](install/local.md#browsers-and-httplocalhost). |
-| `make dev-db` says the port is in use | Another PostgreSQL listens on 5432. Stop it, or use `DEV_DB_PORT` as [above](#docker-or-podman). |
-| `/` answers 404 | The web app is not built into the server. Run `make web`, or use the [live reload](#the-web-app-with-live-reload) setup. |
-| The setup link no longer works | It is valid for one hour. Restart the server to get a new one. |
-| Stored secrets cannot be read after a restart | `DHOW_SECRET_KEY` changed. Keep `.env.dev`, or start over with an empty database. |
+| تفشل التحديثات في أول تشغيل | PostgreSQL أقدم من 18 (بلا `uuidv7()`). افحص `SELECT version()`. |
+| `CSRF_FAILED` عند الإعداد أو الدخول | العنوان في المتصفح ليس `DHOW_PUBLIC_URL` بالضبط: `localhost` و`127.0.0.1` مختلفان، وكذلك المنفذان 8080 و5173. |
+| الدخول من جهاز آخر لا يبدو أنه يفعل شيئًا | كوكي الجلسة `Secure`، و`localhost` وحده سياق آمن عبر HTTP. استخدم الجهاز نفسه، أو HTTPS. راجع [شغّل داو على جهازك](install/local.md#المتصفحات-وhttplocalhost). |
+| `make dev-db` يقول إن المنفذ مستخدم | PostgreSQL آخر يستمع على 5432. أوقفه، أو استخدم `DEV_DB_PORT` كما [سبق](#docker-أو-podman). |
+| `/` يرد بـ 404 | الواجهة غير مبنية داخل السيرفر. شغّل `make web`، أو استخدم إعداد [إعادة التحميل المباشر](#الواجهة-مع-إعادة-التحميل-المباشر). |
+| رابط الإعداد لم يعد يعمل | صلاحيته ساعة واحدة. أعد تشغيل السيرفر لتحصل على رابط جديد. |
+| لا يمكن قراءة الأسرار المحفوظة بعد إعادة التشغيل | تغيّر `DHOW_SECRET_KEY`. احتفظ بـ `.env.dev`، أو ابدأ من جديد بقاعدة بيانات فارغة. |
 
-## Start over
+## البدء من جديد
 
 ```sh
 make dev-db-reset
 rm .env.dev
 ```
 
-Then follow the [quick start](#quick-start) again.
+ثم اتبع [البدء السريع](#البدء-السريع) مرة أخرى.

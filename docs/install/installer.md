@@ -1,12 +1,14 @@
-# The interactive installer
+[English](../en/install/installer.md)
 
-`dhow-server install` sets up a complete Dhow host: the `dhow` service user, PostgreSQL 18, the secrets, the hardened systemd unit, a reverse proxy with TLS and the firewall. It asks before it installs anything, shows the whole plan before it changes anything, and can be run again at any time. `dhow-server doctor` checks an install and proposes fixes, and `dhow-server uninstall` removes it. The decisions behind it are in [ADR-0036](../../Plan/ADR/0036-interactive-host-installer.md).
+# المثبت التفاعلي
 
-The installer is part of the `dhow-server` binary, so there is one artifact to verify. It runs every system command as an argument list, never through a shell.
+الأمر `dhow-server install` يجهّز جهاز داو (Dhow) كاملًا: مستخدم الخدمة `dhow`، وPostgreSQL 18، والأسرار، وخدمة systemd المحصّنة، ووكيلًا عكسيًا مع TLS، وجدار الحماية. يسأل قبل أن يثبّت أي شيء، ويعرض الخطة كاملة قبل أن يغيّر أي شيء، ويمكن تشغيله مرة أخرى في أي وقت. الأمر `dhow-server doctor` يفحص التثبيت ويقترح إصلاحات، و`dhow-server uninstall` يزيله. أسباب هذه القرارات في [ADR-0036](../../Plan/ADR/0036-interactive-host-installer.md).
 
-## Get it
+المثبّت جزء من الملف التنفيذي `dhow-server`، فهناك ملف واحد فقط تتحقق منه. ينفّذ كل أمر في النظام كقائمة معاملات (arguments)، وليس عبر shell أبدًا.
 
-`deploy/install/get.sh` downloads the right release for the host, verifies it and starts the installer. Download it, read it, then run it. Never pipe it into a shell:
+## احصل عليه
+
+السكربت `deploy/install/get.sh` ينزّل الإصدار المناسب للجهاز، ويتحقق منه، ويشغّل المثبّت. نزّله، واقرأه، ثم شغّله. لا تمرّره أبدًا إلى shell مباشرة:
 
 ```sh
 curl -fsSLO https://raw.githubusercontent.com/Khaymah/dhow/main/deploy/install/get.sh
@@ -14,112 +16,112 @@ less get.sh
 bash get.sh
 ```
 
-`get.sh`:
+ماذا يفعل `get.sh`:
 
-1. Picks `amd64` or `arm64` from `uname -m`.
-2. Downloads `dhow-server_<version>_linux_<arch>.tar.gz`, `SHA256SUMS` and `SHA256SUMS.sigstore.json` of the latest release, or of `--version 1.2.3`, into a temporary directory.
-3. With [cosign](https://docs.sigstore.dev/) installed, checks that the release workflow of this repository signed `SHA256SUMS`, keyless. Without cosign, it warns and prints the `cosign verify-blob` command to run yourself.
-4. Checks the archive against `SHA256SUMS`, extracts `dhow-server`, and runs `dhow-server install` with every other argument, through `sudo` when you are not root. The temporary directory is removed afterwards.
+1. يختار `amd64` أو `arm64` من `uname -m`.
+2. ينزّل `dhow-server_<version>_linux_<arch>.tar.gz` و`SHA256SUMS` و`SHA256SUMS.sigstore.json` من آخر إصدار، أو من `--version 1.2.3`، إلى مجلد مؤقت.
+3. إذا كان [cosign](https://docs.sigstore.dev/) مثبّتًا، يتأكد أن workflow الإصدار في هذا المستودع وقّع `SHA256SUMS` بلا مفتاح. بدون cosign، يحذّرك ويطبع أمر `cosign verify-blob` لتشغّله بنفسك.
+4. يفحص الأرشيف مقابل `SHA256SUMS`، ويستخرج `dhow-server`، ويشغّل `dhow-server install` مع كل المعاملات الأخرى، عبر `sudo` إذا لم تكن root. ثم يحذف المجلد المؤقت.
 
-So `bash get.sh --version 1.2.3 --answers answers.yaml --yes` installs a pinned version without questions. `--component runner` fetches the runner archive of the same release instead, with the same checks, and installs `dhow-runner` and its unit ([Install a runner](../runner/install.md)). `DHOW_DOWNLOAD_URL` points the downloads at a mirror of the release files (`https://` only). With a mirror, or with `DHOW_REPO` set, cosign is required: the signature is the only thing that ties a mirror's files to this repository's release workflow, so without cosign `get.sh` stops. `--insecure-skip-signature` skips the check with a loud warning, for a mirror you control and trust; never use it otherwise. You can also download and verify a release by hand as in [Install the binary with systemd](binary-systemd.md#1-download-and-verify-a-release), and run `./dhow-server install` from it.
+لذلك الأمر `bash get.sh --version 1.2.3 --answers answers.yaml --yes` يثبّت إصدارًا محددًا بلا أسئلة. الخيار `--component runner` يجلب بدلًا من ذلك أرشيف جهاز التشغيل (runner) من الإصدار نفسه، بالفحوص نفسها، ويثبّت `dhow-runner` وخدمته ([ثبّت جهاز تشغيل](../runner/install.md)). المتغير `DHOW_DOWNLOAD_URL` يجعل التنزيل من مرآة (mirror) لملفات الإصدار (`https://` فقط). مع مرآة، أو مع ضبط `DHOW_REPO`، يصبح cosign إلزاميًا: التوقيع هو الشيء الوحيد الذي يربط ملفات المرآة بـ workflow الإصدار في هذا المستودع، لذلك يتوقف `get.sh` بدون cosign. الخيار `--insecure-skip-signature` يتخطى الفحص مع تحذير واضح، لمرآة تتحكم فيها وتثق بها. لا تستخدمه في غير ذلك أبدًا. يمكنك أيضًا تنزيل إصدار والتحقق منه يدويًا كما في [تثبيت الملف التنفيذي مع systemd](binary-systemd.md#1-تنزيل-إصدار-والتحقق-منه)، ثم تشغيل `./dhow-server install` منه.
 
-## Supported systems
+## الأنظمة المدعومة
 
-| Distribution | Packages from | Notes |
+| التوزيعة | مصدر الحزم | ملاحظات |
 |---|---|---|
-| Debian 12 | apt, PGDG for PostgreSQL 18 | Caddy, nginx and certbot from Debian |
-| Ubuntu 24.04 | apt, PGDG | Caddy from universe |
-| Ubuntu 22.04 | apt, PGDG | No Caddy package: choose nginx, an existing proxy or none |
-| Rocky Linux 9, AlmaLinux 9 | dnf, PGDG | Caddy and certbot from EPEL, which the installer enables when needed; the AppStream `postgresql` module is disabled |
-| RHEL 9 | dnf, PGDG | EPEL needs a subscription, so Caddy and certbot must already be installed |
-| Fedora 41 and newer | dnf5, PGDG | A dnf drop-in keeps Fedora's own `postgresql` packages from replacing the PGDG ones |
+| Debian 12 | apt، وPGDG لـ PostgreSQL 18 | Caddy وnginx وcertbot من Debian |
+| Ubuntu 24.04 | apt، PGDG | Caddy من universe |
+| Ubuntu 22.04 | apt، PGDG | لا توجد حزمة Caddy: اختر nginx، أو وكيلًا موجودًا، أو لا شيء |
+| Rocky Linux 9، AlmaLinux 9 | dnf، PGDG | Caddy وcertbot من EPEL، ويفعّله المثبّت عند الحاجة. ونوقف وحدة `postgresql` من AppStream |
+| RHEL 9 | dnf، PGDG | EPEL يحتاج إلى اشتراك، لذلك يجب أن يكون Caddy وcertbot مثبّتين مسبقًا |
+| Fedora 41 وأحدث | dnf5، PGDG | إعداد إضافي لـ dnf يمنع حزم `postgresql` الخاصة بـ Fedora من استبدال حزم PGDG |
 
-Debian 12, Ubuntu 24.04, Rocky Linux 9 and Fedora are tested end to end in CI (see [How it is tested](#how-it-is-tested)); Ubuntu 22.04, AlmaLinux and RHEL take the same code paths as their tested relatives. On any other distribution the installer runs in **manual mode**: it installs no packages, lists what is missing, and does everything else the same. With an existing PostgreSQL and an existing proxy, manual mode needs no packages at all. The installer always needs systemd.
+نختبر Debian 12 وUbuntu 24.04 وRocky Linux 9 وFedora من البداية إلى النهاية في CI (راجع [كيف نختبره](#كيف-نختبره)). أما Ubuntu 22.04 وAlmaLinux وRHEL فتسلك مسارات الكود نفسها التي تسلكها أقاربها المختبَرة. في أي توزيعة أخرى يعمل المثبّت في **الوضع اليدوي**: لا يثبّت أي حزمة، ويذكر ما ينقص، ويفعل كل شيء آخر كالمعتاد. مع PostgreSQL موجود ووكيل موجود، لا يحتاج الوضع اليدوي إلى أي حزمة. المثبّت يحتاج دائمًا إلى systemd.
 
-The installer runs as root. Only `install --dry-run` works without it.
+يعمل المثبّت كـ root. الأمر `install --dry-run` وحده يعمل بدونه.
 
-### Host size
+### حجم الجهاز
 
-The installer reads the CPU cores (`/sys/devices/system/cpu/online`), the memory (`MemTotal` in `/proc/meminfo`) and the free space in `/var/lib`, and compares them with the [hardware requirements](../requirements.md):
+يقرأ المثبّت عدد أنوية المعالج (`/sys/devices/system/cpu/online`)، والذاكرة (`MemTotal` في `/proc/meminfo`)، والمساحة الفارغة في `/var/lib`، ويقارنها بـ [متطلبات الأجهزة](../requirements.md):
 
-| | Minimum | Recommended |
+| | الحد الأدنى | الموصى به |
 |---|---|---|
-| CPU cores | 1 | 2 |
-| Memory | 2 GiB | 4 GiB |
-| Free disk in `/var/lib` | 5 GiB | 20 GiB |
+| أنوية المعالج | 1 | 2 |
+| الذاكرة | 2 GiB | 4 GiB |
+| المساحة الفارغة في `/var/lib` | 5 GiB | 20 GiB |
 
-The kernel keeps some memory for itself, so a host passes the memory check when it reports at least 90% of the number above (a "2 GB" VPS reports about 1.9 GiB). Below the minimum, the plan stops with a message that names the measured minimum and links the requirements, and nothing is changed. Below the recommended size, the installer prints a warning and continues. A re-run on a host where Dhow is already installed, which is how upgrades work, only warns, so a security upgrade is never blocked; a new install on that host would be refused. The numbers live in one place, `apps/server/internal/Core/Installer/Requirements.go`.
+تحجز النواة (kernel) جزءًا من الذاكرة لنفسها. لذلك ينجح الجهاز في فحص الذاكرة إذا أظهر 90% على الأقل من الرقم السابق (خادم VPS بـ "2 GB" يُظهر حوالي 1.9 GiB). تحت الحد الأدنى تتوقف الخطة برسالة تذكر الحد الأدنى المقيس وتربط صفحة المتطلبات، ولا يتغير شيء. تحت الحجم الموصى به يطبع المثبّت تحذيرًا ويكمل. إعادة التشغيل على جهاز فيه داو مثبّت، وهي طريقة الترقية، تحذّر فقط، حتى لا تُمنع ترقية أمنية أبدًا. أما التثبيت الجديد على هذا الجهاز فسيُرفض. الأرقام في مكان واحد: `apps/server/internal/Core/Installer/Requirements.go`.
 
-## The questions
+## الأسئلة
 
-The installer speaks English or Arabic. It follows `--lang en|ar`, then `lang` in an answers file, then the locale (`LC_ALL`, `LC_MESSAGES`, `LANG`), and uses English when the terminal is not UTF-8. It first prints what it found: the distribution, systemd, root, Docker and Compose, PostgreSQL versions, nginx, Caddy and certbot, which of ports 80, 443 and 8080 are in use, ufw or firewalld, and an earlier Dhow install. On a re-run, the answers saved by the last run are the defaults.
+يتكلم المثبّت الإنجليزية أو العربية. يتبع `--lang en|ar`، ثم `lang` في ملف الإجابات، ثم إعدادات اللغة في النظام (`LC_ALL` و`LC_MESSAGES` و`LANG`)، ويستخدم الإنجليزية إذا لم تكن الطرفية UTF-8. يطبع أولًا ما وجده: التوزيعة، وsystemd، وroot، وDocker وCompose، وإصدارات PostgreSQL، وnginx وCaddy وcertbot، وأي من المنافذ 80 و443 و8080 مستخدم، وufw أو firewalld، وأي تثبيت سابق لداو. عند إعادة التشغيل، تكون الإجابات التي حفظها التشغيل السابق هي القيم الافتراضية.
 
-1. **How Dhow runs.** Asked only when Docker with the Compose plugin is present:
-   - **Native**, the binary with the [hardened unit](binary-systemd.md#what-the-unit-does). The default and the most secure.
-   - **Docker Compose**, the [Compose stack](compose.md) in `/etc/dhow/compose`, with its own PostgreSQL. The installer warns that anyone in the `docker` group is effectively root on the host, and it never adds anyone to that group.
-2. **The domain**, for example `dhow.example.com`. `DHOW_PUBLIC_URL` becomes `https://<domain>`. Dhow needs a whole host name, never a path ([why](reverse-proxy.md#no-sub-path)).
-3. **PostgreSQL 18** (native only):
-   - **Install it here** from the PostgreSQL project's repository (PGDG). The installer downloads the repository signing key and refuses it unless its fingerprint is the pinned one (`B97B0AFC AA1A47F0 44F244A0 7FCC7D46 ACCC4CF8` for apt, `D4BF08AE 67A0B4C7 A1DBCCD2 40BCA2B4 08B40D20` for dnf). It then creates the `dhow` role and database with a generated password. Offered only when no other PostgreSQL uses port 5432.
-   - **Use an existing server.** You type its URL, which is not shown while you type. The installer checks the `sslmode` (`require`, `verify-ca` or `verify-full`; it recommends `verify-full` with `sslrootcert`), connects, and refuses servers older than 18.
-4. **The reverse proxy:**
-   - **Caddy** with automatic TLS from Let's Encrypt. The installer writes `/etc/caddy/dhow.caddyfile`, adds one `import` line at the top of `/etc/caddy/Caddyfile`, and validates the result before it reloads Caddy.
-   - **nginx with certbot.** The installer asks for an email address for the Let's Encrypt account, serves the certificate challenge from `/var/www/dhow-acme`, gets the certificate with `certbot certonly --webroot`, then writes the TLS configuration to `/etc/nginx/conf.d/dhow.conf` and a renewal hook that reloads nginx.
-   - **A proxy you already run.** The installer prints the exact nginx and Caddy configuration for your domain and asks for the proxy's address for `DHOW_TRUSTED_PROXIES` (`127.0.0.1/32,::1/128` when it runs on the same host).
-   - **None**, when TLS ends somewhere else. Dhow then listens on `127.0.0.1:8080` only.
+1. **كيف يعمل داو.** نسأل عنه فقط إذا كان Docker مع Compose plugin موجودًا:
+   - **مباشرة (Native)**، الملف التنفيذي مع [الخدمة المحصّنة](binary-systemd.md#ما-تفعله-الخدمة). هذا هو الخيار الافتراضي والأكثر أمانًا.
+   - **Docker Compose**، [حزمة Compose](compose.md) في `/etc/dhow/compose`، مع PostgreSQL خاص بها. يحذّر المثبّت من أن أي عضو في المجموعة `docker` يملك عمليًا صلاحيات root على الجهاز، ولا يضيف أي شخص إلى هذه المجموعة أبدًا.
+2. **النطاق**، مثل `dhow.example.com`. تصبح قيمة `DHOW_PUBLIC_URL` هي `https://<domain>`. يحتاج داو إلى اسم نطاق كامل، وليس مسارًا أبدًا ([لماذا](reverse-proxy.md#لا-مسار-فرعي)).
+3. **PostgreSQL 18** (في الطريقة المباشرة فقط):
+   - **ثبّته هنا** من مستودع مشروع PostgreSQL (PGDG). ينزّل المثبّت مفتاح توقيع المستودع، ويرفضه ما لم تكن بصمته هي البصمة المثبّتة (`B97B0AFC AA1A47F0 44F244A0 7FCC7D46 ACCC4CF8` لـ apt، و`D4BF08AE 67A0B4C7 A1DBCCD2 40BCA2B4 08B40D20` لـ dnf). ثم ينشئ الدور `dhow` وقاعدة البيانات بكلمة سر مولَّدة. نعرض هذا الخيار فقط إذا لم يكن PostgreSQL آخر يستخدم المنفذ 5432.
+   - **استخدم سيرفرًا موجودًا.** تكتب رابطه، ولا يظهر أثناء الكتابة. يفحص المثبّت قيمة `sslmode` (`require` أو `verify-ca` أو `verify-full`، وننصح بـ `verify-full` مع `sslrootcert`)، ثم يتصل، ويرفض السيرفرات الأقدم من 18.
+4. **الوكيل العكسي:**
+   - **Caddy** مع TLS تلقائي من Let's Encrypt. يكتب المثبّت `/etc/caddy/dhow.caddyfile`، ويضيف سطر `import` واحدًا في أول `/etc/caddy/Caddyfile`، ويتحقق من النتيجة قبل أن يعيد تحميل Caddy.
+   - **nginx مع certbot.** يطلب المثبّت عنوان بريد لحساب Let's Encrypt، ويخدم تحدي الشهادة من `/var/www/dhow-acme`، ويحصل على الشهادة بـ `certbot certonly --webroot`. ثم يكتب إعداد TLS في `/etc/nginx/conf.d/dhow.conf`، وhook للتجديد يعيد تحميل nginx.
+   - **وكيل تشغّله بالفعل.** يطبع المثبّت إعداد nginx وCaddy الدقيق لنطاقك، ويطلب عنوان الوكيل لـ `DHOW_TRUSTED_PROXIES` (`127.0.0.1/32,::1/128` إذا كان على الجهاز نفسه).
+   - **لا شيء**، عندما ينتهي TLS في مكان آخر. عندها يستمع داو على `127.0.0.1:8080` فقط.
 
-   The nginx and Caddy files are the configurations tested by `make proxy-check` in [Put Dhow behind a reverse proxy](reverse-proxy.md), with your domain filled in. For nginx, `http2 on;` is left out because the distributions' nginx is older than 1.25.1, which introduced it. With a managed proxy on SELinux, the installer turns on `httpd_can_network_connect` so the proxy can reach Dhow.
-5. **The breached-password check.** Answer no on hosts without internet access; it sets `DHOW_BREACHED_PASSWORD_CHECK=false`, which locks the setting in the dashboard. Answering yes writes nothing, so the instance owner can change it later in **Server settings** ([ADR-0063](../../Plan/ADR/0063-instance-settings-in-the-database.md)). A re-run removes a `DHOW_BREACHED_PASSWORD_CHECK=true` line an older installer wrote.
-6. **The firewall.** Asked only with Caddy or nginx and an active ufw or firewalld: open ports 80 and 443, and nothing else. The default is no.
-7. **Missing packages.** The installer lists every package it would install, for example `postgresql-18 caddy`, and installs nothing unless you agree.
+   ملفات nginx وCaddy هي الإعدادات التي يختبرها `make proxy-check` في [ضع داو خلف وكيل عكسي](reverse-proxy.md)، مع نطاقك. في nginx نحذف `http2 on;` لأن nginx في التوزيعات أقدم من 1.25.1، الإصدار الذي أضافه. مع وكيل يديره المثبّت على SELinux، يفعّل المثبّت `httpd_can_network_connect` حتى يصل الوكيل إلى داو.
+5. **فحص كلمات السر المسرّبة.** أجب بلا على الأجهزة بلا إنترنت. هذا يضبط `DHOW_BREACHED_PASSWORD_CHECK=false`، فيُقفل الإعداد في الواجهة. الإجابة بنعم لا تكتب شيئًا، فيستطيع صاحب النسخة تغييره لاحقًا من **إعدادات السيرفر** ([ADR-0063](../../Plan/ADR/0063-instance-settings-in-the-database.md)). إعادة التشغيل تحذف سطر `DHOW_BREACHED_PASSWORD_CHECK=true` الذي كتبه مثبّت أقدم.
+6. **جدار الحماية.** نسأل عنه فقط مع Caddy أو nginx، ومع ufw أو firewalld مفعّل: افتح المنفذين 80 و443، ولا شيء غيرهما. الإجابة الافتراضية لا.
+7. **الحزم الناقصة.** يذكر المثبّت كل حزمة سيثبّتها، مثل `postgresql-18 caddy`، ولا يثبّت شيئًا ما لم توافق.
 
-## The plan
+## الخطة
 
-Before it changes anything, the installer prints every step with the files it will write, the packages it will install and the commands it will run, marks the steps that are already done, and asks once: `Apply this plan? [y/N]`. Then it runs the steps in order:
+قبل أن يغيّر أي شيء، يطبع المثبّت كل خطوة مع الملفات التي سيكتبها، والحزم التي سيثبّتها، والأوامر التي سيشغّلها. ويعلّم الخطوات المنجزة بالفعل، ويسأل مرة واحدة: `Apply this plan? [y/N]`. ثم ينفّذ الخطوات بالترتيب:
 
-- **Every step is idempotent.** It first checks whether its result is already in place and skips itself if so. A second run on the same host changes nothing and does not even restart the service.
-- **A failing step rolls back what it did**, for example restoring the file it replaced, and the installer stops. The steps that finished stay, so after fixing the cause you run the installer again and it continues where it stopped.
-- **Secrets are never replaced.** An existing secret key or database URL is kept, so a re-run can never make stored data unreadable.
+- **كل خطوة متكررة بأمان (idempotent).** تتحقق أولًا هل نتيجتها موجودة، وإذا كانت موجودة تتخطى نفسها. التشغيل الثاني على الجهاز نفسه لا يغيّر شيئًا، ولا يعيد تشغيل الخدمة حتى.
+- **الخطوة الفاشلة تتراجع عمّا فعلته**، مثلًا تعيد الملف الذي استبدلته، ثم يتوقف المثبّت. الخطوات المكتملة تبقى. بعد إصلاح السبب، شغّل المثبّت مرة أخرى فيكمل من حيث توقف.
+- **لا نستبدل الأسرار أبدًا.** نحتفظ بالمفتاح السري أو رابط قاعدة البيانات الموجود، فلا تستطيع إعادة التشغيل أبدًا أن تجعل البيانات المحفوظة غير مقروءة.
 
-At the end it prints the one-time setup link from the journal, which creates the owner account within an hour, or the command that finds it: `journalctl -u dhow | grep setup_url`. The link is never written to a file.
+في النهاية يطبع رابط الإعداد الذي يعمل مرة واحدة من سجل النظام (journal)، وهو ينشئ حساب صاحب النسخة خلال ساعة. أو يطبع الأمر الذي يجده: `journalctl -u dhow | grep setup_url`. لا نكتب الرابط في أي ملف أبدًا.
 
-### What it writes
+### ما يكتبه
 
-| Path | Mode | Content |
+| المسار | الصلاحيات | المحتوى |
 |---|---|---|
-| `/usr/local/bin/dhow-server` | `755` | The binary that ran the installer |
-| `/etc/dhow/`, `/etc/dhow/credentials/` | `700` | |
-| `/etc/dhow/credentials/dhow-secret-key` | `600` | 32 random bytes as hex, from the kernel's random generator |
-| `/etc/dhow/credentials/dhow-database-url` | `600` | The database URL. For a local database: `postgres://dhow:<generated>@/dhow?host=/var/run/postgresql&port=5432&sslmode=require`, a Unix socket that never touches the network |
-| `/etc/dhow/dhow.env` | `600` | `DHOW_PUBLIC_URL`, `DHOW_LISTEN_ADDR`, `DHOW_TRUSTED_PROXIES`, `DHOW_LOG_LEVEL`, and `DHOW_BREACHED_PASSWORD_CHECK=false` only when the check is turned off |
-| `/etc/dhow/answers.yaml` | `600` | Your answers, without any secret, for re-runs, `doctor` and `uninstall` |
+| `/usr/local/bin/dhow-server` | `755` | الملف التنفيذي الذي شغّل المثبّت |
+| `/etc/dhow/`، `/etc/dhow/credentials/` | `700` | |
+| `/etc/dhow/credentials/dhow-secret-key` | `600` | 32 بايت عشوائية بصيغة hex، من مولّد الأرقام العشوائية في النواة |
+| `/etc/dhow/credentials/dhow-database-url` | `600` | رابط قاعدة البيانات. لقاعدة بيانات محلية: `postgres://dhow:<generated>@/dhow?host=/var/run/postgresql&port=5432&sslmode=require`، وهو Unix socket لا يلمس الشبكة أبدًا |
+| `/etc/dhow/dhow.env` | `600` | `DHOW_PUBLIC_URL` و`DHOW_LISTEN_ADDR` و`DHOW_TRUSTED_PROXIES` و`DHOW_LOG_LEVEL`، و`DHOW_BREACHED_PASSWORD_CHECK=false` فقط عند إيقاف الفحص |
+| `/etc/dhow/answers.yaml` | `600` | إجاباتك، بدون أي سر، لإعادة التشغيل ولـ `doctor` و`uninstall` |
 | `/etc/systemd/system/dhow.service` | `644` | [`deploy/systemd/dhow.service`](../../deploy/systemd/dhow.service) |
-| `/etc/apt/keyrings/dhow-pgdg.asc`, `/etc/apt/sources.list.d/dhow-pgdg.sources` | `644` | The PGDG key and repository on apt systems |
-| `/etc/pki/rpm-gpg/RPM-GPG-KEY-dhow-pgdg`, `/etc/yum.repos.d/dhow-pgdg.repo` | `644` | The same on dnf systems, with `gpgcheck` and `repo_gpgcheck` on |
-| `/etc/caddy/dhow.caddyfile` or `/etc/nginx/conf.d/dhow.conf` | `644` | The proxy site |
+| `/etc/apt/keyrings/dhow-pgdg.asc`، `/etc/apt/sources.list.d/dhow-pgdg.sources` | `644` | مفتاح PGDG ومستودعه في أنظمة apt |
+| `/etc/pki/rpm-gpg/RPM-GPG-KEY-dhow-pgdg`، `/etc/yum.repos.d/dhow-pgdg.repo` | `644` | الشيء نفسه في أنظمة dnf، مع تفعيل `gpgcheck` و`repo_gpgcheck` |
+| `/etc/caddy/dhow.caddyfile` أو `/etc/nginx/conf.d/dhow.conf` | `644` | موقع الوكيل |
 
-The Compose install writes `/etc/dhow/compose/compose.yaml` and `/etc/dhow/compose/.env` (mode `600`, with a generated `POSTGRES_PASSWORD` and `DHOW_SECRET_KEY`) instead of the unit and the credentials, pins `DHOW_IMAGE` to the installer's version, starts the stack with `docker compose up --wait`, and trusts the gateway of the `dhow_edge` network when a proxy on the host is in front of it.
+تثبيت Compose يكتب `/etc/dhow/compose/compose.yaml` و`/etc/dhow/compose/.env` (بالصلاحيات `600`، مع `POSTGRES_PASSWORD` و`DHOW_SECRET_KEY` مولَّدين) بدل الخدمة وملفات الأسرار. ويثبّت `DHOW_IMAGE` على إصدار المثبّت، ويشغّل الحزمة بـ `docker compose up --wait`، ويثق ببوابة شبكة `dhow_edge` إذا كان أمامها وكيل على الجهاز.
 
-## Answers file
+## ملف الإجابات
 
-`--answers file.yaml` reads every answer from a file and asks nothing. The file is strict: an unknown key, a second YAML document or an invalid value stops the installer before it does anything, with every problem listed. It never holds a secret.
+الخيار `--answers file.yaml` يقرأ كل الإجابات من ملف ولا يسأل شيئًا. الملف صارم: المفتاح غير المعروف، أو وثيقة YAML ثانية، أو القيمة غير الصالحة، يوقف المثبّت قبل أن يفعل أي شيء، مع ذكر كل المشكلات. لا يحتوي الملف أي سر أبدًا.
 
-| Key | Values | Default | Meaning |
+| المفتاح | القيم | القيمة الافتراضية | المعنى |
 |---|---|---|---|
-| `lang` | `en`, `ar` | from the locale | Language of the output |
-| `mode` | `native`, `compose` | `native` | How Dhow runs |
-| `domain` | a host name | required | The domain users open |
-| `public_url` | an `https://` URL | `https://<domain>` | Overrides `DHOW_PUBLIC_URL`, for example with a port |
-| `listen_addr` | `host:port` | `127.0.0.1:8080` | `DHOW_LISTEN_ADDR`, or `DHOW_PUBLISH` for Compose |
-| `database.mode` | `install`, `existing` | `install` | Install PostgreSQL 18 here, or use a server you have. Compose always uses `install` |
-| `database.url_file` | a path | | With `existing`: a file of mode `600` that holds the `postgres://` URL. The installer copies the URL into the credentials and never prints it |
-| `proxy.kind` | `caddy`, `nginx`, `existing`, `none` | `caddy` | The reverse proxy |
-| `proxy.email` | an email address | | Required with `nginx`, for the Let's Encrypt account |
-| `proxy.trusted_proxies` | IPs and CIDRs | | With `existing` or `none`: `DHOW_TRUSTED_PROXIES`. Caddy and nginx always get `127.0.0.1/32,::1/128` |
-| `firewall` | `true`, `false` | `false` | Open ports 80 and 443 in ufw or firewalld. Only with `caddy` or `nginx` |
-| `install_packages` | `true`, `false` | `false` | Consent to install the missing packages the plan lists |
-| `breached_password_check` | `true`, `false` | `true` | `DHOW_BREACHED_PASSWORD_CHECK` |
+| `lang` | `en`، `ar` | من إعدادات اللغة | لغة المخرجات |
+| `mode` | `native`، `compose` | `native` | كيف يعمل داو |
+| `domain` | اسم نطاق | مطلوب | النطاق الذي يفتحه المستخدمون |
+| `public_url` | رابط `https://` | `https://<domain>` | يستبدل `DHOW_PUBLIC_URL`، مثلًا مع منفذ |
+| `listen_addr` | `host:port` | `127.0.0.1:8080` | `DHOW_LISTEN_ADDR`، أو `DHOW_PUBLISH` مع Compose |
+| `database.mode` | `install`، `existing` | `install` | ثبّت PostgreSQL 18 هنا، أو استخدم سيرفرًا لديك. Compose يستخدم `install` دائمًا |
+| `database.url_file` | مسار | | مع `existing`: ملف بالصلاحيات `600` فيه رابط `postgres://`. ينسخ المثبّت الرابط إلى ملفات الأسرار، ولا يطبعه أبدًا |
+| `proxy.kind` | `caddy`، `nginx`، `existing`، `none` | `caddy` | الوكيل العكسي |
+| `proxy.email` | عنوان بريد | | مطلوب مع `nginx`، لحساب Let's Encrypt |
+| `proxy.trusted_proxies` | عناوين IP ونطاقات CIDR | | مع `existing` أو `none`: قيمة `DHOW_TRUSTED_PROXIES`. أما Caddy وnginx فيأخذان دائمًا `127.0.0.1/32,::1/128` |
+| `firewall` | `true`، `false` | `false` | افتح المنفذين 80 و443 في ufw أو firewalld. مع `caddy` أو `nginx` فقط |
+| `install_packages` | `true`، `false` | `false` | الموافقة على تثبيت الحزم الناقصة التي تذكرها الخطة |
+| `breached_password_check` | `true`، `false` | `true` | `DHOW_BREACHED_PASSWORD_CHECK` |
 
-An example for a fresh Debian host with Caddy:
+مثال لجهاز Debian جديد مع Caddy:
 
 ```yaml
 lang: en
@@ -134,7 +136,7 @@ install_packages: true
 breached_password_check: true
 ```
 
-And one for an existing database and a proxy on another machine:
+ومثال لقاعدة بيانات موجودة ووكيل على جهاز آخر:
 
 ```yaml
 mode: native
@@ -148,56 +150,56 @@ proxy:
 install_packages: false
 ```
 
-## Flags
+## الخيارات
 
-| Flag | Commands | Effect |
+| الخيار | الأوامر | الأثر |
 |---|---|---|
-| `--answers file.yaml` | `install` | Read the answers from a file |
-| `--dry-run` | `install` | Detect, ask and print the plan, then stop. Changes nothing and works without root |
-| `--yes` | `install`, `uninstall` | Skip the final confirmation. `uninstall --purge` still needs the typed phrase |
-| `--lang en\|ar` | all | Language |
-| `--fix` | `doctor` | Apply every proposed fix without asking |
-| `--purge` | `uninstall` | Also delete the data, the secrets and the local database |
+| `--answers file.yaml` | `install` | اقرأ الإجابات من ملف |
+| `--dry-run` | `install` | اكتشف، واسأل، واطبع الخطة، ثم توقف. لا يغيّر شيئًا ويعمل بدون root |
+| `--yes` | `install`، `uninstall` | تخطَّ التأكيد الأخير. الأمر `uninstall --purge` ما زال يحتاج إلى كتابة العبارة |
+| `--lang en\|ar` | كلها | اللغة |
+| `--fix` | `doctor` | طبّق كل الإصلاحات المقترحة بدون سؤال |
+| `--purge` | `uninstall` | احذف أيضًا البيانات والأسرار وقاعدة البيانات المحلية |
 
 ## doctor
 
-`dhow-server doctor` reads `/etc/dhow/answers.yaml` and checks:
+يقرأ `dhow-server doctor` الملف `/etc/dhow/answers.yaml` ويفحص:
 
-- The binary, the unit and the configuration exist, and the unit matches the one shipped with this release.
-- Ownership `root:root` and the modes in [What it writes](#what-it-writes).
-- The secret key and the database URL are present and pass the same checks as at boot. Doctor never generates a new secret key, because a new key cannot read the old data.
-- The service is enabled and running, and `/api/v1/health/ready` reports the database, the migrations, today's job log partition and the last settings reload as ready. It also says whether the first owner still has to be created.
-- `DHOW_TRUSTED_PROXIES`: not `0.0.0.0/0` or `::/0`, no very large public range, and it includes `127.0.0.1` when the proxy runs on this host.
-- Through the public URL: the proxy answers, the TLS certificate has at least 21 days left, the proxy passes `Origin` (a request with your origin is not refused with `CSRF_FAILED`, one with a foreign origin is), and the client address reaches Dhow (a probe request shows up in the log with a `client_ip` that is not the proxy's). For nginx it also checks that the site sets `Host`, `X-Forwarded-For` and `X-Forwarded-Proto`. These checks are skipped with proxy `none`.
-- CPU cores and memory against the [hardware requirements](../requirements.md): below the minimum is a failure, below the recommended size a warning.
-- Free disk space in `/var/lib` and in the PostgreSQL data directory: less than 1 GiB is a failure, less than 5 GiB a warning.
+- وجود الملف التنفيذي والخدمة والإعدادات، ومطابقة الخدمة للنسخة التي تأتي مع هذا الإصدار.
+- الملكية `root:root` والصلاحيات في [ما يكتبه](#ما-يكتبه).
+- وجود المفتاح السري ورابط قاعدة البيانات، ونجاحهما في الفحوص نفسها التي تعمل عند البدء. لا يولّد doctor مفتاحًا سريًا جديدًا أبدًا، لأن المفتاح الجديد لا يقرأ البيانات القديمة.
+- أن الخدمة مفعّلة وتعمل، وأن `/api/v1/health/ready` يقول إن قاعدة البيانات، والتحديثات، وجزء سجلات التشغيل لليوم، وآخر إعادة تحميل للإعدادات، كلها جاهزة. ويقول أيضًا هل ما زال إنشاء صاحب النسخة الأول مطلوبًا.
+- `DHOW_TRUSTED_PROXIES`: ليس `0.0.0.0/0` أو `::/0`، ولا نطاقًا عامًا كبيرًا جدًا، ويحتوي `127.0.0.1` إذا كان الوكيل على هذا الجهاز.
+- عبر العنوان العام: الوكيل يرد، وشهادة TLS باقٍ عليها 21 يومًا على الأقل، والوكيل يمرّر `Origin` (الطلب بمصدرك لا يُرفض بـ `CSRF_FAILED`، والطلب بمصدر غريب يُرفض)، وعنوان العميل يصل إلى داو (طلب تجربة يظهر في السجل مع `client_ip` ليس عنوان الوكيل). مع nginx يتأكد أيضًا أن الموقع يضبط `Host` و`X-Forwarded-For` و`X-Forwarded-Proto`. نتخطى هذه الفحوص مع الوكيل `none`.
+- أنوية المعالج والذاكرة مقابل [متطلبات الأجهزة](../requirements.md): تحت الحد الأدنى فشل، وتحت الحجم الموصى به تحذير.
+- المساحة الفارغة في `/var/lib` وفي مجلد بيانات PostgreSQL: أقل من 1 GiB فشل، وأقل من 5 GiB تحذير.
 
-Every finding comes with its fix: a command, such as restarting the service, renewing the certificate or restoring a file mode, or advice when a person must decide. In a terminal doctor asks before each fix. `--fix` applies them all, and without a terminal doctor only lists them. It exits with status `0` when everything is fine.
+كل نتيجة تأتي مع إصلاحها: أمر، مثل إعادة تشغيل الخدمة، أو تجديد الشهادة، أو إعادة صلاحيات ملف، أو نصيحة عندما يجب أن يقرر إنسان. في الطرفية يسأل doctor قبل كل إصلاح. الخيار `--fix` يطبّقها كلها، وبدون طرفية يذكرها doctor فقط. يخرج بالحالة `0` عندما يكون كل شيء سليمًا.
 
-## Upgrade
+## الترقية
 
-Run the installer of the newer release, for example `bash get.sh --version 1.3.0`. With the saved answers as defaults, the plan replaces the binary and the unit if they changed, keeps the secrets, the configuration and the data, and restarts the service. Migrations run automatically when Dhow starts, under a lock. If a migration fails Dhow does not start and the old schema stays in place; migrations only move forward, so take a backup first.
+شغّل مثبّت الإصدار الأحدث، مثل `bash get.sh --version 1.3.0`. مع الإجابات المحفوظة كقيم افتراضية، تستبدل الخطة الملف التنفيذي والخدمة إذا تغيّرا، وتحتفظ بالأسرار والإعدادات والبيانات، وتعيد تشغيل الخدمة. تحديثات قاعدة البيانات تعمل تلقائيًا عند بدء داو، تحت قفل. إذا فشل تحديث، لا يبدأ داو ويبقى الجدول القديم. التحديثات تتقدم فقط، لذلك خذ نسخة احتياطية أولًا.
 
-For Compose, the installer pins `DHOW_IMAGE` to its own version unless you pinned a digest in `.env`, which it keeps.
+مع Compose، يثبّت المثبّت `DHOW_IMAGE` على إصداره هو، إلا إذا ثبّتّ digest في `.env`، فعندها يحتفظ به.
 
-## Back up
+## النسخ الاحتياطي
 
-Back up the database and `/etc/dhow` together, as shown in [Back up and restore](binary-systemd.md#back-up-and-restore). The database is useless without `/etc/dhow/credentials/dhow-secret-key`.
+خذ نسخة من قاعدة البيانات ومن `/etc/dhow` معًا، كما في [النسخ الاحتياطي والاسترجاع](binary-systemd.md#النسخ-الاحتياطي-والاسترجاع). قاعدة البيانات لا فائدة منها بدون `/etc/dhow/credentials/dhow-secret-key`.
 
-## Uninstall
+## إزالة التثبيت
 
-`dhow-server uninstall` stops and disables the service, and removes the unit, the binary, `/etc/dhow/dhow.env` and the proxy site it wrote. It keeps the secrets and answers in `/etc/dhow`, the data in `/var/lib/dhow` and the database, so a later install picks up where you left off.
+الأمر `dhow-server uninstall` يوقف الخدمة ويعطّلها، ويحذف الخدمة والملف التنفيذي و`/etc/dhow/dhow.env` وموقع الوكيل الذي كتبه. ويحتفظ بالأسرار والإجابات في `/etc/dhow`، وبالبيانات في `/var/lib/dhow`، وبقاعدة البيانات، حتى يكمل أي تثبيت لاحق من حيث توقفت.
 
-`dhow-server uninstall --purge` also drops the local `dhow` database and role, deletes `/etc/dhow` and `/var/lib/dhow` and removes the `dhow` user. It asks you to type `delete dhow data`, even with `--yes`. An external database is never touched. PostgreSQL itself, the PGDG repository, the proxy package and Let's Encrypt certificates stay installed, because other software may use them.
+الأمر `dhow-server uninstall --purge` يحذف أيضًا قاعدة البيانات المحلية `dhow` ودورها، ويحذف `/etc/dhow` و`/var/lib/dhow`، ويزيل المستخدم `dhow`. يطلب منك كتابة `delete dhow data`، حتى مع `--yes`. لا يلمس قاعدة البيانات الخارجية أبدًا. ويبقى PostgreSQL نفسه، ومستودع PGDG، وحزمة الوكيل، وشهادات Let's Encrypt مثبّتة، لأن برامج أخرى قد تستخدمها.
 
-## Security notes
+## ملاحظات أمنية
 
-- **No shell.** Every command the installer runs is an argument list. Values you type are validated first: the domain against a host name pattern, the email address, IPs and CIDRs, and URLs with the server's own configuration rules.
-- **Secrets.** They are generated on the host from the kernel's random generator, written with mode `600` owned by root, and read by systemd for the service. They never appear in the output, the journal, a command line or the answers file. For a local database, PostgreSQL receives a SCRAM-SHA-256 verifier, not the password. The setup link is printed once, because it is how you take ownership; create the owner right away.
-- **The docker group.** The Compose path works, but membership of the `docker` group is equivalent to root, and `docker inspect` shows every container's environment, including `DHOW_SECRET_KEY`. The installer never adds a user to the group. Prefer the native path.
-- **Signatures.** Releases are reproducible, the checksums are signed keyless with cosign, and each archive has an SPDX SBOM and SLSA build provenance. Install cosign so `get.sh` checks the signature, not only the checksum. Package repositories are trusted only with pinned key fingerprints.
+- **بلا shell.** كل أمر يشغّله المثبّت قائمة معاملات. نتحقق من القيم التي تكتبها أولًا: النطاق مقابل نمط اسم الجهاز، وعنوان البريد، وعناوين IP ونطاقات CIDR، والروابط بقواعد إعدادات السيرفر نفسها.
+- **الأسرار.** تُولَّد على الجهاز من مولّد الأرقام العشوائية في النواة، وتُكتب بالصلاحيات `600` ويملكها root، ويقرؤها systemd للخدمة. لا تظهر أبدًا في المخرجات، أو سجل النظام، أو سطر أوامر، أو ملف الإجابات. لقاعدة البيانات المحلية، يتسلم PostgreSQL قيمة تحقق SCRAM-SHA-256، وليس كلمة السر. نطبع رابط الإعداد مرة واحدة، لأنه طريقتك لتملّك السيرفر. أنشئ حساب صاحب النسخة فورًا.
+- **المجموعة docker.** طريقة Compose تعمل، لكن العضوية في المجموعة `docker` تساوي root، و`docker inspect` يعرض متغيرات البيئة لكل حاوية، ومنها `DHOW_SECRET_KEY`. لا يضيف المثبّت أي مستخدم إلى هذه المجموعة أبدًا. فضّل الطريقة المباشرة.
+- **التوقيعات.** الإصدارات قابلة لإعادة الإنتاج، والـ checksums موقّعة بلا مفتاح بـ cosign، ولكل أرشيف SPDX SBOM وإثبات بناء SLSA. ثبّت cosign حتى يتحقق `get.sh` من التوقيع، وليس من الـ checksum فقط. لا نثق بمستودعات الحزم إلا ببصمات مفاتيح مثبّتة.
 
-## How it is tested
+## كيف نختبره
 
-- Unit tests run the installer against a fake system: detection, plan building, the answers file, idempotency, rollback, doctor and uninstall, and that no secret reaches the output, a command line or the answers file. A test drives the interactive path through a real pseudo-terminal and checks that the database URL is not echoed.
-- The [Installer workflow](../../.github/workflows/installer.yml) runs [`deploy/install/e2e/run.sh`](../../deploy/install/e2e/run.sh) on Debian 12, Ubuntu 24.04, Rocky Linux 9 and Fedora in a container that boots systemd. It installs from an answers file with PostgreSQL 18 from PGDG, checks readiness, the setup link in the journal, the file modes, the `systemd-analyze security` rating and an idempotent re-run, then runs `doctor`, `uninstall` and `uninstall --purge`. `make installer-e2e E2E_BASE=ubuntu:24.04` runs it locally.
+- اختبارات الوحدة تشغّل المثبّت على نظام وهمي: الاكتشاف، وبناء الخطة، وملف الإجابات، والتكرار الآمن، والتراجع، وdoctor، وuninstall. وتتأكد أن أي سر لا يصل إلى المخرجات أو سطر أوامر أو ملف الإجابات. واختبار يقود المسار التفاعلي عبر pseudo-terminal حقيقية، ويتأكد أن رابط قاعدة البيانات لا يظهر على الشاشة.
+- الـ [Installer workflow](../../.github/workflows/installer.yml) يشغّل [`deploy/install/e2e/run.sh`](../../deploy/install/e2e/run.sh) على Debian 12 وUbuntu 24.04 وRocky Linux 9 وFedora، في حاوية تشغّل systemd. يثبّت من ملف إجابات مع PostgreSQL 18 من PGDG، ويتحقق من الجاهزية، ورابط الإعداد في سجل النظام، وصلاحيات الملفات، وتقييم `systemd-analyze security`، وأن إعادة التشغيل لا تغيّر شيئًا. ثم يشغّل `doctor` و`uninstall` و`uninstall --purge`. الأمر `make installer-e2e E2E_BASE=ubuntu:24.04` يشغّله على جهازك.

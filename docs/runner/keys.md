@@ -1,18 +1,20 @@
-# Rotate a runner's keys
+[English](../en/runner/keys.md)
 
-A runner's identity is two key pairs that `dhow-runner register` made on the runner host: Ed25519, which signs its sign-in and its job starts, and MLKEM768-X25519, which the server encrypts job secrets for. `dhow-runner rotate-keys` replaces both with new pairs while the runner keeps its ID, labels and history. The private keys are made on the runner host and never leave it.
+# تدوير مفاتيح جهاز التشغيل
 
-## When to rotate
+هوية جهاز التشغيل (runner) زوجان من المفاتيح أنشأهما `dhow-runner register` على جهاز التشغيل: Ed25519، الذي يوقّع الدخول وبدء التشغيلات، وMLKEM768-X25519، الذي يشفّر له السيرفر أسرار التشغيلات. الأمر `dhow-runner rotate-keys` يستبدل الزوجين بزوجين جديدين، ويحتفظ جهاز التشغيل بمعرّفه وأوسمته وتاريخه. المفاتيح الخاصة تُنشأ على جهاز التشغيل ولا تغادره أبدًا.
 
-- **Once a year at least.** The runner page shows the identity key version and when the keys were last rotated.
-- **When the state directory may have been read** by someone else: a backup that leaked, a disk that left the building, an administrator who left. Rotating makes the copied keys useless.
-- **After a host was restored from a snapshot** that other machines might also run. If two machines might already share the identity, revoke the runner and register each host with its own token instead: a rotation on one copy cuts the other off, but you cannot tell which copy rotated first.
+## متى تحتاج إلى التدوير
 
-You do not need to rotate after a server upgrade, or after a change of `DHOW_SECRET_KEY` on the server (that change needs every runner to register again).
+- **مرة في السنة على الأقل.** صفحة جهاز التشغيل تعرض إصدار مفتاح الهوية ووقت آخر تدوير.
+- **عندما يحتمل أن شخصًا آخر قرأ مجلد الحالة:** نسخة احتياطية تسرّبت، أو قرص خرج من المبنى، أو مدير غادر الفريق. التدوير يجعل المفاتيح المنسوخة بلا فائدة.
+- **بعد استرجاع جهاز من لقطة (snapshot)** قد تشغّلها أجهزة أخرى أيضًا. إذا احتمل أن جهازين يشتركان في الهوية بالفعل، فألغِ جهاز التشغيل وسجّل كل جهاز برمز خاص به بدلًا من التدوير. التدوير على نسخة واحدة يقطع الأخرى، لكنك لا تعرف أي نسخة دوّرت أولًا.
 
-## How
+لا تحتاج إلى التدوير بعد ترقية السيرفر، ولا بعد تغيير `DHOW_SECRET_KEY` في السيرفر (هذا التغيير يحتاج إلى تسجيل كل أجهزة التشغيل مرة أخرى).
 
-The runner must be stopped. `rotate-keys` refuses to run while `dhow-runner run` holds the state directory, and while the lease journal still lists attempts the last run did not report: start the runner once so it reports them, then stop it again.
+## الطريقة
+
+يجب أن يكون جهاز التشغيل متوقفًا. يرفض `rotate-keys` العمل ما دام `dhow-runner run` يحجز مجلد الحالة، وما دام سجل الحجوزات (journal) يذكر محاولات لم يبلغ عنها التشغيل الأخير. شغّل جهاز التشغيل مرة حتى يبلغ عنها، ثم أوقفه مرة أخرى.
 
 ```sh
 sudo systemctl stop dhow-runner
@@ -21,42 +23,42 @@ sudo systemd-run --uid=dhow-runner --gid=dhow-runner --pipe --wait --collect \
 sudo systemctl start dhow-runner
 ```
 
-`systemd-run` gives the command the same `runner.env` as the service, so a custom `DHOW_RUNNER_STATE_DIR`, `DHOW_RUNNER_URL` or `DHOW_RUNNER_CA_FILE` is used. If `runner.env` is empty, `sudo -u dhow-runner dhow-runner rotate-keys` is enough. `--dev` allows plain `http://` to a loopback address, as for `register`.
+`systemd-run` يعطي الأمر ملف `runner.env` نفسه الذي تستخدمه الخدمة، فيُستخدم أي `DHOW_RUNNER_STATE_DIR` أو `DHOW_RUNNER_URL` أو `DHOW_RUNNER_CA_FILE` مخصّص. إذا كان `runner.env` فارغًا، يكفي `sudo -u dhow-runner dhow-runner rotate-keys`. الخيار `--dev` يسمح بـ `http://` العادي إلى عنوان loopback، كما في `register`.
 
-The command prints the new key version:
+يطبع الأمر إصدار المفتاح الجديد:
 
 ```
 Rotated the keys of runner 0190c8a2-…: key version 2. The old key no longer works.
 ```
 
-From that moment the server refuses the old key, ends every session the runner had, and encrypts new secrets for the new key only. The organization's audit log records `runner.keys_rotated` with the new key version.
+من تلك اللحظة يرفض السيرفر المفتاح القديم، وينهي كل جلسات جهاز التشغيل، ويشفّر الأسرار الجديدة للمفتاح الجديد فقط. ويسجّل سجل أحداث المؤسسة `runner.keys_rotated` مع إصدار المفتاح الجديد.
 
-## What happens on a crash
+## ما يحدث عند الانقطاع
 
-A rotation is safe to interrupt at any point: power loss, a killed process or a lost network. The runner always starts with a key the server accepts.
+التدوير آمن إذا انقطع في أي لحظة: انقطاع الكهرباء، أو قتل العملية، أو فقد الشبكة. يبدأ جهاز التشغيل دائمًا بمفتاح يقبله السيرفر.
 
-1. **The new keys are saved first.** `rotate-keys` writes the full new identity to `identity.pending` in the state directory (mode `0600`, written to a temporary file, flushed to disk, renamed, and the directory flushed), before the server hears of the new keys.
-2. **The server is asked to switch,** in one request signed by the current key and by the new key over the same message (the runner ID, the current key version and both new public keys). The server checks both signatures, bumps the key version only if it is still the one signed, and ends the runner's sessions, all in one transaction.
-3. **Once the server confirms,** the runner writes the new identity over `identity` the same safe way, built from the current identity with only the new keys taken over, and then removes `identity.pending`.
+1. **نحفظ المفاتيح الجديدة أولًا.** يكتب `rotate-keys` الهوية الجديدة كاملة في `identity.pending` داخل مجلد الحالة (بالصلاحيات `0600`، في ملف مؤقت، ثم يدفعه إلى القرص، ثم يعيد تسميته، ثم يدفع المجلد إلى القرص)، قبل أن يعرف السيرفر بالمفاتيح الجديدة.
+2. **نطلب من السيرفر التبديل** في طلب واحد يوقّعه المفتاح الحالي والمفتاح الجديد على الرسالة نفسها (معرّف جهاز التشغيل، وإصدار المفتاح الحالي، والمفتاحين العامّين الجديدين). يتحقق السيرفر من التوقيعين، ويرفع إصدار المفتاح فقط إذا كان ما زال هو الإصدار الموقّع، وينهي جلسات جهاز التشغيل، وكل ذلك في معاملة واحدة.
+3. **بعد أن يؤكد السيرفر،** يكتب جهاز التشغيل الهوية الجديدة فوق `identity` بالطريقة الآمنة نفسها، مبنية من الهوية الحالية مع أخذ المفاتيح الجديدة فقط، ثم يحذف `identity.pending`.
 
-| Interrupted | On disk | On the server | What fixes it |
+| لحظة الانقطاع | على القرص | في السيرفر | ما الذي يصلحه |
 |---|---|---|---|
-| Before or while `identity.pending` is written | old identity, maybe a half-written temporary file | old key | Nothing to fix. The next run or rotation removes the temporary file. |
-| After `identity.pending` is saved, before the server switched | old identity and `identity.pending` | old key | The old key still signs in, so the saved keys were never used. `run` and `rotate-keys` both overwrite and remove `identity.pending`, and `rotate-keys` makes fresh keys. |
-| After the server switched, before the reply arrived or the identity was written | old identity and `identity.pending` | new key | The old key is refused and the saved key signs in. `run` writes the new identity and goes on; `rotate-keys` does the same and stops. |
-| After the identity was written, before `identity.pending` was removed | new identity and `identity.pending` with the same keys | new key | `run` and `rotate-keys` remove the leftover file. |
+| قبل كتابة `identity.pending` أو أثناءها | الهوية القديمة، وربما ملف مؤقت نصف مكتوب | المفتاح القديم | لا شيء يحتاج إلى إصلاح. التشغيل أو التدوير التالي يحذف الملف المؤقت. |
+| بعد حفظ `identity.pending`، وقبل تبديل السيرفر | الهوية القديمة و`identity.pending` | المفتاح القديم | المفتاح القديم ما زال يدخل، فالمفاتيح المحفوظة لم تُستخدم أبدًا. `run` و`rotate-keys` كلاهما يكتب فوق `identity.pending` ويحذفه، و`rotate-keys` ينشئ مفاتيح جديدة. |
+| بعد تبديل السيرفر، وقبل وصول الرد أو كتابة الهوية | الهوية القديمة و`identity.pending` | المفتاح الجديد | المفتاح القديم مرفوض والمفتاح المحفوظ يدخل. `run` يكتب الهوية الجديدة ويكمل، و`rotate-keys` يفعل الشيء نفسه ثم يتوقف. |
+| بعد كتابة الهوية، وقبل حذف `identity.pending` | الهوية الجديدة و`identity.pending` بالمفاتيح نفسها | المفتاح الجديد | `run` و`rotate-keys` يحذفان الملف المتبقي. |
 
-Saved keys are used only when the server already holds them: the current key is refused and the saved one signs in. If the current key still signs in, the server never took the saved keys (it switches only from the key version both signatures name), so they are overwritten with zeros and removed, and a new rotation makes fresh ones. Keys that sat on disk unconfirmed, perhaps long enough to be copied, are never sent to the server. If both keys are refused (the runner was revoked, or the server's data was restored from an older backup), the runner keeps retrying with backoff like any runner whose credentials are refused; revoke it and register the host again.
+لا نستخدم المفاتيح المحفوظة إلا عندما يملكها السيرفر بالفعل: المفتاح الحالي مرفوض، والمحفوظ يدخل. إذا كان المفتاح الحالي ما زال يدخل، فالسيرفر لم يأخذ المفاتيح المحفوظة أبدًا (لا يبدّل إلا من إصدار المفتاح الذي يذكره التوقيعان)، فنكتب فوقها أصفارًا ونحذفها، ويُنشئ تدوير جديد مفاتيح جديدة. المفاتيح التي بقيت على القرص بلا تأكيد، وربما مدة تكفي لنسخها، لا نرسلها إلى السيرفر أبدًا. إذا رُفض المفتاحان (أُلغي جهاز التشغيل، أو استُرجعت بيانات السيرفر من نسخة احتياطية أقدم)، يستمر جهاز التشغيل في المحاولة بانتظار متزايد، مثل أي جهاز تشغيل تُرفض بيانات دخوله. ألغِه وسجّل الجهاز مرة أخرى.
 
-## When it fails
+## عند الفشل
 
-| Message | Meaning |
+| الرسالة | المعنى |
 |---|---|
-| `the runner is running; stop it first` | `dhow-runner run` holds the state directory. Stop the service and try again. |
-| `the last run left attempts it has not reported yet` | Start the runner so it reports them, stop it, then rotate. |
-| `the server did not confirm the new keys` | The request failed or timed out. The current key stays in use; run `rotate-keys` again. If the server did switch, the runner also finishes the rotation on its next start. |
-| `the server took the new keys, but the identity file was not switched yet` | Writing the identity failed (a full or read-only disk). Fix the disk, then run `rotate-keys` again or start the runner. |
-| `the pending identity belongs to another runner or server` | `identity.pending` does not match `identity`. Someone copied files between state directories; remove `identity.pending` only if you are sure no rotation of this runner is unfinished. |
-| `RUNNER_REVOKED` | The runner was revoked. Register the host again. |
+| `the runner is running; stop it first` | `dhow-runner run` يحجز مجلد الحالة. أوقف الخدمة وحاول مرة أخرى. |
+| `the last run left attempts it has not reported yet` | شغّل جهاز التشغيل حتى يبلغ عنها، ثم أوقفه، ثم دوّر المفاتيح. |
+| `the server did not confirm the new keys` | فشل الطلب أو انتهت مهلته. المفتاح الحالي ما زال مستخدمًا. شغّل `rotate-keys` مرة أخرى. وإذا كان السيرفر قد بدّل، فسيكمل جهاز التشغيل التدوير أيضًا في بدئه التالي. |
+| `the server took the new keys, but the identity file was not switched yet` | فشلت كتابة الهوية (قرص ممتلئ أو للقراءة فقط). أصلح القرص، ثم شغّل `rotate-keys` مرة أخرى أو ابدأ جهاز التشغيل. |
+| `the pending identity belongs to another runner or server` | `identity.pending` لا يطابق `identity`. نسخ شخص ما ملفات بين مجلدات الحالة. احذف `identity.pending` فقط إذا كنت متأكدًا أنه لا يوجد تدوير غير مكتمل لجهاز التشغيل هذا. |
+| `RUNNER_REVOKED` | أُلغي جهاز التشغيل. سجّل الجهاز مرة أخرى. |
 
-The design is in [ADR-0065](../../Plan/ADR/0065-runner-packaging-part-a.md).
+التصميم في [ADR-0065](../../Plan/ADR/0065-runner-packaging-part-a.md).

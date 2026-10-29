@@ -76,7 +76,7 @@ func TestCheckResourcesLevels(t *testing.T) {
 				msg := c.Message(m)
 				if c.Level == LevelBelowMinimum {
 					assert.Contains(t, msg, "below the minimum of "+c.Minimum)
-					assert.Contains(t, msg, RequirementsURL)
+					assert.Contains(t, msg, m.T(KeyRequirementsURL))
 				}
 				if c.Level == LevelBelowRecommended {
 					assert.Contains(t, msg, "below the recommended "+c.Recommended)
@@ -154,7 +154,7 @@ func TestDoctorFailsBelowTheMinimum(t *testing.T) {
 	app, out := newApp(f, "")
 	require.ErrorIs(t, app.Doctor(context.Background(), DoctorOptions{}), ErrUnhealthy)
 	assert.Contains(t, out.String(), "below the minimum of 2.0 GiB")
-	assert.Contains(t, out.String(), RequirementsURL)
+	assert.Contains(t, out.String(), NewMessages(LangEn).T(KeyRequirementsURL))
 }
 
 func TestResourceMessagesInArabic(t *testing.T) {
@@ -163,5 +163,10 @@ func TestResourceMessagesInArabic(t *testing.T) {
 	msg := c.Message(m)
 	assert.Contains(t, msg, "الحد الأدنى")
 	assert.Contains(t, msg, "2.0 GiB")
-	assert.Contains(t, msg, RequirementsURL)
+	assert.Contains(t, msg, m.T(KeyRequirementsURL))
+}
+
+func TestRequirementsLinkFollowsTheLanguage(t *testing.T) {
+	assert.Equal(t, "https://github.com/Khaymah/dhow/blob/main/docs/requirements.md", NewMessages(LangAr).T(KeyRequirementsURL))
+	assert.Equal(t, "https://github.com/Khaymah/dhow/blob/main/docs/en/requirements.md", NewMessages(LangEn).T(KeyRequirementsURL))
 }

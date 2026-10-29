@@ -1,12 +1,13 @@
-# Architecture
+[English](en/architecture.md)
 
-Status: **Draft v0.1** (design phase). Decisions referenced as ADR-NNNN live in [`Plan/ADR/`](../Plan/ADR/).
+# المعمارية
 
-## 1. Overview
+الحالة: **مسودة v0.1** (مرحلة التصميم). القرارات المشار إليها كـ ADR-NNNN موجودة في [`Plan/ADR/`](../Plan/ADR/).
 
-Dhow separates the **control plane** ("the brain") from **runners** ("the hands").
-The control plane never executes user code. Runners execute jobs inside ephemeral sandboxes and talk to the
-control plane over **outbound-only** connections, so they work behind NAT and firewalls and inside closed networks.
+## 1. نظرة عامة
+
+يفصل داو (Dhow) بين **لوحة التحكم (control plane)** ("العقل") و**أجهزة التشغيل (runners)** ("الأيدي").
+لوحة التحكم لا تنفّذ كود المستخدمين أبدًا. أجهزة التشغيل تنفّذ التشغيلات (jobs) داخل بيئات معزولة مؤقتة، وتتصل بلوحة التحكم عبر اتصالات **إلى الخارج فقط**. لذلك تعمل خلف NAT وجدران الحماية وداخل الشبكات المغلقة.
 
 ```mermaid
 flowchart TB
@@ -49,73 +50,73 @@ flowchart TB
   CI["External CI (Actions, GitLab CI…)"] -- "artifact + trigger (official action)" --> API
 ```
 
-## 2. Components
+## 2. المكوّنات
 
-### 2.1 Control plane (`apps/server`, Go — ADR-0003)
+### 2.1 لوحة التحكم (`apps/server`، Go — ADR-0003)
 
-A modular monolith shipped as a single binary. The modules are listed below; each one has its own package and owns its own tables. On disk, `apps/server/internal` holds `App` (router and bootstrap), `Config`, `Core` (errors, response envelope, i18n, middleware, event bus), `Database` (migrations and generated queries) and `Modules/<Name>` (routes, controller, service, models, queries, generated API code and tests). Only `App` imports modules, and modules talk to each other through the event bus.
+برنامج واحد مقسّم إلى وحدات (modular monolith)، ويُنشر كملف تنفيذي واحد. الوحدات مذكورة أدناه. لكل منها حزمة خاصة، وتملك جداولها. على القرص، `apps/server/internal` فيه `App` (الـ router والتشغيل الأولي)، و`Config`، و`Core` (الأخطاء، وغلاف الرد، والترجمة، والـ middleware، وناقل الأحداث)، و`Database` (التحديثات والاستعلامات المولَّدة)، و`Modules/<Name>` (المسارات، والـ controller، والـ service، والنماذج، والاستعلامات، وكود الـ API المولَّد، والاختبارات). وحده `App` يستورد الوحدات، والوحدات تتواصل عبر ناقل الأحداث.
 
-| Module | Responsibility |
+| الوحدة | المسؤولية |
 |---|---|
-| `identity` | Users, sessions, TOTP, Passkeys (WebAuthn), OIDC login. SAML/SCIM come from `ee/`. |
-| `authz` | The central `can(subject, action, resource)` policy. Every handler calls it. See the [security model](security-model.md). |
-| `orgs` | Organizations, teams, memberships. Multi-org from day one (ADR-0016). |
-| `projects` | Projects, repositories, environments, protection rules, targets. |
-| `pipelines` | Fetching, parsing and validating `.dhow.yml` (shared Go package with the runner), and evaluating CEL expressions. |
-| `scheduler` | Turns triggers into deployments, jobs and steps, and enqueues jobs. Enforces concurrency groups and per-environment locks. |
-| `runners` | Runner registration, leasing, heartbeats, capability matching (labels, OS/arch, isolation level). |
-| `secrets` | Envelope encryption and runtime secret delivery. |
-| `artifacts` | Content-addressed artifacts, plus build cache entries. |
-| `logs` | Ingest of sequenced log chunks, storage, and SSE fan-out. |
-| `audit` | Append-only, hash-chained audit log. |
-| `overview` | Read-only counts for the home page and the sidebar in one request: active and failed jobs, runners by status, pending invitations (ADR-0061). It reads the jobs, runners and invitations tables and owns none. |
-| `notify` | A notification queue and channel adapters. |
-| `integrations` | Git providers (GitHub App, GitLab, Bitbucket, Gitea/Forgejo, generic Git), commit statuses and checks. |
-| `license` | Offline Ed25519 license verification and the entitlement checks. |
+| `identity` | المستخدمون، والجلسات، وTOTP، ومفاتيح المرور (WebAuthn)، والدخول بـ OIDC. SAML/SCIM تأتي من `ee/`. |
+| `authz` | سياسة `can(subject, action, resource)` المركزية. كل معالِج يستدعيها. راجع [نموذج الأمان](security-model.md). |
+| `orgs` | المؤسسات، والفرق، والعضويات. تعدد المؤسسات من اليوم الأول (ADR-0016). |
+| `projects` | المشاريع، والمستودعات، والبيئات، وقواعد الحماية، والأهداف. |
+| `pipelines` | جلب `.dhow.yml` وتحليله والتحقق منه (حزمة Go مشتركة مع جهاز التشغيل)، وتقييم تعبيرات CEL. |
+| `scheduler` | يحوّل المحفّزات إلى عمليات نشر وتشغيلات وخطوات، ويضع التشغيلات في الطابور. ويفرض مجموعات التزامن والأقفال لكل بيئة. |
+| `runners` | تسجيل أجهزة التشغيل، والحجز، والنبضات، ومطابقة القدرات (الأوسمة، والنظام والمعمارية، ومستوى العزل). |
+| `secrets` | التشفير المغلّف، وتسليم الأسرار وقت التشغيل. |
+| `artifacts` | الملفات الناتجة المعنونة بالمحتوى، ومدخلات cache البناء. |
+| `logs` | استقبال أجزاء السجلات المرقّمة، وتخزينها، وبثها عبر SSE. |
+| `audit` | سجل أحداث للإضافة فقط، مربوط بسلسلة hashes. |
+| `overview` | أعداد للقراءة فقط للصفحة الرئيسية والقائمة الجانبية في طلب واحد: التشغيلات النشطة والفاشلة، وأجهزة التشغيل حسب الحالة، والدعوات المعلّقة (ADR-0061). تقرأ جداول التشغيلات وأجهزة التشغيل والدعوات، ولا تملك أيًّا منها. |
+| `notify` | طابور إشعارات ومحوّلات للقنوات. |
+| `integrations` | مزوّدو Git (GitHub App، وGitLab، وBitbucket، وGitea/Forgejo، وGit العام)، وحالات الـ commits والفحوص. |
+| `license` | التحقق من الترخيص بـ Ed25519 بلا إنترنت، وفحوص الاستحقاقات. |
 
-**API surfaces (ADR-0005):**
-- **Public REST + OpenAPI 3.1** for the UI, CLI, Terraform provider and third parties. The spec is the source of truth, and the TypeScript client for the UI is generated from it.
-- **Connect** between runners and the control plane, mounted at `/runner-api/` (or on a dedicated TLS listener). It carries registration, job leasing, log chunks, artifact upload and status updates, with protobuf contracts in `packages/proto`. Only unary RPCs are used, so the runner plane works over HTTP/1.1 or HTTP/2 through any reverse proxy (ADR-0042).
-- **SSE** for live UI updates (logs and status). It works through proxies and is authenticated with the session cookie.
+**واجهات الـ API (ADR-0005):**
+- **REST عام + OpenAPI 3.1** للواجهة، والـ CLI، ومزوّد Terraform، والأطراف الأخرى. المواصفات هي مصدر الحقيقة، وعميل TypeScript للواجهة مولَّد منها.
+- **Connect** بين أجهزة التشغيل ولوحة التحكم، على `/runner-api/` (أو على عنوان استماع TLS مخصص). يحمل التسجيل، وحجز التشغيلات، وأجزاء السجلات، ورفع الملفات الناتجة، وتحديثات الحالة، مع عقود protobuf في `packages/proto`. نستخدم RPCs أحادية فقط، فيعمل مسار أجهزة التشغيل عبر HTTP/1.1 أو HTTP/2 خلف أي وكيل عكسي (ADR-0042).
+- **SSE** للتحديثات المباشرة في الواجهة (السجلات والحالة). يعمل عبر الوكلاء، ومصادقته بكوكي الجلسة.
 
-### 2.2 Runner (`apps/runner`, Go — ADR-0003, ADR-0007, ADR-0041 to ADR-0048)
+### 2.2 جهاز التشغيل (`apps/runner`، Go — ADR-0003، ADR-0007، ADR-0041 إلى ADR-0048)
 
-- Ships as a single static binary for linux/amd64 and linux/arm64. Jobs only run on Linux; Windows and macOS runners are deferred until they have a sandbox driver.
-- **Registration and identity (ADR-0041).**
-  - An admin creates a registration token. It is single-use by default, scoped to one organization and its labels, and expires within 24 hours.
-  - The runner generates an Ed25519 signing key and an HPKE (MLKEM768-X25519) encryption key locally. The server pins both public keys, and the private keys never leave the host.
-  - The runner exchanges a signed challenge for a 15-minute access token. Starting a job needs a fresh signature, so a stolen token alone cannot fetch secrets.
-  - The runner verifies the server with TLS and with a pinned Ed25519 key that signs every lease grant.
-  - Admins can revoke a runner instantly. There is no mTLS and no internal CA, because TLS terminates at the reverse proxy.
-- **Pull-based and outbound only (ADR-0042).**
-  - The runner long-polls `Lease` (up to 25 s) and never opens an inbound port.
-  - A lease lasts 45 s and is renewed by a heartbeat every 10 s. Every attempt carries a fencing token, and every mutating call is checked against it.
-  - The runner kills its own sandbox before the server can consider the lease lost, so two attempts never overlap.
-- **Executes each job in a fresh sandbox (ADR-0043, ADR-0044):**
-  - **Default:** a rootless Podman container (crun) running our own Podman configuration. After it is created, the runner inspects the container and fails closed on any mismatch.
-    - All capabilities are dropped, with `no-new-privileges`, our seccomp profile, and a separate user-namespace range per job.
-    - cgroup v2 limits cover CPU, memory, PIDs and disk (`/workspace` is a sized tmpfs), plus a wall-clock limit.
-    - The root filesystem is read-only except `/workspace` and `/tmp`, and no host mounts are allowed.
-    - PID 1 is the runner's own agent. It runs the steps, and it exits (killing the container) if the runner goes away.
-  - **Network:** always `--network=none`. Egress is opened only through a per-job proxy in the runner, reached through the agent on `127.0.0.1:3128`, with a hostname allowlist from the job definition. There is no DNS inside the sandbox, and private, loopback, link-local and metadata ranges are always denied.
-  - **Hardened (optional):** gVisor (`runsc`) or a Firecracker microVM. Firecracker as the default isolation level is an Enterprise feature; gVisor is available in Community.
-  - **Kubernetes:** the runner creates one restricted Pod per job (optionally with a gVisor `RuntimeClass` on a dedicated node pool) instead of running containers itself (ADR-0048).
-  - **Teardown:** the sandbox, its workspace and any injected secrets are destroyed after every job. On restart, the runner removes any container it left behind.
-- **Secrets (ADR-0045).**
-  - Secrets arrive once per attempt, sealed with HPKE to the runner's pinned key and bound to the lease and the fencing token.
-  - They live only in memory and in the step's environment or a container-private tmpfs, never in container configuration or on disk.
-- **Secret masking happens in the runner.** The runner masks secrets on the line-buffered output stream *before* anything is spilled to disk or leaves the host. It also masks the common encodings of each secret (base64, URL-encoded, JSON-escaped, and each line of a multi-line secret).
-- **Shared code with the server:** the job spec validator, the YAML schema, the CEL evaluator, and the protocol.
+- يُنشر كملف تنفيذي ثابت واحد لـ linux/amd64 وlinux/arm64. التشغيلات تعمل على Linux فقط. أجهزة تشغيل Windows وmacOS مؤجلة حتى يكون لها مشغّل بيئة معزولة.
+- **التسجيل والهوية (ADR-0041).**
+  - ينشئ المدير رمز تسجيل. يعمل مرة واحدة افتراضيًا، ومحصور في مؤسسة واحدة وأوسمتها، وتنتهي صلاحيته خلال 24 ساعة.
+  - يولّد جهاز التشغيل محليًا مفتاح توقيع Ed25519 ومفتاح تشفير HPKE (MLKEM768-X25519). يثبّت السيرفر المفتاحين العامّين، والمفاتيح الخاصة لا تغادر الجهاز أبدًا.
+  - يبادل جهاز التشغيل تحديًا موقّعًا برمز وصول يعيش 15 دقيقة. بدء التشغيل يحتاج إلى توقيع جديد، فالرمز المسروق وحده لا يجلب الأسرار.
+  - يتحقق جهاز التشغيل من السيرفر عبر TLS، وعبر مفتاح Ed25519 مثبّت يوقّع كل منحة حجز.
+  - يستطيع المديرون إلغاء جهاز تشغيل فورًا. لا يوجد mTLS ولا سلطة شهادات داخلية، لأن TLS ينتهي عند الوكيل العكسي.
+- **بالسحب وإلى الخارج فقط (ADR-0042).**
+  - يطلب جهاز التشغيل `Lease` بطلب طويل (حتى 25 ثانية)، ولا يفتح أبدًا منفذًا للاتصالات الواردة.
+  - يدوم الحجز 45 ثانية، وتجدّده نبضة كل 10 ثوانٍ. كل محاولة تحمل رقم حجز، وكل طلب يغيّر الحالة يُفحص مقابله.
+  - يقتل جهاز التشغيل بيئته المعزولة قبل أن يعتبر السيرفر الحجز مفقودًا، فلا تتداخل محاولتان أبدًا.
+- **ينفّذ كل تشغيل في بيئة معزولة جديدة (ADR-0043، ADR-0044):**
+  - **الافتراضي:** حاوية Podman بلا root (crun) بإعدادات Podman الخاصة بنا. بعد إنشائها يفحص جهاز التشغيل الحاوية، ويُغلق عند أي اختلاف.
+    - بلا أي capabilities، مع `no-new-privileges`، وملف seccomp الخاص بنا، ونطاق user namespace منفصل لكل تشغيل.
+    - حدود cgroup v2 تغطي المعالج، والذاكرة، وPIDs، والقرص (`/workspace` هو tmpfs بحجم محدد)، مع حد للوقت الفعلي.
+    - نظام الملفات الجذري للقراءة فقط إلا `/workspace` و`/tmp`، ولا نسمح بربط ملفات الجهاز.
+    - PID 1 هو الوكيل (agent) الخاص بجهاز التشغيل. ينفّذ الخطوات، ويخرج (فيقتل الحاوية) إذا اختفى جهاز التشغيل.
+  - **الشبكة:** دائمًا `--network=none`. نفتح الخروج فقط عبر وكيل لكل تشغيل في جهاز التشغيل، يصل إليه الوكيل الداخلي على `127.0.0.1:3128`، مع قائمة أسماء أجهزة مسموحة من تعريف التشغيل. لا DNS داخل البيئة المعزولة، والنطاقات الخاصة وloopback وlink-local وmetadata ممنوعة دائمًا.
+  - **المحصّن (اختياري):** gVisor (`runsc`) أو Firecracker microVM. جعل Firecracker مستوى العزل الافتراضي ميزة في Enterprise، وgVisor متاح في Community.
+  - **Kubernetes:** ينشئ جهاز التشغيل Pod مقيّدًا لكل تشغيل (مع `RuntimeClass` لـ gVisor على مجموعة أجهزة مخصصة اختياريًا)، بدل أن يشغّل الحاويات بنفسه (ADR-0048).
+  - **التنظيف:** تُدمَّر البيئة المعزولة، ومساحة عملها، وأي أسرار أُدخلت إليها، بعد كل تشغيل. عند إعادة التشغيل، يحذف جهاز التشغيل أي حاوية تركها.
+- **الأسرار (ADR-0045).**
+  - تصل الأسرار مرة واحدة لكل محاولة، مختومة بـ HPKE لمفتاح جهاز التشغيل المثبّت، ومربوطة بالحجز ورقم الحجز.
+  - تعيش في الذاكرة فقط، وفي بيئة الخطوة أو tmpfs خاص بالحاوية، وليست أبدًا في إعدادات الحاوية أو على القرص.
+- **إخفاء الأسرار يحدث في جهاز التشغيل.** يخفي جهاز التشغيل الأسرار في بث المخرجات المخزّن سطرًا بسطر، *قبل* أن يُكتب أي شيء على القرص أو يغادر الجهاز. ويخفي أيضًا الترميزات الشائعة لكل سر (base64، وترميز الروابط، والهروب في JSON، وكل سطر من سر متعدد الأسطر).
+- **كود مشترك مع السيرفر:** مدقق مواصفات التشغيل، ومخطط YAML، ومقيّم CEL، والبروتوكول.
 
-### 2.3 Storage (ADR-0006)
+### 2.3 التخزين (ADR-0006)
 
-| Store | Use | Notes |
+| المخزن | الاستخدام | ملاحظات |
 |---|---|---|
-| **PostgreSQL 18** (required, for native `uuidv7()`) | All state, plus the job queue (`FOR UPDATE SKIP LOCKED`), advisory locks (migrations, environment locks), and `LISTEN/NOTIFY` for intra-cluster events | The only required stateful dependency. Migrations run as a separate locked step. |
-| **Object storage** (required from M4, with a disk default) | Artifacts, build cache, and compacted log segments (live logs stay in Postgres) | S3-compatible (AWS S3, R2, MinIO) or local disk for single-node installs. |
-| **Redis** (optional) | Cross-instance pub/sub fan-out, distributed rate limits, and hot caches at high scale | When Redis is absent, the same interfaces fall back to Postgres. |
+| **PostgreSQL 18** (مطلوب، لأجل `uuidv7()` المدمجة) | كل الحالة، مع طابور التشغيلات (`FOR UPDATE SKIP LOCKED`)، وadvisory locks (التحديثات، وأقفال البيئات)، و`LISTEN/NOTIFY` لأحداث داخل العنقود | الاعتمادية الوحيدة المطلوبة التي تحفظ حالة. التحديثات تعمل كخطوة منفصلة بقفل. |
+| **تخزين الكائنات** (مطلوب من M4، والقرص هو الافتراضي) | الملفات الناتجة، وcache البناء، وأجزاء السجلات المضغوطة (السجلات المباشرة تبقى في Postgres) | متوافق مع S3 (AWS S3، وR2، وMinIO)، أو القرص المحلي للتثبيتات على جهاز واحد. |
+| **Redis** (اختياري) | بث pub/sub بين النسخ، وحدود الطلبات الموزّعة، وcaches سريعة في الحجم الكبير | عند غياب Redis، ترجع الواجهات نفسها إلى Postgres. |
 
-## 3. Data model (core)
+## 3. نموذج البيانات (الأساسي)
 
 ```
 Organization ─┬─ Team ── Membership(User, Role)
@@ -132,12 +133,12 @@ Organization ─┬─ Team ── Membership(User, Role)
 AuditEvent (org-scoped, hash-chained) · NotificationRule · LicenseState
 ```
 
-The following hold across the model:
-- Every row is scoped to an `organization_id`, and every query must go through tenant-scoped repository functions.
-- IDs are UUIDv7 (time-ordered), so they cannot be enumerated.
-- Soft-delete is used for projects and environments, and audit events are never cascade-deleted.
+هذه القواعد تنطبق على النموذج كله:
+- كل صف محصور في `organization_id`، وكل استعلام يجب أن يمر عبر دوال مستودع محصورة في المؤسسة.
+- المعرّفات UUIDv7 (مرتّبة زمنيًا)، فلا يمكن تعدادها.
+- الحذف الناعم للمشاريع والبيئات، وأحداث سجل الأحداث لا تُحذف بالتتابع أبدًا.
 
-## 4. Deployment and job lifecycle
+## 4. دورة حياة النشر والتشغيل
 
 ```
 trigger (push / tag / PR / manual / API / external-CI artifact / schedule)
@@ -152,114 +153,114 @@ trigger (push / tag / PR / manual / API / external-CI artifact / schedule)
   → statuses → Git provider checks, notifications, audit events
 ```
 
-**Reliability rules:**
-- **Exactly-once deployment semantics.** A deployment job is never retried automatically after it has started mutating a target. Retries apply only to infrastructure failures that happen *before* the first mutating step. A user can still trigger a re-run explicitly.
-- **Leases.** A job whose runner stops heartbeating is marked `lost` and reconciled; the system never assumes the job succeeded. Reconciliation runs at startup and periodically.
-- **Environment lock.** At most one active deployment per environment and target, unless a pipeline explicitly opts into parallel deployment.
-- **Cancellation** is a state transition that the runner observes. The runner kills the whole sandbox, never individual PIDs on a host.
+**قواعد الموثوقية:**
+- **النشر مرة واحدة بالضبط.** تشغيل النشر لا يُعاد تلقائيًا أبدًا بعد أن يبدأ في تغيير هدف. إعادة المحاولة تنطبق فقط على أعطال البنية التي تحدث *قبل* أول خطوة تغيّر الهدف. ما زال المستخدم يستطيع بدء إعادة تشغيل صراحة.
+- **الحجوزات.** التشغيل الذي يتوقف جهاز تشغيله عن النبض يُعلَّم `lost` ويُطابَق. النظام لا يفترض أبدًا أن التشغيل نجح. المطابقة تعمل عند البدء وبشكل دوري.
+- **قفل البيئة.** نشر نشط واحد بالأكثر لكل بيئة وهدف، إلا إذا اختارت خطوات النشر النشر المتوازي صراحة.
+- **الإلغاء** انتقال في الحالة يراه جهاز التشغيل. يقتل جهاز التشغيل البيئة المعزولة كلها، وليس عمليات منفردة على الجهاز أبدًا.
 
-## 5. Logs
+## 5. السجلات
 
-- The runner sends **sequenced chunks** of the form `(attempt_id, seq, ts, stream, bytes)`. `seq` starts at 1 and has no gaps, so appends are idempotent and gaps are detected (ADR-0046).
-- From M3, chunks are stored in a Postgres table partitioned by day. Retention drops whole partitions. With M4's blob store, finished attempts are compacted into object-storage segments with an offset index.
-- The runner masks secrets before a chunk leaves it, in memory and in its spill file (ADR-0045). The server stores the chunks as it receives them and never masks again, and it never writes the content of a log into its own log.
-- The UI reads history with `GET .../jobs/{jobId}/logs?FromSeq=`, then follows over SSE. Clients resume with `Last-Event-ID` from the last `seq` they saw, so there are no gaps and no duplicates. Instances fan out new chunks through `LISTEN/NOTIFY`, and every stream reads its own rows after the last `seq` it sent, so a slow client never holds the others back.
-- Steps are collapsible groups, and the UI parses ANSI into styled spans. Raw output is never injected as HTML.
-- Logs have a size cap per attempt (`DHOW_JOB_LOG_MAX_BYTES`) and a retention per instance (`DHOW_LOG_RETENTION_DAYS`). Retention per organization comes with the segments in M4.
+- يرسل جهاز التشغيل **أجزاء مرقّمة** بالشكل `(attempt_id, seq, ts, stream, bytes)`. يبدأ `seq` من 1 بلا فجوات، فالإضافة آمنة للتكرار، والفجوات تُكتشف (ADR-0046).
+- من M3، تُحفظ الأجزاء في جدول Postgres مقسّم حسب اليوم. الاحتفاظ يحذف أجزاء كاملة. مع مخزن الملفات في M4، تُضغط المحاولات المنتهية إلى أجزاء في تخزين الكائنات مع فهرس للمواضع.
+- يخفي جهاز التشغيل الأسرار قبل أن يغادره الجزء، في الذاكرة وفي ملف الفائض (ADR-0045). يحفظ السيرفر الأجزاء كما تصله ولا يخفي مرة أخرى أبدًا، ولا يكتب محتوى السجل في سجله هو أبدًا.
+- تقرأ الواجهة التاريخ بـ `GET .../jobs/{jobId}/logs?FromSeq=`، ثم تتابع عبر SSE. يستأنف العملاء بـ `Last-Event-ID` من آخر `seq` رأوه، فلا فجوات ولا تكرار. تبث نسخ السيرفر الأجزاء الجديدة عبر `LISTEN/NOTIFY`، وكل بث يقرأ صفوفه بعد آخر `seq` أرسله، فالعميل البطيء لا يؤخر الآخرين أبدًا.
+- الخطوات مجموعات قابلة للطي، والواجهة تحلل ANSI إلى أجزاء منسّقة. لا ندخل المخرجات الخام كـ HTML أبدًا.
+- للسجلات حد حجم لكل محاولة (`DHOW_JOB_LOG_MAX_BYTES`)، ومدة احتفاظ لكل نسخة سيرفر (`DHOW_LOG_RETENTION_DAYS`). الاحتفاظ لكل مؤسسة يأتي مع الأجزاء في M4.
 
-## 6. Secrets
+## 6. الأسرار
 
-- **Envelope encryption.** Each environment (and also each org and each project) has its own DEK, generated randomly as AES-256-GCM with a 12-byte nonce. Each secret is encrypted with AAD = `org/project/env/name/version`.
-- **KEK.** DEKs are encrypted with a KEK that comes from a file or environment variable in Community, or from HashiCorp Vault Transit, AWS/GCP/Azure KMS or an HSM in Enterprise. KEKs are versioned, and rotation re-wraps the DEKs without re-encrypting the data.
-- **API exposure.** The API never returns secret values. Secrets are write-only, and reads return metadata only: name, version, updated-by and updated-at.
-- **Delivery.** Secrets are decrypted **only** at lease time, only for the job's environment scope, and sent over the runner channel. They are mounted as environment variables or tmpfs files and destroyed when the sandbox is torn down.
-- **Untrusted triggers.** Secrets are never available to jobs triggered by untrusted sources, such as PRs from forks, unless an admin explicitly approves the run.
+- **التشفير المغلّف.** لكل بيئة (ولكل مؤسسة ومشروع أيضًا) مفتاح DEK خاص، مولَّد عشوائيًا كـ AES-256-GCM مع nonce بـ 12 بايت. كل سر مشفّر مع AAD = `org/project/env/name/version`.
+- **KEK.** مفاتيح DEK مشفّرة بمفتاح KEK يأتي من ملف أو متغير بيئة في Community، أو من HashiCorp Vault Transit، أو AWS/GCP/Azure KMS، أو HSM في Enterprise. لمفاتيح KEK إصدارات، والتدوير يعيد تغليف مفاتيح DEK بدون إعادة تشفير البيانات.
+- **الظهور في الـ API.** لا يُرجع الـ API قيم الأسرار أبدًا. الأسرار للكتابة فقط، والقراءة تُرجع البيانات الوصفية فقط: الاسم، والإصدار، ومن حدّثه، ومتى.
+- **التسليم.** تُفك الأسرار **فقط** وقت الحجز، فقط لنطاق بيئة التشغيل، وتُرسل عبر قناة جهاز التشغيل. تُربط كمتغيرات بيئة أو ملفات tmpfs، وتُدمَّر عند هدم البيئة المعزولة.
+- **المحفّزات غير الموثوقة.** الأسرار لا تتاح أبدًا للتشغيلات التي تبدأها مصادر غير موثوقة، مثل PRs من الـ forks، إلا إذا وافق مدير على التشغيل صراحة.
 
-## 7. Workload identity (OIDC issuer)
+## 7. هوية الأحمال (مُصدِر OIDC)
 
-Dhow publishes a JWKS and signs short-lived job tokens. The claims include `org`, `project`, `environment`, `ref` and `deployment_id`, and the audience can be configured. With these tokens, cloud providers can trust Dhow jobs directly, and users do not need to store long-lived AWS/GCP/Azure keys.
+ينشر داو JWKS ويوقّع رموزًا قصيرة العمر للتشغيلات. الـ claims تشمل `org` و`project` و`environment` و`ref` و`deployment_id`، والجمهور (audience) قابل للضبط. بهذه الرموز يستطيع مزوّدو السحابة الثقة بتشغيلات داو مباشرة، ولا يحتاج المستخدمون إلى حفظ مفاتيح AWS/GCP/Azure طويلة العمر.
 
-## 8. Artifacts and releases
+## 8. الملفات الناتجة والإصدارات
 
-- An **artifact** is a content-addressed (sha256) tarball or an OCI image. Builds happen either in Dhow or in external CI, and in both cases the deployment references the digest (ADR-0010).
-- **Atomic releases on hosts (SSH/VPS):**
-  1. Upload the artifact to `releases/<release-id>/`.
-  2. Link shared directories such as `shared/storage` and `.env`.
-  3. Run pre-switch hooks.
-  4. **Atomically switch the `current` symlink.**
-  5. Reload the service (systemd/PM2/custom).
-  6. Run the health check.
-  7. If the health check fails, switch the symlink back automatically.
+- **الملف الناتج (artifact)** أرشيف tar معنون بالمحتوى (sha256) أو صورة OCI. البناء يحدث في داو أو في CI خارجي، وفي الحالتين يشير النشر إلى الـ digest (ADR-0010).
+- **الإصدارات الذرية على الأجهزة (SSH/VPS):**
+  1. ارفع الملف الناتج إلى `releases/<release-id>/`.
+  2. اربط المجلدات المشتركة مثل `shared/storage` و`.env`.
+  3. شغّل hooks ما قبل التبديل.
+  4. **بدّل الـ symlink المسمى `current` بشكل ذري.**
+  5. أعد تحميل الخدمة (systemd/PM2/مخصص).
+  6. شغّل فحص الصحة.
+  7. إذا فشل فحص الصحة، أعد الـ symlink تلقائيًا.
 
-  The last N releases are kept (configurable).
-- **Rollback** means re-deploying a previous release, or the artifact digest behind it. It **never rebuilds from source**.
-- **Container targets** use image digests (never mutable tags) and a rollout status. Kubernetes targets use Helm/Kustomize/manifests with rollout watching.
+  نحتفظ بآخر N إصدارات (قابل للضبط).
+- **الرجوع (rollback)** يعني إعادة نشر إصدار سابق، أو الـ digest الذي خلفه. و**لا يعيد البناء من الكود أبدًا**.
+- **أهداف الحاويات** تستخدم digests الصور (وليس الوسوم القابلة للتغيير أبدًا) وحالة التحديث (rollout). أهداف Kubernetes تستخدم Helm/Kustomize/manifests مع مراقبة التحديث.
 
-## 9. Targets (ADR-0011)
+## 9. الأهداف (ADR-0011)
 
-| Target | Mechanism | v1.0 |
+| الهدف | الآلية | v1.0 |
 |---|---|---|
-| SSH / VPS | Runner-side SSH with pinned host keys, atomic releases, systemd/PM2 reload | ✅ |
-| Docker / Compose host | Remote Docker API over SSH or TLS, image digest, compose up with health wait | ✅ |
-| Kubernetes | kubeconfig or workload identity, Helm/Kustomize/manifests, rollout status | ✅ |
-| Static / CDN / SFTP | S3 / R2 / Cloudflare Pages, SFTP/FTPS sync for shared hosting, CDN purge | ✅ |
+| SSH / VPS | SSH من جهاز التشغيل مع مفاتيح أجهزة مثبّتة، وإصدارات ذرية، وإعادة تحميل systemd/PM2 | ✅ |
+| جهاز Docker / Compose | Docker API عن بُعد عبر SSH أو TLS، وdigest الصورة، وcompose up مع انتظار الصحة | ✅ |
+| Kubernetes | kubeconfig أو هوية الأحمال، وHelm/Kustomize/manifests، وحالة التحديث | ✅ |
+| Static / CDN / SFTP | S3 / R2 / Cloudflare Pages، ومزامنة SFTP/FTPS للاستضافة المشتركة، ومسح cache الـ CDN | ✅ |
 
-Target credentials are environment-scoped secrets. Host keys and TLS fingerprints are pinned when the target is created.
+بيانات دخول الأهداف أسرار محصورة في البيئة. مفاتيح الأجهزة وبصمات TLS تُثبَّت عند إنشاء الهدف.
 
-## 10. Git providers (ADR-0012)
+## 10. مزودو Git (ADR-0012)
 
-| Provider | Integration |
+| المزوّد | التكامل |
 |---|---|
-| GitHub | GitHub App with fine-grained permissions, installation tokens, check runs and Deployments API |
-| GitLab | GitLab.com and self-managed, through OAuth app or project/group tokens, commit statuses and environments |
-| Bitbucket | Cloud and Data Center |
-| Gitea / Forgejo / generic Git | Webhooks with HMAC, or polling, plus deploy keys |
+| GitHub | GitHub App بصلاحيات دقيقة، ورموز التثبيت، وcheck runs، وDeployments API |
+| GitLab | GitLab.com والنسخ المستضافة ذاتيًا، عبر تطبيق OAuth أو رموز المشروع/المجموعة، وحالات الـ commits، والبيئات |
+| Bitbucket | Cloud وData Center |
+| Gitea / Forgejo / Git العام | Webhooks مع HMAC، أو السؤال الدوري، مع مفاتيح النشر |
 
-Rules for every provider:
-- Webhooks must carry a per-repository secret, verified in constant time over the raw body.
-- A delivery-id is used for replay protection.
+قواعد لكل مزوّد:
+- كل webhook يجب أن يحمل سرًا خاصًا بالمستودع، نتحقق منه بزمن ثابت على الجسم الخام.
+- نستخدم معرّف التسليم (delivery-id) للحماية من إعادة الإرسال.
 
-## 11. Pipelines and plugins
+## 11. خطوات النشر والإضافات
 
-- Pipelines are defined in **`.dhow.yml` in the repository** and versioned with the code. The visual editor generates YAML and opens a PR (ADR-0008). See the [pipeline spec](pipeline-spec.md).
-- Reusable steps are **container images** (`uses: registry/plugin@sha256:…`) that receive typed inputs. A plugin can be written in any language and runs inside the same sandbox. Dhow will host a community registry with verified publishers (ADR-0009).
+- خطوات النشر معرّفة في **`.dhow.yml` داخل المستودع**، ولها إصدارات مع الكود. المحرر المرئي يولّد YAML ويفتح PR (ADR-0008). راجع [مواصفات خطوات النشر](pipeline-spec.md).
+- الخطوات القابلة لإعادة الاستخدام **صور حاويات** (`uses: registry/plugin@sha256:…`) تستلم مدخلات لها أنواع. يمكن كتابة الإضافة بأي لغة، وتعمل داخل البيئة المعزولة نفسها. سيستضيف داو سجلًا للمجتمع مع ناشرين موثّقين (ADR-0009).
 
-## 12. Notifications (ADR-0025)
+## 12. الإشعارات (ADR-0025)
 
-- **Channels:** Email (SMTP), a generic **signed webhook**, Slack, Microsoft Teams, Telegram, Discord and WhatsApp Business (Cloud API).
-- **Interactive approvals:** Slack and Teams support approve/reject buttons with signed callbacks.
-- Notifications are delivered from **their own queue** with timeouts and retries, so they never block deployments.
-- **SSRF guard:** destination URLs are resolved and private, loopback and link-local ranges are rejected after DNS resolution. Admins can configure an allowlist.
+- **القنوات:** البريد (SMTP)، و**webhook موقّع** عام، وSlack، وMicrosoft Teams، وTelegram، وDiscord، وWhatsApp Business (Cloud API).
+- **الموافقات التفاعلية:** يدعم Slack وTeams أزرار الموافقة والرفض مع ردود موقّعة.
+- تُرسل الإشعارات من **طابور خاص بها** مع مهل وإعادة محاولة، فلا تعطّل النشر أبدًا.
+- **حماية SSRF:** نحل عناوين الوجهات، ونرفض النطاقات الخاصة وloopback وlink-local بعد حل DNS. يستطيع المديرون ضبط قائمة مسموحة.
 
-## 13. Installation (ADR-0024)
+## 13. التثبيت (ADR-0024)
 
-| Method | Audience |
+| الطريقة | لمن |
 |---|---|
-| **Docker Compose one-liner** (`curl … \| sh` that writes the compose file plus generated secrets) | Default for most users |
-| **Helm chart** | Kubernetes users and HA deployments |
-| **Single binary + systemd** | Small VPS and setups without Docker on the control plane |
-| **Air-gapped bundle** (signed images, checksums, offline license) | Enterprise |
+| **أمر واحد لـ Docker Compose** (`curl … \| sh` يكتب ملف compose مع أسرار مولَّدة) | الافتراضي لأغلب المستخدمين |
+| **Helm chart** | مستخدمو Kubernetes وعمليات النشر عالية التوفر |
+| **ملف تنفيذي واحد + systemd** | VPS صغير، وإعدادات بلا Docker على لوحة التحكم |
+| **حزمة بلا إنترنت** (صور موقّعة، وchecksums، وترخيص بلا إنترنت) | Enterprise |
 
-The first boot does three things:
-- generates strong secrets if none were provided;
-- **refuses to start** with known placeholder values;
-- prints a one-time URL for creating the owner account (registration is closed).
+التشغيل الأول يفعل ثلاثة أشياء:
+- يولّد أسرارًا قوية إذا لم تُعطَ أي أسرار؛
+- **يرفض البدء** مع القيم المؤقتة المعروفة؛
+- يطبع رابطًا يعمل مرة واحدة لإنشاء حساب صاحب النسخة (التسجيل مغلق).
 
-## 14. Observability
+## 14. المراقبة
 
-- `/metrics` exposes Prometheus metrics: queue depth, lease latency, job and deployment duration and outcome, runner health and API latency.
-- OpenTelemetry traces cover the path from trigger to deployment to job.
-- Logs are structured JSON with request and trace IDs. Logs are redacted by default.
-- Health endpoints: `/health/live` (process) and `/health/ready` (database, object store, migrations up to date, today's job log partition, and the last instance settings reload).
+- `/metrics` يعرض مقاييس Prometheus: عمق الطابور، وزمن الحجز، ومدة التشغيلات والنشر ونتيجتها، وصحة أجهزة التشغيل، وزمن الـ API.
+- تتبعات OpenTelemetry تغطي المسار من المحفّز إلى النشر إلى التشغيل.
+- السجلات JSON منظّم مع معرّفات الطلب والتتبع. السجلات تُنقّح افتراضيًا.
+- مسارات الصحة: `/health/live` (العملية) و`/health/ready` (قاعدة البيانات، وتخزين الكائنات، والتحديثات المطبّقة، وجزء سجلات التشغيل لليوم، وآخر إعادة تحميل لإعدادات السيرفر).
 
-## 15. High availability and scale
+## 15. التوفر العالي والتوسع
 
-- **Control plane.** Instances are stateless, and N replicas can run behind a load balancer. Cross-instance events (SSE fan-out) travel over Postgres `LISTEN/NOTIFY`, or over Redis when it is configured. Schedulers coordinate through advisory locks and leases.
-- **Runners** scale horizontally. Runner pools carry labels and can be autoscaled; an autoscaler is planned.
-- **Database.** Dhow relies on standard Postgres HA (managed service, Patroni, or a CloudNativePG operator).
-- **Backups.** The backup guide covers the database, the object store and **the KEK**. Losing the KEK means losing every secret. Dhow will also ship a restore drill command.
+- **لوحة التحكم.** النسخ بلا حالة، ويمكن تشغيل N نسخة خلف موزّع حمل. الأحداث بين النسخ (بث SSE) تمر عبر `LISTEN/NOTIFY` في Postgres، أو عبر Redis عند ضبطه. المجدولات تتنسق عبر advisory locks والحجوزات.
+- **أجهزة التشغيل** تتوسع أفقيًا. مجموعات أجهزة التشغيل لها أوسمة ويمكن توسيعها تلقائيًا، والموسّع التلقائي مخطط له.
+- **قاعدة البيانات.** يعتمد داو على التوفر العالي القياسي لـ Postgres (خدمة مُدارة، أو Patroni، أو مشغّل CloudNativePG).
+- **النسخ الاحتياطي.** دليل النسخ الاحتياطي يغطي قاعدة البيانات، وتخزين الكائنات، و**مفتاح KEK**. فقدان KEK يعني فقدان كل الأسرار. وسيأتي داو أيضًا بأمر لتمرين الاسترجاع.
 
-## 16. Repository layout (ADR-0004)
+## 16. هيكل المستودع (ADR-0004)
 
 ```
 apps/

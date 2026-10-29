@@ -1,12 +1,14 @@
-# Register a runner
+[English](../en/runner/register.md)
 
-Registration turns a one-time token into a runner identity: a pair of keys that stays on the runner host, and a runner record in your organization.
+# تسجيل جهاز تشغيل
 
-## 1. Create a registration token
+التسجيل يحوّل رمزًا يعمل مرة واحدة إلى هوية جهاز تشغيل (runner): زوج مفاتيح يبقى على جهاز التشغيل، وسجل لجهاز التشغيل في مؤسستك.
 
-An organization owner or admin creates it in the dashboard: open **Runners** in the side menu and choose **Add a runner**. Pick the labels, how many machines the token may register (1 to 50) and how long it stays valid (1, 6 or 24 hours). The next screen shows the token once, next to the exact `dhow-runner register` command for your server and the command that starts the service. Copy the token before you close it: the dashboard never shows it again. A lost token is revoked from the **Registration tokens** page (`/runners/tokens`, linked at the top of **Runners**).
+## 1. إنشاء رمز تسجيل
 
-With the API:
+ينشئه صاحب المؤسسة أو المدير من الواجهة: افتح **أجهزة التشغيل** في القائمة الجانبية، واختر **أضف جهاز تشغيل**. اختر الأوسمة (labels)، وعدد الأجهزة التي يسجّلها الرمز (من 1 إلى 50)، ومدة صلاحيته (1 أو 6 أو 24 ساعة). الشاشة التالية تعرض الرمز مرة واحدة، بجوار أمر `dhow-runner register` الدقيق لسيرفرك، والأمر الذي يشغّل الخدمة. انسخ الرمز قبل أن تغلقها، لأن الواجهة لا تعرضه مرة أخرى أبدًا. الرمز الضائع تلغيه من صفحة **رموز التسجيل** (`/runners/tokens`، ورابطها في أعلى **أجهزة التشغيل**).
+
+عبر الـ API:
 
 ```sh
 curl -X POST https://dhow.example.com/api/v1/organizations/<org-id>/runner-registration-tokens \
@@ -14,61 +16,61 @@ curl -X POST https://dhow.example.com/api/v1/organizations/<org-id>/runner-regis
   -d '{"Labels": ["linux-builders"], "MaxUses": 1, "ExpiresInSeconds": 3600}'
 ```
 
-- The token (`dhow_rrt_...`) is shown once. It expires after an hour by default and 24 hours at most, and works once unless you raise `MaxUses` (up to 50, for a fleet).
-- The labels you choose are the runner's labels. A runner cannot pick its own: it only reports what it can do (`dhow.os`, `dhow.arch`, `dhow.isolation`), and those are added for it.
+- الرمز (`dhow_rrt_...`) يظهر مرة واحدة. تنتهي صلاحيته بعد ساعة افتراضيًا، و24 ساعة بالأكثر. ويعمل مرة واحدة، إلا إذا رفعت `MaxUses` (حتى 50، لمجموعة أجهزة).
+- الأوسمة التي تختارها هي أوسمة جهاز التشغيل. لا يستطيع جهاز التشغيل اختيار أوسمته بنفسه: هو يذكر فقط ما يستطيع فعله (`dhow.os` و`dhow.arch` و`dhow.isolation`)، ونضيف هذه الأوسمة له.
 
-## 2. Register on the runner host
+## 2. التسجيل على جهاز التشغيل
 
-The token is read from a file or from stdin, never from the command line, where shell history and `ps` would keep it:
+نقرأ الرمز من ملف أو من stdin، وليس من سطر الأوامر أبدًا، حيث يحفظه سجل الـ shell و`ps`:
 
 ```sh
 sudo -u dhow-runner dhow-runner register --url https://dhow.example.com --token-file -
 # paste the token, then press Enter
 ```
 
-| Flag | Meaning |
+| الخيار | المعنى |
 |---|---|
-| `--url` | The Dhow server address, `https://` and a host name only. `DHOW_RUNNER_URL` works too. |
-| `--token-file` | A file that holds the token, or `-` for stdin. Required. |
-| `--name` | The name shown in Dhow. Defaults to the host name. |
-| `--dev` | Allows plain `http://` to `localhost`, `127.0.0.1` or `[::1]`, for local development only. |
+| `--url` | عنوان سيرفر داو (Dhow)، `https://` واسم جهاز فقط. يعمل `DHOW_RUNNER_URL` أيضًا. |
+| `--token-file` | ملف فيه الرمز، أو `-` لـ stdin. مطلوب. |
+| `--name` | الاسم الذي يظهر في داو. القيمة الافتراضية اسم الجهاز. |
+| `--dev` | يسمح بـ `http://` العادي إلى `localhost` أو `127.0.0.1` أو `[::1]`، للتطوير المحلي فقط. |
 
-The dashboard shows this same command with your server's address filled in. It runs as the `dhow-runner` user, so the identity belongs to the service account and not to root. On a server started with `DHOW_DEV=true`, the command shown after you create a token adds `--dev`. The command on the empty **Runners** page adds it when you open the dashboard over plain `http://` on a loopback address.
+تعرض الواجهة هذا الأمر نفسه مع عنوان سيرفرك. يعمل الأمر بالمستخدم `dhow-runner`، فتكون الهوية لحساب الخدمة وليس لـ root. على سيرفر بدأ بـ `DHOW_DEV=true`، الأمر الذي يظهر بعد إنشاء الرمز يضيف `--dev`. والأمر الذي في صفحة **أجهزة التشغيل** الفارغة يضيفه عندما تفتح الواجهة عبر `http://` العادي على عنوان loopback.
 
-The runner prints its runner ID, its organization and its labels. It saved the identity in `$DHOW_RUNNER_STATE_DIR/identity` with mode `0600`, together with the server address and the server's signing key, which every later job grant is checked against.
+يطبع جهاز التشغيل معرّفه، ومؤسسته، وأوسمته. حفظ الهوية في `$DHOW_RUNNER_STATE_DIR/identity` بالصلاحيات `0600`، مع عنوان السيرفر ومفتاح توقيعه، الذي نتحقق به من كل منحة تشغيل لاحقة.
 
-If the server uses a private CA, set `DHOW_RUNNER_CA_FILE` before registering. If the runner reaches the server on a separate runner listener (`DHOW_RUNNER_LISTEN_ADDR` on the server), set `--url` to that listener and `DHOW_RUNNER_SERVER_ORIGIN` to the server's public address (`DHOW_PUBLIC_URL`), because the runner's signatures name the public origin.
+إذا كان السيرفر يستخدم سلطة شهادات خاصة، فاضبط `DHOW_RUNNER_CA_FILE` قبل التسجيل. إذا كان جهاز التشغيل يصل إلى السيرفر عبر عنوان استماع منفصل لأجهزة التشغيل (`DHOW_RUNNER_LISTEN_ADDR` في السيرفر)، فاضبط `--url` على هذا العنوان، و`DHOW_RUNNER_SERVER_ORIGIN` على العنوان العام للسيرفر (`DHOW_PUBLIC_URL`)، لأن توقيعات جهاز التشغيل تذكر المصدر العام.
 
-## Manage runners in the dashboard
+## إدارة أجهزة التشغيل من الواجهة
 
-**Runners** lists every runner of the organization with its state, labels and last-seen time. Owners, admins, maintainers and developers can open it; only owners and admins can change anything.
+صفحة **أجهزة التشغيل** تعرض كل أجهزة تشغيل المؤسسة مع حالتها وأوسمتها وآخر ظهور لها. يستطيع فتحها صاحب المؤسسة والمديرون ومسؤولو المشاريع والمطوّرون. التغيير لصاحب المؤسسة والمديرين فقط.
 
-| State | Meaning |
+| الحالة | المعنى |
 |---|---|
-| Online | Seen in the last two minutes, and takes new jobs. |
-| Offline | Active, but not seen in the last two minutes. Check the service and its network path to the server. |
-| Paused | Takes no new jobs and finishes the ones it started. **Resume** lets it take jobs again. |
-| Paused: copied identity | Dhow paused it because one identity was used from several machines ([copying a runner](#copying-a-runner)). Resume it only if you are sure it runs on one machine. |
-| Revoked | Cut off for good. Register the machine again with a new token. |
+| متصل | ظهر في آخر دقيقتين، ويستلم تشغيلات جديدة. |
+| غير متصل | نشط، لكنه لم يظهر في آخر دقيقتين. تأكد من الخدمة ومن طريقها في الشبكة إلى السيرفر. |
+| موقوف مؤقتًا | لا يستلم تشغيلات جديدة، ويكمل التي بدأها. **إعادة التشغيل** تسمح له باستلام التشغيلات مرة أخرى. |
+| موقوف: هوية منسوخة | أوقفه داو لأن هوية واحدة استُخدمت من عدة أجهزة ([نسخ جهاز تشغيل](#نسخ-جهاز-تشغيل)). أعد تشغيله فقط إذا كنت متأكدًا أنه يعمل على جهاز واحد. |
+| ملغى | مقطوع نهائيًا. سجّل الجهاز مرة أخرى برمز جديد. |
 
-Open a runner to see its OS and architecture, version, capacity, isolation levels, capability labels and identity key version, to rename it or change its labels, to pause or resume it, and to revoke it. Each runner has its own address (`/runners/<id>`). On screens 1280 pixels wide or more it opens beside the list, so you can move from one runner to the next; on smaller screens it takes the whole page, with **All runners** to go back.
+افتح جهاز تشغيل لترى نظامه ومعماريته، وإصداره، وسعته، ومستويات العزل، وأوسمة قدراته، وإصدار مفتاح هويته. ومن هناك تستطيع تغيير اسمه أو أوسمته، وإيقافه مؤقتًا أو إعادة تشغيله، وإلغاءه. لكل جهاز تشغيل عنوان خاص (`/runners/<id>`). على الشاشات بعرض 1280 بكسل أو أكثر يفتح بجوار القائمة، فتنتقل من جهاز إلى الذي بعده. وعلى الشاشات الأصغر يأخذ الصفحة كلها، مع **كل أجهزة التشغيل** للرجوع.
 
-## When it fails
+## عند الفشل
 
-| Message | Cause |
+| الرسالة | السبب |
 |---|---|
-| `INVALID_REGISTRATION_TOKEN` | The token is wrong, expired, used up, revoked or from another organization. The server gives the same answer for all of them on purpose. Create a new token. |
-| `this runner is already registered` | The state directory already has an identity. Revoke the old runner in Dhow and remove the directory to register again. |
-| `x509: certificate signed by unknown authority` | Set `DHOW_RUNNER_CA_FILE` to the CA that signed the server certificate. The runner never skips verification. |
-| `must use https://` | Plain HTTP is refused outside `--dev` on the loopback address. |
-| `RUNNER_KEY_IN_USE` | This key pair is already registered. It cannot happen with a fresh registration, so check that two hosts do not share a state directory. |
+| `INVALID_REGISTRATION_TOKEN` | الرمز خاطئ، أو انتهت صلاحيته، أو استُخدم بالكامل، أو أُلغي، أو من مؤسسة أخرى. يعطي السيرفر الرد نفسه لكل هذه الحالات عن قصد. أنشئ رمزًا جديدًا. |
+| `this runner is already registered` | مجلد الحالة فيه هوية بالفعل. ألغِ جهاز التشغيل القديم في داو، واحذف المجلد لتسجّل مرة أخرى. |
+| `x509: certificate signed by unknown authority` | اضبط `DHOW_RUNNER_CA_FILE` على سلطة الشهادات التي وقّعت شهادة السيرفر. جهاز التشغيل لا يتخطى التحقق أبدًا. |
+| `must use https://` | نرفض HTTP العادي خارج `--dev` على عنوان loopback. |
+| `RUNNER_KEY_IN_USE` | زوج المفاتيح هذا مسجّل بالفعل. لا يحدث هذا مع تسجيل جديد، فتأكد أن جهازين لا يشتركان في مجلد حالة واحد. |
 
-## Copying a runner
+## نسخ جهاز تشغيل
 
-Never copy a state directory to a second host. Two runners with one identity keep replacing each other's session, and after three replacements in ten minutes Dhow disables the runner as a suspected clone. Register each host with its own token.
+لا تنسخ أبدًا مجلد الحالة إلى جهاز ثانٍ. جهازا تشغيل بهوية واحدة يستبدل كل منهما جلسة الآخر باستمرار. بعد ثلاث مرات استبدال في عشر دقائق، يوقف داو جهاز التشغيل لأنه يشتبه أنه منسوخ. سجّل كل جهاز برمز خاص به.
 
-## Rotating the keys
+## تدوير المفاتيح
 
-`dhow-runner rotate-keys` replaces both key pairs and keeps the runner's ID, labels and history. Run it at least once a year, and whenever the state directory may have been read by someone else. See [Rotate a runner's keys](keys.md).
+`dhow-runner rotate-keys` يستبدل زوجي المفاتيح، ويحتفظ بمعرّف جهاز التشغيل وأوسمته وتاريخه. شغّله مرة في السنة على الأقل، وكلما احتمل أن يكون شخص آخر قد قرأ مجلد الحالة. راجع [دوّر مفاتيح جهاز التشغيل](keys.md).
 
-Next: [run the runner](run.md).
+الخطوة التالية: [ابدأ جهاز التشغيل](run.md).

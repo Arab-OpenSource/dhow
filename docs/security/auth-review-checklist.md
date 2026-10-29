@@ -1,198 +1,200 @@
-# Authentication review checklist (M2)
+[English](../en/security/auth-review-checklist.md)
 
-Status: **internal review done, external review pending (M9)** · Date: 2026-10-28 · Scope: milestone M2 (identity and tenancy)
+# قائمة مراجعة المصادقة (M2)
 
-This page is the starting point for the external review of the authentication and authorization paths, which moved to M9 together with the penetration test. It lists every route in scope, the threats we considered, the control for each threat, where the control lives, and the test that proves it. It ends with the findings of the internal review and the items we know are open. Design decisions behind the controls are in ADR-0033, ADR-0035, ADR-0037, ADR-0038, ADR-0039 and ADR-0040 (in `Plan/ADR/`, in Arabic); the public description is the [security model](../security-model.md).
+الحالة: **اكتملت المراجعة الداخلية، والمراجعة الخارجية معلّقة (M9)** · التاريخ: 2026-10-28 · النطاق: المرحلة M2 (الهوية والمؤسسات)
 
-Paths below are relative to `apps/server/internal/` unless they start with another top-level folder.
+هذه الصفحة نقطة البداية للمراجعة الخارجية لمسارات المصادقة والصلاحيات، التي انتقلت إلى M9 مع اختبار الاختراق. تذكر كل مسار في النطاق، والتهديدات التي درسناها، والضابط لكل تهديد، ومكان الضابط في الكود، والاختبار الذي يثبته. وتنتهي بنتائج المراجعة الداخلية والبنود التي نعرف أنها مفتوحة. قرارات التصميم خلف الضوابط في ADR-0033 وADR-0035 وADR-0037 وADR-0038 وADR-0039 وADR-0040 (في `Plan/ADR/`، بالعربية). والوصف العام في [نموذج الأمان](../security-model.md).
 
-## 1. Method
+المسارات التالية نسبية إلى `apps/server/internal/`، إلا إذا بدأت بمجلد رئيسي آخر.
 
-- A fresh read of every M2 path (setup, password, second factor, sessions, organizations, invitations, OIDC, API tokens, audit) against the [security model](../security-model.md) and OWASP ASVS 4.0.3 level 2, after the M2.5 hardening was in place.
-- An independent review of the branch followed and found no blocker; its findings are F16 to F24 below, all addressed in M2.5.
-- Every Critical or High finding is fixed in M2.5. Every Medium finding is fixed or recorded with its reason. M2 is done when every authorization test is green and no Critical or High finding is open.
-- Automated evidence: `make check` (lint, `go test -race` against PostgreSQL 18, govulncheck, hook tests), `make fuzz FUZZTIME=60s` (13 targets), `make timing` (statistical timing tests), and `deploy/smoke.sh` against the container image.
+## 1. الطريقة
 
-## 2. Routes in scope
+- قراءة جديدة لكل مسار في M2 (الإعداد، وكلمة السر، والخطوة الثانية، والجلسات، والمؤسسات، والدعوات، وOIDC، ومفاتيح API، وسجل الأحداث) مقابل [نموذج الأمان](../security-model.md) وOWASP ASVS 4.0.3 المستوى 2، بعد اكتمال تحصين M2.5.
+- تبعتها مراجعة مستقلة للفرع ولم تجد ما يمنع الدمج. نتائجها من F16 إلى F24 أدناه، وكلها عولجت في M2.5.
+- كل نتيجة حرجة (Critical) أو عالية (High) مُصلحة في M2.5. وكل نتيجة متوسطة (Medium) مُصلحة أو مسجّلة مع سببها. تكتمل M2 عندما تنجح كل اختبارات الصلاحيات ولا تبقى نتيجة حرجة أو عالية مفتوحة.
+- الأدلة الآلية: `make check` (الـ lint، و`go test -race` مع PostgreSQL 18، وgovulncheck، واختبارات الـ hooks)، و`make fuzz FUZZTIME=60s` (13 هدفًا)، و`make timing` (اختبارات توقيت إحصائية)، و`deploy/smoke.sh` على صورة الحاوية.
 
-All routes are under `/api/v1`. Per-network limits count only requests that passed the Origin check. "Origin" means the request must carry `Origin` equal to `DHOW_PUBLIC_URL`; "CSRF" means the `X-CSRF-Token` of the session is required as well. Every route has a row in a module's `Policies()`, and `App/RouteTable_test.go` walks the whole route table for every role.
+## 2. المسارات في النطاق
 
-| Route | Who | Request checks | Limits |
+كل المسارات تحت `/api/v1`. الحدود لكل شبكة لا تعدّ إلا الطلبات التي نجحت في فحص Origin. "Origin" تعني أن الطلب يجب أن يحمل `Origin` مساويًا لـ `DHOW_PUBLIC_URL`. و"CSRF" تعني أن `X-CSRF-Token` الخاص بالجلسة مطلوب أيضًا. لكل مسار سطر في `Policies()` لوحدة ما، و`App/RouteTable_test.go` يمر على جدول المسارات كله لكل دور.
+
+| المسار | من | فحوص الطلب | الحدود |
 |---|---|---|---|
-| `POST /setup` | anyone, before the first owner exists | Origin, one-time setup token in the body | per client network (`DHOW_RATE_LIMIT_PUBLIC`) |
-| `POST /sessions` | anyone | Origin | lockout per account and per client network, and per client network (`DHOW_RATE_LIMIT_PUBLIC`) |
-| `POST /sessions/mfa` | holder of `__Host-dhow_mfa` | Origin, challenge bound to the user and User-Agent | lockout per user and per client network, 5 codes per challenge, and per client network |
-| `POST /sessions/mfa/passkey-options` | holder of `__Host-dhow_mfa` | Origin | bound to the pending challenge (the one listed exception to per-network limits) |
-| `POST /sessions/passkey-options` | anyone | Origin | per client network, shared with `POST /sessions/passkey` |
-| `POST /sessions/passkey` | anyone | Origin, stored single-use challenge | lockout per client network, and per client network |
-| `GET /oidc/providers` | anyone | none (read only) | none |
-| `POST /oidc/authorize`, `POST /oidc/callback` | anyone | Origin, `__Host-dhow_oidc`, state, PKCE, nonce | per client network, shared |
-| `POST /invitations/preview`, `POST /invitations/accept` | anyone with a link | Origin, token in the body | per client network, shared |
-| `GET /me`, `/sessions`, `/me/*` | signed-in user | session; CSRF for writes; current factor for factor changes, identity links and token creation | password change shares the account lockout |
-| `POST /organizations` | instance owner, or any user with `DHOW_ORG_CREATION=any-user` | session and CSRF | none |
-| `/organizations/{id}/**` | members, by role | session and CSRF, or a personal API token on routes that allow it | invitations per member and per organization each hour |
-| `PUT /organizations/{id}/second-factor-rule` | Owner with a second factor | session, CSRF and the current factor; never a token | none |
-| `/organizations/{id}/audit-events`, `.../verify` | `audit.read` | session or token | none |
+| `POST /setup` | أي شخص، قبل وجود صاحب النسخة الأول | Origin، ورمز إعداد يعمل مرة واحدة في الجسم | لكل شبكة عميل (`DHOW_RATE_LIMIT_PUBLIC`) |
+| `POST /sessions` | أي شخص | Origin | قفل لكل حساب ولكل شبكة عميل، ولكل شبكة عميل (`DHOW_RATE_LIMIT_PUBLIC`) |
+| `POST /sessions/mfa` | حامل `__Host-dhow_mfa` | Origin، وتحدٍ مربوط بالمستخدم والـ User-Agent | قفل لكل مستخدم ولكل شبكة عميل، و5 أكواد لكل تحدٍ، ولكل شبكة عميل |
+| `POST /sessions/mfa/passkey-options` | حامل `__Host-dhow_mfa` | Origin | مربوط بالتحدي المعلّق (الاستثناء الوحيد المذكور من الحدود لكل شبكة) |
+| `POST /sessions/passkey-options` | أي شخص | Origin | لكل شبكة عميل، مشترك مع `POST /sessions/passkey` |
+| `POST /sessions/passkey` | أي شخص | Origin، وتحدٍ محفوظ يعمل مرة واحدة | قفل لكل شبكة عميل، ولكل شبكة عميل |
+| `GET /oidc/providers` | أي شخص | لا يوجد (قراءة فقط) | لا يوجد |
+| `POST /oidc/authorize`، `POST /oidc/callback` | أي شخص | Origin، و`__Host-dhow_oidc`، وstate، وPKCE، وnonce | لكل شبكة عميل، مشترك |
+| `POST /invitations/preview`، `POST /invitations/accept` | أي شخص معه رابط | Origin، والرمز في الجسم | لكل شبكة عميل، مشترك |
+| `GET /me`، `/sessions`، `/me/*` | مستخدم مسجّل الدخول | الجلسة، وCSRF للكتابة، والخطوة الحالية لتغيير الخطوات وربط الهويات وإنشاء المفاتيح | تغيير كلمة السر يشترك في قفل الحساب |
+| `POST /organizations` | صاحب النسخة، أو أي مستخدم مع `DHOW_ORG_CREATION=any-user` | الجلسة وCSRF | لا يوجد |
+| `/organizations/{id}/**` | الأعضاء، حسب الدور | الجلسة وCSRF، أو مفتاح API شخصي على المسارات التي تسمح به | الدعوات لكل عضو ولكل مؤسسة في كل ساعة |
+| `PUT /organizations/{id}/second-factor-rule` | صاحب مؤسسة له خطوة ثانية | الجلسة وCSRF والخطوة الحالية، وليس مفتاحًا أبدًا | لا يوجد |
+| `/organizations/{id}/audit-events`، `.../verify` | `audit.read` | جلسة أو مفتاح | لا يوجد |
 
-## 3. Threats, controls and proof
+## 3. التهديدات والضوابط والإثبات
 
-### Setup
+### الإعداد
 
-| Threat | Control | Code | Proof |
+| التهديد | الضابط | الكود | الإثبات |
 |---|---|---|---|
-| Someone else claims the instance first | Setup needs a 256-bit token printed in the server log, single use, one hour | `Modules/Identity/Identity.Setup.go` | `Modules/Identity/Test/Integration/Setup_test.go`, `Modules/Session/Test/E2E/Flow_test.go` (`TestSetupIsOneShot`) |
-| Two setup calls race | One transaction locks the instance row and the token | `Identity.Setup.go` (`create`) | `Setup_test.go` |
-| CPU exhaustion through setup | The token is checked before the breach check and Argon2id; per client network limit | `Identity.Setup.go`, `Modules/Identity/Identity.Routes.go` | `App/RateLimit_test.go` |
+| شخص آخر يتملّك السيرفر أولًا | الإعداد يحتاج إلى رمز 256 بت مطبوع في سجل السيرفر، يعمل مرة واحدة، لمدة ساعة | `Modules/Identity/Identity.Setup.go` | `Modules/Identity/Test/Integration/Setup_test.go`، `Modules/Session/Test/E2E/Flow_test.go` (`TestSetupIsOneShot`) |
+| طلبا إعداد يتسابقان | معاملة واحدة تقفل صف السيرفر والرمز | `Identity.Setup.go` (`create`) | `Setup_test.go` |
+| استنزاف المعالج عبر الإعداد | نفحص الرمز قبل فحص التسريب وArgon2id، وحد لكل شبكة عميل | `Identity.Setup.go`، `Modules/Identity/Identity.Routes.go` | `App/RateLimit_test.go` |
 
-### Password sign-in
+### الدخول بكلمة السر
 
-| Threat | Control | Code | Proof |
+| التهديد | الضابط | الكود | الإثبات |
 |---|---|---|---|
-| Online guessing and credential stuffing | Failures counted before verification, per account (5) and per client network (20), exponential lock from 30 s to 15 min; IPv6 counted per /64 | `Modules/Session/Session.Throttle.go`, `Core/Auth/Throttle.go` | `Modules/Session/Test/Integration/Throttle_test.go` (including `TestAnIPv6AttackerCannotSpreadOverItsSlash64`) |
-| Parallel guesses beat the counter | Reservation in one transaction with `FOR UPDATE` on both counters | `Session.Throttle.go` | `Throttle_test.go` (`TestParallelGuesses...`) |
-| Account enumeration by answer | One `INVALID_CREDENTIALS` for every failure, locked or not | `Modules/Session/Session.Login.go` | `Modules/Session/Test/Edge/Generic_test.go`, `Flow_test.go` (`TestLoginErrorsAreGeneric`) |
-| Account enumeration by timing | Unknown and disabled accounts run a full Argon2id verification; no difference above max(10%, 300 µs) of the median, about 3.5 ms here | `Session.Login.go`, `Core/Auth/Password.go` | `App/Timing/Timing_test.go` (`make timing`), with a control that must notice 6 ms on sign-in |
-| Offline cracking after a database leak | Argon2id (19 MiB, t=2), rehash on sign-in after a parameter change | `Core/Auth/Password.go` | `Core/Auth/Password_test.go` |
-| Weak or breached passwords | 12 to 128 characters, Have I Been Pwned range check (k-anonymity) | `Core/Auth/PasswordPolicy.go`, `Core/Auth/Breached.go` | `Core/Auth/Breached_test.go`, `FuzzPasswordLength` |
+| التخمين عبر الشبكة وحشو بيانات الدخول | نعدّ الفشل قبل التحقق، لكل حساب (5) ولكل شبكة عميل (20)، مع قفل يتضاعف من 30 ثانية إلى 15 دقيقة. وIPv6 يُعدّ لكل /64 | `Modules/Session/Session.Throttle.go`، `Core/Auth/Throttle.go` | `Modules/Session/Test/Integration/Throttle_test.go` (ومنه `TestAnIPv6AttackerCannotSpreadOverItsSlash64`) |
+| تخمينات متوازية تتجاوز العدّاد | حجز في معاملة واحدة مع `FOR UPDATE` على العدّادين | `Session.Throttle.go` | `Throttle_test.go` (`TestParallelGuesses...`) |
+| تعداد الحسابات من الرد | `INVALID_CREDENTIALS` واحد لكل فشل، مقفلًا كان أو لا | `Modules/Session/Session.Login.go` | `Modules/Session/Test/Edge/Generic_test.go`، `Flow_test.go` (`TestLoginErrorsAreGeneric`) |
+| تعداد الحسابات من التوقيت | الحسابات غير الموجودة والموقوفة تنفّذ تحقق Argon2id كاملًا. لا فرق أكبر من max(10%, 300 µs) من الوسيط، حوالي 3.5 ms هنا | `Session.Login.go`، `Core/Auth/Password.go` | `App/Timing/Timing_test.go` (`make timing`)، مع عينة ضابطة يجب أن تلاحظ 6 ms في الدخول |
+| كسر كلمات السر بعد تسريب قاعدة البيانات | Argon2id (19 MiB، t=2)، وإعادة الـ hash عند الدخول بعد تغيير المعاملات | `Core/Auth/Password.go` | `Core/Auth/Password_test.go` |
+| كلمات سر ضعيفة أو مسرّبة | من 12 إلى 128 حرفًا، وفحص range في Have I Been Pwned (k-anonymity) | `Core/Auth/PasswordPolicy.go`، `Core/Auth/Breached.go` | `Core/Auth/Breached_test.go`، `FuzzPasswordLength` |
 
-### Second factor
+### الخطوة الثانية
 
-| Threat | Control | Code | Proof |
+| التهديد | الضابط | الكود | الإثبات |
 |---|---|---|---|
-| Skipping the second step | `mfa_pending` challenge on the server, bound to the user and the User-Agent hash; no user id from the client | `Modules/Session/Mfa.Pending.go` | `Modules/Session/Test/E2E/Totp_test.go`, `Passkey_test.go` |
-| Guessing TOTP codes | Lockout per user separate from the password counter, 5 codes per challenge | `Mfa.Pending.go` | `Modules/Session/Test/Integration/MfaThrottle_test.go` |
-| TOTP replay | The last accepted step is stored and updated atomically | `Modules/Session/Mfa.Factor.go`, `Core/Auth/Totp.go` | `Core/Auth/Totp_test.go`, `FuzzTotp` |
-| Stolen session enrolls the attacker's factor | Every factor change needs the current factor in the same request and revokes other sessions | `Modules/Session/Mfa.Factor.go` | `Modules/Session/Test/E2E/FactorChange_test.go` |
-| Passkey phishing or cloning | RP ID and origin from `DHOW_PUBLIC_URL`; user verification required for passwordless; a sign count that goes back is refused and audited | `Core/Auth/WebAuthn.go`, `Modules/Session/Mfa.Passkey*.go` | `Passkey_test.go`, `FuzzWebAuthnResponses` |
+| تخطي الخطوة الثانية | تحدي `mfa_pending` في السيرفر، مربوط بالمستخدم وبـ hash الـ User-Agent. لا معرّف مستخدم من العميل | `Modules/Session/Mfa.Pending.go` | `Modules/Session/Test/E2E/Totp_test.go`، `Passkey_test.go` |
+| تخمين أكواد TOTP | قفل لكل مستخدم منفصل عن عدّاد كلمة السر، و5 أكواد لكل تحدٍ | `Mfa.Pending.go` | `Modules/Session/Test/Integration/MfaThrottle_test.go` |
+| إعادة استخدام كود TOTP | نحفظ آخر خطوة مقبولة ونحدّثها بشكل ذري | `Modules/Session/Mfa.Factor.go`، `Core/Auth/Totp.go` | `Core/Auth/Totp_test.go`، `FuzzTotp` |
+| جلسة مسروقة تسجّل خطوة المهاجم | كل تغيير خطوة يحتاج إلى الخطوة الحالية في الطلب نفسه، ويلغي الجلسات الأخرى | `Modules/Session/Mfa.Factor.go` | `Modules/Session/Test/E2E/FactorChange_test.go` |
+| تصيّد مفتاح المرور أو نسخه | معرّف RP والمصدر من `DHOW_PUBLIC_URL`. التحقق من المستخدم مطلوب للدخول بلا كلمة سر. عدّاد التوقيع الذي يرجع إلى الخلف مرفوض ومسجّل | `Core/Auth/WebAuthn.go`، `Modules/Session/Mfa.Passkey*.go` | `Passkey_test.go`، `FuzzWebAuthnResponses` |
 
-### Sessions, CSRF and tokens on the wire
+### الجلسات وCSRF والرموز أثناء النقل
 
-| Threat | Control | Code | Proof |
+| التهديد | الضابط | الكود | الإثبات |
 |---|---|---|---|
-| Cookie theft by script or sub-domain | `__Host-` cookies, `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/` | `Core/Auth/Cookie.go` | `Modules/Session/Test/E2E/Secrets_test.go`, smoke |
-| Session fixation | A new 256-bit id at every sign-in; the old one is revoked | `Session.Login.go` (`openSession`) | `Modules/Session/Test/Integration/Lifecycle_test.go` |
-| Stale sessions | 12 h idle (4 h for anyone who is an Owner or Admin anywhere, from the current role on every request) and 7 days absolute; revocation on sign-out, password, factor and role change | `Modules/Session/Session.Service.go`, `Session.Policy.go` | `Lifecycle_test.go`, `SessionPolicy_test.go`, `Flow_test.go` (`TestRevokeSessions`) |
-| CSRF | Origin on every unsafe request, plus an HMAC token bound to the session | `Core/Auth/Guard.go`, `Core/Auth/CSRF.go` | `Modules/Session/Test/E2E/Csrf_test.go`, `Core/Auth/CSRF_test.go` |
-| Token or cookie in a URL or a log | Tokens travel in bodies, cookies or the URL fragment; the access log drops the query; log keys are redacted | `Core/Middleware/AccessLog.go`, `internal/logging` | `Secrets_test.go`, `Core/Middleware/Middleware_test.go` |
-| Malformed or alternative token spellings | Exact encoded length, strict base64url, then SHA-256 or HMAC; the same for runner tokens | `Core/Auth/Token.go`, `Core/Auth/ApiToken.go`, `Core/RunnerAuth/Tokens.go` | `Core/Auth/Token_test.go`, `Core/RunnerAuth/RunnerAuth_test.go`, `FuzzHashSessionToken`, `FuzzAPITokenHash` |
+| سرقة الكوكي بسكربت أو نطاق فرعي | كوكيز `__Host-`، و`HttpOnly`، و`Secure`، و`SameSite=Strict`، و`Path=/` | `Core/Auth/Cookie.go` | `Modules/Session/Test/E2E/Secrets_test.go`، واختبار smoke |
+| تثبيت الجلسة (session fixation) | معرّف جديد 256 بت في كل دخول، والقديم يُلغى | `Session.Login.go` (`openSession`) | `Modules/Session/Test/Integration/Lifecycle_test.go` |
+| جلسات قديمة | 12 ساعة خمول (4 ساعات لكل من هو صاحب مؤسسة أو مدير في أي مكان، من الدور الحالي مع كل طلب)، و7 أيام مطلقة. وإلغاء عند الخروج، وتغيير كلمة السر والخطوة والدور | `Modules/Session/Session.Service.go`، `Session.Policy.go` | `Lifecycle_test.go`، `SessionPolicy_test.go`، `Flow_test.go` (`TestRevokeSessions`) |
+| CSRF | Origin على كل طلب غير آمن، مع رمز HMAC مربوط بالجلسة | `Core/Auth/Guard.go`، `Core/Auth/CSRF.go` | `Modules/Session/Test/E2E/Csrf_test.go`، `Core/Auth/CSRF_test.go` |
+| رمز أو كوكي في رابط أو سجل | الرموز تنتقل في الأجسام أو الكوكيز أو جزء الـ fragment. سجل الوصول يحذف الـ query. مفاتيح السجل منقّحة | `Core/Middleware/AccessLog.go`، `internal/logging` | `Secrets_test.go`، `Core/Middleware/Middleware_test.go` |
+| رموز مشوّهة أو بكتابات بديلة | طول مرمّز دقيق، وbase64url صارم، ثم SHA-256 أو HMAC. والشيء نفسه لرموز أجهزة التشغيل | `Core/Auth/Token.go`، `Core/Auth/ApiToken.go`، `Core/RunnerAuth/Tokens.go` | `Core/Auth/Token_test.go`، `Core/RunnerAuth/RunnerAuth_test.go`، `FuzzHashSessionToken`، `FuzzAPITokenHash` |
 
-### External identity providers
+### مزودو الهوية الخارجيون
 
-| Threat | Control | Code | Proof |
+| التهديد | الضابط | الكود | الإثبات |
 |---|---|---|---|
-| Login CSRF and flow injection | `__Host-dhow_oidc` cookie, random state, PKCE S256, nonce; the flow is consumed before the code exchange | `Modules/Session/Oidc.Flow.go` | `Modules/Session/Test/E2E/OidcNegative_test.go` |
-| Account takeover by email | Identities match only `(issuer, subject)`; no linking or account creation by email | `Modules/Session/Oidc.Login.go` | `OidcNegative_test.go`, `Oidc_test.go` |
-| Forged or replayed ID tokens | `go-oidc` verification, nonce in constant time, `azp`, 10 s timeout, 1 MB cap, no redirects | `Core/Oidc/Oidc.go`, `Core/Oidc/Provider.go` | `Core/Oidc/Oidc_test.go`, `Core/Oidc/Discovery_test.go` |
-| Wrong domain or unverified email | Exact domain match on a verified email | `Core/Oidc/Domains.go` | `FuzzAcceptedEmail`, `FuzzEmailVerifiedClaim` |
-| Unlinking the last way in | Row lock on the user and a count of every sign-in method | `Modules/Session/Oidc.Link.go` | `Modules/Session/Test/E2E/SignInMethods_test.go` |
+| CSRF في الدخول وحقن المسار | كوكي `__Host-dhow_oidc`، وstate عشوائي، وPKCE S256، وnonce. نستهلك المسار قبل تبادل الكود | `Modules/Session/Oidc.Flow.go` | `Modules/Session/Test/E2E/OidcNegative_test.go` |
+| الاستيلاء على حساب عبر البريد | الهويات تطابق `(issuer, subject)` فقط. لا ربط ولا إنشاء حساب عبر البريد | `Modules/Session/Oidc.Login.go` | `OidcNegative_test.go`، `Oidc_test.go` |
+| رموز هوية مزوّرة أو معادة | تحقق `go-oidc`، والـ nonce بزمن ثابت، و`azp`، ومهلة 10 ثوانٍ، وحد 1 MB، وبلا تحويلات | `Core/Oidc/Oidc.go`، `Core/Oidc/Provider.go` | `Core/Oidc/Oidc_test.go`، `Core/Oidc/Discovery_test.go` |
+| نطاق خاطئ أو بريد غير موثّق | مطابقة دقيقة للنطاق على بريد موثّق | `Core/Oidc/Domains.go` | `FuzzAcceptedEmail`، `FuzzEmailVerifiedClaim` |
+| فك آخر طريقة دخول | قفل على صف المستخدم وعدّ كل طرق الدخول | `Modules/Session/Oidc.Link.go` | `Modules/Session/Test/E2E/SignInMethods_test.go` |
 
-### Personal API tokens
+### مفاتيح API الشخصية
 
-| Threat | Control | Code | Proof |
+| التهديد | الضابط | الكود | الإثبات |
 |---|---|---|---|
-| A token above its creator | Every request needs the scope and the creator's current effective role | `Core/Policy/Policy.go`, `Modules/Tokens/Tokens.Resolve.go` | `Modules/Tokens/Test/E2E/Tokens_test.go`, `App/RouteTable_tokens_test.go` |
-| A token on a browser-only route | Routes accept tokens only when their policy row says so; `openapi.yaml` declares the same set | `Core/Policy/Table.go` | `App/RouteTable_tokens_test.go`, `App/OpenAPI_tokens_test.go` |
-| A token confirming a factor | `ConfirmFactor` refuses any principal from a token | `Modules/Session/Session.Service.go` | `Tokens_test.go` |
-| Leaked token after offboarding | Bound to the membership row, the account and the organization | `Modules/Tokens/Queries/Tokens.sql` | `Tokens_test.go` |
-| Existence by timing | Unknown, revoked and expired tokens take the same path | `Tokens.Resolve.go` | `App/Timing/Timing_test.go` |
+| مفتاح يتجاوز منشئه | كل طلب يحتاج إلى الصلاحية وإلى الدور الفعلي الحالي للمنشئ | `Core/Policy/Policy.go`، `Modules/Tokens/Tokens.Resolve.go` | `Modules/Tokens/Test/E2E/Tokens_test.go`، `App/RouteTable_tokens_test.go` |
+| مفتاح على مسار للمتصفح فقط | المسارات تقبل المفاتيح فقط عندما يقول سطر سياستها ذلك، و`openapi.yaml` يعلن المجموعة نفسها | `Core/Policy/Table.go` | `App/RouteTable_tokens_test.go`، `App/OpenAPI_tokens_test.go` |
+| مفتاح يؤكد خطوة تحقق | `ConfirmFactor` يرفض أي هوية آتية من مفتاح | `Modules/Session/Session.Service.go` | `Tokens_test.go` |
+| مفتاح مسرّب بعد مغادرة العضو | مربوط بصف العضوية والحساب والمؤسسة | `Modules/Tokens/Queries/Tokens.sql` | `Tokens_test.go` |
+| كشف الوجود من التوقيت | المفاتيح غير المعروفة والملغاة والمنتهية تسلك المسار نفسه | `Tokens.Resolve.go` | `App/Timing/Timing_test.go` |
 
-### Organizations, roles and invitations
+### المؤسسات والأدوار والدعوات
 
-| Threat | Control | Code | Proof |
+| التهديد | الضابط | الكود | الإثبات |
 |---|---|---|---|
-| IDOR across organizations | The guard answers 404 for non-members; loaders are scoped to the organization | `Core/Auth/Guard.go` | `App/RouteTable_test.go`, `App/RouteTable_orgs_test.go` |
-| Privilege escalation through grants | Nobody grants above their role, changes someone higher or changes their own role; bindings never grant Owner | `Core/Policy/Rank.go`, `Modules/Identity/Members.Service.go` | `Core/Policy/Rank_test.go`, `Modules/Identity/Test/E2E/Members_test.go`, `Modules/Identity/Test/Integration/Bindings_test.go` |
-| Owner changes without step-up | Granting, demoting and transferring Owner need the current factor; an Owner is removed only after a demotion | `Members.Service.go`, `Modules/Identity/Orgs.Service.go` | `Modules/Identity/Test/E2E/OwnerRemoval_test.go` |
-| Losing the last owner in a race | Row lock on the organization for every membership change | `Orgs.Service.go` | `Modules/Identity/Test/Integration/Owners_test.go`, `Locks_test.go` |
-| Admin MFA reset as a takeover path | Strictly higher rank in every organization of the member, current factor, high-severity audit | `Members.Service.go` | `Modules/Identity/Test/E2E/MfaRank_test.go`, `MfaReset_test.go` |
-| Admins without a second factor | `RequireSecondFactor` per organization, 7-day grace, then `403 SECOND_FACTOR_REQUIRED` on sensitive actions for sessions and tokens | `Core/Policy/SecondFactor.go`, `Modules/Identity/Identity.SecondFactor.go` | `App/RouteTable_secondfactor_test.go`, `Modules/Identity/Test/E2E/SecondFactor_test.go`, `Core/Policy/SecondFactor_test.go` |
-| A credential change the user does not notice | An email in the user's language after each of 10 credential events, in the background, with no secret; the audit in every case | `Modules/Alerts` | `Modules/Alerts/Test/E2E/Alerts_test.go`, `Modules/Alerts/Test/Unit/Message_test.go` |
-| Invitation link leaks or replays | Token in the fragment, SHA-256 stored, single use, 7 days, one answer for every invalid state | `Modules/Identity/Invites.Accept.go` | `Modules/Identity/Test/E2E/Invitations_test.go`, `App/Timing/Timing_test.go` |
-| The server as a spam relay | Per member and per organization invitations each hour, 5 sends per invitation | `Modules/Identity/Invites.Service.go` | `Modules/Identity/Test/E2E/InviteLimits_test.go` |
+| IDOR بين المؤسسات | الحارس يرد بـ 404 لغير الأعضاء، والمحمّلات محصورة في المؤسسة | `Core/Auth/Guard.go` | `App/RouteTable_test.go`، `App/RouteTable_orgs_test.go` |
+| رفع الصلاحيات عبر المنح | لا أحد يمنح أعلى من دوره، أو يغيّر من هو أعلى، أو يغيّر دوره بنفسه. الروابط لا تمنح دور صاحب المؤسسة أبدًا | `Core/Policy/Rank.go`، `Modules/Identity/Members.Service.go` | `Core/Policy/Rank_test.go`، `Modules/Identity/Test/E2E/Members_test.go`، `Modules/Identity/Test/Integration/Bindings_test.go` |
+| تغيير صاحب المؤسسة بلا تحقق إضافي | منح دور صاحب المؤسسة وخفضه ونقله يحتاج إلى الخطوة الحالية. وصاحب المؤسسة لا يُزال إلا بعد خفض دوره | `Members.Service.go`، `Modules/Identity/Orgs.Service.go` | `Modules/Identity/Test/E2E/OwnerRemoval_test.go` |
+| فقد آخر صاحب مؤسسة في سباق | قفل على صف المؤسسة مع كل تغيير في العضوية | `Orgs.Service.go` | `Modules/Identity/Test/Integration/Owners_test.go`، `Locks_test.go` |
+| إعادة ضبط MFA من المدير كطريق للاستيلاء | رتبة أعلى بوضوح في كل مؤسسة للعضو، والخطوة الحالية، وتسجيل بخطورة عالية | `Members.Service.go` | `Modules/Identity/Test/E2E/MfaRank_test.go`، `MfaReset_test.go` |
+| مديرون بلا خطوة ثانية | `RequireSecondFactor` لكل مؤسسة، ومهلة 7 أيام، ثم `403 SECOND_FACTOR_REQUIRED` على الإجراءات الحساسة للجلسات والمفاتيح | `Core/Policy/SecondFactor.go`، `Modules/Identity/Identity.SecondFactor.go` | `App/RouteTable_secondfactor_test.go`، `Modules/Identity/Test/E2E/SecondFactor_test.go`، `Core/Policy/SecondFactor_test.go` |
+| تغيير في بيانات الدخول لا يلاحظه المستخدم | رسالة بلغة المستخدم بعد كل حدث من 10 أحداث لبيانات الدخول، في الخلفية، بلا أي سر. وسجل الأحداث في كل الحالات | `Modules/Alerts` | `Modules/Alerts/Test/E2E/Alerts_test.go`، `Modules/Alerts/Test/Unit/Message_test.go` |
+| تسريب رابط الدعوة أو إعادة استخدامه | الرمز في الـ fragment، ونحفظ SHA-256 له، ويعمل مرة واحدة، 7 أيام، ورد واحد لكل حالة غير صالحة | `Modules/Identity/Invites.Accept.go` | `Modules/Identity/Test/E2E/Invitations_test.go`، `App/Timing/Timing_test.go` |
+| السيرفر كمرحّل للرسائل المزعجة | دعوات لكل عضو ولكل مؤسسة في كل ساعة، و5 إرسالات لكل دعوة | `Modules/Identity/Invites.Service.go` | `Modules/Identity/Test/E2E/InviteLimits_test.go` |
 
-### Audit, limits and retention
+### سجل الأحداث والحدود والاحتفاظ
 
-| Threat | Control | Code | Proof |
+| التهديد | الضابط | الكود | الإثبات |
 |---|---|---|---|
-| Tampering with the trail | Hash chain per organization, trigger refusing `UPDATE`, `DELETE` and `TRUNCATE`, verify endpoint | `Modules/Audit/Audit.Service.go` | `Modules/Audit/Test/Integration/Chain_test.go` |
-| Secrets in the trail | Explicit allowlist of event fields; values with a Dhow credential prefix are dropped | `Modules/Audit/Audit.Data.go` | `Modules/Audit/Test/Integration/Sanitizer_test.go`, `Modules/Audit/Test/Unit/DataKeys_test.go` |
-| Missing events | The harness fails every E2E test whose flow loses an audit field | `App/Testing/Harness.go` | every E2E test |
-| Flooding public routes | Fixed windows in PostgreSQL per client network on the database clock, shared by every instance; counted only after the Origin check; keys over the limit refused from memory; a forged `X-Forwarded-For` is ignored without a trusted proxy; every public write is limited or a listed exception | `Core/RateLimit` | `Core/RateLimit/Postgres_test.go`, `App/RateLimit_test.go` (including `TestACrossSitePageCannotSpendTheLimitOfAnOffice` and `TestEveryPublicWriteIsRateLimitedOrAnExplicitException`), `FuzzClientIP`, `FuzzNetwork` |
-| Tables growing with every attempt | Batched deletes of expired temporary rows under an advisory lock, on the database clock; a locked address creates no new throttle rows | `Database/Retention`, `Modules/Session/Session.Throttle.go` | `Database/Retention/Retention_test.go`, `Throttle_test.go` (`TestALockedAddressCreatesNoMoreThrottleRows`) |
-| Destructive SQL slipping into queries | A project hook strips SQL comments and refuses `DELETE` and `TRUNCATE` in every queries file, except the batch template on the temporary tables in `Retention.sql` | `.claude/hooks/dhow_hooks/edit_rules.py` | `.claude/hooks/tests/test_hooks.py` (`make hooks-test`) |
-| Configuration mistakes | The server refuses to start on a missing, placeholder or reused secret and on any invalid provider or limit | `Config` | `Config/Secrets_test.go`, `Config/Oidc_test.go`, `Config/RateLimit_test.go` |
+| التلاعب بالسجل | سلسلة hashes لكل مؤسسة، وtrigger يرفض `UPDATE` و`DELETE` و`TRUNCATE`، ومسار للتحقق | `Modules/Audit/Audit.Service.go` | `Modules/Audit/Test/Integration/Chain_test.go` |
+| أسرار في السجل | قائمة مسموحة صريحة لحقول الأحداث. نحذف القيم التي فيها بادئة بيانات دخول داو | `Modules/Audit/Audit.Data.go` | `Modules/Audit/Test/Integration/Sanitizer_test.go`، `Modules/Audit/Test/Unit/DataKeys_test.go` |
+| أحداث ناقصة | أداة الاختبار تُفشل كل اختبار E2E يفقد مساره حقلًا في سجل الأحداث | `App/Testing/Harness.go` | كل اختبار E2E |
+| إغراق المسارات العامة | نوافذ ثابتة في PostgreSQL لكل شبكة عميل بساعة قاعدة البيانات، تشترك فيها كل النسخ، ولا تُعدّ إلا بعد فحص Origin. المفاتيح فوق الحد تُرفض من الذاكرة. نتجاهل `X-Forwarded-For` المزوّر بلا وكيل موثوق. كل كتابة عامة محدودة أو استثناء مذكور | `Core/RateLimit` | `Core/RateLimit/Postgres_test.go`، `App/RateLimit_test.go` (ومنه `TestACrossSitePageCannotSpendTheLimitOfAnOffice` و`TestEveryPublicWriteIsRateLimitedOrAnExplicitException`)، `FuzzClientIP`، `FuzzNetwork` |
+| جداول تكبر مع كل محاولة | حذف دفعات من الصفوف المؤقتة المنتهية تحت advisory lock، بساعة قاعدة البيانات. والعنوان المقفل لا ينشئ صفوف حد جديدة | `Database/Retention`، `Modules/Session/Session.Throttle.go` | `Database/Retention/Retention_test.go`، `Throttle_test.go` (`TestALockedAddressCreatesNoMoreThrottleRows`) |
+| تسرّب SQL مدمّر إلى الاستعلامات | hook في المشروع يحذف تعليقات SQL ويرفض `DELETE` و`TRUNCATE` في كل ملف استعلامات، إلا قالب الدفعات على الجداول المؤقتة في `Retention.sql` | `.claude/hooks/dhow_hooks/edit_rules.py` | `.claude/hooks/tests/test_hooks.py` (`make hooks-test`) |
+| أخطاء الإعدادات | يرفض السيرفر البدء مع سر ناقص أو مؤقت أو مكرر، ومع أي مزوّد أو حد غير صالح | `Config` | `Config/Secrets_test.go`، `Config/Oidc_test.go`، `Config/RateLimit_test.go` |
 
-## 4. ASVS 4.0.3 level 2
+## 4. ASVS 4.0.3 المستوى 2
 
-| Area | Status | Notes |
+| المجال | الحالة | ملاحظات |
 |---|---|---|
-| V2.1 Password security | Met | 12 to 128 characters, no composition rules, breached-password check, paste allowed |
-| V2.2 General authenticator | Met | Anti-automation met. 2.2.3: an email after every credential change when SMTP is configured, and the audit log in every case (F12) |
-| V2.4 Credential storage | Met | Argon2id; recovery codes and API tokens under HMAC with derived keys |
-| V2.5 Credential recovery | Partial | No self-service recovery. A lost second factor is reset by a higher-ranked admin with a factor; a forgotten password has no flow (finding F13) |
-| V2.8 One-time passwords | Met | TOTP with replay protection, one step of skew |
-| V2.9 Cryptographic authenticators | Met | Passkeys with user verification for passwordless sign-in |
-| V3.2 Session binding | Met | 256-bit ids, new id at sign-in |
-| V3.3 Session termination | Partial | 7 days absolute, 12 hours idle and 4 hours for Owners and Admins. 3.3.2 asks for re-authentication after 12 hours of use; the 7 days are a product decision (F10, ADR-0054) |
-| V3.4 Cookies | Met | `__Host-`, `Secure`, `HttpOnly`, `SameSite=Strict` |
-| V3.5 Token-based sessions | Met | API tokens scoped, expiring, revocable, HMAC stored |
-| V3.7 Re-authentication | Met | Current factor in the same request for every sensitive change |
-| V4.1 and V4.2 Access control | Met | One policy function, deny by default, route-table tests, 404 across tenants, Origin and CSRF |
-| V4.3.1 MFA for administrative interfaces | Met when enabled | An organization can require a second factor for Owners and Admins or everyone, with a 7-day grace period (F11) |
-| V7.1 to V7.3 Logging | Met | No credentials in logs or audit data, security events audited, tamper-evident chain |
-| V8.3.1 Sensitive data in URLs | Met | Tokens in bodies, cookies or fragments only |
-| V11.1.4 Anti-automation | Met | Per-network limits on public routes after the Origin check, invitation caps |
-| V14.4 HTTP security headers | Partial | CSP without Trusted Types (finding F9) |
+| V2.1 أمان كلمة السر | متحقق | من 12 إلى 128 حرفًا، بلا قواعد تركيب، مع فحص كلمات السر المسرّبة، واللصق مسموح |
+| V2.2 المصادقة العامة | متحقق | منع الأتمتة متحقق. 2.2.3: رسالة بعد كل تغيير في بيانات الدخول عند ضبط SMTP، وسجل الأحداث في كل الحالات (F12) |
+| V2.4 حفظ بيانات الدخول | متحقق | Argon2id. وأكواد الطوارئ ومفاتيح API تحت HMAC بمفاتيح مشتقة |
+| V2.5 استرجاع بيانات الدخول | جزئي | لا استرجاع ذاتي. الخطوة الثانية المفقودة يعيد ضبطها مدير برتبة أعلى مع خطوته. ولكلمة السر المنسية لا يوجد مسار (النتيجة F13) |
+| V2.8 كلمات السر لمرة واحدة | متحقق | TOTP مع الحماية من إعادة الاستخدام، وفرق خطوة واحدة |
+| V2.9 المصادقة التشفيرية | متحقق | مفاتيح المرور مع التحقق من المستخدم في الدخول بلا كلمة سر |
+| V3.2 ربط الجلسة | متحقق | معرّفات 256 بت، ومعرّف جديد عند الدخول |
+| V3.3 إنهاء الجلسة | جزئي | 7 أيام مطلقة، و12 ساعة خمول، و4 ساعات لأصحاب المؤسسات والمديرين. يطلب 3.3.2 إعادة التحقق بعد 12 ساعة استخدام، والأيام السبعة قرار منتج (F10، ADR-0054) |
+| V3.4 الكوكيز | متحقق | `__Host-`، و`Secure`، و`HttpOnly`، و`SameSite=Strict` |
+| V3.5 الجلسات بالرموز | متحقق | مفاتيح API محدودة الصلاحيات، ولها انتهاء، وقابلة للإلغاء، ومحفوظة كـ HMAC |
+| V3.7 إعادة التحقق | متحقق | الخطوة الحالية في الطلب نفسه لكل تغيير حساس |
+| V4.1 وV4.2 التحكم في الوصول | متحقق | دالة سياسة واحدة، والمنع افتراضي، واختبارات جدول المسارات، و404 بين المؤسسات، وOrigin وCSRF |
+| V4.3.1 MFA للواجهات الإدارية | متحقق عند التفعيل | تستطيع المؤسسة اشتراط خطوة ثانية لأصحاب المؤسسة والمديرين أو للجميع، مع مهلة 7 أيام (F11) |
+| V7.1 إلى V7.3 السجلات | متحقق | لا بيانات دخول في السجلات أو بيانات سجل الأحداث، والأحداث الأمنية مسجّلة، وسلسلة كاشفة للتلاعب |
+| V8.3.1 البيانات الحساسة في الروابط | متحقق | الرموز في الأجسام أو الكوكيز أو الـ fragments فقط |
+| V11.1.4 منع الأتمتة | متحقق | حدود لكل شبكة على المسارات العامة بعد فحص Origin، وحدود للدعوات |
+| V14.4 ترويسات أمان HTTP | جزئي | CSP بدون Trusted Types (النتيجة F9) |
 
-## 5. Findings of the internal review
+## 5. نتائج المراجعة الداخلية
 
-| ID | Severity | Finding | Status |
+| المعرّف | الخطورة | النتيجة | الحالة |
 |---|---|---|---|
-| F1 | High | An Owner could remove another Owner without the current factor, and so could an Owner's API token with `member.manage`, while demoting an Owner needed the factor. | Fixed: an Owner is removed only after a demotion, which needs the factor. `OwnerRemoval_test.go` |
-| F2 | Medium | Address lockouts counted IPv6 per address, so one host with a /64 escaped the 20-failure address lock. | Fixed: per /64. `Throttle_test.go` |
-| F3 | Medium | Invitation preview and accept, OIDC authorize and callback, and passkey options had no per-address limit, and invitations had no cap (spam relay). | Fixed in T1: `Core/RateLimit`, `App/RateLimit_test.go`, `InviteLimits_test.go` |
-| F4 | Medium | The audit sanitizer dropped every field containing "session", so `RevokedSessions` was never recorded. | Fixed in T2: allowlist. `Sanitizer_test.go`, `DataKeys_test.go` |
-| F5 | Low | Go's base64 decoder skips CR and LF, so a token with a line break was accepted as another spelling of the same token (found by fuzzing). | Fixed: exact length. `Token_test.go` |
-| F6 | Low | A role change that read the target as non-owner could demote someone promoted to Owner in parallel without the factor. | Fixed: the change answers `409 CONFLICT` when the role moved under it. |
-| F7 | Low | Throttle, challenge, flow and counter rows were never deleted. | Fixed in T3: `Database/Retention` |
-| F8 | Low | `POST /setup` had no per-address limit. | Fixed: per client network. `App/RateLimit_test.go` |
-| F9 | Medium | The CSP has no `require-trusted-types-for 'script'`, although the security model listed Trusted Types. | Not fixed. The web has no `innerHTML` sinks (a hook forbids them), and turning the directive on needs a browser test over every screen, which M7 brings. The security model now says it is planned. |
-| F10 | Medium | Sessions last up to 14 days (12 hours idle); ASVS 3.3.2 asks for re-authentication after 12 hours. | Fixed in M2.6 (ADR-0054): 7 days absolute, also for sessions opened before, and 4 hours idle for anyone who is an Owner or Admin in any organization, from the current role. `SessionPolicy_test.go` |
-| F11 | Medium | Owners and admins are not required to use a second factor (ASVS 4.3.1). | Fixed in M2.6 (ADR-0054): the `RequireSecondFactor` organization setting with a 7-day grace period, then `403 SECOND_FACTOR_REQUIRED` on sensitive actions. `RouteTable_secondfactor_test.go`, `Modules/Identity/Test/E2E/SecondFactor_test.go` |
-| F12 | Medium | No email to the user after a password, factor or token change (ASVS 2.2.3). | Fixed in M2.6 (ADR-0054): `Modules/Alerts` emails the user after each of 10 credential events when SMTP is configured, in the background and without any secret. `Modules/Alerts/Test` |
-| F13 | Low | No recovery for a forgotten password. | Accepted for M2: an admin resets the second factor, and passwordless passkeys and linked identities still sign in. A recovery flow is a product decision. |
-| F14 | Low | An attacker who knows an email can keep that account's password sign-in locked (ADR-0035). | Accepted: the lock is short and doubling, and passkey and provider sign-in are not counted against the account. |
-| F15 | Info | API token guessing has no per-address limit. | Accepted: 256-bit tokens; each attempt costs one indexed lookup. |
-| F16 | Medium | Independent review: the limiter ran before the Origin check, so a cross-site page could spend the limit of an office behind one NAT with no-cors requests. | Fixed: the limiter runs inside the Guard. `TestACrossSitePageCannotSpendTheLimitOfAnOffice` |
-| F17 | Low | Independent review: a locked address still created one `LoginThrottles` row per new email, and password sign-in, the second step and passkey sign-in had no per-network limit. | Fixed: the reservation stops at the first locked key, and the three routes are limited. `TestALockedAddressCreatesNoMoreThrottleRows`, `App/RateLimit_test.go` |
-| F18 | Low | Independent review: one instance with a fast clock froze the rate limit window for all others. | Fixed: the window and retention use the database clock. `TestWithoutAClockTheDatabaseDecidesTheWindow`, `TestWithoutAClockRetentionUsesTheDatabaseTime` |
-| F19 | Low | Independent review: `DELETE /**/ FROM`, `FROM"X"`, a comment between the words, and `WHERE true` or a top-level `OR` in `Retention.sql` bypassed the hook. | Fixed: comments stripped, whole file checked, one batch template in `Retention.sql`. Hook tests for every form |
-| F20 | Low | Independent review: a resend spent the hourly limits before the existence, role and send-count checks. | Fixed: limits taken inside the transaction after them. `TestAResendThatCannotHappenSpendsNothing` |
-| F21 | Low | Independent review: a client already over a limit still cost one upsert per request. | Fixed: a per-instance memory of blocked keys until the window ends. `TestAKeyKnownToBeOverTheLimitIsRefusedWithoutTheDatabase` |
-| F22 | Info | Independent review: the timing control proved 1 ms only on a sub-millisecond path. | Addressed: the guarantee is now written as max(10%, 300 µs) of the median, and a second control must notice 6 ms on sign-in. |
-| F23 | Info | Independent review: runner tokens accepted a line break like the other tokens did. | Fixed: exact length. `Core/RunnerAuth/RunnerAuth_test.go` (`TestTokens`) |
-| F24 | Info | Independent review: nothing stopped a new public write route from shipping without a limit. | Fixed: `TestEveryPublicWriteIsRateLimitedOrAnExplicitException` |
-| F25 | Medium | M2.6 review: the audit record and the credential alert ran on the request context after the commit, so a client that dropped the connection at that moment kept the change without either. | Fixed: both handlers detach from the request. `TestAnEventIsRecordedEvenWhenTheRequestIsGone`, `TestTheAlertIsSentEvenWhenTheRequestIsGone` |
-| F26 | Low | M2.6 review: widening the second-factor rule from admins to everyone restarted the grace period of admins who were already overdue. | Fixed: a separate start for Owners and Admins. `TestWideningGivesOnlyNewlyCoveredRolesANewGracePeriodAndNarrowingKeepsIt` |
-| F27 | Low | M2.6 review: every alert opened its own goroutine and SMTP connection with no cap. | Fixed: at most 32 pending sends; the rest are dropped with a warning. `TestPendingAlertsAreCapped` |
-| F28 | Low | M2.6 review: the MFA-reset alert showed the admin's network and browser to the member. | Fixed: a separate text without them. `TestTheMfaResetAlertLeavesOutTheAdminsNetworkAndBrowser` |
-| F29 | Info | M2.6 review: an alert could start while shutdown waited for the pending ones, and the session list showed sessions past the 4-hour idle window. | Fixed: the alert service closes before it waits, and the list uses the current idle window. `TestNoAlertStartsAfterShutdown`, `TestTheSessionListLeavesOutSessionsPastTheCurrentIdleWindow` |
-| F30 | Info | M2.6 review: a mail server's error reply, which may name the address, reaches the server log; `token.manage` and `job.cancel` are not blocked after the grace period. | Accepted (ADR-0054): the log is the operator's, as for invitations; revoking tokens and cancelling jobs only reduce access. |
+| F1 | عالية | كان صاحب المؤسسة يستطيع إزالة صاحب مؤسسة آخر بدون الخطوة الحالية، وكذلك مفتاح API لصاحب مؤسسة مع `member.manage`، بينما خفض دور صاحب المؤسسة كان يحتاج إلى الخطوة. | أُصلحت: صاحب المؤسسة لا يُزال إلا بعد خفض دوره، وهذا يحتاج إلى الخطوة. `OwnerRemoval_test.go` |
+| F2 | متوسطة | أقفال العناوين عدّت IPv6 لكل عنوان، فجهاز واحد معه /64 هرب من قفل الـ 20 محاولة للعنوان. | أُصلحت: لكل /64. `Throttle_test.go` |
+| F3 | متوسطة | معاينة الدعوة وقبولها، وبدء OIDC والعودة منه، وخيارات مفتاح المرور، لم يكن لها حد لكل عنوان، والدعوات لم يكن لها سقف (مرحّل للرسائل المزعجة). | أُصلحت في T1: `Core/RateLimit`، `App/RateLimit_test.go`، `InviteLimits_test.go` |
+| F4 | متوسطة | منقّي سجل الأحداث حذف كل حقل فيه "session"، فلم يُسجَّل `RevokedSessions` أبدًا. | أُصلحت في T2: قائمة مسموحة. `Sanitizer_test.go`، `DataKeys_test.go` |
+| F5 | منخفضة | مفكك base64 في Go يتخطى CR وLF، فقُبل رمز فيه سطر جديد ككتابة أخرى للرمز نفسه (اكتُشفت بالـ fuzzing). | أُصلحت: طول دقيق. `Token_test.go` |
+| F6 | منخفضة | تغيير دور قرأ الهدف كغير صاحب مؤسسة كان يستطيع خفض دور شخص رُقّي إلى صاحب مؤسسة بالتوازي بدون الخطوة. | أُصلحت: يرد التغيير بـ `409 CONFLICT` عندما يتغير الدور تحته. |
+| F7 | منخفضة | صفوف الحدود والتحديات والمسارات والعدّادات لم تُحذف أبدًا. | أُصلحت في T3: `Database/Retention` |
+| F8 | منخفضة | `POST /setup` لم يكن له حد لكل عنوان. | أُصلحت: لكل شبكة عميل. `App/RateLimit_test.go` |
+| F9 | متوسطة | الـ CSP ليس فيها `require-trusted-types-for 'script'`، مع أن نموذج الأمان ذكر Trusted Types. | لم تُصلح. الواجهة ليس فيها مداخل `innerHTML` (يمنعها hook)، وتفعيل التوجيه يحتاج إلى اختبار متصفح على كل الشاشات، وهذا يأتي مع M7. نموذج الأمان يقول الآن إنه مخطط له. |
+| F10 | متوسطة | الجلسات تدوم حتى 14 يومًا (12 ساعة خمول)، ويطلب ASVS 3.3.2 إعادة التحقق بعد 12 ساعة. | أُصلحت في M2.6 (ADR-0054): 7 أيام مطلقة، حتى للجلسات المفتوحة من قبل، و4 ساعات خمول لكل من هو صاحب مؤسسة أو مدير في أي مؤسسة، من الدور الحالي. `SessionPolicy_test.go` |
+| F11 | متوسطة | أصحاب المؤسسات والمديرون غير ملزمين بخطوة ثانية (ASVS 4.3.1). | أُصلحت في M2.6 (ADR-0054): إعداد `RequireSecondFactor` للمؤسسة مع مهلة 7 أيام، ثم `403 SECOND_FACTOR_REQUIRED` على الإجراءات الحساسة. `RouteTable_secondfactor_test.go`، `Modules/Identity/Test/E2E/SecondFactor_test.go` |
+| F12 | متوسطة | لا رسالة للمستخدم بعد تغيير كلمة السر أو الخطوة أو المفتاح (ASVS 2.2.3). | أُصلحت في M2.6 (ADR-0054): `Modules/Alerts` يرسل للمستخدم بعد كل حدث من 10 أحداث لبيانات الدخول عند ضبط SMTP، في الخلفية وبلا أي سر. `Modules/Alerts/Test` |
+| F13 | منخفضة | لا استرجاع لكلمة السر المنسية. | مقبولة في M2: يعيد المدير ضبط الخطوة الثانية، ومفاتيح المرور بلا كلمة سر والهويات المربوطة ما زالت تُدخل. مسار الاسترجاع قرار منتج. |
+| F14 | منخفضة | مهاجم يعرف بريدًا يستطيع إبقاء الدخول بكلمة السر لهذا الحساب مقفلًا (ADR-0035). | مقبولة: القفل قصير ويتضاعف، والدخول بمفتاح المرور وبالمزوّد لا يُحسب على الحساب. |
+| F15 | معلومة | تخمين مفاتيح API ليس له حد لكل عنوان. | مقبولة: مفاتيح 256 بت، وكل محاولة تكلّف بحثًا واحدًا في فهرس. |
+| F16 | متوسطة | مراجعة مستقلة: المحدِّد عمل قبل فحص Origin، فكانت صفحة من موقع آخر تستطيع استهلاك حد مكتب خلف NAT واحد بطلبات no-cors. | أُصلحت: المحدِّد يعمل داخل الحارس. `TestACrossSitePageCannotSpendTheLimitOfAnOffice` |
+| F17 | منخفضة | مراجعة مستقلة: العنوان المقفل ظل ينشئ صف `LoginThrottles` لكل بريد جديد، والدخول بكلمة السر والخطوة الثانية والدخول بمفتاح المرور لم يكن لها حد لكل شبكة. | أُصلحت: الحجز يتوقف عند أول مفتاح مقفل، والمسارات الثلاثة محدودة. `TestALockedAddressCreatesNoMoreThrottleRows`، `App/RateLimit_test.go` |
+| F18 | منخفضة | مراجعة مستقلة: نسخة واحدة بساعة سريعة جمّدت نافذة حد الطلبات للنسخ الأخرى. | أُصلحت: النافذة والاحتفاظ يستخدمان ساعة قاعدة البيانات. `TestWithoutAClockTheDatabaseDecidesTheWindow`، `TestWithoutAClockRetentionUsesTheDatabaseTime` |
+| F19 | منخفضة | مراجعة مستقلة: `DELETE /**/ FROM`، و`FROM"X"`، وتعليق بين الكلمات، و`WHERE true` أو `OR` في المستوى الأعلى في `Retention.sql` تجاوزت الـ hook. | أُصلحت: نحذف التعليقات، ونفحص الملف كله، وقالب دفعات واحد في `Retention.sql`. اختبارات hook لكل صيغة |
+| F20 | منخفضة | مراجعة مستقلة: إعادة الإرسال استهلكت حدود الساعة قبل فحوص الوجود والدور وعدد الإرسالات. | أُصلحت: الحدود تُؤخذ داخل المعاملة بعدها. `TestAResendThatCannotHappenSpendsNothing` |
+| F21 | منخفضة | مراجعة مستقلة: العميل الذي تجاوز الحد بالفعل ظل يكلّف upsert لكل طلب. | أُصلحت: ذاكرة لكل نسخة للمفاتيح الممنوعة حتى تنتهي النافذة. `TestAKeyKnownToBeOverTheLimitIsRefusedWithoutTheDatabase` |
+| F22 | معلومة | مراجعة مستقلة: العينة الضابطة للتوقيت أثبتت 1 ms فقط على مسار أقل من ميلي ثانية. | عولجت: الضمان مكتوب الآن كـ max(10%, 300 µs) من الوسيط، وعينة ضابطة ثانية يجب أن تلاحظ 6 ms في الدخول. |
+| F23 | معلومة | مراجعة مستقلة: رموز أجهزة التشغيل قبلت سطرًا جديدًا كما فعلت الرموز الأخرى. | أُصلحت: طول دقيق. `Core/RunnerAuth/RunnerAuth_test.go` (`TestTokens`) |
+| F24 | معلومة | مراجعة مستقلة: لا شيء منع مسار كتابة عامًا جديدًا من الوصول بلا حد. | أُصلحت: `TestEveryPublicWriteIsRateLimitedOrAnExplicitException` |
+| F25 | متوسطة | مراجعة M2.6: تسجيل الحدث وتنبيه بيانات الدخول عملا على سياق الطلب بعد الحفظ، فالعميل الذي قطع الاتصال في تلك اللحظة احتفظ بالتغيير بدونهما. | أُصلحت: المعالجان ينفصلان عن الطلب. `TestAnEventIsRecordedEvenWhenTheRequestIsGone`، `TestTheAlertIsSentEvenWhenTheRequestIsGone` |
+| F26 | منخفضة | مراجعة M2.6: توسيع قاعدة الخطوة الثانية من المديرين إلى الجميع أعاد مهلة المديرين المتأخرين بالفعل. | أُصلحت: بداية منفصلة لأصحاب المؤسسات والمديرين. `TestWideningGivesOnlyNewlyCoveredRolesANewGracePeriodAndNarrowingKeepsIt` |
+| F27 | منخفضة | مراجعة M2.6: كل تنبيه فتح goroutine واتصال SMTP خاصًا به بلا سقف. | أُصلحت: 32 إرسالًا معلّقًا بالأكثر، ونتجاهل الباقي مع تحذير. `TestPendingAlertsAreCapped` |
+| F28 | منخفضة | مراجعة M2.6: تنبيه إعادة ضبط MFA أظهر شبكة المدير ومتصفحه للعضو. | أُصلحت: نص منفصل بدونهما. `TestTheMfaResetAlertLeavesOutTheAdminsNetworkAndBrowser` |
+| F29 | معلومة | مراجعة M2.6: كان التنبيه يستطيع البدء بينما ينتظر الإيقاف التنبيهات المعلّقة، وقائمة الجلسات عرضت جلسات تجاوزت نافذة الخمول بـ 4 ساعات. | أُصلحت: خدمة التنبيهات تُغلق قبل أن تنتظر، والقائمة تستخدم نافذة الخمول الحالية. `TestNoAlertStartsAfterShutdown`، `TestTheSessionListLeavesOutSessionsPastTheCurrentIdleWindow` |
+| F30 | معلومة | مراجعة M2.6: رد الخطأ من خادم البريد، الذي قد يذكر العنوان، يصل إلى سجل السيرفر. و`token.manage` و`job.cancel` لا يُمنعان بعد المهلة. | مقبولة (ADR-0054): السجل للمشغّل، كما في الدعوات. وإلغاء المفاتيح وإلغاء التشغيلات يقلّلان الوصول فقط. |
 
-No Critical or High finding is open.
+لا توجد نتيجة حرجة أو عالية مفتوحة.
 
-## 6. For the external reviewer
+## 6. للمراجع الخارجي
 
-- Please look first at: the `Core/Auth` guard ordering (Origin, Bearer, session, CSRF, policy), the OIDC flow and linking, the owner and MFA-reset rules under concurrency, the audit chain, and the rate limiter's client-network logic behind proxies.
-- Known gaps you will see: findings F9 to F15 above, the absence of back-channel logout from providers (ADR-0039), and project or environment scopes for tokens (M4).
-- A test instance: `make compose-up` after `deploy/compose/init.sh`, or `deploy/smoke.sh <image>` for a scripted run.
+- ابدأ من فضلك بـ: ترتيب الحارس في `Core/Auth` (Origin، ثم Bearer، ثم الجلسة، ثم CSRF، ثم السياسة)، ومسار OIDC والربط، وقواعد صاحب المؤسسة وإعادة ضبط MFA مع التزامن، وسلسلة سجل الأحداث، ومنطق شبكة العميل في محدِّد الطلبات خلف الوكلاء.
+- فجوات معروفة ستراها: النتائج من F9 إلى F15 أعلاه، وغياب الخروج عبر القناة الخلفية من المزوّدين (ADR-0039)، ونطاقات المشروع أو البيئة للمفاتيح (M4).
+- سيرفر للاختبار: `make compose-up` بعد `deploy/compose/init.sh`، أو `deploy/smoke.sh <image>` لتشغيل مكتوب.
 
-## 7. Reproducing the evidence
+## 7. إعادة إنتاج الأدلة
 
-| Check | Command |
+| الفحص | الأمر |
 |---|---|
-| Everything CI runs | `make check` with `DHOW_TEST_DATABASE_URL` pointing at PostgreSQL 18 |
-| Fuzzing | `make fuzz FUZZTIME=60s` |
-| Timing | `make timing` |
-| Image end to end | `make smoke` |
-| Project hooks | `make hooks-test` |
+| كل ما يشغّله CI | `make check` مع `DHOW_TEST_DATABASE_URL` يشير إلى PostgreSQL 18 |
+| الـ fuzzing | `make fuzz FUZZTIME=60s` |
+| التوقيت | `make timing` |
+| الصورة من البداية إلى النهاية | `make smoke` |
+| hooks المشروع | `make hooks-test` |

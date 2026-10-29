@@ -1,65 +1,67 @@
-# Install Dhow
+[English](../en/install/README.md)
 
-Dhow is one server process with the web app built in, and a PostgreSQL 18 database. Its install methods are set in [ADR-0024](../../Plan/ADR/0024-install-methods.md) and [ADR-0036](../../Plan/ADR/0036-interactive-host-installer.md).
+# تثبيت داو
 
-## Choose a method
+داو (Dhow) عملية سيرفر واحدة فيها الواجهة، ومعها قاعدة بيانات PostgreSQL 18. طرق التثبيت محددة في [ADR-0024](../../Plan/ADR/0024-install-methods.md) و[ADR-0036](../../Plan/ADR/0036-interactive-host-installer.md).
 
-| Method | Status | Best for | You manage |
+## اختر طريقة التثبيت
+
+| الطريقة | الحالة | الأنسب لـ | ما تديره أنت |
 |---|---|---|---|
-| [Docker Compose](compose.md) | Available, the default | One host with Docker, from a small VPS up | Docker, the reverse proxy, backups |
-| [Run Dhow locally](local.md) | Available | Trying Dhow out, or working on its code | Nothing that others rely on |
-| [Binary with systemd](binary-systemd.md) | Available | Hosts without Docker, set up by hand | PostgreSQL, the reverse proxy, the service |
-| [Interactive installer](installer.md) (`dhow-server install`) | Available | Setting up the binary, PostgreSQL and a proxy on a fresh Linux host | Answering its questions, backups |
-| Helm chart for Kubernetes | With M3, together with the runners | Clusters with an external PostgreSQL | The cluster, the database, ingress |
-| Signed air-gapped bundle | Enterprise, later | Networks without internet access | The offline registry and updates |
+| [Docker Compose](compose.md) | متاحة، وهي الافتراضية | جهاز واحد عليه Docker، من VPS صغير فما فوق | Docker، والوكيل العكسي، والنسخ الاحتياطية |
+| [شغّل داو على جهازك](local.md) | متاحة | تجربة داو، أو العمل على الكود | لا شيء يعتمد عليه غيرك |
+| [ملف تنفيذي مع systemd](binary-systemd.md) | متاحة | أجهزة بلا Docker، بإعداد يدوي | PostgreSQL، والوكيل العكسي، والخدمة |
+| [المثبّت التفاعلي](installer.md) (`dhow-server install`) | متاحة | تجهيز الملف التنفيذي وPostgreSQL ووكيل على جهاز Linux جديد | الإجابة عن أسئلته، والنسخ الاحتياطية |
+| Helm chart لـ Kubernetes | مع M3، مع أجهزة التشغيل | عناقيد (clusters) مع PostgreSQL خارجي | العنقود، وقاعدة البيانات، والـ ingress |
+| حزمة موقّعة بلا إنترنت (air-gapped) | Enterprise، لاحقًا | شبكات بلا اتصال بالإنترنت | السجل المحلي (registry) والتحديثات |
 
-Jobs run on separate runner hosts: see [Dhow runners](../runner/README.md) to install and register one. The same bootstrap script installs either component: `get.sh` installs the server (`--component server`, the default), and `get.sh --component runner` installs the runner binary and its systemd unit from the same signed release ([Install a runner](../runner/install.md)).
+التشغيلات (jobs) تعمل على أجهزة منفصلة. لتثبيت جهاز تشغيل (runner) وتسجيله، راجع [أجهزة التشغيل في داو](../runner/README.md). السكربت نفسه يثبّت أيًّا من المكوّنين: `get.sh` يثبّت السيرفر (`--component server`، وهو الافتراضي)، و`get.sh --component runner` يثبّت الملف التنفيذي لجهاز التشغيل وخدمة systemd الخاصة به من الإصدار الموقّع نفسه ([ثبّت جهاز تشغيل](../runner/install.md)).
 
-If you are not sure, use Docker Compose. Every method runs the same server with the same [configuration](configuration.md), so you can move between them by restoring a database backup and keeping the same `DHOW_SECRET_KEY`.
+إذا لم تكن متأكدًا، فاستخدم Docker Compose. كل الطرق تشغّل السيرفر نفسه [بالإعدادات](configuration.md) نفسها. لذلك يمكنك الانتقال بينها: استرجع نسخة احتياطية من قاعدة البيانات، واحتفظ بقيمة `DHOW_SECRET_KEY` نفسها.
 
-## Requirements for every method
+## متطلبات كل الطرق
 
-- **A Linux host** on `amd64` or `arm64`. The release images are built for both.
-- **PostgreSQL 18.** The Compose stack brings its own. Elsewhere, Dhow needs a database and a user that owns it, reached over TLS (`sslmode=require` or stronger).
-- **At least 1 CPU core, 2 GiB of memory and 5 GiB of free disk** for Dhow and PostgreSQL on one host; 2 cores, 4 GiB and 20 GiB are recommended. The installer refuses a smaller host and `dhow-server doctor` reports one. See [Hardware requirements](../requirements.md) for the measured numbers and what happens below them.
-- **A host name and a TLS certificate.** Users reach Dhow at an `https://` address on its own host name, such as `dhow.example.com`, never under a path like `example.com/dhow`. A reverse proxy in front of Dhow terminates TLS: see [Put Dhow behind a reverse proxy](reverse-proxy.md) for nginx, Caddy and Traefik.
-- **Ports 80 and 443** open to users on the proxy. Dhow's own port, 8080, stays on the loopback interface or a private network.
-- **Outbound HTTPS, optionally.** It is used to pull images and for the breached-password check, which `DHOW_BREACHED_PASSWORD_CHECK=false` turns off.
+- **جهاز Linux** بمعالج `amd64` أو `arm64`. صور الإصدارات مبنية للنوعين.
+- **PostgreSQL 18.** حزمة Compose تأتي بقاعدتها. في الطرق الأخرى يحتاج داو إلى قاعدة بيانات ومستخدم يملكها، والاتصال عبر TLS (`sslmode=require` أو أقوى).
+- **نواة معالج واحدة على الأقل، و2 GiB ذاكرة، و5 GiB مساحة فارغة** لداو وPostgreSQL على جهاز واحد. ننصح بنواتين و4 GiB و20 GiB. المثبّت يرفض الجهاز الأصغر، و`dhow-server doctor` ينبّه إليه. الأرقام المقيسة وما يحدث تحتها في [متطلبات الأجهزة](../requirements.md).
+- **اسم نطاق (host name) وشهادة TLS.** يفتح المستخدمون داو على عنوان `https://` باسم نطاق خاص به، مثل `dhow.example.com`، وليس تحت مسار مثل `example.com/dhow`. الوكيل العكسي (reverse proxy) أمام داو يتولى TLS. راجع [ضع داو خلف وكيل عكسي](reverse-proxy.md) لإعداد nginx وCaddy وTraefik.
+- **المنفذان 80 و443** مفتوحان للمستخدمين على الوكيل. منفذ داو نفسه، 8080، يبقى على واجهة loopback أو على شبكة خاصة.
+- **اتصال HTTPS خارجي، وهو اختياري.** نستخدمه لسحب الصور ولفحص كلمات السر المسرّبة. يمكنك إيقاف الفحص بـ `DHOW_BREACHED_PASSWORD_CHECK=false`.
 
-## Security checklist
+## قائمة فحص الأمان
 
-Go through this list before other people use the instance.
+راجع هذه القائمة قبل أن يستخدم أحد غيرك السيرفر.
 
 **TLS**
 
-- [ ] `DHOW_PUBLIC_URL` is the `https://` address users open, and the browser shows a valid certificate for it.
-- [ ] Plain HTTP on port 80 only redirects to HTTPS.
-- [ ] `curl -sSI https://dhow.example.com/ | grep -i strict-transport-security` prints exactly one line.
-- [ ] Every step of [Verify the setup](reverse-proxy.md#verify-the-setup) passes, including the client address in the log.
-- [ ] A database on another machine uses `sslmode=verify-full`, so Dhow checks the server's certificate.
+- [ ] `DHOW_PUBLIC_URL` هو عنوان `https://` الذي يفتحه المستخدمون، والمتصفح يعرض له شهادة صالحة.
+- [ ] HTTP العادي على المنفذ 80 لا يفعل شيئًا غير التحويل إلى HTTPS.
+- [ ] الأمر `curl -sSI https://dhow.example.com/ | grep -i strict-transport-security` يطبع سطرًا واحدًا بالضبط.
+- [ ] كل خطوات [تحقّق من الإعداد](reverse-proxy.md#تحقق-من-الإعداد) تنجح، ومنها عنوان العميل في السجل.
+- [ ] قاعدة البيانات على جهاز آخر تستخدم `sslmode=verify-full`، حتى يتحقق داو من شهادة السيرفر.
 
-**Secrets and backups**
+**الأسرار والنسخ الاحتياطية**
 
-- [ ] `DHOW_SECRET_KEY` was generated randomly, for example by `init.sh` or `openssl rand -hex 32`, and never reused from another instance.
-- [ ] `DHOW_SECRET_KEY` is backed up together with the database backups, somewhere other than the host. A database backup cannot be decrypted without it.
-- [ ] A restore was tried once, as in [Back up and restore](compose.md#back-up-and-restore).
-- [ ] The file that holds the secrets, such as `.env`, has mode `600`. Only administrators can use the Docker socket, because it reveals every container's environment.
+- [ ] `DHOW_SECRET_KEY` مولَّد عشوائيًا، مثلًا بـ `init.sh` أو `openssl rand -hex 32`، ولم يُنقل من سيرفر آخر.
+- [ ] لـ `DHOW_SECRET_KEY` نسخة احتياطية مع نسخ قاعدة البيانات، في مكان غير هذا الجهاز. لا يمكن فك نسخة قاعدة البيانات بدونه.
+- [ ] جرّبت الاسترجاع مرة واحدة على الأقل، كما في [النسخ الاحتياطي والاسترجاع](compose.md#النسخ-الاحتياطي-والاسترجاع).
+- [ ] صلاحيات الملف الذي يحفظ الأسرار، مثل `.env`، هي `600`. المديرون فقط يستطيعون استخدام Docker socket، لأنه يكشف متغيرات البيئة لكل حاوية.
 
-**Development mode**
+**وضع التطوير**
 
-- [ ] `DHOW_DEV` is not set, or is `false`. It allows plain HTTP and unencrypted database connections and is only for [your own machine](local.md).
-- [ ] The server log has no `DHOW_DEV=true` warning. With Compose, `docker compose logs dhow | grep DHOW_DEV` prints nothing.
+- [ ] `DHOW_DEV` غير مضبوط، أو قيمته `false`. هذا الوضع يسمح بـ HTTP العادي وباتصال غير مشفّر بقاعدة البيانات، وهو [لجهازك فقط](local.md).
+- [ ] سجل السيرفر لا يحتوي تحذير `DHOW_DEV=true`. مع Compose، الأمر `docker compose logs dhow | grep DHOW_DEV` لا يطبع شيئًا.
 
-**Network and accounts**
+**الشبكة والحسابات**
 
-- [ ] `DHOW_TRUSTED_PROXIES` lists exactly the proxies in front of Dhow, as described in [Trusted proxies](reverse-proxy.md#trusted-proxies), and no range that clients connect from.
-- [ ] Dhow's port 8080 and PostgreSQL's port are not reachable from the internet.
-- [ ] The owner account was created right after the install. Until then, anyone who can read the server log can use the setup link.
-- [ ] The image is pinned by digest after [verifying its signature](compose.md#verify-an-image).
+- [ ] `DHOW_TRUSTED_PROXIES` يذكر الوكلاء الذين أمام داو بالضبط، كما في [الوكلاء الموثوقون](reverse-proxy.md#الوكلاء-الموثوقون)، ولا يذكر أي نطاق يتصل منه العملاء.
+- [ ] منفذ داو 8080 ومنفذ PostgreSQL لا يصل إليهما أحد من الإنترنت.
+- [ ] أنشأت حساب صاحب النسخة بعد التثبيت مباشرة. قبل ذلك، يستطيع أي شخص يقرأ سجل السيرفر أن يستخدم رابط الإعداد.
+- [ ] الصورة مثبّتة بالـ digest بعد [التحقق من توقيعها](compose.md#تحقق-من-صورة).
 
-## More
+## المزيد
 
-- [Hardware requirements](../requirements.md): the CPU, memory and disk Dhow and its runners need, and how they were measured.
-- [Configuration](configuration.md): every `DHOW_*` variable, its default and its validation.
-- [Sign in with OIDC](../guides/oidc.md): sign-in with Google, Keycloak, GitHub or any OIDC provider.
-- [Troubleshooting](troubleshooting.md): `CSRF_FAILED`, cookies that are not stored, the public URL and `sslmode` errors, the wrong client address, locked-out sign-ins, and the setup link.
+- [متطلبات الأجهزة](../requirements.md): المعالج والذاكرة والمساحة التي يحتاجها داو وأجهزة التشغيل، وكيف قسناها.
+- [الإعدادات](configuration.md): كل متغير `DHOW_*`، وقيمته الافتراضية، وكيف نتحقق منه.
+- [تسجيل الدخول بـ OIDC](../guides/oidc.md): الدخول بحساب Google أو Keycloak أو GitHub أو أي مزوّد OIDC.
+- [حل المشكلات](troubleshooting.md): `CSRF_FAILED`، والكوكيز التي لا تُحفظ، وأخطاء العنوان العام و`sslmode`، وعنوان العميل الخاطئ، وتسجيل الدخول المقفل، ورابط الإعداد.

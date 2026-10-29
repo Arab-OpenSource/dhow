@@ -1,25 +1,27 @@
-# The home page
+[English](../en/guides/home.md)
 
-The home page (`/`) answers two questions at a glance: is everything OK, and what needs me? The numbers update every 15 seconds while the tab is visible, and stop while it is in the background.
+# الصفحة الرئيسية
 
-## What it shows
+الصفحة الرئيسية (`/`) تجيب عن سؤالين بنظرة واحدة: هل كل شيء سليم؟ وما الذي يحتاجني؟ تتحدث الأرقام كل 15 ثانية ما دام التبويب ظاهرًا، وتتوقف عندما يكون في الخلفية.
 
-- **A banner when jobs are stuck.** When queued jobs have no active runner with the labels and isolation level they ask for, a banner says how many and how to fix it. Owners and admins get **Add a runner**, which opens Registration tokens (`/runners/tokens`); everyone else gets **Show the waiting jobs**, which opens `/jobs?state=queued`. See [Follow jobs](jobs.md) for how matching works.
-- **Four numbers**, each a link to the matching page:
-  - **Running now** (blue): jobs in the `leased` or `running` state. Opens `/jobs?state=running`.
-  - **Queued** (violet): jobs in the `queued` state, with a note when some have no matching runner. Opens `/jobs?state=queued`.
-  - **Failed in the last 24 hours** (coral): jobs that ended `failed` or `timed_out` in the last 24 hours. Opens `/jobs?state=failed,timed_out`, which lists both states.
-  - **Runners connected** (green): active runners seen in the last two minutes, with a note when some are offline. Opens `/runners`. Viewers cannot read runners, so they see three numbers.
-- **Needs your attention:** stuck jobs, server checks that fail, offline runners and pending invitations. Only the rows that exist appear, each with its count and a link. When nothing needs you, it says so in one line.
-- **Latest jobs** (the five newest), **Runners** (the first five), **Latest events** (the five newest audit events, for owners and admins only) and **Server status** (the same summary as `/system`, with each check and the version).
+## ما تعرضه
 
-Each card shows a skeleton while it loads, an error with **Try again** if it cannot load, and a plain sentence when it has nothing yet.
+- **شريط تنبيه عندما تعلق التشغيلات.** عندما لا يوجد لتشغيلات منتظرة جهاز تشغيل (runner) نشط بالأوسمة ومستوى العزل الذي تطلبه، يقول الشريط عددها وكيف تصلحها. يحصل صاحب المؤسسة والمديرون على **أضف جهاز تشغيل**، الذي يفتح رموز التسجيل (`/runners/tokens`). ويحصل الباقون على **اعرض التشغيلات المنتظرة**، الذي يفتح `/jobs?state=queued`. راجع [تابع التشغيلات](jobs.md) لتعرف كيف تعمل المطابقة.
+- **أربعة أرقام**، كل رقم رابط إلى صفحته:
+  - **تعمل الآن** (أزرق): التشغيلات في الحالة `leased` أو `running`. يفتح `/jobs?state=running`.
+  - **في الانتظار** (بنفسجي): التشغيلات في الحالة `queued`، مع ملاحظة إذا كان بعضها بلا جهاز تشغيل مناسب. يفتح `/jobs?state=queued`.
+  - **فشلت في آخر 24 ساعة** (مرجاني): التشغيلات التي انتهت بـ `failed` أو `timed_out` في آخر 24 ساعة. يفتح `/jobs?state=failed,timed_out`، الذي يعرض الحالتين.
+  - **أجهزة تشغيل متصلة** (أخضر): أجهزة التشغيل النشطة التي ظهرت في آخر دقيقتين، مع ملاحظة إذا كان بعضها غير متصل. يفتح `/runners`. المشاهدون لا يستطيعون قراءة أجهزة التشغيل، فيرون ثلاثة أرقام.
+- **يحتاج إلى انتباهك:** التشغيلات العالقة، وفحوص السيرفر التي تفشل، وأجهزة التشغيل غير المتصلة، والدعوات المعلّقة. تظهر الصفوف الموجودة فقط، كل صف مع عدده ورابط. عندما لا يوجد ما يحتاجك، يقول ذلك في سطر واحد.
+- **آخر التشغيلات** (أحدث خمسة)، و**أجهزة التشغيل** (أول خمسة)، و**آخر الأحداث** (أحدث خمسة أحداث في سجل الأحداث، لصاحب المؤسسة والمديرين فقط)، و**حالة السيرفر** (الملخص نفسه في `/system`، مع كل فحص والإصدار).
 
-The side menu shows the same counts next to Jobs, Runners and Invitations. See [UI principles](../ui-principles.md#2-navigation-model-adr-0022-adr-0059).
+كل بطاقة تعرض هيكلًا فارغًا أثناء التحميل، وخطأ مع **حاول مرة أخرى** إذا لم تتمكن من التحميل، وجملة بسيطة عندما لا يكون فيها شيء بعد.
 
-## The API behind it
+القائمة الجانبية تعرض الأعداد نفسها بجوار التشغيلات وأجهزة التشغيل والدعوات. راجع [مبادئ الواجهة](../ui-principles.md#2-نموذج-التنقل-adr-0022-adr-0059).
 
-The numbers and the counters come from one request:
+## الـ API الذي خلفها
+
+الأرقام والعدّادات تأتي من طلب واحد:
 
 ```http
 GET /api/v1/organizations/{id}/overview
@@ -37,20 +39,20 @@ GET /api/v1/organizations/{id}/overview
 }
 ```
 
-- **Who may call it:** any member of the organization (`org.read`), with a session or an API token. A caller who is not a member gets 404.
-- **Each block follows the permission of its list.** `Jobs` needs `job.read`, `Runners` needs `runner.read` and `Invitations` needs `member.manage`. A block the caller may not read is `null`, never zero, so a client can tell "none" from "not yours to see". An API token also needs the scope for each block.
+- **من يستطيع استدعاءه:** أي عضو في المؤسسة (`org.read`)، بجلسة أو بمفتاح API. من ليس عضوًا يحصل على 404.
+- **كل كتلة تتبع صلاحية قائمتها.** `Jobs` تحتاج إلى `job.read`، و`Runners` إلى `runner.read`، و`Invitations` إلى `member.manage`. الكتلة التي لا يستطيع المستدعي قراءتها تكون `null`، وليست صفرًا أبدًا. هكذا يفرّق العميل بين "لا يوجد" و"ليس من حقك رؤيته". مفتاح API يحتاج أيضًا إلى صلاحية (scope) لكل كتلة.
 
-| Role | `Jobs` | `Runners` | `Invitations` |
+| الدور | `Jobs` | `Runners` | `Invitations` |
 |---|---|---|---|
-| Owner, admin | ✓ | ✓ | ✓ |
-| Maintainer, developer | ✓ | ✓ | `null` |
-| Viewer | ✓ | `null` | `null` |
+| صاحب المؤسسة، مدير | ✓ | ✓ | ✓ |
+| مسؤول مشاريع، مطوّر | ✓ | ✓ | `null` |
+| مشاهد | ✓ | `null` | `null` |
 
-- **What each count means:**
-  - `Jobs.QueuedNoRunner` counts the queued jobs whose `QueuedReason` is `NO_MATCHING_RUNNER` in the job list. It is part of `Jobs.Queued`.
-  - `Jobs.FailedLast24h` counts `failed` and `timed_out` jobs that finished less than 24 hours ago. `canceled` and `lost` are not counted.
-  - `Runners.Online` and `Runners.Offline` use the `Status` rule of the runner list: an active runner is online when it was seen in the last two minutes. `Runners.Paused` counts disabled runners. Revoked runners are not counted.
-  - `Invitations.Pending` counts invitations that are not accepted, revoked or expired.
-- **Cost:** three fixed queries, whatever the size of the organization. The job count reads only active jobs and jobs that failed in the last day, through two partial indexes, so it stays small as history grows.
+- **معنى كل عدد:**
+  - `Jobs.QueuedNoRunner` يعدّ التشغيلات المنتظرة التي قيمة `QueuedReason` فيها `NO_MATCHING_RUNNER` في قائمة التشغيلات. وهو جزء من `Jobs.Queued`.
+  - `Jobs.FailedLast24h` يعدّ التشغيلات `failed` و`timed_out` التي انتهت قبل أقل من 24 ساعة. لا نعدّ `canceled` و`lost`.
+  - `Runners.Online` و`Runners.Offline` يستخدمان قاعدة `Status` في قائمة أجهزة التشغيل: جهاز التشغيل النشط متصل إذا ظهر في آخر دقيقتين. `Runners.Paused` يعدّ أجهزة التشغيل الموقوفة. لا نعدّ أجهزة التشغيل الملغاة.
+  - `Invitations.Pending` يعدّ الدعوات التي لم تُقبل ولم تُلغَ ولم تنتهِ صلاحيتها.
+- **التكلفة:** ثلاثة استعلامات ثابتة، مهما كان حجم المؤسسة. عدّ التشغيلات يقرأ التشغيلات النشطة والتي فشلت في آخر يوم فقط، عبر فهرسين جزئيين (partial indexes)، فيبقى صغيرًا مع نمو التاريخ.
 
-The full contract is in [`packages/openapi/openapi.yaml`](../../packages/openapi/openapi.yaml) (operation `getOrganizationOverview`).
+العقد الكامل في [`packages/openapi/openapi.yaml`](../../packages/openapi/openapi.yaml) (العملية `getOrganizationOverview`).

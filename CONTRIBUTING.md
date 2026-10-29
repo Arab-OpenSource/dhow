@@ -1,19 +1,24 @@
-# Contributing to Dhow
+[English](CONTRIBUTING.en.md)
 
-Dhow is in the **design phase**, and design feedback is the most valuable contribution right now.
+# المساهمة في داو
 
-- **Discuss** a design document or ADR by opening an issue or discussion. Reference the doc and section.
-- **Propose a decision change** by opening a PR that adds a new ADR in `Plan/ADR/` superseding the old one. Accepted ADRs are not edited in place.
-- **Sign off your commits.** Contributions are accepted under the [Developer Certificate of Origin](https://developercertificate.org/); sign each commit with `git commit -s`.
-- **Documentation language.** Public docs in `docs/` are written in English. Internal plans and ADRs in `Plan/` are written in Arabic. User-facing copy is written Arabic-first, in simple Arabic: Modern Standard grammar with short sentences, neither colloquial nor heavy classical (see `docs/ui-principles.md`).
-- **Security issues** must never go in public issues. See [SECURITY.md](SECURITY.md).
+داو (Dhow) في **مرحلة التصميم**، والملاحظات على التصميم هي أهم مساهمة الآن.
 
-## Code contributions
+- **ناقش** وثيقة تصميم أو ADR بفتح issue أو discussion. اذكر الوثيقة والقسم.
+- **اقترح تغيير قرار** بفتح PR يضيف ADR جديدًا في `Plan/ADR/` يحل محل القديم. الـ ADRs المقبولة لا تُعدّل في مكانها.
+- **وقّع الـ commits.** نقبل المساهمات تحت [Developer Certificate of Origin](https://developercertificate.org/). وقّع كل commit بـ `git commit -s`.
+- **لغة الوثائق.** الوثائق العامة بالعربية أولًا ([ADR-0064](Plan/ADR/0064-arabic-first-documentation.md)). الصفحات العربية في `docs/` هي المرجع، و`docs/en/` نسخة إنجليزية منها بالمسارات نفسها. والقاعدة نفسها لـ `README.md` و`CONTRIBUTING.md` و`SECURITY.md` في الجذر، بجوار نسخها `.en.md`. الخطط الداخلية والـ ADRs في `Plan/` مكتوبة بالعربية. نصوص الواجهة والوثائق العربية مكتوبة بالعربي المبسّط: قواعد الفصحى بجمل قصيرة، لا عامية ولا فصحى ثقيلة (راجع `docs/ui-principles.md`).
+  - **غيّر النسختين في الـ pull request نفسه**، بالعناوين والجداول والـ code blocks نفسها. الـ code blocks متطابقة حرفًا بحرف في النسختين، والتعليقات داخل أمثلة الكود تبقى بالإنجليزية.
+  - **إذا كنت لا تكتب العربية،** افتح الـ pull request بالتغيير الإنجليزي فقط، واذكر ذلك في وصفه. يضيف أحد المسؤولين العربية إلى الـ pull request نفسه قبل الدمج.
+  - **يجب أن ينجح `make docs-check`.** يتأكد أن للنسختين الملفات والعناوين والجداول والـ code blocks نفسها، وأن كل رابط وكل anchor يصل إلى مكانه. يشغّله `make check` وCI أيضًا.
+- **المشكلات الأمنية** لا تُكتب أبدًا في issues عامة. راجع [SECURITY.md](SECURITY.md).
 
-- **Set up:** follow [Develop Dhow on your machine](docs/development.md). The quickest way needs only Git and Docker: `docker compose -f deploy/dev/compose.yaml up` runs the server and the web app with live reload. For the native tools you need Go (the version pinned in `go.mod`; `go` downloads it automatically), Node.js LTS and pnpm for `apps/web`, PostgreSQL 18 (Docker, Podman or a native install) and Python 3. `make dev-env`, `make dev-db` and `make dev` get a server running.
-- **Before you push:** run `make dev-check`, which is `make check` (lint, tests with the race detector, vulnerability scan, hooks tests) with the test database set. A bare `make check` skips the database tests. For web changes also run `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm size` in `apps/web`.
-- **Pull requests** are small and focused, follow the PR template, and must pass CI. `main` is protected; nothing merges without review.
-- **Commits** follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:` …), are written in English, and carry a DCO sign-off with your real name. Commit messages and pull requests must not contain AI attribution trailers or signatures.
-- **Claude Code users:** the repository ships project hooks in `.claude/settings.json` that enforce these rules on every edit and git command. Do not disable them; `make hooks-test` covers them.
-- **Code style:** no comments in code except `IMPORTANT:` notes and tool directives; files stay under 500 lines and functions under 100. JSON fields and database identifiers are PascalCase. See `CLAUDE.md` for the full list.
-- **Tests:** new behavior comes with tests; security-relevant paths (authz, secrets, input parsing) also get negative tests.
+## المساهمة بالكود
+
+- **التجهيز:** اتبع [تطوير داو على جهازك](docs/development.md). أسرع طريقة تحتاج إلى Git وDocker فقط: `docker compose -f deploy/dev/compose.yaml up` يشغّل السيرفر والواجهة مع إعادة التحميل المباشر. للأدوات المباشرة تحتاج إلى Go (الإصدار المثبّت في `go.mod`، والأمر `go` ينزّله تلقائيًا)، وNode.js LTS وpnpm لـ `apps/web`، وPostgreSQL 18 (Docker أو Podman أو تثبيت مباشر)، وPython 3. الأوامر `make dev-env` و`make dev-db` و`make dev` تشغّل سيرفرًا.
+- **قبل الـ push:** شغّل `make dev-check`، وهو `make check` (الـ lint، والاختبارات مع كاشف السباقات، وفحص الثغرات، واختبارات الـ hooks، وفحص الوثائق) مع ضبط قاعدة بيانات الاختبار. `make check` وحده يتخطى اختبارات قاعدة البيانات. لتغييرات الواجهة شغّل أيضًا `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm size` في `apps/web`.
+- **الـ pull requests** صغيرة ومركّزة، وتتبع قالب الـ PR، ويجب أن تنجح في CI. الفرع `main` محمي، ولا يُدمج شيء بلا مراجعة.
+- **الـ commits** تتبع [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`، `fix:`، `docs:`، `chore:` …)، ومكتوبة بالإنجليزية، وتحمل توقيع DCO باسمك الحقيقي. رسائل الـ commits والـ pull requests يجب ألا تحتوي أي إشارة أو توقيع لأدوات الذكاء الاصطناعي.
+- **مستخدمو Claude Code:** يأتي المستودع بـ hooks في `.claude/settings.json` تفرض هذه القواعد مع كل تعديل وكل أمر git. لا توقفها، و`make hooks-test` يختبرها.
+- **أسلوب الكود:** لا تعليقات في الكود إلا ملاحظات `IMPORTANT:` وتوجيهات الأدوات. الملفات أقل من 500 سطر، والدوال أقل من 100. حقول JSON وأسماء قاعدة البيانات بصيغة PascalCase. راجع `CLAUDE.md` للقائمة الكاملة.
+- **الاختبارات:** كل سلوك جديد يأتي مع اختبارات، والمسارات الحساسة أمنيًا (الصلاحيات، والأسرار، وتحليل المدخلات) تحصل أيضًا على اختبارات سلبية.

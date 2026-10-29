@@ -1,19 +1,20 @@
-# Pipeline spec — `.dhow.yml` v1 (draft)
+[English](en/pipeline-spec.md)
 
-Status: **Draft**. The machine-readable JSON Schema will live in `packages/spec/` and is shared by the server, the
-runner, the CLI (`dhow lint`) and the visual editor.
+# مواصفات خطوات النشر — `.dhow.yml` v1 (مسودة)
 
-## 1. Principles
+الحالة: **مسودة**. مخطط JSON Schema الذي تقرؤه البرامج سيكون في `packages/spec/`، ويشترك فيه السيرفر، وجهاز التشغيل، والـ CLI (`dhow lint`)، والمحرر المرئي.
 
-- **One source of truth.** The pipeline lives in the repository at the commit being deployed (ADR-0008).
-  - For privileged events (deploys and PRs from forks), the definition is read from the **base/default branch**, so a PR cannot rewrite its own permissions.
-- **Steps are sandboxed.** A step is either a `run:` (arguments for a shell *inside the job sandbox*) or a `uses:` (a container-image plugin).
-- **Expressions are CEL** inside `${{ … }}`. They are typed, non-Turing-complete and have cost limits.
-  - Values from Git (commit message, author, branch) are **data** and are never re-parsed as expressions.
-- **Secrets are referenced, not embedded.** `secrets.NAME` resolves only within the job's environment scope.
-- **Plain `env` values are not secret.** Every member who can read the job sees them in the API and the UI, viewers included, so a token, password or key never goes in `env`: reference it from `secrets` instead.
+## 1. المبادئ
 
-## 2. Full example
+- **مصدر واحد للحقيقة.** خطوات النشر (pipeline) في المستودع، عند الـ commit الذي يُنشر (ADR-0008).
+  - للأحداث ذات الصلاحيات (النشر، وPRs من الـ forks)، نقرأ التعريف من **الفرع الأساسي/الافتراضي**، فلا يستطيع PR أن يعيد كتابة صلاحياته.
+- **الخطوات معزولة.** الخطوة إما `run:` (أوامر لـ shell *داخل البيئة المعزولة للتشغيل*) أو `uses:` (إضافة في صورة حاوية).
+- **التعبيرات بلغة CEL** داخل `${{ … }}`. لها أنواع، وليست Turing-complete، ولها حدود تكلفة.
+  - القيم القادمة من Git (رسالة الـ commit، والكاتب، والفرع) **بيانات**، ولا نعيد تحليلها كتعبيرات أبدًا.
+- **الأسرار بالإشارة، وليست مكتوبة.** `secrets.NAME` يُحل فقط داخل نطاق البيئة الخاصة بالتشغيل.
+- **قيم `env` العادية ليست سرية.** كل عضو يستطيع قراءة التشغيل يراها في الـ API والواجهة، ومنهم المشاهدون. لذلك لا تضع أبدًا رمزًا أو كلمة سر أو مفتاحًا في `env`، بل أشر إليه من `secrets`.
+
+## 2. مثال كامل
 
 ```yaml
 version: 1
@@ -110,52 +111,52 @@ jobs:
           audience: sts.amazonaws.com    # workload OIDC token instead of static cloud keys
 ```
 
-## 3. Reference (v1)
+## 3. المرجع (v1)
 
-| Key | Type | Notes |
+| المفتاح | النوع | ملاحظات |
 |---|---|---|
-| `version` | int | Must be `1` |
-| `on` | map | `push`, `tag`, `pull_request`, `manual` (with typed `inputs`), `schedule` (cron), `artifact`, `api` |
-| `defaults.runner` | map | `labels`, `isolation` (the minimum isolation level; the environment policy may raise it) |
-| `concurrency` | map | `group` (CEL), `cancel_in_progress` |
-| `jobs.<id>.needs` | list | DAG edges; cycles are rejected at validation time |
-| `jobs.<id>.strategy.matrix` | map | Cartesian product; `include` and `exclude` are supported; `max_parallel` |
-| `jobs.<id>.image` | string | Must be digest-pinned for production environments (enforced by policy). A name without a registry host is completed the way Docker does it: `node:22-bookworm@sha256:…` runs as `docker.io/library/node:22-bookworm@sha256:…`. The runner never searches other registries. |
-| `jobs.<id>.environment` | string | Binds protection rules, secrets and targets |
-| `jobs.<id>.network.egress` | list | Host allowlist; empty means deny-all, at most 64 entries. Each entry is one of `host`, `host:port` or `*.domain`. (1) **Hosts:** lowercase ASCII, with punycode (`xn--…`) for other scripts. IP literals, all-numeric names and single-label names (`localhost`, `*.com`) are refused. `*.domain` matches any subdomain but not `domain` itself. (2) **Ports:** without a port, an entry opens 443 through `CONNECT` and 80 for plain `http://`. (3) **Proxy:** traffic goes through the runner's proxy on `127.0.0.1:3128` (`HTTPS_PROXY`, `HTTP_PROXY` and `ALL_PROXY` are set for every step and override the job's own values), so clients must be proxy-aware. SSH and other TCP clients can use `ProxyCommand=/run/dhow/bin/connect %h %p`. (4) **Not supported:** UDP, QUIC and programs that ignore proxies. (5) **Always denied:** private, loopback, link-local and metadata addresses (ADR-0044, ADR-0057) |
+| `version` | int | يجب أن يكون `1` |
+| `on` | map | `push`، و`tag`، و`pull_request`، و`manual` (مع `inputs` لها أنواع)، و`schedule` (cron)، و`artifact`، و`api` |
+| `defaults.runner` | map | `labels`، و`isolation` (أقل مستوى عزل، وسياسة البيئة قد ترفعه) |
+| `concurrency` | map | `group` (CEL)، و`cancel_in_progress` |
+| `jobs.<id>.needs` | list | حواف الـ DAG. نرفض الدوائر عند التحقق |
+| `jobs.<id>.strategy.matrix` | map | الضرب الديكارتي. ندعم `include` و`exclude`، و`max_parallel` |
+| `jobs.<id>.image` | string | يجب تثبيتها بالـ digest في بيئات الإنتاج (تفرضه السياسة). الاسم بلا عنوان سجل صور يُكمَل كما يفعل Docker: `node:22-bookworm@sha256:…` يعمل كـ `docker.io/library/node:22-bookworm@sha256:…`. جهاز التشغيل لا يبحث في سجلات صور أخرى أبدًا. |
+| `jobs.<id>.environment` | string | يربط قواعد الحماية والأسرار والأهداف |
+| `jobs.<id>.network.egress` | list | قائمة الأجهزة المسموحة. الفارغة تعني منع كل شيء، و64 عنصرًا بالأكثر. كل عنصر واحد من `host` أو `host:port` أو `*.domain`. (1) **الأجهزة:** حروف ASCII صغيرة، مع punycode (`xn--…`) للحروف الأخرى. نرفض عناوين IP، والأسماء المكوّنة من أرقام فقط، والأسماء من مقطع واحد (`localhost`، `*.com`). `*.domain` يطابق أي نطاق فرعي، لكن ليس `domain` نفسه. (2) **المنافذ:** بدون منفذ، يفتح العنصر 443 عبر `CONNECT` و80 لـ `http://` العادي. (3) **الوكيل:** تمر البيانات عبر وكيل جهاز التشغيل على `127.0.0.1:3128` (نضبط `HTTPS_PROXY` و`HTTP_PROXY` و`ALL_PROXY` لكل خطوة، وتغلب قيم التشغيل نفسه)، لذلك يجب أن تدعم البرامج الوكيل. يستطيع SSH وبرامج TCP الأخرى استخدام `ProxyCommand=/run/dhow/bin/connect %h %p`. (4) **غير مدعوم:** UDP، وQUIC، والبرامج التي تتجاهل الوكيل. (5) **ممنوع دائمًا:** العناوين الخاصة، وloopback، وlink-local، وعناوين metadata (ADR-0044، ADR-0057) |
 | `jobs.<id>.if` / `steps[].if` | CEL bool | — |
-| `steps[].run` | string | Executed by `/bin/sh -e` **inside the sandbox** (or by `shell:`); the script is passed on stdin, and the image must provide the shell |
-| `steps[].uses` | image ref | Plugin; must be digest-pinned; `with:` holds typed inputs declared by the plugin manifest |
-| `steps[].env` | map | Values may reference `secrets.*` and `vars.*` |
-| `artifacts` | list | Content-addressed upload; `retention` overridable down to the org policy minimum |
-| `cache` | map | `key` (CEL), `paths`; scoped per project and branch, read-only for fork PRs |
-| `timeout` | duration | Per job or step; hard-killed by the runner |
+| `steps[].run` | string | ينفّذه `/bin/sh -e` **داخل البيئة المعزولة** (أو `shell:`). نمرّر السكربت على stdin، ويجب أن توفّر الصورة الـ shell |
+| `steps[].uses` | image ref | إضافة. يجب تثبيتها بالـ digest. `with:` فيه مدخلات لها أنواع، يعلنها ملف الإضافة |
+| `steps[].env` | map | القيم يمكن أن تشير إلى `secrets.*` و`vars.*` |
+| `artifacts` | list | رفع بعنونة المحتوى (content-addressed). يمكن تقليل `retention` حتى الحد الأدنى في سياسة المؤسسة |
+| `cache` | map | `key` (CEL)، و`paths`. محدود لكل مشروع وفرع، وللقراءة فقط مع PRs من الـ forks |
+| `timeout` | duration | لكل تشغيل أو خطوة. يقتله جهاز التشغيل بالقوة |
 
-**CEL context.** These variables are available:
+**سياق CEL.** هذه المتغيرات متاحة:
 - `git.{sha, ref, branch, tag, is_tag, message, author, pr}`
-- `project.*` and `env.*`
-- `vars.*` (non-secret)
-- `secrets.*` (only inside `env`/`with`; it can never appear in an `if`)
-- `matrix.*` and `needs.<job>.outputs.*`
+- `project.*` و`env.*`
+- `vars.*` (غير سرية)
+- `secrets.*` (داخل `env`/`with` فقط، ولا يمكن أن تظهر في `if` أبدًا)
+- `matrix.*` و`needs.<job>.outputs.*`
 
-These functions are available: `hash_files()`, `startsWith()`, `matches()` (RE2 syntax), and `contains()`.
+وهذه الدوال متاحة: `hash_files()`، و`startsWith()`، و`matches()` (بصيغة RE2)، و`contains()`.
 
-## 4. Environment protection (server-side, not in YAML)
+## 4. حماية البيئات (في السيرفر، وليست في YAML)
 
-Protection rules are configured on the environment in the UI or API, so a commit **cannot weaken them**. A rule can set:
-- which branches or tags are allowed;
-- the required reviewers (a count and which teams), with optional self-approval prevention;
-- a wait timer and deployment windows, including freeze periods;
-- the required isolation level, and a requirement for digest-pinned images and verified plugins;
-- an admin bypass, which is recorded in the audit log.
+تُضبط قواعد الحماية على البيئة من الواجهة أو الـ API، لذلك **لا يستطيع commit أن يضعفها**. القاعدة يمكن أن تحدد:
+- الفروع أو الوسوم المسموحة؛
+- المراجعين المطلوبين (العدد والفرق)، مع خيار منع الشخص من الموافقة على طلبه؛
+- مؤقت انتظار ونوافذ نشر، ومنها فترات التجميد؛
+- مستوى العزل المطلوب، واشتراط صور مثبّتة بالـ digest وإضافات موثّقة؛
+- تجاوز للمدير، يُسجَّل في سجل الأحداث.
 
-## 5. Visual editor
+## 5. المحرر المرئي
 
-The UI offers a visual pipeline editor (a jobs graph plus step forms), intended for newcomers. It works like this:
-- It reads the current `.dhow.yml` at the default branch.
-- It edits a typed model, validated live against the same JSON Schema.
-- It **writes YAML and opens a pull request** through the Git provider integration. Dhow's copy never silently diverges from the repo.
+تقدّم الواجهة محررًا مرئيًا لخطوات النشر (رسم للتشغيلات مع نماذج للخطوات)، موجّهًا للمستخدمين الجدد. يعمل هكذا:
+- يقرأ `.dhow.yml` الحالي في الفرع الافتراضي.
+- يعدّل نموذجًا له أنواع، ويتحقق منه مباشرة بمخطط JSON Schema نفسه.
+- **يكتب YAML ويفتح pull request** عبر التكامل مع مزوّد Git. نسخة داو لا تبتعد عن المستودع أبدًا بصمت.
 
-## 6. Validation
+## 6. التحقق
 
-`dhow lint` (CLI), the editor and the server all use the same Go validator. They check the schema, the DAG, CEL type errors, unknown or unpinned plugins, and policy violations.
+`dhow lint` (الـ CLI)، والمحرر، والسيرفر، كلها تستخدم مدقق Go نفسه. يفحص المخطط، والـ DAG، وأخطاء الأنواع في CEL، والإضافات غير المعروفة أو غير المثبّتة، ومخالفات السياسة.

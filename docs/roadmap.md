@@ -1,26 +1,26 @@
-# Roadmap to v1.0
+[English](en/roadmap.md)
 
-Status: **Draft**. Team: Sabry + Claude.
+# خريطة الطريق إلى v1.0
 
-This plan builds the **complete v1.0 product** described in these docs, not a cut-down MVP. Milestones are
-ordered, and each one ends in a working, tested, demoable state. There are no calendar dates. Effort is given in
-rough T-shirt sizes (S < M < L < XL).
+الحالة: **مسودة**. الفريق: Sabry + Claude.
 
-| # | Milestone | Scope | Exit criteria | Effort |
+هذه الخطة تبني **منتج v1.0 الكامل** الموصوف في هذه الوثائق، وليس نسخة أولية مختصرة (MVP). المراحل مرتّبة، وكل مرحلة تنتهي بحالة تعمل ومختبَرة ويمكن عرضها. لا توجد تواريخ. الجهد مكتوب بمقاسات تقريبية (S < M < L < XL).
+
+| # | المرحلة | النطاق | شرط الانتهاء | الجهد |
 |---|---|---|---|---|
-| M0 | **Design sign-off** | Design system (brand color, Arabic and Latin type, tokens, core components, key screens in RTL and LTR, dark and light); architecture, security model, pipeline spec, editions; ADRs accepted | Sabry approves the design system and ADRs | M |
-| M1 | **Foundations** | Monorepo, required CI (tests, lint, vuln scanning, CodeQL, SBOM, signing), Go server skeleton, Postgres migrations with locking, config validation (fail closed), OpenAPI pipeline, web app shell (workspace, panels, ⌘K, i18n ar/en) | `docker compose up` boots an empty, secure instance | L |
-| M2 | **Identity & tenancy** | Owner setup flow, invitations, password + TOTP + Passkeys + OIDC, sessions with rotation and revocation, orgs, teams, fixed roles, `can()` policy + route-table tests, API tokens, audit log | All authz tests green; internal review of the auth flows with no open critical or high finding ([checklist](security/auth-review-checklist.md)); the external review moved to M9 | L |
-| M3 | **Runner & isolation** | Runner binary, registration and identity, leasing over Connect, rootless container sandbox with limits and network policy, gVisor option, log streaming (seq + SSE), cancellation, reconciliation, Helm chart for the server and runners (one restricted Pod per job on Kubernetes). Plan: `Plan/M3-Runner.md` | A job runs isolated; killing the runner mid-job reconciles correctly | XL |
-| M4 | **Pipelines** | `.dhow.yml` schema + validator + CEL, DAG/matrix, artifacts, cache, container-image plugins, `dhow lint` CLI, Git providers (GitHub App, GitLab, Bitbucket, Gitea/Forgejo/generic), fork-PR policy | Real repos on all four providers run multi-job pipelines | XL |
-| M5 | **Secrets & environments** | Envelope encryption, KEK rotation, scoped secrets, runner-side masking, workload OIDC issuer, environments + protection rules + approvals | Secrets never appear in API, logs or notifications (tested); approval flow works end to end | L |
-| M6 | **Deploy targets** | SSH/VPS atomic releases + health checks + auto-rollback, Docker/Compose, Kubernetes, Static/CDN/SFTP, external-CI artifact ingestion (official GitHub Action and GitLab component) | Each target deploys, fails a health check, and auto-rolls back in an E2E test | XL |
-| M7 | **Product UI** | Full workspace: overview, deployment panels, virtualized log viewer, visual pipeline editor (writes YAML, opens a PR), approvals, settings, notifications (Email, webhook, Slack, Teams, Telegram, Discord, WhatsApp) | Performance budgets met; WCAG 2.2 AA audit passed; Arabic copy reviewed | XL |
-| M8 | **Editions** | License file + entitlements, `ee/` features (SAML/SCIM, custom roles, multi-reviewer, windows, HA, canary, Vault/KMS, microVM, SIEM, air-gapped bundle) | The paid features work behind entitlements; expiry degrades gracefully | XL |
-| M9 | **Hardening** | Threat-model review, fuzzing (YAML, CEL, webhooks), load tests, chaos tests (runner and DB loss), backup and restore drill, external penetration test, external review of the authentication flows (from the [M2 checklist](security/auth-review-checklist.md)), fix all findings | No open critical or high findings | L |
-| M10 | **Public beta** | Install methods hardened for beta (the Compose stack, the binary with the interactive installer, and Helm ship earlier), docs site (ar/en), Deploy Center v3 importer, community channels | First external teams in production | M |
-| M11 | **v1.0 GA** | Stabilization, upgrade guarantees, signed releases, security advisory process | GA release | M |
+| M0 | **اعتماد التصميم** | نظام التصميم (لون الهوية، والخطوط العربية واللاتينية، والـ tokens، والمكوّنات الأساسية، والشاشات الرئيسية في RTL وLTR، والوضعين الداكن والفاتح)؛ والمعمارية، ونموذج الأمان، ومواصفات خطوات النشر، والنسخ؛ وقبول الـ ADRs | يعتمد Sabry نظام التصميم والـ ADRs | M |
+| M1 | **الأساسات** | Monorepo، وCI إلزامي (اختبارات، وlint، وفحص الثغرات، وCodeQL، وSBOM، والتوقيع)، وهيكل سيرفر Go، وتحديثات Postgres مع القفل، والتحقق من الإعدادات (الإغلاق عند الخطأ)، وخط OpenAPI، وإطار الواجهة (مساحة العمل، واللوحات، و⌘K، والترجمة ar/en) | `docker compose up` يشغّل نسخة فارغة وآمنة | L |
+| M2 | **الهوية والمؤسسات** | إعداد صاحب النسخة، والدعوات، وكلمة السر + TOTP + مفاتيح المرور + OIDC، والجلسات مع التدوير والإلغاء، والمؤسسات، والفرق، والأدوار الثابتة، وسياسة `can()` + اختبارات جدول المسارات، ومفاتيح API، وسجل الأحداث | كل اختبارات الصلاحيات ناجحة؛ ومراجعة داخلية لمسارات الدخول بلا نتيجة حرجة أو عالية مفتوحة ([قائمة الفحص](security/auth-review-checklist.md))؛ والمراجعة الخارجية انتقلت إلى M9 | L |
+| M3 | **أجهزة التشغيل والعزل** | الملف التنفيذي لجهاز التشغيل، والتسجيل والهوية، والحجز عبر Connect، والبيئة المعزولة في حاوية بلا root مع الحدود وسياسة الشبكة، وخيار gVisor، وبث السجلات (seq + SSE)، والإلغاء، والمطابقة (reconciliation)، وHelm chart للسيرفر وأجهزة التشغيل (Pod مقيّد لكل تشغيل على Kubernetes). الخطة: `Plan/M3-Runner.md` | يعمل التشغيل معزولًا؛ وقتل جهاز التشغيل في منتصف التشغيل يُعالَج بشكل صحيح | XL |
+| M4 | **خطوات النشر** | مخطط `.dhow.yml` + المدقق + CEL، وDAG/matrix، والملفات الناتجة (artifacts)، والـ cache، وإضافات صور الحاويات، وأمر `dhow lint` في CLI، ومزوّدو Git (GitHub App، وGitLab، وBitbucket، وGitea/Forgejo/عام)، وسياسة PRs من الـ forks | مستودعات حقيقية على المزوّدين الأربعة تشغّل خطوات نشر بعدة تشغيلات | XL |
+| M5 | **الأسرار والبيئات** | التشفير المغلّف (envelope encryption)، وتدوير KEK، والأسرار المحدودة النطاق، والإخفاء في جهاز التشغيل، ومُصدِر OIDC للأحمال، والبيئات + قواعد الحماية + الموافقات | الأسرار لا تظهر أبدًا في الـ API أو السجلات أو الإشعارات (مختبَر)؛ ومسار الموافقة يعمل من البداية إلى النهاية | L |
+| M6 | **أهداف النشر** | إصدارات SSH/VPS الذرية + فحوص الصحة + الرجوع التلقائي، وDocker/Compose، وKubernetes، وStatic/CDN/SFTP، واستقبال الملفات الناتجة من CI خارجي (GitHub Action رسمية ومكوّن GitLab) | كل هدف ينشر، ويفشل في فحص صحة، ويرجع تلقائيًا في اختبار E2E | XL |
+| M7 | **واجهة المنتج** | مساحة العمل الكاملة: النظرة العامة، ولوحات النشر، وعارض سجلات افتراضي (virtualized)، ومحرر مرئي لخطوات النشر (يكتب YAML ويفتح PR)، والموافقات، والإعدادات، والإشعارات (البريد، وwebhook، وSlack، وTeams، وTelegram، وDiscord، وWhatsApp) | تحقيق ميزانيات الأداء؛ ونجاح مراجعة WCAG 2.2 AA؛ ومراجعة النصوص العربية | XL |
+| M8 | **النسخ التجارية** | ملف الترخيص + الاستحقاقات، وميزات `ee/` (SAML/SCIM، والأدوار المخصصة، وتعدد المراجعين، ونوافذ النشر، وHA، وcanary، وVault/KMS، وmicroVM، وSIEM، وحزمة بلا إنترنت) | الميزات المدفوعة تعمل خلف الاستحقاقات؛ وانتهاء الترخيص يقلّل الميزات بهدوء | XL |
+| M9 | **التحصين** | مراجعة نموذج التهديدات، والـ fuzzing (YAML، وCEL، وwebhooks)، واختبارات الحمل، واختبارات الفوضى (فقد جهاز التشغيل وقاعدة البيانات)، وتمرين النسخ الاحتياطي والاسترجاع، واختبار اختراق خارجي، ومراجعة خارجية لمسارات الدخول (من [قائمة فحص M2](security/auth-review-checklist.md))، وإصلاح كل النتائج | لا نتائج حرجة أو عالية مفتوحة | L |
+| M10 | **النسخة التجريبية العامة** | تحصين طرق التثبيت للنسخة التجريبية (حزمة Compose، والملف التنفيذي مع المثبّت التفاعلي، وHelm تأتي قبل ذلك)، وموقع الوثائق (ar/en)، وأداة استيراد Deploy Center v3، وقنوات المجتمع | أول فرق خارجية في الإنتاج | M |
+| M11 | **v1.0 GA** | الاستقرار، وضمانات الترقية، والإصدارات الموقّعة، وآلية الإعلانات الأمنية | إصدار GA | M |
 
-**In parallel, before M1:** the Deploy Center **v3.0.1 security hotfix** for existing users (ADR-0002).
+**بالتوازي، قبل M1:** **الإصلاح الأمني v3.0.1** لـ Deploy Center للمستخدمين الحاليين (ADR-0002).
 
-**After GA:** the managed control plane (ADR-0020), a runner autoscaler, a plugin registry with verified publishers, a Terraform provider, and more languages.
+**بعد GA:** لوحة التحكم المُدارة (ADR-0020)، والتوسع التلقائي لأجهزة التشغيل، وسجل إضافات مع ناشرين موثّقين، ومزوّد Terraform، ولغات أخرى.

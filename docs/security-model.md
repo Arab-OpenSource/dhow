@@ -1,198 +1,200 @@
-# Security model
+[English](en/security-model.md)
 
-Status: **Draft v0.2**. Security is the product: every design choice below is a default, not an option.
+# نموذج الأمان
 
-## 1. Assets
+الحالة: **مسودة v0.2**. الأمان هو المنتج: كل قرار تصميم في هذه الصفحة هو الوضع الافتراضي، وليس خيارًا.
 
-The assets to protect are:
-- Deployment targets: production servers and clusters.
-- Secrets: environment secrets, target credentials and the KEK.
-- Source code and artifacts.
-- The audit trail.
-- User accounts and sessions.
+## 1. الأصول
 
-## 2. Threat model
+الأصول التي نحميها:
+- أهداف النشر: سيرفرات الإنتاج والعناقيد (clusters).
+- الأسرار: أسرار البيئات، وبيانات دخول الأهداف، ومفتاح تشفير المفاتيح (KEK).
+- الكود المصدري والملفات الناتجة (artifacts).
+- سجل الأحداث.
+- حسابات المستخدمين وجلساتهم.
 
-| Actor | Capability | Primary controls |
+## 2. نموذج التهديدات
+
+| المهاجم | ما يستطيعه | الضوابط الأساسية |
 |---|---|---|
-| **Malicious or compromised developer** | Can push code and edit `.dhow.yml` in repos they can write to | Sandboxed runners (no host access); environment protection rules and approvals; secrets scoped per environment; branch restrictions per environment; audit |
-| **External contributor (PR from a fork)** | Can open PRs, so attacker-controlled code reaches CI | Fork PR jobs run with **no secrets** and are restricted to non-deploy environments. Running them needs maintainer approval, and the pipeline definition always comes from the base branch for privileged events |
-| **Compromised runner host** | Full control of one runner | A runner only receives secrets for jobs leased to it. A runner identity can be revoked instantly. Runners can be pinned to environments through labels and pools. Runners never get control-plane credentials or database access |
-| **Network attacker** | MITM between components or against targets | TLS everywhere. Runner identity keys are pinned, and the control plane signs every lease grant with a key the runner pinned at registration, so a compromised proxy cannot inject jobs. Secrets are sealed end to end to the runner's key (HPKE). SSH host keys and TLS fingerprints are pinned per target. Webhooks are verified with HMAC and replay protection |
-| **Stolen session or token** | Holds a user's cookie or API token | Server-side sessions with an idle and an absolute timeout. A session is revoked at once by sign-out, password change, MFA change, role change or an admin action. Cookies are `HttpOnly`, `Secure` and `SameSite=Strict`, and every state-changing request needs a CSRF token. High-risk actions require re-authentication. API tokens are scoped and expire |
-| **Unauthenticated internet attacker** | Can reach the public endpoints | Registration is closed. Every route requires authentication by default. Rate limits apply per IP *and* per account. There is no unauthenticated realtime channel |
-| **Malicious plugin author** | Publishes a step image | Plugins run inside the job sandbox with the job's privileges only. Plugins are referenced by digest. The registry marks verified publishers and requires signatures (cosign) |
+| **مطوّر خبيث أو مخترَق** | يستطيع رفع الكود وتعديل `.dhow.yml` في المستودعات التي يكتب فيها | أجهزة تشغيل معزولة (بلا وصول إلى الجهاز)؛ وقواعد حماية البيئات والموافقات؛ وأسرار محدودة لكل بيئة؛ وقيود الفروع لكل بيئة؛ وسجل الأحداث |
+| **مساهم خارجي (PR من fork)** | يستطيع فتح PRs، فيصل كود يتحكم فيه المهاجم إلى CI | تشغيلات PRs من الـ forks تعمل **بلا أسرار**، ومحصورة في بيئات غير النشر. تشغيلها يحتاج إلى موافقة مسؤول مشاريع، وتعريف خطوات النشر يأتي دائمًا من الفرع الأساسي في الأحداث ذات الصلاحيات |
+| **جهاز تشغيل مخترَق** | تحكم كامل في جهاز تشغيل واحد | جهاز التشغيل لا يستلم إلا أسرار التشغيلات المحجوزة له. يمكن إلغاء هوية جهاز التشغيل فورًا. يمكن ربط أجهزة التشغيل ببيئات عبر الأوسمة والمجموعات. أجهزة التشغيل لا تحصل أبدًا على بيانات دخول لوحة التحكم أو على وصول إلى قاعدة البيانات |
+| **مهاجم في الشبكة** | هجوم الوسيط (MITM) بين المكوّنات أو على الأهداف | TLS في كل مكان. مفاتيح هوية أجهزة التشغيل مثبّتة، وتوقّع لوحة التحكم كل منحة حجز بمفتاح ثبّته جهاز التشغيل عند التسجيل، فلا يستطيع وكيل مخترَق أن يدسّ تشغيلات. الأسرار مختومة من الطرف إلى الطرف لمفتاح جهاز التشغيل (HPKE). مفاتيح SSH للأجهزة وبصمات TLS مثبّتة لكل هدف. نتحقق من الـ webhooks بـ HMAC مع الحماية من إعادة الإرسال |
+| **جلسة أو رمز مسروق** | يملك كوكي مستخدم أو مفتاح API | جلسات في السيرفر مع مهلة خمول ومهلة مطلقة. تُلغى الجلسة فورًا بالخروج، أو تغيير كلمة السر، أو تغيير MFA، أو تغيير الدور، أو إجراء من المدير. الكوكيز `HttpOnly` و`Secure` و`SameSite=Strict`، وكل طلب يغيّر الحالة يحتاج إلى رمز CSRF. الإجراءات عالية الخطورة تطلب إعادة التحقق. مفاتيح API محدودة الصلاحيات ولها تاريخ انتهاء |
+| **مهاجم من الإنترنت بلا حساب** | يصل إلى المسارات العامة | التسجيل مغلق. كل مسار يطلب تسجيل الدخول افتراضيًا. حدود الطلبات لكل IP *ولكل* حساب. لا توجد قناة مباشرة (realtime) بلا تسجيل دخول |
+| **كاتب إضافة خبيث** | ينشر صورة خطوة | الإضافات تعمل داخل البيئة المعزولة للتشغيل بصلاحيات التشغيل فقط. نشير إلى الإضافات بالـ digest. يميّز السجل الناشرين الموثّقين ويشترط التوقيعات (cosign) |
 
-## 3. Secure defaults
+## 3. الإعدادات الافتراضية الآمنة
 
-- **Registration.** Public registration is **closed**. The first owner account is created through a one-time setup URL. After that, users join by invitation. An external identity provider (OIDC or GitHub) only signs in an account that already exists and has linked that identity; it never creates an account (ADR-0039).
-- **Fail closed on weak configuration.** The server **refuses to boot** with missing, placeholder, short or reused secrets. Real environment variables take precedence over config files.
-- **TLS** is required outside localhost. HSTS is on. Cookies are `Secure`, `HttpOnly` and `SameSite=Strict`.
-- **Strict CSP:** `default-src 'self'`, no inline script, `frame-ancestors 'none'`. Trusted Types (`require-trusted-types-for 'script'`) are planned with the M7 browser tests; until then a project hook forbids every HTML sink (`innerHTML`, `dangerouslySetInnerHTML`) in the web code.
-- **No secret values in any API response, log line, error message or notification.**
+- **التسجيل.** التسجيل العام **مغلق**. حساب صاحب النسخة الأول يُنشأ عبر رابط إعداد يعمل مرة واحدة. بعد ذلك ينضم المستخدمون بدعوة. مزوّد الهوية الخارجي (OIDC أو GitHub) يُدخل فقط حسابًا موجودًا ربط هذه الهوية، ولا ينشئ حسابًا أبدًا (ADR-0039).
+- **الإغلاق عند الإعدادات الضعيفة.** **يرفض السيرفر البدء** مع أسرار ناقصة، أو مؤقتة، أو قصيرة، أو مكررة. متغيرات البيئة الحقيقية تغلب ملفات الإعدادات.
+- **TLS** مطلوب خارج localhost. HSTS مفعّل. الكوكيز `Secure` و`HttpOnly` و`SameSite=Strict`.
+- **CSP صارمة:** `default-src 'self'`، وبلا سكربتات مضمّنة، و`frame-ancestors 'none'`. نخطط لـ Trusted Types (`require-trusted-types-for 'script'`) مع اختبارات المتصفح في M7. حتى ذلك الوقت، hook في المشروع يمنع كل مداخل HTML (`innerHTML`، `dangerouslySetInnerHTML`) في كود الواجهة.
+- **لا قيم أسرار في أي رد API، أو سطر سجل، أو رسالة خطأ، أو إشعار.**
 
-## 4. Authentication (ADR-0013)
+## 4. المصادقة (ADR-0013)
 
-| Method | Edition |
+| الطريقة | النسخة |
 |---|---|
-| Password with Argon2id, breached-password check (k-anonymity, optional offline list) and max length | Community |
-| TOTP. Enrolling or changing it requires the current factor. Replay protection stores the last accepted step | Community |
-| **Passkeys (WebAuthn)**, the phishing-resistant method and the recommended default | Community |
-| OIDC login (Google, Keycloak, any OIDC IdP) and GitHub (OAuth 2.0), linked per account | Community |
-| SAML 2.0, SCIM provisioning, group→team sync | Business+ |
+| كلمة السر بـ Argon2id، مع فحص كلمات السر المسرّبة (k-anonymity، وقائمة بلا إنترنت اختيارية) وحد أقصى للطول | Community |
+| TOTP. تفعيله أو تغييره يحتاج إلى الخطوة الحالية. الحماية من إعادة الاستخدام تحفظ آخر خطوة مقبولة | Community |
+| **مفاتيح المرور (WebAuthn)**، الطريقة المقاومة للتصيّد، والخيار الافتراضي الموصى به | Community |
+| الدخول بـ OIDC (Google، وKeycloak، وأي مزوّد OIDC) وGitHub (OAuth 2.0)، بالربط لكل حساب | Community |
+| SAML 2.0، وتجهيز الحسابات بـ SCIM، ومزامنة المجموعات مع الفرق | Business+ |
 
-**Login flow.** The password step only yields a short-lived, single-use `mfa_pending` challenge that is bound to the user and the device. The second factor must present that challenge. A user id taken from the client is never trusted.
+**مسار الدخول.** خطوة كلمة السر تعطي فقط تحديًا `mfa_pending` قصير العمر، يعمل مرة واحدة، ومربوطًا بالمستخدم والجهاز. الخطوة الثانية يجب أن تقدّم هذا التحدي. لا نثق أبدًا بمعرّف مستخدم يأتي من العميل.
 
-- **The challenge.** A correct password for an account with TOTP or a passkey answers `202` and sets `__Host-dhow_mfa` (`HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`, 5 minutes). It holds 32 random bytes, and the server stores only their SHA-256. It is bound to the user and to a hash of the User-Agent, not to the IP address, because the address of a real user can change within the same minute (IPv4/IPv6 switching, mobile handover, CGNAT). Only `POST /api/v1/sessions/mfa` turns it into a session, and it works once. Five wrong codes burn it.
-- **Throttling.** Second-step attempts are counted per user and per client address before they are checked, like passwords ([section 5](#5-sessions-and-tokens-adr-0033)). The per-user counter is separate from the password counter, so passing the password again never buys more guesses.
-- **TOTP.** The secret (160 bits) is generated on the server and stored sealed with AES-256-GCM under a key derived from `DHOW_SECRET_KEY` (HKDF-SHA256, one label per purpose) with a random nonce per record and the user id as associated data. One step of clock skew is accepted on each side, and the last accepted step is stored, so a code never works twice. The QR code is drawn in the browser. The web app starts an enrollment only when the user asks for the QR code, and a pending enrollment activates nothing until a code from the new app is confirmed.
-- **Recovery codes.** Ten codes of 80 random bits each, shown once and stored as HMAC-SHA256 under a derived key. Each works once, and each use is audited.
-- **Passkeys.** The RP ID and the only accepted origin come from `DHOW_PUBLIC_URL`. Challenges are stored on the server, live 5 minutes and work once. Passwordless sign-in requires user verification. A sign-count that goes backwards is refused and audited.
-- **Changing a factor.** Turning TOTP on, off or replacing it, making new recovery codes, and adding or removing a passkey need a current factor in the same request: the password while the account has no second factor, and a TOTP code, recovery code or passkey afterwards. Every such change revokes the user's other sessions and is audited.
-- **Credential alerts.** When email is configured (`DHOW_SMTP_*`), the user gets an email in their own language after a password change, turning TOTP on or off, adding or removing a passkey, new recovery codes, linking or unlinking an external identity, a new API token, and an admin's MFA reset. It says what changed, when (UTC), the network (`/24` for IPv4, `/48` for IPv6) and the browser family, and links to the account page with the open sessions. The MFA-reset email leaves out the network and browser, which are the admin's. It never carries a secret value, a token name or a code. The email is sent in the background after the change is committed and audited, so a slow or failing mail server neither delays nor undoes the change; a failure is only logged, and at most 32 sends wait at once. Both the audit record and the alert are detached from the request, so a client that drops the connection right after the commit cannot skip them. Without email the audit log is the only record.
+- **التحدي.** كلمة السر الصحيحة لحساب له TOTP أو مفتاح مرور ترد بـ `202` وتضبط `__Host-dhow_mfa` (`HttpOnly`، `Secure`، `SameSite=Strict`، `Path=/`، 5 دقائق). فيه 32 بايت عشوائية، والسيرفر يحفظ فقط SHA-256 لها. مربوط بالمستخدم وبـ hash لـ User-Agent، وليس بعنوان IP، لأن عنوان المستخدم الحقيقي قد يتغير خلال الدقيقة نفسها (التبديل بين IPv4 وIPv6، أو انتقال الهاتف بين الشبكات، أو CGNAT). وحده `POST /api/v1/sessions/mfa` يحوّله إلى جلسة، ويعمل مرة واحدة. خمسة أكواد خاطئة تحرقه.
+- **الحد من المحاولات.** نعدّ محاولات الخطوة الثانية لكل مستخدم ولكل عنوان عميل قبل فحصها، مثل كلمات السر ([القسم 5](#5-الجلسات-والرموز-adr-0033)). عدّاد المستخدم منفصل عن عدّاد كلمة السر، فإدخال كلمة السر مرة أخرى لا يعطي محاولات تخمين إضافية.
+- **TOTP.** السر (160 بت) يُولَّد في السيرفر، ويُحفظ مختومًا بـ AES-256-GCM تحت مفتاح مشتق من `DHOW_SECRET_KEY` (HKDF-SHA256، بوسم لكل غرض)، مع nonce عشوائي لكل سجل، ومعرّف المستخدم كبيانات مرتبطة. نقبل فرق خطوة واحدة في الساعة في كل اتجاه، ونحفظ آخر خطوة مقبولة، فلا يعمل الكود مرتين أبدًا. نرسم رمز QR في المتصفح. تبدأ الواجهة التفعيل فقط عندما يطلب المستخدم رمز QR، والتفعيل المعلّق لا يفعّل شيئًا حتى يُؤكَّد كود من التطبيق الجديد.
+- **أكواد الطوارئ.** عشرة أكواد، كل منها 80 بت عشوائية، تظهر مرة واحدة وتُحفظ كـ HMAC-SHA256 تحت مفتاح مشتق. كل كود يعمل مرة واحدة، وكل استخدام يُسجَّل في سجل الأحداث.
+- **مفاتيح المرور.** معرّف RP والمصدر الوحيد المقبول يأتيان من `DHOW_PUBLIC_URL`. التحديات محفوظة في السيرفر، وتعيش 5 دقائق، وتعمل مرة واحدة. الدخول بلا كلمة سر يشترط التحقق من المستخدم. نرفض عدّاد التوقيع الذي يرجع إلى الخلف، ونسجّله في سجل الأحداث.
+- **تغيير خطوة.** تفعيل TOTP أو إيقافه أو استبداله، وإنشاء أكواد طوارئ جديدة، وإضافة مفتاح مرور أو إزالته، كلها تحتاج إلى خطوة حالية في الطلب نفسه: كلمة السر ما دام الحساب بلا خطوة ثانية، ثم كود TOTP أو كود طوارئ أو مفتاح مرور بعد ذلك. كل تغيير من هذه يلغي جلسات المستخدم الأخرى ويُسجَّل في سجل الأحداث.
+- **تنبيهات بيانات الدخول.** عند ضبط البريد (`DHOW_SMTP_*`)، يحصل المستخدم على رسالة بلغته بعد: تغيير كلمة السر، وتفعيل TOTP أو إيقافه، وإضافة مفتاح مرور أو إزالته، وأكواد طوارئ جديدة، وربط هوية خارجية أو فكّها، ومفتاح API جديد، وإعادة ضبط MFA من مدير. تقول الرسالة ما الذي تغيّر، ومتى (UTC)، والشبكة (`/24` لـ IPv4، و`/48` لـ IPv6)، ونوع المتصفح، وتربط بصفحة الحساب مع الجلسات المفتوحة. رسالة إعادة ضبط MFA لا تذكر الشبكة والمتصفح، لأنهما للمدير. لا تحمل أبدًا قيمة سر أو اسم رمز أو كودًا. تُرسل الرسالة في الخلفية بعد حفظ التغيير وتسجيله، فخادم البريد البطيء أو الفاشل لا يؤخر التغيير ولا يلغيه. الفشل يُكتب في السجل فقط، و32 إرسالًا بالأكثر تنتظر في الوقت نفسه. سجل الحدث والتنبيه كلاهما منفصلان عن الطلب، فالعميل الذي يقطع الاتصال بعد الحفظ مباشرة لا يستطيع تخطيهما. بدون بريد، سجل الأحداث هو السجل الوحيد.
 
-**External identity providers (ADR-0039).** Providers are configured only through the environment (`DHOW_OIDC_PROVIDERS`, see [Sign in with OIDC](guides/oidc.md)), and any invalid provider stops the server. Two providers cannot share an issuer. Discovery happens on first use, so an unreachable provider disables only that provider (`503 OIDC_PROVIDER_UNAVAILABLE`); one discovery runs at a time and no caller waits past its own deadline. The authorization, token and JWKS endpoints the provider announces must be `https` (plain `http` only with `DHOW_DEV=true`), otherwise the provider counts as unavailable. Flow rows are deleted a day after they expire (see [Retention of temporary rows](#retention-of-temporary-rows)).
+**مزوّدو الهوية الخارجيون (ADR-0039).** نضبط المزوّدين عبر البيئة فقط (`DHOW_OIDC_PROVIDERS`، راجع [تسجيل الدخول بـ OIDC](guides/oidc.md))، وأي مزوّد غير صالح يوقف السيرفر. لا يشترك مزوّدان في مُصدِر واحد. الاكتشاف (discovery) يحدث عند أول استخدام، فالمزوّد الذي لا يرد يوقف هذا المزوّد فقط (`503 OIDC_PROVIDER_UNAVAILABLE`). يعمل اكتشاف واحد في كل مرة، ولا ينتظر أي طالب بعد مهلته. عناوين التفويض والرموز وJWKS التي يعلنها المزوّد يجب أن تكون `https` (و`http` العادي فقط مع `DHOW_DEV=true`)، وإلا يُعتبر المزوّد غير متاح. نحذف صفوف المسارات بعد يوم من انتهائها (راجع [الاحتفاظ بالصفوف المؤقتة](#الاحتفاظ-بالصفوف-المؤقتة)).
 
-- **The flow.** `POST /api/v1/oidc/authorize` sets `__Host-dhow_oidc` (32 random bytes, `HttpOnly`, `Secure`, `SameSite=Strict`, 10 minutes) and returns the provider URL with a random `state`, a PKCE `S256` challenge and, for OIDC, a `nonce`. The PKCE verifier and the nonce are not stored: they are HMACs of the cookie under a key derived from `DHOW_SECRET_KEY`. The server stores only SHA-256 hashes of the cookie, the state and the User-Agent, so a database copy cannot finish a flow.
-- **The callback.** The provider returns to the web page `<DHOW_PUBLIC_URL>/oidc/callback/<id>` (one URL per provider, against mix-up attacks), which strips `code` and `state` from the address and posts them once to `POST /api/v1/oidc/callback`. The flow row is consumed before the code is exchanged; a missing or forged cookie, a wrong state, another browser, another provider, or a used or expired flow burns it without contacting the provider and answers `400 OIDC_FLOW_INVALID`.
-- **The ID token** is verified with `go-oidc`: signature against the provider's JWKS, issuer, audience, expiry, `azp` when present or when there are several audiences, and the nonce in constant time. Provider responses are capped at 1 MB, redirects are refused, and calls time out after 10 seconds. GitHub has no ID token: the subject is the numeric account `id` from `GET /user`, never the login, which can be renamed and reused.
-- **Linking.** An identity is matched only by `(issuer, subject)`, under a unique index. The email from the provider is shown but never used to find an account, so an identity whose email equals an existing account's email cannot sign in to it (`401 OIDC_NOT_LINKED`). Linking and unlinking happen from the account page, need the current factor and a browser session, revoke the user's other sessions and are audited. The last sign-in method (password, passkey or linked identity) can never be unlinked (`409 LAST_SIGN_IN_METHOD`), checked under a row lock on the user.
-- **Allowed domains.** `DHOW_OIDC_<ID>_ALLOWED_DOMAINS` accepts an identity only if it has a verified email whose domain is exactly one of the list; otherwise `403 OIDC_DOMAIN_NOT_ALLOWED`, both at sign-in and when linking.
-- **Second step and session.** An account with TOTP or a passkey gets the same `mfa_pending` challenge as after a password; the provider's own MFA does not replace Dhow's. The challenge keeps the first step, so the `auth.login` event records both: `Method` is the second step and `FirstMethod` is `oidc:<id>` or `password`. A successful sign-in rotates the session exactly like a password sign-in. A Dhow session is independent of the provider session: signing out of the provider does not sign out of Dhow.
+- **المسار.** `POST /api/v1/oidc/authorize` يضبط `__Host-dhow_oidc` (32 بايت عشوائية، `HttpOnly`، `Secure`، `SameSite=Strict`، 10 دقائق)، ويُرجع رابط المزوّد مع `state` عشوائي، وتحدي PKCE `S256`، و`nonce` مع OIDC. لا نحفظ قيمة تحقق PKCE ولا الـ nonce: هما HMAC للكوكي تحت مفتاح مشتق من `DHOW_SECRET_KEY`. يحفظ السيرفر فقط SHA-256 للكوكي والـ state والـ User-Agent، فنسخة من قاعدة البيانات لا تستطيع إكمال مسار.
+- **العودة (callback).** يعيد المزوّد إلى صفحة الويب `<DHOW_PUBLIC_URL>/oidc/callback/<id>` (رابط لكل مزوّد، ضد هجمات الخلط mix-up)، التي تحذف `code` و`state` من العنوان وترسلهما مرة واحدة إلى `POST /api/v1/oidc/callback`. نستهلك صف المسار قبل تبادل الكود. الكوكي الناقص أو المزوّر، أو الـ state الخاطئ، أو متصفح آخر، أو مزوّد آخر، أو مسار مستخدم أو منتهي، كلها تحرقه بدون الاتصال بالمزوّد، والرد `400 OIDC_FLOW_INVALID`.
+- **رمز الهوية (ID token)** نتحقق منه بـ `go-oidc`: التوقيع مقابل JWKS لدى المزوّد، والمُصدِر، والجمهور (audience)، والانتهاء، و`azp` عند وجوده أو عند تعدد الجمهور، والـ nonce بزمن ثابت. ردود المزوّد محدودة بـ 1 MB، ونرفض التحويلات، والطلبات تنتهي مهلتها بعد 10 ثوانٍ. GitHub ليس فيه رمز هوية: الـ subject هو رقم الحساب `id` من `GET /user`، وليس اسم الدخول أبدًا، لأن اسم الدخول يمكن تغييره وإعادة استخدامه.
+- **الربط.** نطابق الهوية فقط بـ `(issuer, subject)`، تحت فهرس فريد. البريد من المزوّد يظهر، لكنه لا يُستخدم أبدًا للعثور على حساب. لذلك الهوية التي بريدها يساوي بريد حساب موجود لا تستطيع الدخول إليه (`401 OIDC_NOT_LINKED`). الربط والفك من صفحة الحساب، ويحتاجان إلى الخطوة الحالية وجلسة متصفح، ويلغيان جلسات المستخدم الأخرى، ويُسجَّلان. آخر طريقة دخول (كلمة سر، أو مفتاح مرور، أو هوية مربوطة) لا يمكن فكّها أبدًا (`409 LAST_SIGN_IN_METHOD`)، ونفحص ذلك تحت قفل على صف المستخدم.
+- **النطاقات المسموحة.** `DHOW_OIDC_<ID>_ALLOWED_DOMAINS` تقبل الهوية فقط إذا كان لها بريد موثّق نطاقه واحد من القائمة بالضبط. وإلا يكون الرد `403 OIDC_DOMAIN_NOT_ALLOWED`، عند الدخول وعند الربط.
+- **الخطوة الثانية والجلسة.** الحساب الذي له TOTP أو مفتاح مرور يحصل على تحدي `mfa_pending` نفسه كما بعد كلمة السر. خطوات التحقق لدى المزوّد لا تحل محل خطوات داو (Dhow). يحتفظ التحدي بالخطوة الأولى، فيسجّل الحدث `auth.login` الاثنين: `Method` هي الخطوة الثانية، و`FirstMethod` هي `oidc:<id>` أو `password`. الدخول الناجح يدوّر الجلسة تمامًا مثل الدخول بكلمة السر. جلسة داو مستقلة عن جلسة المزوّد: الخروج من المزوّد لا يُخرجك من داو.
 
-**Lockout.** Lockout counters are per account and per IP, with exponential backoff (details in [section 5](#5-sessions-and-tokens-adr-0033)). Error messages are generic, and `make timing` shows no difference between the failure cases above max(10%, 300 µs) of the median (about 3.5 ms on password sign-in with the production Argon2id parameters, ADR-0040).
+**القفل.** عدّادات القفل لكل حساب ولكل IP، مع انتظار يتضاعف (التفاصيل في [القسم 5](#5-الجلسات-والرموز-adr-0033)). رسائل الخطأ عامة، و`make timing` لا يُظهر فرقًا بين حالات الفشل السابقة أكبر من max(10%, 300 µs) من الوسيط (حوالي 3.5 ms في الدخول بكلمة السر مع معاملات Argon2id الخاصة بالإنتاج، ADR-0040).
 
-**Rate limits (ADR-0040).** The public routes that start a flow or write a row (setup, password sign-in, the second step, passkey sign-in and its options, OIDC authorize and callback, invitation preview and accept) are limited per client network, an IPv4 address or an IPv6 `/64`, with fixed windows counted in PostgreSQL on the database's clock so every instance shares them. Only requests that pass the `Origin` check are counted, so a cross-site page cannot spend the limit of an office behind one NAT. A route-table test fails when a public write route is neither limited nor on a short exception list with its reason. Invitations are limited per member and per organization each hour, and one invitation is sent at most 5 times. Above a limit the answer is `429 RATE_LIMITED` with `Retry-After`. The defaults and their variables are in [Rate limits](install/configuration.md#rate-limits).
+**حدود الطلبات (ADR-0040).** المسارات العامة التي تبدأ مسارًا أو تكتب صفًا (الإعداد، والدخول بكلمة السر، والخطوة الثانية، والدخول بمفتاح المرور وخياراته، وبدء OIDC والعودة منه، ومعاينة الدعوة وقبولها) محدودة لكل شبكة عميل، أي عنوان IPv4 أو نطاق IPv6 `/64`. نعدّها بنوافذ ثابتة في PostgreSQL بساعة قاعدة البيانات، فتشترك فيها كل نسخ السيرفر. لا نعدّ إلا الطلبات التي تنجح في فحص `Origin`، فلا تستطيع صفحة من موقع آخر استهلاك حد مكتب خلف NAT واحد. يفشل اختبار لجدول المسارات عندما يكون مسار كتابة عام غير محدود وغير مذكور في قائمة استثناءات قصيرة مع سببه. الدعوات محدودة لكل عضو ولكل مؤسسة في كل ساعة، والدعوة الواحدة تُرسل 5 مرات بالأكثر. فوق الحد يكون الرد `429 RATE_LIMITED` مع `Retry-After`. القيم الافتراضية ومتغيراتها في [حدود الطلبات](install/configuration.md#حدود-الطلبات).
 
-## 5. Sessions and tokens (ADR-0033)
+## 5. الجلسات والرموز (ADR-0033)
 
-The web UI and the API are served from the same origin, so browsers use **server-side sessions** with a cookie. There is no JWT for browsers: a JWT would still need a server-side lookup on every request to be revocable, and it would live in JavaScript.
+الواجهة والـ API يُخدمان من المصدر نفسه، لذلك تستخدم المتصفحات **جلسات في السيرفر** مع كوكي. لا JWT للمتصفحات: الـ JWT سيحتاج إلى بحث في السيرفر مع كل طلب حتى يمكن إلغاؤه، وسيعيش في JavaScript.
 
-- **Cookie.** `__Host-dhow_session` with `HttpOnly`, `Secure`, `SameSite=Strict` and `Path=/`, and no `Domain`. The `__Host-` prefix makes browsers refuse a cookie set by a sub-domain or over plain HTTP. `Secure` is always set, because the public URL is HTTPS by design.
-- **Session id.** 32 random bytes. Only its SHA-256 hash is stored in `"Sessions"`, so a database leak does not yield usable cookies.
-- **Lifetime.** A session ends after **12 hours without activity** (idle timeout), **4 hours** for anyone who is an owner or admin in any organization, or **7 days** after sign-in (absolute timeout), whichever comes first. Both limits are checked on every request against the current role, so a promotion shortens a running session at once. `LastSeenAt` is written at most once a minute, so reads do not turn into writes.
-- **Rotation.** Signing in always issues a new session id and revokes the session the request carried. When a member's effective role in any organization changes (a direct role change, a team binding, joining or leaving a team, removal), every session of that member is revoked, so the next request needs a fresh sign-in and a new id. The person making the change keeps only the session they are using. Accepting an invitation while signed in keeps the current session: session ids are only ever minted at sign-in, so there is nothing to fixate (ADR-0038).
-- **Revocation is immediate.** Every request checks the session row, with no cache. Sign-out, password change, MFA change, role change, an admin "sign out everywhere" and "sign out of every other device" all revoke sessions server-side. A disabled or deleted user loses every session at once.
+- **الكوكي.** `__Host-dhow_session` مع `HttpOnly` و`Secure` و`SameSite=Strict` و`Path=/`، وبلا `Domain`. البادئة `__Host-` تجعل المتصفحات ترفض كوكي يضبطه نطاق فرعي أو يأتي عبر HTTP العادي. `Secure` مضبوط دائمًا، لأن العنوان العام HTTPS في التصميم.
+- **معرّف الجلسة.** 32 بايت عشوائية. نحفظ فقط SHA-256 له في `"Sessions"`، فتسريب قاعدة البيانات لا يعطي كوكيز صالحة.
+- **العمر.** تنتهي الجلسة بعد **12 ساعة بلا نشاط** (مهلة الخمول)، و**4 ساعات** لأي شخص هو صاحب مؤسسة أو مدير في أي مؤسسة، أو بعد **7 أيام** من الدخول (المهلة المطلقة)، أيها أسبق. نفحص الحدين مع كل طلب مقابل الدور الحالي، فالترقية تقصّر الجلسة الجارية فورًا. نكتب `LastSeenAt` مرة في الدقيقة بالأكثر، حتى لا تتحول القراءات إلى كتابات.
+- **التدوير.** الدخول يصدر دائمًا معرّف جلسة جديدًا، ويلغي الجلسة التي حملها الطلب. عندما يتغير الدور الفعلي لعضو في أي مؤسسة (تغيير دور مباشر، أو ربط فريق، أو الانضمام إلى فريق أو مغادرته، أو الإزالة)، نلغي كل جلسات هذا العضو، فيحتاج الطلب التالي إلى دخول جديد ومعرّف جديد. الشخص الذي يجري التغيير يحتفظ فقط بالجلسة التي يستخدمها. قبول دعوة أثناء الدخول يُبقي الجلسة الحالية: معرّفات الجلسات لا تُصدر إلا عند الدخول، فلا يوجد ما يمكن تثبيته (ADR-0038).
+- **الإلغاء فوري.** كل طلب يفحص صف الجلسة، بلا cache. الخروج، وتغيير كلمة السر، وتغيير MFA، وتغيير الدور، و"اخرج من كل مكان" من المدير، و"اخرج من كل الأجهزة الأخرى"، كلها تلغي الجلسات في السيرفر. المستخدم الموقوف أو المحذوف يفقد كل جلساته فورًا.
 - **CSRF.**
-  - Every request that is not `GET`, `HEAD` or `OPTIONS` needs an `X-CSRF-Token` header and an `Origin` header equal to `DHOW_PUBLIC_URL`. Otherwise the answer is `403 CSRF_FAILED`.
-  - The token is an HMAC of the session id under a key derived from `DHOW_SECRET_KEY`. It is bound to one session, `GET /api/v1/me` returns it, and the server stores only its hash.
-  - Sign-in and setup have no session yet, so they skip the token but still check `Origin`.
-  - Responses of the API are never cacheable (`Cache-Control: no-store`).
-- **Passwords.** Argon2id (m=19 MiB, t=2, p=1, 16-byte salt, 32-byte key), stored as a PHC string and compared in constant time. A hash made with older parameters is replaced after the next successful sign-in. The length is 12 to 128 characters.
-  - **Breached passwords.** When a password is set or changed, the server asks the Have I Been Pwned range API. Only the first 5 hex characters of the password's SHA-1 leave the server (k-anonymity), padding is requested, and the call times out after 3 seconds. If the service cannot be reached, the change goes through and a warning is logged. `DHOW_BREACHED_PASSWORD_CHECK=false` turns the check off for isolated networks.
-- **Sign-in throttling.** Failures are counted per account and per client address, where an IPv6 client counts per `/64`. After 5 failures for an account, or 20 for an address, the key is locked for 30 seconds, and every further failure doubles the lock up to 15 minutes. A key forgets its failures after an hour without one, and a successful sign-in resets the account. Attempts are counted before the password is checked, in one transaction that locks both counters, so a burst of parallel guesses gets no more attempts than a slow one. Attempts made during a lock are refused without being counted, so nobody can extend a lock. A locked key answers with the same generic `INVALID_CREDENTIALS` error plus `Retry-After`. Unknown accounts are throttled exactly like real ones, and the unknown-account path still runs a full Argon2id verification, so neither the answer nor its timing shows whether an account exists.
-- **CLI, CI and integrations** use **personal API tokens**, never a session (ADR-0039).
-  - **Format and storage.** `dhow_pat_` followed by 32 random bytes in base64url, so secret scanners can detect them. Only an HMAC-SHA256 under a key derived from `DHOW_SECRET_KEY` is stored, and the value is shown once, in the creation response.
-  - **Scope.** A token belongs to one organization and to the creator's membership row, and carries explicit scopes that are policy actions (`org.read`, `org.update`, `member.read`, `member.manage`, `audit.read`, `runner.read`, `runner.manage`, `job.read`, `job.cancel`). `job.create` is not a scope: a job runs any image on any runner of the organization, so creating jobs needs a browser session. Every scope must be allowed by the creator's role at creation (`403 SCOPE_NOT_ALLOWED`). Expiry is mandatory, 1 to 366 days, and a user can hold at most 50 active tokens.
-  - **Never above the creator.** On every request a token is allowed an action only if the action is in its scopes **and** the creator's current effective role allows it. A demotion narrows the token at once, a promotion never widens it, and leaving or being removed from the organization, a disabled account or a deleted organization stops it for good.
-  - **Creating** a token needs a browser session and the current factor. The owner lists and revokes their tokens from `/api/v1/me/api-tokens`; Owners and Admins (`token.manage`) can list and revoke every token of the organization. Revoking needs no factor. In the web app they do it from **Organization → API tokens** (the organization footer, the Settings tab or the command palette), which shows each token's creator, scopes, creation, last use and expiry but never a value.
-  - **Which routes.** Only `Authorization: Bearer dhow_pat_…` counts as a token; other schemes are ignored. A route accepts tokens only if its policy row says so explicitly (`AllowTokens`), and `openapi.yaml` declares the `ApiToken` scheme on exactly those routes, which a test enforces. A token on any other route, public or not, answers `403 SESSION_REQUIRED`: password, MFA, passkeys, linked identities, preferences, sessions, token management, leaving an organization (including removing your own membership), transferring ownership and creating jobs are browser-only. A token can never confirm a current factor.
-  - **No mixing.** A Bearer token together with a Dhow cookie answers `401`. Bearer requests skip the `Origin` and CSRF checks, because browsers never attach an `Authorization` header on their own and the server sends no CORS headers. Runner tokens (`dhow_rat_`) are refused on the REST API, and personal tokens are refused on `/runner-api/`.
-  - `LastUsedAt` and `LastUsedIp` are written at most once a minute.
-  - **Credential events.** An admin's MFA reset revokes every token of the member together with their sessions, because it is the path for recovering a compromised account whose owner may not hold it. Changing the password or a factor and "sign out of every other device" do not revoke tokens: a token is a separate credential for automation, bound to the membership and role and limited by its scopes and expiry, and revoking it on a routine password change would silently stop CI. Someone who suspects a compromise revokes their tokens from the account page, and disabling the account stops all of them.
+  - كل طلب غير `GET` و`HEAD` و`OPTIONS` يحتاج إلى ترويسة `X-CSRF-Token`، وترويسة `Origin` مساوية لـ `DHOW_PUBLIC_URL`. وإلا يكون الرد `403 CSRF_FAILED`.
+  - الرمز HMAC لمعرّف الجلسة تحت مفتاح مشتق من `DHOW_SECRET_KEY`. مربوط بجلسة واحدة، ويُرجعه `GET /api/v1/me`، ويحفظ السيرفر الـ hash الخاص به فقط.
+  - الدخول والإعداد ليس لهما جلسة بعد، فيتخطيان الرمز لكنهما ما زالا يفحصان `Origin`.
+  - ردود الـ API لا تُخزَّن مؤقتًا أبدًا (`Cache-Control: no-store`).
+- **كلمات السر.** Argon2id (m=19 MiB، t=2، p=1، salt بـ 16 بايت، مفتاح بـ 32 بايت)، محفوظة كنص PHC، ومقارنة بزمن ثابت. الـ hash المصنوع بمعاملات أقدم يُستبدل بعد الدخول الناجح التالي. الطول من 12 إلى 128 حرفًا.
+  - **كلمات السر المسرّبة.** عند ضبط كلمة سر أو تغييرها، يسأل السيرفر range API من Have I Been Pwned. أول 5 حروف hex فقط من SHA-1 لكلمة السر تخرج من السيرفر (k-anonymity)، ونطلب الحشو (padding)، وتنتهي مهلة الطلب بعد 3 ثوانٍ. إذا لم نصل إلى الخدمة، يمر التغيير ونكتب تحذيرًا. `DHOW_BREACHED_PASSWORD_CHECK=false` يوقف الفحص للشبكات المعزولة.
+- **الحد من محاولات الدخول.** نعدّ الفشل لكل حساب ولكل عنوان عميل، وعميل IPv6 يُحسب لكل `/64`. بعد 5 محاولات فاشلة لحساب، أو 20 لعنوان، يُقفل المفتاح 30 ثانية، وكل فشل بعد ذلك يضاعف القفل حتى 15 دقيقة. ينسى المفتاح محاولاته الفاشلة بعد ساعة بلا فشل، والدخول الناجح يصفّر الحساب. نعدّ المحاولات قبل فحص كلمة السر، في معاملة واحدة تقفل العدّادين، فموجة التخمين المتوازية لا تحصل على محاولات أكثر من البطيئة. نرفض المحاولات أثناء القفل بدون عدّها، فلا يستطيع أحد إطالة القفل. المفتاح المقفل يرد بالخطأ العام نفسه `INVALID_CREDENTIALS` مع `Retry-After`. الحسابات غير الموجودة تُحد تمامًا مثل الحقيقية، ومسار الحساب غير الموجود ما زال ينفّذ تحققًا كاملًا بـ Argon2id. لذلك لا الرد ولا زمنه يكشف هل الحساب موجود.
+- **الـ CLI وCI والتكاملات** تستخدم **مفاتيح API شخصية**، وليس جلسة أبدًا (ADR-0039).
+  - **الصيغة والحفظ.** `dhow_pat_` ثم 32 بايت عشوائية بصيغة base64url، حتى تكتشفها أدوات البحث عن الأسرار. نحفظ فقط HMAC-SHA256 تحت مفتاح مشتق من `DHOW_SECRET_KEY`، والقيمة تظهر مرة واحدة، في رد الإنشاء.
+  - **النطاق.** المفتاح لمؤسسة واحدة ولعضوية من أنشأه، ويحمل صلاحيات صريحة هي إجراءات السياسة (`org.read`، `org.update`، `member.read`، `member.manage`، `audit.read`، `runner.read`، `runner.manage`، `job.read`، `job.cancel`). `job.create` ليست صلاحية للمفاتيح: التشغيل يشغّل أي صورة على أي جهاز تشغيل في المؤسسة، فإنشاء التشغيلات يحتاج إلى جلسة متصفح. كل صلاحية يجب أن يسمح بها دور المنشئ عند الإنشاء (`403 SCOPE_NOT_ALLOWED`). تاريخ الانتهاء إلزامي، من يوم إلى 366 يومًا، وللمستخدم 50 مفتاحًا نشطًا بالأكثر.
+  - **لا يتجاوز المنشئ أبدًا.** مع كل طلب، يُسمح للمفتاح بإجراء فقط إذا كان الإجراء في صلاحياته **و**يسمح به الدور الفعلي الحالي للمنشئ. خفض الدور يضيّق المفتاح فورًا، والترقية لا توسّعه أبدًا. ومغادرة المؤسسة أو الإزالة منها، أو إيقاف الحساب، أو حذف المؤسسة، يوقف المفتاح نهائيًا.
+  - **إنشاء** المفتاح يحتاج إلى جلسة متصفح والخطوة الحالية. يعرض صاحبه مفاتيحه ويلغيها من `/api/v1/me/api-tokens`. ويستطيع أصحاب المؤسسة والمديرون (`token.manage`) عرض كل مفاتيح المؤسسة وإلغاءها. الإلغاء لا يحتاج إلى خطوة تحقق. في الواجهة يفعلون ذلك من **المؤسسة ← مفاتيح API** (أسفل المؤسسة، أو تبويب الإعدادات، أو لوحة الأوامر)، التي تعرض لكل مفتاح منشئه، وصلاحياته، وإنشاءه، وآخر استخدام، وانتهاءه، ولا تعرض القيمة أبدًا.
+  - **أي مسارات.** وحده `Authorization: Bearer dhow_pat_…` يُحسب مفتاحًا، ونتجاهل الصيغ الأخرى. المسار يقبل المفاتيح فقط إذا قال سطر سياسته ذلك صراحة (`AllowTokens`)، و`openapi.yaml` يعلن صيغة `ApiToken` على هذه المسارات بالضبط، ويفرض ذلك اختبار. المفتاح على أي مسار آخر، عامًا كان أو لا، يرد بـ `403 SESSION_REQUIRED`. كلمة السر، وMFA، ومفاتيح المرور، والهويات المربوطة، والتفضيلات، والجلسات، وإدارة المفاتيح، ومغادرة مؤسسة (ومنها إزالة عضويتك)، ونقل الملكية، وإنشاء التشغيلات، كلها للمتصفح فقط. المفتاح لا يستطيع أبدًا تأكيد خطوة حالية.
+  - **لا خلط.** مفتاح Bearer مع كوكي داو يرد بـ `401`. طلبات Bearer تتخطى فحص `Origin` وCSRF، لأن المتصفحات لا ترفق ترويسة `Authorization` من نفسها أبدًا، والسيرفر لا يرسل ترويسات CORS. نرفض رموز أجهزة التشغيل (`dhow_rat_`) على REST API، ونرفض المفاتيح الشخصية على `/runner-api/`.
+  - نكتب `LastUsedAt` و`LastUsedIp` مرة في الدقيقة بالأكثر.
+  - **أحداث بيانات الدخول.** إعادة ضبط MFA من المدير تلغي كل مفاتيح العضو مع جلساته، لأنها طريق استرجاع حساب مخترَق قد لا يملكه صاحبه. تغيير كلمة السر أو خطوة تحقق، و"اخرج من كل الأجهزة الأخرى"، لا تلغي المفاتيح. المفتاح بيانات دخول منفصلة للأتمتة، مربوط بالعضوية والدور، ومحدود بصلاحياته وتاريخ انتهائه، وإلغاؤه مع كل تغيير عادي لكلمة السر سيوقف CI بصمت. من يشك في اختراق يلغي مفاتيحه من صفحة الحساب، وإيقاف الحساب يوقفها كلها.
 
-### Retention of temporary rows
+### الاحتفاظ بالصفوف المؤقتة
 
-Rows that only exist to run a sign-in, a throttle or a rate limit are deleted for real once they can no longer matter, so the tables do not grow with every attempt (ADR-0040). Every 10 minutes one instance, chosen by a PostgreSQL advisory lock, deletes them in batches of 1000 with `FOR UPDATE SKIP LOCKED`, so a row a request is using is never touched and no table stays locked for long:
+الصفوف التي توجد فقط لتشغيل دخول، أو حد محاولات، أو حد طلبات، نحذفها فعليًا عندما لا يعود لها أثر، حتى لا تكبر الجداول مع كل محاولة (ADR-0040). كل 10 دقائق، تحذفها نسخة واحدة من السيرفر، يختارها advisory lock في PostgreSQL، في دفعات من 1000 مع `FOR UPDATE SKIP LOCKED`. هكذا لا نلمس أبدًا صفًا يستخدمه طلب، ولا يبقى أي جدول مقفلًا طويلًا:
 
-| Table | Deleted |
+| الجدول | متى نحذفه |
 |---|---|
-| `LoginThrottles`, `RunnerThrottles` | a day after the last failure, once no lock is active |
-| `AuthChallenges`, `OidcFlows`, `SetupTokens` | a day after they expire |
-| `Invitations` | 30 days after they expire or are revoked; accepted invitations stay |
-| `RateLimits` | an hour after their window ends |
+| `LoginThrottles`، `RunnerThrottles` | بعد يوم من آخر فشل، إذا لم يكن هناك قفل نشط |
+| `AuthChallenges`، `OidcFlows`، `SetupTokens` | بعد يوم من انتهائها |
+| `Invitations` | بعد 30 يومًا من انتهائها أو إلغائها. الدعوات المقبولة تبقى |
+| `RateLimits` | بعد ساعة من انتهاء نافذتها |
 
-These are the only deletes in the code base, all in one query file that a project hook checks: every other table, including the audit log, memberships, sessions and tokens, is only ever marked deleted.
+هذه هي عمليات الحذف الوحيدة في الكود، كلها في ملف استعلامات واحد يفحصه hook في المشروع. كل جدول آخر، ومنها سجل الأحداث والعضويات والجلسات والمفاتيح، نعلّم صفوفه كمحذوفة فقط.
 
-## 6. Authorization (ADR-0015)
+## 6. الصلاحيات (ADR-0015)
 
-- A **single policy function**, `can(subject, action, resource)`, is the only path to authorization.
-  - Handlers declare the action and resource, and middleware enforces them.
-  - Resource loaders are tenant-scoped, so a missing check results in "not found", not a data leak.
-- **Fixed roles** apply per scope (Organization → Project → Environment):
+- **دالة سياسة واحدة**، `can(subject, action, resource)`، هي الطريق الوحيد للصلاحيات.
+  - المعالِجات تعلن الإجراء والمورد، والـ middleware يفرضهما.
+  - محمّلات الموارد محصورة في المؤسسة (tenant)، فالفحص الناقص ينتج "غير موجود"، وليس تسريب بيانات.
+- **أدوار ثابتة** لكل نطاق (المؤسسة ← المشروع ← البيئة):
 
-| Role | Summary |
+| الدور | ملخص |
 |---|---|
-| Owner | Billing/license, org deletion, everything |
-| Admin | Manage org, members, runners, all projects |
-| Maintainer | Manage project settings, environments, protection rules, secrets |
-| Developer | Trigger deployments to environments their rules allow; read logs |
-| Viewer | Read-only on assigned projects |
+| صاحب المؤسسة | الفوترة والترخيص، وحذف المؤسسة، وكل شيء |
+| مدير | إدارة المؤسسة، والأعضاء، وأجهزة التشغيل، وكل المشاريع |
+| مسؤول مشاريع | إدارة إعدادات المشروع، والبيئات، وقواعد الحماية، والأسرار |
+| مطوّر | بدء النشر إلى البيئات التي تسمح بها قواعدها، وقراءة السجلات |
+| مشاهد | قراءة فقط في المشاريع المخصّصة له |
 
-- **Teams** group users, and roles can be granted to teams through role bindings. A binding has a scope (organization, project or environment); M2.3 implements the organization scope. A member's **effective role** is the highest of their direct role and the roles of every team they belong to, and it is computed in one place (`Core/Policy`). A binding can never grant Owner.
-- **Granting rules.** Nobody can grant a role above their own, members with a higher role can only be changed by someone at least as high, and only an Owner can make or unmake an Owner. Granting or removing Owner, transferring ownership and resetting another member's MFA all need the actor's current factor (password, TOTP or passkey). An Owner is never removed from an organization directly: their role is changed first, which needs the factor, so neither a stolen session nor an Owner's API token can remove a co-owner. Nobody changes their own role; they leave or transfer instead. The last Owner of an organization can never be removed, demoted or leave, and membership changes take a row lock on the organization so two parallel requests cannot both pass that check. Disabled or deleted accounts do not count as owners, so ownership never rests on them alone. Team writes and invitation acceptance re-check the actor's or inviter's role under the same lock, so a demotion that commits meanwhile is seen.
-- **Invitations.** An invitation names an email and a role no higher than the inviter's, and never Owner. The token is 32 random bytes, only its SHA-256 hash is stored, it works once and expires after 7 days, and a resend replaces it. The link carries the token in the URL fragment (`/invite#…`), which browsers never send to the server, and the page removes it from the address at once; the API takes it only in a request body. Accepting checks again that the inviter is still an active member with a role that may grant it; a resend makes its actor the inviter. A used, revoked, expired or unknown token answers with the same `410 INVITATION_INVALID`. A signed-in account joins only when its email matches the invitation, and nobody joins without a token. Email is optional (`DHOW_SMTP_*`): when sending fails, the invitation still exists, shows that the email failed, and the inviter can copy the link.
-- **Organizations.** By default only the instance owner (the account created at setup) can create more organizations; `DHOW_ORG_CREATION=any-user` opens it to every signed-in user. A request about an organization the caller is not a member of answers `404`.
-- **Admin MFA reset.** An Owner or Admin can reset another member's two-step sign-in after confirming their own current factor, only if their role is strictly higher than the member's effective role in every organization the member belongs to: an Owner resets an Admin and below, an Admin resets a Maintainer and below, and nobody resets someone of the same rank. The instance owner counts as an Owner everywhere. The member is signed out everywhere and asked to enroll again, and the audit event is marked high severity.
-- **Required second factor.** An Owner can require a second factor (TOTP or a passkey) in an organization: `off` (the default), `admins` (Owners and Admins) or `everyone`. Changing the rule needs a browser session, the Owner's current factor, and a second factor on the Owner's own account. A member the rule covers and who has no second factor gets 7 days from the later of the rule change and their joining, shown in the organization banner and in `GET /me` (`SecondFactorDue`). After that, the sensitive actions in that organization (`org.update`, ownership transfer, the security setting, `member.manage`, `runner.manage`, `job.create` and creating API tokens) answer `403 SECOND_FACTOR_REQUIRED`, for the session and for the member's API tokens alike, while reading stays allowed. Widening the rule gives a new grace period only to the roles it newly covers, so Owners and Admins who are already overdue stay blocked; narrowing it keeps the running one, and lowering it is audited with high severity. Each organization's rule applies only inside that organization. The check runs in the central `can()` policy from the current state on every request.
-- **Custom roles and OPA policies** come from `ee/`.
-- **Testing:** a test walks the **entire route table** for every role and scope and asserts the expected allow or deny result. A route without a declared policy fails the build.
+- **الفرق** تجمع المستخدمين، ويمكن منح الأدوار للفرق عبر روابط الأدوار (role bindings). للرابط نطاق (مؤسسة، أو مشروع، أو بيئة)، وM2.3 ينفّذ نطاق المؤسسة. **الدور الفعلي** للعضو هو الأعلى بين دوره المباشر وأدوار كل فرقه، ونحسبه في مكان واحد (`Core/Policy`). الرابط لا يمنح دور صاحب المؤسسة أبدًا.
+- **قواعد المنح.** لا أحد يمنح دورًا أعلى من دوره. الأعضاء الذين دورهم أعلى لا يغيّرهم إلا من هو في مستواهم على الأقل. وحده صاحب المؤسسة يجعل غيره صاحبًا للمؤسسة أو يسحب ذلك منه. منح دور صاحب المؤسسة أو سحبه، ونقل الملكية، وإعادة ضبط MFA لعضو آخر، كلها تحتاج إلى الخطوة الحالية لمن ينفّذها (كلمة السر، أو TOTP، أو مفتاح مرور). صاحب المؤسسة لا يُزال من المؤسسة مباشرة أبدًا: نغيّر دوره أولًا، وهذا يحتاج إلى الخطوة الحالية. لذلك لا تستطيع جلسة مسروقة ولا مفتاح API لصاحب المؤسسة إزالة صاحب مؤسسة آخر. لا أحد يغيّر دوره بنفسه، بل يغادر أو ينقل الملكية. آخر صاحب لمؤسسة لا يمكن أبدًا إزالته أو خفض دوره أو مغادرته. وتغييرات العضوية تأخذ قفلًا على صف المؤسسة، فلا ينجح طلبان متوازيان معًا في هذا الفحص. الحسابات الموقوفة أو المحذوفة لا تُحسب أصحابًا للمؤسسة، فلا تعتمد الملكية عليها وحدها أبدًا. كتابات الفرق وقبول الدعوات تعيد فحص دور المنفّذ أو صاحب الدعوة تحت القفل نفسه، فنرى أي خفض دور حُفظ في الأثناء.
+- **الدعوات.** الدعوة تذكر بريدًا ودورًا ليس أعلى من دور صاحب الدعوة، وليس صاحب المؤسسة أبدًا. الرمز 32 بايت عشوائية، ونحفظ فقط SHA-256 له. يعمل مرة واحدة، وتنتهي صلاحيته بعد 7 أيام، وإعادة الإرسال تستبدله. الرابط يحمل الرمز في جزء الـ fragment من الرابط (`/invite#…`)، الذي لا ترسله المتصفحات إلى السيرفر أبدًا، والصفحة تحذفه من العنوان فورًا. الـ API لا يأخذه إلا في جسم الطلب. القبول يتحقق مرة أخرى أن صاحب الدعوة ما زال عضوًا نشطًا بدور يسمح بمنحها، وإعادة الإرسال تجعل منفّذها هو صاحب الدعوة. الرمز المستخدم أو الملغى أو المنتهي أو غير المعروف يرد بالرد نفسه `410 INVITATION_INVALID`. الحساب المسجّل الدخول ينضم فقط عندما يطابق بريده الدعوة، ولا أحد ينضم بلا رمز. البريد اختياري (`DHOW_SMTP_*`): عند فشل الإرسال تبقى الدعوة موجودة، وتعرض أن البريد فشل، ويستطيع صاحب الدعوة نسخ الرابط.
+- **المؤسسات.** افتراضيًا وحده صاحب النسخة (الحساب الذي أُنشئ في الإعداد) يستطيع إنشاء مؤسسات أخرى. `DHOW_ORG_CREATION=any-user` يفتح ذلك لكل مستخدم مسجّل الدخول. الطلب عن مؤسسة ليس الطالب عضوًا فيها يرد بـ `404`.
+- **إعادة ضبط MFA من المدير.** يستطيع صاحب المؤسسة أو المدير إعادة ضبط الدخول بخطوتين لعضو آخر بعد تأكيد خطوته الحالية، فقط إذا كان دوره أعلى بوضوح من الدور الفعلي للعضو في كل مؤسسة ينتمي إليها العضو. صاحب المؤسسة يعيد ضبط المدير ومن تحته، والمدير يعيد ضبط مسؤول المشاريع ومن تحته، ولا أحد يعيد ضبط من في مستواه. صاحب النسخة يُحسب صاحب مؤسسة في كل مكان. نُخرج العضو من كل مكان ونطلب منه التفعيل مرة أخرى، ويُعلَّم الحدث في سجل الأحداث بخطورة عالية.
+- **الخطوة الثانية الإلزامية.** يستطيع صاحب المؤسسة اشتراط خطوة ثانية (TOTP أو مفتاح مرور) في مؤسسة: `off` (الافتراضي)، أو `admins` (أصحاب المؤسسة والمديرون)، أو `everyone`. تغيير القاعدة يحتاج إلى جلسة متصفح، والخطوة الحالية لصاحب المؤسسة، وخطوة ثانية في حسابه هو. العضو الذي تشمله القاعدة وليس له خطوة ثانية يحصل على 7 أيام من آخر الحدثين: تغيير القاعدة وانضمامه. تظهر المهلة في شريط المؤسسة وفي `GET /me` (`SecondFactorDue`). بعد ذلك، الإجراءات الحساسة في تلك المؤسسة (`org.update`، ونقل الملكية، وإعداد الأمان، و`member.manage`، و`runner.manage`، و`job.create`، وإنشاء مفاتيح API) ترد بـ `403 SECOND_FACTOR_REQUIRED`، للجلسة ولمفاتيح API الخاصة بالعضو على السواء، بينما تبقى القراءة مسموحة. توسيع القاعدة يعطي مهلة جديدة فقط للأدوار التي أصبحت تشملها، فيبقى أصحاب المؤسسة والمديرون المتأخرون ممنوعين. وتضييقها يُبقي المهلة الجارية، وخفضها يُسجَّل بخطورة عالية. قاعدة كل مؤسسة تعمل داخلها فقط. الفحص يعمل في سياسة `can()` المركزية من الحالة الحالية مع كل طلب.
+- **الأدوار المخصصة وسياسات OPA** تأتي من `ee/`.
+- **الاختبار:** اختبار يمر على **جدول المسارات كله** لكل دور ونطاق، ويتأكد من نتيجة السماح أو المنع المتوقعة. المسار الذي ليس له سياسة معلنة يُفشل البناء.
 
-## 7. Execution safety
+## 7. أمان التنفيذ
 
-- **Isolation (ADR-0007, ADR-0043).** Jobs only run inside a rootless container or microVM, with limits, a read-only root filesystem, network egress denied by default, and no host mounts. The control plane never executes user code.
-  - The default sandbox is rootless Podman with all capabilities dropped, `no-new-privileges`, a seccomp profile that also blocks nested user namespaces, `io_uring`, `bpf`, `ptrace` and `mount`, and a separate user-namespace range per job.
-  - A runner refuses to start if cgroup v2 delegation for CPU, memory and PIDs is missing, and it fails the job if the created container does not match the policy.
-  - An escape test suite (host files, runner credentials, other jobs, metadata endpoints, container sockets, privilege escalation, network) is a required CI check.
-- **Network egress (ADR-0044).** A sandbox has no network interface besides loopback. Allowed hosts are reached only through a per-job proxy in the runner. The proxy resolves names itself, connects to the address it resolved, and always denies private, loopback, link-local, CGNAT and cloud metadata ranges. Only the runner operator can open a private range, and cloud metadata addresses stay denied even then. The proxy speaks `CONNECT` and plain `http://` only, never decrypts TLS, caps each job at 256 connections, and closes a connection after 5 minutes without traffic (ADR-0057).
-- **Runner plane (ADR-0041, ADR-0042).**
-  - Runners authenticate with pinned Ed25519 keys and 15-minute access tokens.
-  - Starting a job needs a fresh signature.
-  - Every mutating call carries the attempt's fencing token.
-  - Session cookies are rejected on the runner plane, and runner tokens are rejected on the public API.
-- **No shell strings in platform code.**
-  - Every process the platform starts (git, ssh, rsync, docker, kubectl) uses argv arrays.
-  - User-controlled values are validated against strict grammars: refs go through `git check-ref-format`, SHAs must match `^[0-9a-f]{40}$`, and URLs go through a parser with a scheme allowlist.
-  - Those values are passed after `--`.
-- **Expressions use CEL.** CEL is non-Turing-complete, evaluates against typed variables, has cost limits, and never performs string-concatenation evaluation.
-- **No regex "WAF" as a security control.** Correctness comes from parameterized queries, typed validation and output encoding.
+- **العزل (ADR-0007، ADR-0043).** التشغيلات تعمل فقط داخل حاوية بلا root أو microVM، مع حدود، ونظام ملفات جذري للقراءة فقط، والخروج إلى الشبكة ممنوع افتراضيًا، وبلا ربط لملفات الجهاز. لوحة التحكم لا تنفّذ كود المستخدمين أبدًا.
+  - البيئة المعزولة الافتراضية Podman بلا root، بلا أي capabilities، ومع `no-new-privileges`، وملف seccomp يمنع أيضًا user namespaces المتداخلة و`io_uring` و`bpf` و`ptrace` و`mount`، ونطاق user namespace منفصل لكل تشغيل.
+  - يرفض جهاز التشغيل البدء إذا كان تفويض cgroup v2 للمعالج والذاكرة وPIDs ناقصًا، ويُفشل التشغيل إذا لم تطابق الحاوية المنشأة السياسة.
+  - مجموعة اختبارات للهروب (ملفات الجهاز، وبيانات دخول جهاز التشغيل، والتشغيلات الأخرى، وعناوين metadata، وsockets الحاويات، ورفع الصلاحيات، والشبكة) فحص إلزامي في CI.
+- **الخروج إلى الشبكة (ADR-0044).** البيئة المعزولة ليس لها واجهة شبكة غير loopback. نصل إلى الأجهزة المسموحة فقط عبر وكيل لكل تشغيل في جهاز التشغيل. يحل الوكيل الأسماء بنفسه، ويتصل بالعنوان الذي حله، ويمنع دائمًا النطاقات الخاصة وloopback وlink-local وCGNAT وmetadata السحابية. وحده مشغّل جهاز التشغيل يستطيع فتح نطاق خاص، وتبقى عناوين metadata السحابية ممنوعة حتى عندها. يتكلم الوكيل `CONNECT` و`http://` العادي فقط، ولا يفك تشفير TLS أبدًا، ويحد كل تشغيل بـ 256 اتصالًا، ويغلق الاتصال بعد 5 دقائق بلا بيانات (ADR-0057).
+- **مسار أجهزة التشغيل (ADR-0041، ADR-0042).**
+  - تثبت أجهزة التشغيل هويتها بمفاتيح Ed25519 مثبّتة، ورموز وصول تعيش 15 دقيقة.
+  - بدء تشغيل يحتاج إلى توقيع جديد.
+  - كل طلب يغيّر الحالة يحمل رقم الحجز الخاص بالمحاولة.
+  - نرفض كوكيز الجلسات على مسار أجهزة التشغيل، ونرفض رموز أجهزة التشغيل على الـ API العام.
+- **لا نصوص shell في كود المنصة.**
+  - كل عملية تبدؤها المنصة (git، وssh، وrsync، وdocker، وkubectl) تستخدم قوائم معاملات (argv).
+  - نتحقق من القيم التي يتحكم فيها المستخدم بقواعد صارمة: الـ refs عبر `git check-ref-format`، والـ SHAs يجب أن تطابق `^[0-9a-f]{40}$`، والروابط عبر محلل مع قائمة مسموحة للبروتوكولات.
+  - نمرّر هذه القيم بعد `--`.
+- **التعبيرات بلغة CEL.** CEL ليست Turing-complete، وتعمل على متغيرات لها أنواع، ولها حدود تكلفة، ولا تقيّم أبدًا نصوصًا مركّبة.
+- **لا "WAF" بالتعبيرات النمطية كضابط أمني.** الصحة تأتي من الاستعلامات ذات المعاملات، والتحقق بالأنواع، وترميز المخرجات.
 
-## 8. Data protection
+## 8. حماية البيانات
 
-- Secrets use envelope encryption (see [architecture §6](architecture.md#6-secrets)): AES-256-GCM with a random 12-byte nonce, AAD bound to the record, and versioned keys with rotation.
-- Webhook secrets, target credentials and API-token peppers are all treated as secrets.
-- Masking happens in the runner, on the stream, before any output leaves the host.
-- Retention policies apply to logs, artifacts and audit events. Export and deletion tooling supports GDPR-style requests.
+- الأسرار تستخدم التشفير المغلّف (راجع [المعمارية §6](architecture.md#6-الأسرار)): AES-256-GCM مع nonce عشوائي بـ 12 بايت، وAAD مربوطة بالسجل، ومفاتيح لها إصدارات مع التدوير.
+- أسرار الـ webhooks، وبيانات دخول الأهداف، وقيم pepper لمفاتيح API، كلها تُعامل كأسرار.
+- الإخفاء يحدث في جهاز التشغيل، أثناء البث، قبل أن تغادر أي مخرجات الجهاز.
+- سياسات الاحتفاظ تشمل السجلات والملفات الناتجة وأحداث سجل الأحداث. أدوات التصدير والحذف تدعم طلبات على نمط GDPR.
 
-## 9. Audit
+## 9. سجل الأحداث
 
-- The audit log is append-only, and each event includes `PrevHash`, which makes the log **tamper-evident**.
-  - Every event stores `Hash = SHA-256(PrevHash ‖ canonical JSON of the event)`, and events form one chain per organization (plus one for instance-level events). Writers take a per-chain advisory lock, so the chain never forks.
-  - A database trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` on the table. `GET /api/v1/organizations/{id}/audit-events/verify` walks a chain and reports the first event whose hash or link is wrong.
-  - Event data never carries a secret: passwords, tokens and cookies are not recorded. Only fields on an explicit allowlist are written, and anything else is dropped with a warning; a value that contains a Dhow credential prefix (`dhow_pat_`, `dhow_rat_`, `dhow_rrt_`) is dropped too. A test scans the modules for every field they write and fails if one is missing from the allowlist, and every end-to-end test fails if a real event loses a field.
-  - Reading needs `audit.read` (Owners and Admins). `GET /api/v1/organizations/{id}/audit-events` filters by `Category` (`auth`, `identity`, `runner`, `job`, `system`), exact `Action`, `ActorUserId` and a `From`/`To` time window, all combined with AND; an unknown category or a window that ends before it starts is `422 VALIDATION_FAILED`. `GET /api/v1/organizations/{id}/audit-events/{eventId}` reads one event of that organization only, so the web app can link to an event's details.
-  - An action made with an API token records `Via=api_token` and `ViaId` (the token id) next to the actor. Creating and revoking a token, linking and unlinking an identity, and failed provider sign-ins after a valid flow (with the reason and a digest of the issuer and subject) are audited.
-- Every security-relevant action is recorded, including auth events, role changes, secret writes, approvals, deployments and runner registration.
-- **Retention:** Community keeps 90 days. Business and Enterprise get longer retention, export, and SIEM streaming.
+- سجل الأحداث للإضافة فقط، وكل حدث فيه `PrevHash`، فيصبح السجل **كاشفًا للتلاعب**.
+  - كل حدث يحفظ `Hash = SHA-256(PrevHash ‖ canonical JSON of the event)`، والأحداث تكوّن سلسلة واحدة لكل مؤسسة (مع سلسلة لأحداث مستوى السيرفر). الكاتبون يأخذون advisory lock لكل سلسلة، فلا تتفرع السلسلة أبدًا.
+  - trigger في قاعدة البيانات يرفض `UPDATE` و`DELETE` و`TRUNCATE` على الجدول. `GET /api/v1/organizations/{id}/audit-events/verify` يمر على سلسلة ويذكر أول حدث فيه hash أو رابط خاطئ.
+  - بيانات الحدث لا تحمل سرًا أبدًا: لا نسجّل كلمات السر ولا الرموز ولا الكوكيز. نكتب فقط الحقول الموجودة في قائمة مسموحة صريحة، ونحذف أي شيء آخر مع تحذير. ونحذف أيضًا القيمة التي فيها بادئة بيانات دخول داو (`dhow_pat_`، `dhow_rat_`، `dhow_rrt_`). اختبار يفحص الوحدات (modules) بحثًا عن كل حقل تكتبه، ويفشل إذا غاب أحدها عن القائمة المسموحة، وكل اختبار من البداية إلى النهاية يفشل إذا فقد حدث حقيقي حقلًا.
+  - القراءة تحتاج إلى `audit.read` (أصحاب المؤسسة والمديرون). `GET /api/v1/organizations/{id}/audit-events` يصفّي حسب `Category` (`auth`، `identity`، `runner`، `job`، `system`)، و`Action` بالضبط، و`ActorUserId`، ونافذة زمنية `From`/`To`، وكلها مجتمعة بـ AND. الفئة غير المعروفة أو النافذة التي تنتهي قبل أن تبدأ ترد بـ `422 VALIDATION_FAILED`. `GET /api/v1/organizations/{id}/audit-events/{eventId}` يقرأ حدثًا واحدًا من تلك المؤسسة فقط، حتى تربط الواجهة بتفاصيل الحدث.
+  - الإجراء الذي يتم بمفتاح API يسجّل `Via=api_token` و`ViaId` (معرّف المفتاح) بجوار المنفّذ. إنشاء مفتاح وإلغاؤه، وربط هوية وفكّها، ومحاولات الدخول الفاشلة عبر المزوّد بعد مسار صالح (مع السبب وملخص للمُصدِر والـ subject)، كلها تُسجَّل.
+- نسجّل كل إجراء له علاقة بالأمان، ومنها أحداث الدخول، وتغييرات الأدوار، وكتابة الأسرار، والموافقات، والنشر، وتسجيل أجهزة التشغيل.
+- **الاحتفاظ:** Community تحتفظ 90 يومًا. Business وEnterprise تحصلان على احتفاظ أطول، وتصدير، وبث إلى SIEM.
 
-## 10. Supply chain
+## 10. سلسلة التوريد
 
-- Releases are reproducible builds, **signed with cosign** (keyless), and published with an **SBOM** (SPDX) and SLSA provenance.
-- Container images are distroless and non-root, and are referenced by digest in the Helm and Compose manifests.
+- الإصدارات مبنية بشكل قابل لإعادة الإنتاج، و**موقّعة بـ cosign** (بلا مفتاح)، ومنشورة مع **SBOM** (SPDX) وإثبات SLSA.
+- صور الحاويات distroless وبلا root، ونشير إليها بالـ digest في ملفات Helm وCompose.
 - **CI:**
-  - It is **required** for merge: tests, lint with zero warnings allowed, type checks, `govulncheck`/`npm audit` blocking on high and critical, CodeQL, secret scanning and license checks.
-  - Dependabot updates are merged only on green CI.
-- An external penetration test is required before GA, and again yearly.
-- The disclosure policy is in [`SECURITY.md`](../SECURITY.md).
+  - **إلزامي** للدمج: الاختبارات، والـ lint بلا أي تحذير، وفحص الأنواع، و`govulncheck`/`npm audit` يمنعان الثغرات العالية والحرجة، وCodeQL، والبحث عن الأسرار، وفحص التراخيص.
+  - تحديثات Dependabot لا تُدمج إلا مع CI ناجح.
+- اختبار اختراق خارجي مطلوب قبل GA، ثم كل سنة.
+- سياسة الإفصاح في [`SECURITY.md`](../SECURITY.md).
 
-## 11. Lessons from the Deploy Center v3 audit
+## 11. دروس من مراجعة Deploy Center v3
 
-Each class of vulnerability found in Deploy Center v3, and the design rule in Dhow that removes it:
+كل نوع من الثغرات التي وجدناها في Deploy Center v3، وقاعدة التصميم في داو التي تزيله:
 
-| v3 issue class | Dhow design rule |
+| نوع المشكلة في v3 | قاعدة التصميم في داو |
 |---|---|
-| Public registration accepted a client-supplied role (anyone could become admin) | Registration is closed by default. Request bodies are decoded into typed DTOs with **no role field**. Roles change only through an authorized, audited endpoint |
-| The realtime socket had no authentication and broadcast full records containing secrets | Realtime runs over **SSE behind the same session auth**. Every stream is authorized per resource. Payloads are explicit DTOs and never ORM objects. There are no global broadcasts |
-| The 2FA step trusted a client-supplied user id, so the password step could be skipped | Server-held `mfa_pending` challenge, bound to the password step; lockout per account |
-| Pipelines executed directly on the server host | The control plane never executes user code. Jobs run only in sandboxed runners |
-| Commands were built by string interpolation and run through a shell | argv-only process execution, with strict validation of refs, SHAs, URLs and options |
-| Conditions were evaluated with dynamic code construction | CEL, with typed inputs and cost limits |
-| The API returned webhook secrets and credentials in plaintext | Secrets are write-only. Response DTOs contain no secret fields. Everything is encrypted at rest |
-| Routes lacked object-level checks (IDOR) | A central `can()` policy, tenant-scoped loaders, non-enumerable UUIDv7 ids, and route-table authorization tests |
-| Hardcoded fallback secrets were accepted in production | Boot fails on missing or placeholder secrets. The installer generates strong ones |
-| Stateless long-lived JWTs could not be revoked | Server-side sessions stored as hashes, checked on every request, revoked at once, with idle and absolute timeouts and CSRF tokens |
-| In-place `rsync --delete` deploys with fragile backups | Atomic releases (symlink switch), health checks, automatic rollback to the previous release |
-| Queue retries re-ran whole, non-idempotent deployments | No automatic retry after the first mutating step. Leases and reconciliation handle crashed jobs, and an environment lock prevents concurrent deployments |
-| Notification URLs allowed SSRF and blocked the single worker | A separate notification queue with timeouts, plus an SSRF guard that checks the resolved IP |
-| An idempotency cache was not bound to the user and replayed cookies | Idempotency keys are scoped to the authenticated principal. Auth endpoints and `Set-Cookie` are never cached |
-| Coverage gates excluded files that were never loaded, and integration tests bypassed the real middleware stack | Coverage is measured over all packages. E2E tests run against the real server binary, and CI fails if a required service is missing |
+| التسجيل العام قبل دورًا يرسله العميل (أي شخص يصبح مديرًا) | التسجيل مغلق افتراضيًا. أجسام الطلبات تُفك إلى DTOs لها أنواع **بلا حقل دور**. الأدوار لا تتغير إلا عبر مسار مصرّح ومسجّل |
+| قناة realtime بلا مصادقة، وتبث سجلات كاملة فيها أسرار | الـ realtime يعمل عبر **SSE خلف مصادقة الجلسة نفسها**. كل بث مصرّح لكل مورد. البيانات DTOs صريحة، وليست كائنات ORM أبدًا. لا بث عام |
+| خطوة 2FA وثقت بمعرّف مستخدم من العميل، فأمكن تخطي خطوة كلمة السر | تحدي `mfa_pending` يحفظه السيرفر، مربوط بخطوة كلمة السر، وقفل لكل حساب |
+| خطوات النشر نُفّذت مباشرة على جهاز السيرفر | لوحة التحكم لا تنفّذ كود المستخدمين أبدًا. التشغيلات تعمل فقط في أجهزة تشغيل معزولة |
+| الأوامر بُنيت بدمج النصوص وشُغّلت عبر shell | تنفيذ العمليات بـ argv فقط، مع تحقق صارم من الـ refs والـ SHAs والروابط والخيارات |
+| الشروط قُيّمت ببناء كود ديناميكي | CEL، مع مدخلات لها أنواع وحدود تكلفة |
+| الـ API أرجع أسرار الـ webhooks وبيانات الدخول كنص صريح | الأسرار للكتابة فقط. DTOs الردود ليس فيها حقول أسرار. كل شيء مشفّر عند الحفظ |
+| المسارات بلا فحص على مستوى الكائن (IDOR) | سياسة `can()` مركزية، ومحمّلات محصورة في المؤسسة، ومعرّفات UUIDv7 غير قابلة للتعداد، واختبارات صلاحيات لجدول المسارات |
+| أسرار احتياطية مكتوبة في الكود قُبلت في الإنتاج | البدء يفشل مع أسرار ناقصة أو مؤقتة. المثبّت يولّد أسرارًا قوية |
+| رموز JWT طويلة العمر بلا حالة لم يمكن إلغاؤها | جلسات في السيرفر محفوظة كـ hashes، تُفحص مع كل طلب، وتُلغى فورًا، مع مهلتي خمول ومطلقة، ورموز CSRF |
+| نشر بـ `rsync --delete` في المكان نفسه مع نسخ احتياطية هشة | إصدارات ذرية (تبديل symlink)، وفحوص صحة، ورجوع تلقائي إلى الإصدار السابق |
+| إعادة المحاولة في الطابور أعادت عمليات نشر كاملة غير آمنة للتكرار | لا إعادة محاولة تلقائية بعد أول خطوة تغيّر الهدف. الحجوزات والمطابقة تعالج التشغيلات المنهارة، وقفل البيئة يمنع النشر المتزامن |
+| روابط الإشعارات سمحت بـ SSRF وعطّلت العامل الوحيد | طابور إشعارات منفصل بمهل، مع حماية SSRF تفحص عنوان IP بعد الحل |
+| cache لمنع التكرار لم يُربط بالمستخدم وأعاد إرسال الكوكيز | مفاتيح منع التكرار محصورة في الهوية المسجّلة الدخول. مسارات الدخول و`Set-Cookie` لا تُخزَّن مؤقتًا أبدًا |
+| بوابات التغطية استثنت ملفات لم تُحمَّل أبدًا، واختبارات التكامل تجاوزت سلسلة الـ middleware الحقيقية | نقيس التغطية على كل الحزم. اختبارات E2E تعمل على الملف التنفيذي الحقيقي للسيرفر، ويفشل CI إذا غابت خدمة مطلوبة |
