@@ -5,7 +5,9 @@ import unittest
 HOOKS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HOOKS)
 
-from dhow_hooks import edit_rules
+from dhow_hooks import arabic_rules, edit_rules
+
+ROOT = os.path.dirname(os.path.dirname(HOOKS))
 
 WEB_AR = "apps/web/Src/I18n/Locales/Workspace/JobsAr.ts"
 SERVER_AR = "apps/server/internal/Core/I18n/I18n.Ar.go"
@@ -156,6 +158,27 @@ class ArabicRegisterRules(unittest.TestCase):
         old = ts_line("جرّب تاني")
         added = old.replace("} as const;", "  'c.d': 'حاول مرة أخرى',\n} as const;")
         self.assertIsNone(edit(WEB_AR, added, old))
+
+
+class CurrentCatalogs(unittest.TestCase):
+    def catalogs(self):
+        found = []
+        for base in ("apps/web/Src/I18n/Locales", "apps/server/internal", "apps/runner/internal", "apps/cli"):
+            for folder, _, names in os.walk(os.path.join(ROOT, base)):
+                for name in names:
+                    rel = os.path.relpath(os.path.join(folder, name), ROOT).replace(os.sep, "/")
+                    if arabic_rules.is_arabic_catalog(rel):
+                        found.append(rel)
+        return sorted(found)
+
+    def test_every_arabic_catalog_in_the_repository_is_simple_arabic(self):
+        found = self.catalogs()
+        for rel in ("apps/web/Src/I18n/Locales/Boot/Ar.ts", "apps/web/Src/I18n/Locales/Workspace/Ar.ts", SERVER_AR,
+                    INSTALLER_AR):
+            self.assertIn(rel, found)
+        for rel in found:
+            with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
+                self.assertIsNone(arabic_rules.check_arabic_register(rel=rel, added=fh.read(), old=""), rel)
 
 
 if __name__ == "__main__":
