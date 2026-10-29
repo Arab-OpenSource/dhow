@@ -7,11 +7,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 	engine "github.com/Khaymah/dhow/internal/installer"
+)
+
+const (
+	groupOtherWrite = 0o022
+	groupOtherRead  = 0o044
 )
 
 var (
@@ -21,7 +28,7 @@ var (
 
 func (app App) Install(ctx context.Context, opts InstallOptions) error {
 	det := Detect(ctx, app.Sys)
-	a, err := app.initialAnswers(opts)
+	a, err := app.initialAnswers(opts, opts.Lang)
 	if err != nil {
 		return err
 	}
@@ -77,16 +84,37 @@ func (app App) Install(ctx context.Context, opts InstallOptions) error {
 	return nil
 }
 
-func (app App) initialAnswers(opts InstallOptions) (Answers, error) {
+func (app App) initialAnswers(opts InstallOptions, lang string) (Answers, error) {
 	if opts.Answers != "" {
-		data, err := app.Sys.ReadFile(opts.Answers)
+		data, err := app.readAnswersFile(opts.Answers, newMessages(engine.ChooseLang(lang, "", app.Locale)))
 		if err != nil {
-			return Answers{}, fmt.Errorf("read answers: %w", err)
+			return Answers{}, err
 		}
 		return ParseAnswers(bytes.NewReader(data))
 	}
 	a, _ := app.installedAnswers()
 	return a, nil
+}
+
+func (app App) readAnswersFile(path string, m engine.Messages) ([]byte, error) {
+	data, info, err := app.Sys.ReadFileNoFollow(path, engine.MaxAnswersBytes)
+	if err != nil {
+		return nil, fmt.Errorf("read answers: %w", err)
+	}
+	if !app.Sys.IsRoot() {
+		return data, nil
+	}
+	if info.UID != 0 || info.Mode.Perm()&groupOtherWrite != 0 {
+		return nil, errors.New(m.T(KeyAnswersUnsafe, path, info.UID, info.Mode.Perm()))
+	}
+	dir, err := app.Sys.Stat(filepath.Dir(path))
+	if err != nil {
+		return nil, fmt.Errorf("read answers: %w", err)
+	}
+	if dir.Mode.Perm()&groupOtherWrite != 0 && dir.Mode&fs.ModeSticky == 0 {
+		return nil, errors.New(m.T(KeyAnswersDirUnsafe, filepath.Dir(path)))
+	}
+	return data, nil
 }
 
 func (app App) readToken(path string, m engine.Messages) (string, error) {
@@ -97,9 +125,15 @@ func (app App) readToken(path string, m engine.Messages) (string, error) {
 	case TokenStdin:
 		r = app.In
 	default:
-		data, err := app.Sys.ReadFile(path)
+		data, info, err := app.Sys.ReadFileNoFollow(path, config.MaxRegistrationToken+2)
 		if err != nil {
 			return "", fmt.Errorf("token_file: %w", err)
+		}
+		if info.Mode.Perm()&groupOtherWrite != 0 {
+			return "", errors.New(m.T(KeyTokenFileUnsafe, path, info.Mode.Perm()))
+		}
+		if info.Mode.Perm()&groupOtherRead != 0 {
+			app.say("%s\n", m.T(KeyTokenFileReadable, path, info.Mode.Perm()))
 		}
 		r = bytes.NewReader(data)
 	}

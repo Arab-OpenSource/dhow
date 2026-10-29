@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 	"sync"
 	"time"
@@ -24,7 +25,7 @@ const (
 	ubuntu2404    = "PRETTY_NAME=\"Ubuntu 24.04 LTS\"\nID=ubuntu\nVERSION_ID=\"24.04\"\nVERSION_CODENAME=noble\n"
 	fedora43      = "PRETTY_NAME=\"Fedora Linux 43\"\nID=fedora\nVERSION_ID=43\n"
 	rocky10       = "PRETTY_NAME=\"Rocky Linux 10.0\"\nID=\"rocky\"\nVERSION_ID=\"10.0\"\n"
-	userLine      = "dhow-runner:x:990:990:Dhow runner:/var/lib/dhow-runner:/usr/sbin/nologin\n"
+	userLine      = "dhow-runner:x:990:990:Dhow runner (created by dhow-runner install):/var/lib/dhow-runner:/usr/sbin/nologin\n"
 	answersPath   = "/root/runner.yaml"
 	tokenPath     = "/root/token"
 	readyLog      = `{"time":"2026-10-29T12:00:00Z","level":"INFO","msg":"the runner is ready","capacity":1}` + "\n"
@@ -111,6 +112,8 @@ func runnerHost(release string) *fakesys.Sys {
 	f.Put(installer.MaxUserNamespaces, "63432\n", 0o644)
 	f.Put(installer.SubUIDPath, "alice:100000:65536\n", 0o644)
 	f.Put(installer.SubGIDPath, "alice:100000:65536\n", 0o644)
+	f.PutDir("/root", engine.FileMode{Perm: 0o700})
+	f.PutDir("/tmp", engine.FileMode{Perm: fs.ModeSticky | 0o777})
 	f.Exe = "/tmp/get/dhow-runner"
 	f.Put(f.Exe, "dhow-runner binary", 0o755)
 	f.Owners[installer.ServiceUser] = 990

@@ -150,6 +150,9 @@ func (b *Builder) notes() []string {
 	if b.Det.PlainID && b.Encrypted() {
 		out = append(out, b.M.T(KeyNoteConvert, IdentityPath, SealedPath))
 	}
+	if b.Det.User && !b.Det.UserCreated {
+		out = append(out, b.M.T(KeyNoteUserAdopted, ServiceUser))
+	}
 	if b.Det.Registered() && b.Token != "" {
 		out = append(out, b.M.T(KeyNoteTokenUnused))
 	}

@@ -65,7 +65,7 @@ func (app App) anythingInstalled(det Detection, removeUser bool) bool {
 			return true
 		}
 	}
-	return det.Installed || det.Registered() || (removeUser && det.User)
+	return det.Installed || det.Registered() || (removeUser && det.UserCreated)
 }
 
 func (u uninstaller) say(format string, args ...any) { _, _ = fmt.Fprintf(u.out, format, args...) }
@@ -146,13 +146,9 @@ func (u uninstaller) stateStep() engine.Step {
 	s := engine.RemoveStep(sys, u.m.T(KeyStepRemoveState), StateDir)
 	remove := s.Apply
 	s.Apply = func(ctx context.Context) error {
-		if sys.LookPath("shred") {
-			for _, p := range []string{IdentityPath, PendingPath} {
-				if engine.Exists(sys, p) {
-					if _, err := engine.Run(ctx, sys, engine.Cmd("shred", "--zero", "--remove", "--", p)); err != nil {
-						return err
-					}
-				}
+		for _, p := range []string{IdentityPath, PendingPath} {
+			if err := sys.ShredNoFollow(p); err != nil {
+				return err
 			}
 		}
 		return remove(ctx)
@@ -162,6 +158,13 @@ func (u uninstaller) stateStep() engine.Step {
 
 func (u uninstaller) userStep() engine.Step {
 	sys := u.app.Sys
+	if u.det.User && !u.det.UserCreated {
+		return engine.Step{
+			Title: u.m.T(KeyStepKeepUser, ServiceUser),
+			Done:  func(context.Context) (bool, error) { return true, nil },
+			Apply: func(context.Context) error { return nil },
+		}
+	}
 	check := engine.Cmd("getent", "passwd", ServiceUser)
 	return engine.Step{
 		Title:    u.m.T(KeyStepRemoveUser, ServiceUser),

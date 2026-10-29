@@ -6,7 +6,6 @@ import (
 	"io"
 	"maps"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -25,7 +24,6 @@ const (
 
 var (
 	ErrInvalidAnswers = engine.ErrInvalidAnswers
-	envKeyRe          = regexp.MustCompile(`^DHOW_RUNNER_[A-Z0-9_]+$`)
 	managedEnv        = []string{config.EnvURL, config.EnvServerOrigin, config.EnvCAFile, config.EnvDriver, config.EnvCapacity, config.EnvStateDir}
 )
 
@@ -114,20 +112,32 @@ func (a Answers) Validate() error {
 	if !slices.Contains([]string{IdentityAuto, IdentityEncrypted, IdentityFile}, a.Identity) {
 		add("identity", "must be auto, encrypted or file")
 	}
+	for _, f := range [][2]string{{"url", a.URL}, {"server_origin", a.ServerOrigin}, {"ca_file", a.CAFile}} {
+		if !safeEnvValue(f[1]) {
+			add(f[0], unsafeValue)
+		}
+	}
+	settable := config.SettableEnv()
 	for _, k := range slices.Sorted(maps.Keys(a.Env)) {
 		switch {
-		case !envKeyRe.MatchString(k):
-			add("env."+k, "only DHOW_RUNNER_* settings belong in runner.env")
+		case !slices.Contains(settable, k):
+			add("env."+k, "is not a dhow-runner setting; see docs/runner/configuration.md")
 		case slices.Contains(managedEnv, k):
 			add("env."+k, "is set from the other answers; use them instead")
-		case strings.ContainsAny(a.Env[k], "\n\r"):
-			add("env."+k, "must be one line")
+		case !safeEnvValue(a.Env[k]):
+			add("env."+k, unsafeValue)
 		}
 	}
 	if len(errs) > 0 {
 		return fmt.Errorf("%w:\n%w", ErrInvalidAnswers, errors.Join(errs...))
 	}
 	return nil
+}
+
+const unsafeValue = "must not hold control characters, quotes or backslashes, which would change how systemd reads runner.env"
+
+func safeEnvValue(v string) bool {
+	return !strings.ContainsFunc(v, func(r rune) bool { return r < 0x20 || r == 0x7f || r == '\\' || r == '"' || r == '\'' })
 }
 
 func (a Answers) Marshal() ([]byte, error) {

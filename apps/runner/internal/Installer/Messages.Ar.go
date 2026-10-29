@@ -119,4 +119,11 @@ var arMessages = map[engine.Key]string{ //nolint:gosec // User-facing text that 
 	KeyUninstalled:         "أزلنا جهاز التشغيل من هذا الجهاز.",
 	KeyUnitDrift:           "الملف %s يختلف عن وحدة هذا الإصدار.",
 	KeyWelcome:             "مثبّت جهاز تشغيل داو %s",
+	KeyAdviceUnsafeFile:    "لا يغيّر doctor مثل هذا الملف أبدًا. ربما وضعه تشغيل هرب من عزله: افحصه واحذفه بنفسك، واعتبر مفاتيح جهاز التشغيل مكشوفة (ألغِ جهاز التشغيل نهائيًا وثبّته من جديد).",
+	KeyAnswersDirUnsafe:    "ملف الإجابات في %s، ويستطيع مستخدمون آخرون الكتابة فيه. انقله إلى مجلد لا يكتب فيه إلا root، مثل /root.",
+	KeyAnswersUnsafe:       "يجب أن يكون ملف الإجابات %s ملكًا لـ root ولا يكتب فيه إلا root (المالك الحالي uid %d والصلاحية %04o). نفّذ عليه chown root: ثم chmod 600.",
+	KeyNoteUserAdopted:     "المستخدم %s موجود من قبل، فسيستخدمه التثبيت. ولن يحذفه dhow-runner uninstall --remove-user، لأن المثبّت لم ينشئه.",
+	KeyStepKeepUser:        "احتفظ بالمستخدم %s: كان موجودًا قبل dhow-runner install",
+	KeyTokenFileReadable:   "تحذير: يستطيع مستخدمون آخرون قراءة ملف رمز التسجيل %s (الصلاحية %04o). احذفه بعد تسجيل جهاز التشغيل.",
+	KeyTokenFileUnsafe:     "يستطيع مستخدمون آخرون الكتابة في ملف رمز التسجيل %s (الصلاحية %04o)، فلا يمكن الوثوق به. نفّذ عليه chmod 600.",
 }

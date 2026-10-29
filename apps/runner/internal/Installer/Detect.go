@@ -30,6 +30,7 @@ type Detection struct {
 	AppArmorNS   bool
 	Creds        Creds
 	User         bool
+	UserCreated  bool
 	UID          int
 	GID          int
 	SubUIDs      int
@@ -56,7 +57,7 @@ func Detect(ctx context.Context, sys engine.System) Detection {
 	d.UserNS = readInt(sys, MaxUserNamespaces) > 0
 	d.AppArmorNS = readInt(sys, AppArmorUserns) == 1
 	d.Creds = detectCreds(ctx, sys)
-	d.UID, d.GID, d.User = lookupUser(ctx, sys, ServiceUser)
+	d.UID, d.GID, d.UserCreated, d.User = lookupUser(ctx, sys, ServiceUser)
 	d.SubUIDs = subIDCount(sys, SubUIDPath)
 	d.SubGIDs = subIDCount(sys, SubGIDPath)
 	d.PlainID = engine.Exists(sys, IdentityPath)
@@ -103,21 +104,22 @@ func readInt(sys engine.System, path string) int {
 	return n
 }
 
-func lookupUser(ctx context.Context, sys engine.System, name string) (int, int, bool) {
+func lookupUser(ctx context.Context, sys engine.System, name string) (int, int, bool, bool) {
 	out, err := sys.Run(ctx, engine.Cmd("getent", "passwd", name))
 	if err != nil {
-		return -1, -1, false
+		return -1, -1, false, false
 	}
 	fields := strings.Split(strings.TrimSpace(string(out.Stdout)), ":")
-	if len(fields) < 4 {
-		return -1, -1, true
+	if len(fields) < 5 {
+		return -1, -1, false, true
 	}
+	created := fields[4] == UserComment
 	uid, uerr := strconv.Atoi(fields[2])
 	gid, gerr := strconv.Atoi(fields[3])
 	if uerr != nil || gerr != nil {
-		return -1, -1, true
+		return -1, -1, created, true
 	}
-	return uid, gid, true
+	return uid, gid, created, true
 }
 
 type SubIDRangeEntry struct {

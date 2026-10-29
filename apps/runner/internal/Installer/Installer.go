@@ -55,7 +55,7 @@ type Protocol interface {
 }
 
 type App struct {
-	Sys      engine.System
+	Sys      engine.SafeSystem
 	Protocol Protocol
 	In       io.Reader
 	InFD     int

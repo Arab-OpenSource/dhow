@@ -119,4 +119,11 @@ const (
 	KeyUninstalled         engine.Key = "uninstalled"
 	KeyUnitDrift           engine.Key = "unit.drift"
 	KeyWelcome             engine.Key = "welcome"
+	KeyAdviceUnsafeFile    engine.Key = "advice.unsafe.file"
+	KeyAnswersDirUnsafe    engine.Key = "answers.dir.unsafe"
+	KeyAnswersUnsafe       engine.Key = "answers.unsafe"
+	KeyNoteUserAdopted     engine.Key = "note.user.adopted"
+	KeyStepKeepUser        engine.Key = "step.keep.user"
+	KeyTokenFileReadable   engine.Key = "token.file.readable"
+	KeyTokenFileUnsafe     engine.Key = "token.file.unsafe" //nolint:gosec // A message key, not a credential.
 )

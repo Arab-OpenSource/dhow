@@ -38,7 +38,7 @@ func TestInstallFromAnswersBringsTheRunnerOnline(t *testing.T) {
 	assert.Equal(t, []string{testToken}, p.tokens)
 
 	for _, want := range []string{
-		"useradd --system --user-group --no-create-home --home-dir /var/lib/dhow-runner --shell /usr/sbin/nologin --comment Dhow runner dhow-runner",
+		"useradd --system --user-group --no-create-home --home-dir /var/lib/dhow-runner --shell /usr/sbin/nologin --comment Dhow runner (created by dhow-runner install) dhow-runner",
 		"usermod --add-subuids 1048576-2097151 --add-subgids 1048576-2097151 dhow-runner",
 		"systemctl daemon-reload", "systemctl enable dhow-runner", "systemctl restart dhow-runner",
 	} {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/fs"
 	"strings"
 
 	engine "github.com/Khaymah/dhow/internal/installer"
@@ -12,44 +11,56 @@ import (
 
 type permCheck struct {
 	Path string
-	Perm fs.FileMode
+	Dir  bool
 	UID  int
 	GID  int
 	Mode engine.FileMode
 }
 
-func (d doctor) permissions() engine.Finding {
+func (d doctor) permChecks() []permCheck {
 	uid, gid := d.det.UID, d.det.GID
-	checks := []permCheck{
-		{BinaryPath, modeRootExec.Perm, 0, 0, modeRootExec},
-		{UnitPath, modeRootPublic.Perm, 0, 0, modeRootPublic},
-		{ConfigDir, modeConfigDir.Perm, 0, gid, modeConfigDir},
-		{EnvFilePath, modeEnvFile.Perm, 0, gid, modeEnvFile},
-		{AnswersPath, modeRootPrivate.Perm, 0, 0, modeRootPrivate},
-		{StateDir, modeStateDir.Perm, uid, gid, modeStateDir},
-		{IdentityPath, modeRootPrivate.Perm, uid, gid, engine.FileMode{Perm: 0o600, Owner: ServiceUser, Group: ServiceUser}},
-		{SealedPath, modeRootPrivate.Perm, 0, 0, modeRootPrivate},
+	return []permCheck{
+		{BinaryPath, false, 0, 0, modeRootExec},
+		{UnitPath, false, 0, 0, modeRootPublic},
+		{ConfigDir, true, 0, gid, modeConfigDir},
+		{EnvFilePath, false, 0, gid, modeEnvFile},
+		{AnswersPath, false, 0, 0, modeRootPrivate},
+		{StateDir, true, uid, gid, modeStateDir},
+		{IdentityPath, false, uid, gid, engine.FileMode{Perm: 0o600, Owner: ServiceUser, Group: ServiceUser}},
+		{PendingPath, false, uid, gid, engine.FileMode{Perm: 0o600, Owner: ServiceUser, Group: ServiceUser}},
+		{SealedPath, false, 0, 0, modeRootPrivate},
+		{SealedPendingPath, false, 0, 0, modeRootPrivate},
 	}
+}
+
+func (d doctor) permissions() engine.Finding {
 	var wrong []permCheck
-	var details []string
-	for _, c := range checks {
-		info, err := d.app.Sys.Stat(c.Path)
+	var details, unsafe []string
+	for _, c := range d.permChecks() {
+		info, err := d.app.Sys.Lstat(c.Path)
 		if err != nil {
 			continue
 		}
-		if info.Mode.Perm() != c.Perm || info.UID != c.UID || info.GID != c.GID {
+		if c.Dir != info.IsDir || (!c.Dir && !info.IsRegular()) {
+			unsafe = append(unsafe, c.Path+" "+engine.ErrNotRegular.Error())
+			continue
+		}
+		if info.Mode.Perm() != c.Mode.Perm || info.UID != c.UID || info.GID != c.GID {
 			wrong = append(wrong, c)
 			details = append(details, fmt.Sprintf("%s %04o uid=%d gid=%d (%s %04o uid=%d gid=%d)",
-				c.Path, info.Mode.Perm(), info.UID, info.GID, d.m.T(engine.KeyWant), c.Perm, c.UID, c.GID))
+				c.Path, info.Mode.Perm(), info.UID, info.GID, d.m.T(engine.KeyWant), c.Mode.Perm, c.UID, c.GID))
 		}
 	}
 	title := d.m.T(KeyCheckPermissions)
+	if len(unsafe) > 0 {
+		return d.fail(title, strings.Join(append(unsafe, details...), "; "), d.m.T(KeyAdviceUnsafeFile), nil)
+	}
 	if len(wrong) == 0 {
 		return engine.OK(title)
 	}
 	fix := engine.Step{Title: d.m.T(KeyFixPermissions), Apply: func(context.Context) error {
 		for _, c := range wrong {
-			if err := d.app.Sys.Chmod(c.Path, c.Mode); err != nil {
+			if err := d.app.Sys.ChmodNoFollow(c.Path, c.Mode); err != nil {
 				return err
 			}
 		}
@@ -60,7 +71,7 @@ func (d doctor) permissions() engine.Finding {
 		if owner == "" {
 			owner, group = "root", "root"
 		}
-		fix.Commands = append(fix.Commands, fmt.Sprintf("chown %s:%s %s && chmod %04o %s", owner, group, c.Path, c.Perm, c.Path))
+		fix.Commands = append(fix.Commands, fmt.Sprintf("chown %s:%s %s && chmod %04o %s", owner, group, c.Path, c.Mode.Perm, c.Path))
 	}
 	return d.fail(title, strings.Join(details, "; "), "", &fix)
 }

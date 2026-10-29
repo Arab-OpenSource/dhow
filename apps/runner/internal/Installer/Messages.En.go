@@ -119,4 +119,11 @@ var enMessages = map[engine.Key]string{ //nolint:gosec // User-facing text that 
 	KeyUninstalled:         "The runner is removed from this host.",
 	KeyUnitDrift:           "%s differs from the unit of this release.",
 	KeyWelcome:             "Dhow runner installer %s",
+	KeyAdviceUnsafeFile:    "doctor never changes such a file. A job that escaped its sandbox may have planted it: look at it, remove it by hand, and consider the runner's keys exposed (revoke the runner and install it again).",
+	KeyAnswersDirUnsafe:    "The answers file is in %s, which other users can write to. Move it to a directory only root can write to, such as /root.",
+	KeyAnswersUnsafe:       "The answers file %s must belong to root and be writable by root only (it has uid %d and mode %04o). Run: chown root: and chmod 600 on it.",
+	KeyNoteUserAdopted:     "The user %s already exists, so the install uses it. dhow-runner uninstall --remove-user will keep it, because the installer did not create it.",
+	KeyStepKeepUser:        "Keep the user %s: it existed before dhow-runner install",
+	KeyTokenFileReadable:   "Warning: other users can read the token file %s (mode %04o). Delete it once the runner is registered.",
+	KeyTokenFileUnsafe:     "Other users can write to the token file %s (mode %04o), so it cannot be trusted. Run chmod 600 on it.",
 }

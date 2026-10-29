@@ -226,7 +226,7 @@ func TestUninstallShredsAPlainIdentityAndAsksFirst(t *testing.T) {
 	assert.Contains(t, out.String(), "Remove the runner from this host?")
 	_, err = uninstall(f, p, installer.UninstallOptions{Yes: true})
 	require.NoError(t, err)
-	assert.True(t, f.Ran("shred --zero --remove -- /var/lib/dhow-runner/identity"))
+	assert.Equal(t, []string{installer.IdentityPath}, f.Shredded)
 }
 
 func TestMainFlags(t *testing.T) {
@@ -262,7 +262,7 @@ func TestParseAnswers(t *testing.T) {
 		"url: https://d.example\ncapacity: 17\n":              "capacity: must be from 1 to 16",
 		"url: https://d.example\nidentity: tpm\n":             "identity: must be auto, encrypted or file",
 		"url: https://d.example\ndriver: docker\n":            "driver: must be podman",
-		"url: https://d.example\nenv: {PATH: /x}\n":           "only DHOW_RUNNER_* settings",
+		"url: https://d.example\nenv: {PATH: /x}\n":           "is not a dhow-runner setting",
 		"url: https://d.example\nenv: {DHOW_RUNNER_URL: x}\n": "is set from the other answers",
 		"url: https://d.example\ntoken: x\n":                  "field token not found",
 	} {

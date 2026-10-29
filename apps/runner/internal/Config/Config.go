@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/Khaymah/dhow/internal/jobspec"
@@ -32,6 +33,7 @@ const (
 	EnvRunscPath          = "DHOW_RUNNER_RUNSC_PATH"
 	EnvLogLevel           = "DHOW_RUNNER_LOG_LEVEL"
 	EnvCredentialsDir     = "CREDENTIALS_DIRECTORY"
+	EnvInvocationID       = "INVOCATION_ID"
 )
 
 type Limits struct {
@@ -84,6 +86,14 @@ var (
 
 func FromEnv() func(string) string { return os.Getenv }
 
+func SettableEnv() []string {
+	return append([]string{
+		EnvURL, EnvCAFile, EnvStateDir, EnvServerOrigin, EnvDriver, EnvCapacity, EnvMaxCPU, EnvMaxMemory, EnvMaxPids,
+		EnvMaxDisk, EnvMaxTimeout, EnvDiskMode, EnvCancelGrace, EnvEgressAllowPrivate, EnvAllowUnpinned, EnvRunscPath,
+		EnvLogLevel,
+	}, buildEnv()...)
+}
+
 func Load(getenv func(string) string, o Options) (Config, error) {
 	cfg := Config{Dev: o.Dev, Privileged: o.Privileged}
 	var errs []error
@@ -131,7 +141,7 @@ func Load(getenv func(string) string, o Options) (Config, error) {
 	add(EnvLogLevel, err)
 	cfg.FakeRecording, err = loadFake(getenv, cfg.Driver)
 	add(EnvDriver, err)
-	cfg.CredentialsDir, err = loadCredentialsDir(getenv(EnvCredentialsDir))
+	cfg.CredentialsDir, err = loadCredentialsDir(getenv(EnvCredentialsDir), getenv(EnvInvocationID))
 	add(EnvCredentialsDir, err)
 	limits, limitErrs := loadLimits(getenv, o.Machine, cfg)
 	cfg.Limits = limits
@@ -176,14 +186,22 @@ func loadStateDir(v string) (string, error) {
 	return filepath.Clean(v), nil
 }
 
-func loadCredentialsDir(v string) (string, error) {
-	if v == "" {
+func loadCredentialsDir(v, invocation string) (string, error) {
+	if v == "" || invocation == "" {
 		return "", nil
 	}
 	if !filepath.IsAbs(v) {
 		return "", ErrRelativePath
 	}
-	return filepath.Clean(v), nil
+	dir := filepath.Clean(v)
+	info, err := os.Lstat(dir)
+	if err != nil || !info.IsDir() || info.Mode().Perm()&groupOtherW != 0 {
+		return "", nil
+	}
+	if st, ok := info.Sys().(*syscall.Stat_t); !ok || (st.Uid != 0 && int(st.Uid) != os.Geteuid()) {
+		return "", nil
+	}
+	return dir, nil
 }
 
 func loadRunsc(v string) (string, error) {

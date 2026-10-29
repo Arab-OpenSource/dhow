@@ -38,6 +38,7 @@ const (
 	MinPodman    = "5.4.0"
 	MaxExposure  = 6.9
 	ReadyMessage = "the runner is ready"
+	UserComment  = "Dhow runner (created by dhow-runner install)"
 )
 
 var (

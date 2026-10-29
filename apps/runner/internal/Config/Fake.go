@@ -21,3 +21,5 @@ func loadFake(getenv func(string) string, driver string) (string, error) {
 	}
 	return filepath.Clean(path), nil
 }
+
+func buildEnv() []string { return []string{EnvFakeRecording} }

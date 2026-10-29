@@ -38,7 +38,7 @@ func (b *Builder) packageSteps() []engine.Step {
 
 func (b *Builder) userStep() engine.Step {
 	add := engine.Cmd("useradd", "--system", "--user-group", "--no-create-home", "--home-dir", StateDir,
-		"--shell", b.Det.Distro.NologinShell(), "--comment", "Dhow runner", ServiceUser)
+		"--shell", b.Det.Distro.NologinShell(), "--comment", UserComment, ServiceUser)
 	check := engine.Cmd("getent", "passwd", ServiceUser)
 	return engine.CommandStep(b.Sys, b.M.T(KeyStepUser, ServiceUser), &check, []engine.Command{add},
 		[]engine.Command{engine.Cmd("userdel", ServiceUser)})
