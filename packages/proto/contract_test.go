@@ -20,6 +20,7 @@ var withoutLease = map[protoreflect.FullName]bool{
 	"dhow.runner.v1.AuthService.Challenge":        true,
 	"dhow.runner.v1.AuthService.Authenticate":     true,
 	"dhow.runner.v1.AuthService.RotateKeys":       true,
+	"dhow.runner.v1.AuthService.Revoke":           true,
 	"dhow.runner.v1.LeaseService.Lease":           true,
 }
 
