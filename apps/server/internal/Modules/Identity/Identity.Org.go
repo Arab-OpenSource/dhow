@@ -108,6 +108,7 @@ func (s *Service) ListMembers(ctx context.Context, id uuid.UUID, page, limit int
 		if manager {
 			m.Mfa = mfaOf(r.HasTotp, r.HasPasskey)
 			m.MfaResetPending = r.MfaResetAt != nil && m.Mfa == "none"
+			m.LastActiveAt = r.LastActiveAt
 		}
 		out = append(out, m)
 	}

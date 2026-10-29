@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 
-from . import docs_rules
+from . import common, docs_rules
 
 ARABIC = re.compile(r"[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]")
 
@@ -16,17 +16,12 @@ BANNED = (
     "claude-session:",
 )
 
-CMD_START = r"(?:^|[\n;&|(]|&&|\|\||\bthen\b|\bdo\b|\belse\b)\s*"
-
-WRITES_MESSAGE = re.compile(
-    CMD_START + r"(?:\w+=\S+\s+)*"
-    r"(?:git\s+(?:-C\s+\S+\s+)?(?:commit|tag\b[^\n]*-[am])|"
-    r"gh\s+(?:pr|issue|release)\s+(?:create|edit|comment))",
-    re.IGNORECASE,
-)
-
-IS_GIT_COMMIT = re.compile(CMD_START + r"(?:\w+=\S+\s+)*git\s+(?:-C\s+\S+\s+)?commit\b", re.IGNORECASE)
-IS_GIT_PUSH = re.compile(CMD_START + r"(?:\w+=\S+\s+)*git\s+(?:-C\s+\S+\s+)?push\b", re.IGNORECASE)
+WRITES_GIT_MESSAGE = common.git_subcommand(r"commit|tag\b[^\n]*-[am]")
+WRITES_GH_MESSAGE = re.compile(
+    common.CMD_START + r"(?:\w+=\S+\s+)*gh\s+(?:pr|issue|release)\s+(?:create|edit|comment)\b", re.IGNORECASE)
+IS_GIT_COMMIT = common.git_subcommand("commit")
+IS_GIT_PUSH = common.git_subcommand("push")
+GIT_DIR_OPTION = re.compile(r"(?:^|\s)-C\s+(" + common.SHELL_VALUE + r")")
 NO_VERIFY = re.compile(r"(?:^|\s)--no-verify(?=\s|$)")
 COMMIT_SHORT_N = re.compile(r"(?:^|\s)-[a-zA-Z]*n[a-zA-Z]*(?=\s|$)")
 STRINGS = re.compile(r"\"(?:[^\"\\]|\\.)*\"|'[^']*'")
@@ -44,10 +39,12 @@ def unquote(s):
 
 
 def workdir(command, cwd):
-    m = re.search(r"\bgit\s+-C\s+" + QUOTED, command)
-    if m:
-        d = unquote(m.group(1))
-        return d if os.path.isabs(d) else os.path.join(cwd, d)
+    git = common.find_git(common.git_subcommand(r"\S+"), command)
+    if git:
+        dirs = GIT_DIR_OPTION.findall(common.git_global_options(command, git))
+        if dirs:
+            d = unquote(dirs[-1])
+            return d if os.path.isabs(d) else os.path.join(cwd, d)
     m = re.match(r"\s*cd\s+" + QUOTED + r"\s*&&", command)
     if m:
         d = unquote(m.group(1))
@@ -109,9 +106,10 @@ def subject_of(command, parts):
 
 
 def check_push(command):
-    if not IS_GIT_PUSH.search(command):
+    push = common.find_git(IS_GIT_PUSH, command)
+    if not push:
         return None
-    if NO_VERIFY.search(command):
+    if NO_VERIFY.search(command) or common.skips_hooks(command, push):
         return "Never skip git hooks (--no-verify)."
     if FORCE.search(command) and PROTECTED.search(command):
         return "Never force-push main. Work on a branch and open a pull request."
@@ -119,11 +117,13 @@ def check_push(command):
 
 
 def check_message(command, cwd):
-    if not WRITES_MESSAGE.search(command):
+    commit = common.find_git(IS_GIT_COMMIT, command)
+    if not (commit or common.find_git(WRITES_GIT_MESSAGE, command) or WRITES_GH_MESSAGE.search(command)):
         return None
-    is_commit = IS_GIT_COMMIT.search(command) is not None
+    is_commit = commit is not None
     head = STRINGS.sub(" ", command.split("<<")[0])
-    if is_commit and (NO_VERIFY.search(head) or COMMIT_SHORT_N.search(head.split("commit", 1)[-1])):
+    tail = STRINGS.sub(" ", command[commit.end():].split("<<")[0]) if commit else ""
+    if is_commit and (NO_VERIFY.search(head) or COMMIT_SHORT_N.search(tail) or common.skips_hooks(command, commit)):
         return "Never skip git hooks (--no-verify)."
     parts = message_parts(command, cwd)
     text = "\n".join(parts)

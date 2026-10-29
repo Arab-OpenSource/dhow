@@ -101,6 +101,24 @@ func (e FactorMethod) Valid() bool {
 	}
 }
 
+// Defines values for InvitationStatus.
+const (
+	Accepted InvitationStatus = "accepted"
+	Open     InvitationStatus = "open"
+)
+
+// Valid indicates whether the value is a known member of the InvitationStatus enum.
+func (e InvitationStatus) Valid() bool {
+	switch e {
+	case Accepted:
+		return true
+	case Open:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Locale.
 const (
 	Ar Locale = "ar"
@@ -320,8 +338,16 @@ type FactorMethod string
 
 // Invitation defines model for Invitation.
 type Invitation struct {
-	CreatedAt time.Time `json:"CreatedAt"`
-	Email     string    `json:"Email"`
+	// AcceptedAt When the invitation was accepted. Present only with `Status=accepted`.
+	AcceptedAt *time.Time `json:"AcceptedAt,omitempty"`
+
+	// AcceptedByName The name of the user who accepted the invitation. Present only with `Status=accepted`.
+	AcceptedByName *string `json:"AcceptedByName,omitempty"`
+
+	// AcceptedByUserId The user who accepted the invitation. Present only with `Status=accepted`.
+	AcceptedByUserId *openapi_types.UUID `json:"AcceptedByUserId,omitempty"`
+	CreatedAt        time.Time           `json:"CreatedAt"`
+	Email            string              `json:"Email"`
 
 	// EmailStatus `disabled` when SMTP is not set up, `sent` when the mail server accepted the email, `failed` when it did not. The link works in every case.
 	EmailStatus   EmailStatus        `json:"EmailStatus"`
@@ -429,6 +455,9 @@ type InvitationResponse struct {
 	Success bool      `json:"Success"`
 }
 
+// InvitationStatus `open` lists the invitations that are neither accepted nor revoked. `accepted` lists the accepted ones.
+type InvitationStatus string
+
 // InvitationTokenRequest defines model for InvitationTokenRequest.
 type InvitationTokenRequest struct {
 	Token string `json:"Token"`
@@ -442,7 +471,10 @@ type Member struct {
 	EffectiveRole Role      `json:"EffectiveRole"`
 	Email         string    `json:"Email"`
 	JoinedAt      time.Time `json:"JoinedAt"`
-	Mfa           *MfaState `json:"Mfa,omitempty"`
+
+	// LastActiveAt The last time the member used this organization in the dashboard: a signed-in request to one of its endpoints, recorded at most once a minute. Present only for callers with `member.manage`, and absent when the member has not used the organization since this was added.
+	LastActiveAt *time.Time `json:"LastActiveAt,omitempty"`
+	Mfa          *MfaState  `json:"Mfa,omitempty"`
 
 	// MfaResetPending An admin reset the member's second factor and the member has not set up a new one yet.
 	MfaResetPending *bool  `json:"MfaResetPending,omitempty"`
@@ -745,6 +777,12 @@ type UserId = openapi_types.UUID
 // Error defines model for Error.
 type Error = ErrorResponse
 
+// ListInvitationsParams defines parameters for ListInvitations.
+type ListInvitationsParams struct {
+	// Status Which invitations to list.
+	Status *InvitationStatus `form:"Status,omitempty" json:"Status,omitempty"`
+}
+
 // ListMembersParams defines parameters for ListMembers.
 type ListMembersParams struct {
 	Page  *Page  `form:"Page,omitempty" json:"Page,omitempty"`
@@ -819,9 +857,9 @@ type ServerInterface interface {
 	// UpdateOrganization Rename an organization
 	// (PATCH /organizations/{id})
 	UpdateOrganization(w http.ResponseWriter, r *http.Request, id Id)
-	// ListInvitations List the open invitations of an organization
+	// ListInvitations List the open or accepted invitations of an organization
 	// (GET /organizations/{id}/invitations)
-	ListInvitations(w http.ResponseWriter, r *http.Request, id Id)
+	ListInvitations(w http.ResponseWriter, r *http.Request, id Id, params ListInvitationsParams)
 	// CreateInvitation Invite someone by email
 	// (POST /organizations/{id}/invitations)
 	CreateInvitation(w http.ResponseWriter, r *http.Request, id Id)
@@ -927,9 +965,9 @@ func (_ Unimplemented) UpdateOrganization(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// ListInvitations List the open invitations of an organization
+// ListInvitations List the open or accepted invitations of an organization
 // (GET /organizations/{id}/invitations)
-func (_ Unimplemented) ListInvitations(w http.ResponseWriter, r *http.Request, id Id) {
+func (_ Unimplemented) ListInvitations(w http.ResponseWriter, r *http.Request, id Id, params ListInvitationsParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1191,8 +1229,24 @@ func (siw *ServerInterfaceWrapper) ListInvitations(w http.ResponseWriter, r *htt
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListInvitationsParams
+
+	// ------------- Optional query parameter "Status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "Status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "Status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Status", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListInvitations(w, r, id)
+		siw.Handler.ListInvitations(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2348,7 +2402,8 @@ func (response UpdateOrganizationdefaultJSONResponse) VisitUpdateOrganizationRes
 }
 
 type ListInvitationsRequestObject struct {
-	Id Id `json:"id"`
+	Id     Id `json:"id"`
+	Params ListInvitationsParams
 }
 
 type ListInvitationsResponseObject interface {
@@ -3252,7 +3307,7 @@ type StrictServerInterface interface {
 	// UpdateOrganization Rename an organization
 	// (PATCH /organizations/{id})
 	UpdateOrganization(ctx context.Context, request UpdateOrganizationRequestObject) (UpdateOrganizationResponseObject, error)
-	// ListInvitations List the open invitations of an organization
+	// ListInvitations List the open or accepted invitations of an organization
 	// (GET /organizations/{id}/invitations)
 	ListInvitations(ctx context.Context, request ListInvitationsRequestObject) (ListInvitationsResponseObject, error)
 	// CreateInvitation Invite someone by email
@@ -3543,10 +3598,11 @@ func (sh *strictHandler) UpdateOrganization(w http.ResponseWriter, r *http.Reque
 }
 
 // ListInvitations operation middleware
-func (sh *strictHandler) ListInvitations(w http.ResponseWriter, r *http.Request, id Id) {
+func (sh *strictHandler) ListInvitations(w http.ResponseWriter, r *http.Request, id Id, params ListInvitationsParams) {
 	var request ListInvitationsRequestObject
 
 	request.Id = id
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListInvitations(ctx, request.(ListInvitationsRequestObject))

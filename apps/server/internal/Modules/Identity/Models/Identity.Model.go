@@ -29,6 +29,7 @@ type Member struct {
 	Role            string
 	EffectiveRole   string
 	JoinedAt        time.Time
+	LastActiveAt    *time.Time
 	Mfa             string
 	MfaResetPending bool
 	Teams           []MemberTeam

@@ -32,6 +32,15 @@ const Locked = ({ settings }: { settings: TOidcSettings }) => {
   );
 };
 
+const Stranded = ({ count }: { count: number }) => {
+  const t = useT();
+  return (
+    <InlineAlert accent="awaiting" title={t('settings.oidc.stranded')}>
+      {t('settings.oidc.strandedAbout', { count: String(count) })}
+    </InlineAlert>
+  );
+};
+
 export const OidcCard = ({ onAdd, onEdit }: IOidcCardProps) => {
   const t = useT();
   const query = useOidcSettings();
@@ -62,6 +71,7 @@ export const OidcCard = ({ onAdd, onEdit }: IOidcCardProps) => {
             <div className="grid gap-4 px-card pt-1 pb-3">
               <p className="m-0 text-body-sm text-secondary">{t('settings.oidc.lead', PRODUCT_NAMES)}</p>
               {settings.Locked ? <Locked settings={settings} /> : null}
+              {settings.Locked && settings.IgnoredLinkedIdentities > 0 ? <Stranded count={settings.IgnoredLinkedIdentities} /> : null}
             </div>
             {settings.Providers.length === 0 ? (
               <EmptyState icon="user" text={t('settings.oidc.empty', PRODUCT_NAMES)} action={settings.Locked ? undefined : add} className="pt-2" />

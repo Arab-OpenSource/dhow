@@ -82,7 +82,10 @@ func (s *Service) takeInviteLimits(ctx context.Context, org, user uuid.UUID) err
 	return nil
 }
 
-func (s *Service) ListInvitations(ctx context.Context, org uuid.UUID) ([]models.Invitation, error) {
+func (s *Service) ListInvitations(ctx context.Context, org uuid.UUID, status string) ([]models.Invitation, error) {
+	if status == models.InvitationsAccepted {
+		return s.listAcceptedInvitations(ctx, org)
+	}
 	rows, err := s.queries().ListOpenInvitations(ctx, sqlc.ListOpenInvitationsParams{OrganizationID: org, MaxRows: config.InvitationListLimit})
 	if err != nil {
 		return nil, err
@@ -91,6 +94,25 @@ func (s *Service) ListInvitations(ctx context.Context, org uuid.UUID) ([]models.
 	out := make([]models.Invitation, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, invitationOf(sqlc.GetOpenInvitationRow(r), now))
+	}
+	return out, nil
+}
+
+func (s *Service) listAcceptedInvitations(ctx context.Context, org uuid.UUID) ([]models.Invitation, error) {
+	rows, err := s.queries().ListAcceptedInvitations(ctx, sqlc.ListAcceptedInvitationsParams{OrganizationID: org, MaxRows: config.InvitationListLimit})
+	if err != nil {
+		return nil, err
+	}
+	now := s.now()
+	out := make([]models.Invitation, 0, len(rows))
+	for _, r := range rows {
+		i := invitationOf(sqlc.GetOpenInvitationRow{
+			Id: r.Id, Email: r.Email, Role: r.Role, CreatedAt: r.CreatedAt, ExpiresAt: r.ExpiresAt, SentAt: r.SentAt,
+			SendCount: r.SendCount, EmailStatus: r.EmailStatus, InvitedByName: r.InvitedByName,
+		}, now)
+		i.Expired = false
+		i.Accepted = &models.InvitationAcceptance{At: r.AcceptedAt, UserID: r.AcceptedByUserId, UserName: r.AcceptedByName}
+		out = append(out, i)
 	}
 	return out, nil
 }

@@ -181,7 +181,8 @@ const listUserMemberships = `-- name: ListUserMemberships :many
 SELECT m."OrganizationId", o."Name" AS "OrganizationName", o."Slug" AS "OrganizationSlug", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
              WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
-       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt"
+       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt",
+       m."LastSeenAt"
 FROM "Memberships" m
 JOIN "Organizations" o ON o."Id" = m."OrganizationId" AND NOT o."IsDeleted"
 WHERE m."UserId" = $1 AND NOT m."IsDeleted"
@@ -198,6 +199,7 @@ type ListUserMembershipsRow struct {
 	RequireSecondFactorSince       *time.Time
 	RequireSecondFactorAdminsSince *time.Time
 	JoinedAt                       time.Time
+	LastSeenAt                     *time.Time
 }
 
 func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]ListUserMembershipsRow, error) {
@@ -219,6 +221,7 @@ func (q *Queries) ListUserMemberships(ctx context.Context, userID uuid.UUID) ([]
 			&i.RequireSecondFactorSince,
 			&i.RequireSecondFactorAdminsSince,
 			&i.JoinedAt,
+			&i.LastSeenAt,
 		); err != nil {
 			return nil, err
 		}
@@ -434,6 +437,30 @@ type SetUserPasswordParams struct {
 
 func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error {
 	_, err := q.db.Exec(ctx, setUserPassword, arg.PasswordHash, arg.Now, arg.ID)
+	return err
+}
+
+const touchMembership = `-- name: TouchMembership :exec
+UPDATE "Memberships"
+SET "LastSeenAt" = $1::timestamptz, "UpdatedAt" = $1
+WHERE "OrganizationId" = $2 AND "UserId" = $3 AND NOT "IsDeleted"
+  AND ("LastSeenAt" IS NULL OR "LastSeenAt" <= $4::timestamptz)
+`
+
+type TouchMembershipParams struct {
+	Now            time.Time
+	OrganizationID uuid.UUID
+	UserID         uuid.UUID
+	TouchBefore    time.Time
+}
+
+func (q *Queries) TouchMembership(ctx context.Context, arg TouchMembershipParams) error {
+	_, err := q.db.Exec(ctx, touchMembership,
+		arg.Now,
+		arg.OrganizationID,
+		arg.UserID,
+		arg.TouchBefore,
+	)
 	return err
 }
 

@@ -7,7 +7,8 @@ WHERE "Email" = @email AND NOT "IsDeleted";
 SELECT m."OrganizationId", o."Name" AS "OrganizationName", o."Slug" AS "OrganizationSlug", m."Role",
        ARRAY(SELECT r."Role" FROM "OrganizationTeamRoles" r
              WHERE r."UserId" = m."UserId" AND r."OrganizationId" = m."OrganizationId")::text[] AS "TeamRoles",
-       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt"
+       o."RequireSecondFactor", o."RequireSecondFactorSince", o."RequireSecondFactorAdminsSince", m."CreatedAt" AS "JoinedAt",
+       m."LastSeenAt"
 FROM "Memberships" m
 JOIN "Organizations" o ON o."Id" = m."OrganizationId" AND NOT o."IsDeleted"
 WHERE m."UserId" = @user_id AND NOT m."IsDeleted"
@@ -104,3 +105,9 @@ WHERE "Key" = @key;
 SELECT "IsInstanceOwner", "MfaResetAt"
 FROM "Users"
 WHERE "Id" = @id AND NOT "IsDeleted";
+
+-- name: TouchMembership :exec
+UPDATE "Memberships"
+SET "LastSeenAt" = @now::timestamptz, "UpdatedAt" = @now
+WHERE "OrganizationId" = @organization_id AND "UserId" = @user_id AND NOT "IsDeleted"
+  AND ("LastSeenAt" IS NULL OR "LastSeenAt" <= @touch_before::timestamptz);

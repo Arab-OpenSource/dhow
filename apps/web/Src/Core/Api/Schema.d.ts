@@ -947,8 +947,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the open invitations of an organization
-         * @description Needs `member.manage`. Open means neither accepted nor revoked; expired ones are listed with `Expired` so they can be resent. Newest first.
+         * List the open or accepted invitations of an organization
+         * @description Needs `member.manage`. With `Status=open`, the default, it lists the invitations that are neither accepted nor revoked; expired ones are listed with `Expired` so they can be resent. With `Status=accepted` it lists the accepted ones with `AcceptedAt` and who accepted them. Newest first, at most 200.
          */
         get: operations["listInvitations"];
         put?: never;
@@ -1843,6 +1843,11 @@ export interface components {
              * @description Providers saved in the database that are unused because the environment sets the list.
              */
             IgnoredStored: number;
+            /**
+             * Format: int64
+             * @description Accounts linked to those unused providers, counting only providers whose id the environment list does not reuse. They cannot sign in with that provider while `DHOW_OIDC_PROVIDERS` is set. Zero when not locked.
+             */
+            IgnoredLinkedIdentities: number;
             Providers: components["schemas"]["OidcProviderSetting"][];
         };
         OidcSettingsResponse: components["schemas"]["Envelope"] & {
@@ -2025,6 +2030,11 @@ export interface components {
             EffectiveRole: components["schemas"]["Role"];
             /** Format: date-time */
             JoinedAt: string;
+            /**
+             * Format: date-time
+             * @description The last time the member used this organization in the dashboard: a signed-in request to one of its endpoints, recorded at most once a minute. Present only for callers with `member.manage`, and absent when the member has not used the organization since this was added.
+             */
+            LastActiveAt?: string | null;
             /** @description The member's strongest second factor. Present only for callers with `member.manage`. */
             Mfa?: components["schemas"]["MfaState"];
             /** @description An admin reset the member's second factor and the member has not set up a new one yet. */
@@ -2509,7 +2519,25 @@ export interface components {
             SendCount: number;
             EmailStatus: components["schemas"]["EmailStatus"];
             Expired: boolean;
+            /**
+             * Format: date-time
+             * @description When the invitation was accepted. Present only with `Status=accepted`.
+             */
+            AcceptedAt?: string;
+            /**
+             * Format: uuid
+             * @description The user who accepted the invitation. Present only with `Status=accepted`.
+             */
+            AcceptedByUserId?: string;
+            /** @description The name of the user who accepted the invitation. Present only with `Status=accepted`. */
+            AcceptedByName?: string;
         };
+        /**
+         * @description `open` lists the invitations that are neither accepted nor revoked. `accepted` lists the accepted ones.
+         * @default open
+         * @enum {string}
+         */
+        InvitationStatus: "open" | "accepted";
         InvitationResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Invitation"];
         };
@@ -4368,7 +4396,10 @@ export interface operations {
     };
     listInvitations: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Which invitations to list. */
+                Status?: components["schemas"]["InvitationStatus"];
+            };
             header?: never;
             path: {
                 id: components["parameters"]["Id"];
@@ -4377,7 +4408,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The open invitations. */
+            /** @description The invitations. */
             200: {
                 headers: {
                     [name: string]: unknown;

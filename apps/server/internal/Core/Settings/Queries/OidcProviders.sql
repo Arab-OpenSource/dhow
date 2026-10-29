@@ -77,3 +77,10 @@ WHERE NOT u."IsDeleted"
       SELECT 1 FROM "UserIdentities" o
       WHERE o."UserId" = u."Id" AND NOT o."IsDeleted" AND o."Provider" <> @provider::text AND o."Provider" = ANY (@others::text[])
   );
+
+-- name: CountStrandedIdentities :one
+SELECT count(DISTINCT p."ProviderId")::bigint AS "Providers", count(i."Id")::bigint AS "Identities"
+FROM "OidcProviders" p
+JOIN "UserIdentities" i ON i."Provider" = p."ProviderId" AND NOT i."IsDeleted"
+JOIN "Users" u ON u."Id" = i."UserId" AND NOT u."IsDeleted"
+WHERE NOT p."IsDeleted" AND NOT (p."ProviderId" = ANY (@active::text[]));

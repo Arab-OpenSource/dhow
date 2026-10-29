@@ -1439,18 +1439,25 @@ paths:
     get:
       operationId: listInvitations
       tags: [invitations]
-      summary: List the open invitations of an organization
+      summary: List the open or accepted invitations of an organization
       description: >-
-        Needs `member.manage`. Open means neither accepted nor revoked; expired ones are listed with `Expired` so they
-        can be resent. Newest first.
+        Needs `member.manage`. With `Status=open`, the default, it lists the invitations that are neither accepted nor
+        revoked; expired ones are listed with `Expired` so they can be resent. With `Status=accepted` it lists the
+        accepted ones with `AcceptedAt` and who accepted them. Newest first, at most 200.
       security:
         - SessionCookie: []
         - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
+        - name: Status
+          in: query
+          required: false
+          description: Which invitations to list.
+          schema:
+            $ref: "#/components/schemas/InvitationStatus"
       responses:
         "200":
-          description: The open invitations.
+          description: The invitations.
           content:
             application/json:
               schema:
@@ -3019,7 +3026,7 @@ components:
     OidcSettings:
       type: object
       additionalProperties: false
-      required: [Source, Locked, Env, CallbackBase, MaxProviders, IgnoredStored, Providers]
+      required: [Source, Locked, Env, CallbackBase, MaxProviders, IgnoredStored, IgnoredLinkedIdentities, Providers]
       properties:
         Source:
           $ref: "#/components/schemas/SettingSource"
@@ -3039,6 +3046,13 @@ components:
           format: int64
           minimum: 0
           description: Providers saved in the database that are unused because the environment sets the list.
+        IgnoredLinkedIdentities:
+          type: integer
+          format: int64
+          minimum: 0
+          description: >-
+            Accounts linked to those unused providers, counting only providers whose id the environment list does not
+            reuse. They cannot sign in with that provider while `DHOW_OIDC_PROVIDERS` is set. Zero when not locked.
         Providers:
           type: array
           items:
@@ -3424,6 +3438,14 @@ components:
         JoinedAt:
           type: string
           format: date-time
+        LastActiveAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            The last time the member used this organization in the dashboard: a signed-in request to one of its
+            endpoints, recorded at most once a minute. Present only for callers with `member.manage`, and absent when
+            the member has not used the organization since this was added.
         Mfa:
           $ref: "#/components/schemas/MfaState"
           description: The member's strongest second factor. Present only for callers with `member.manage`.
@@ -4431,6 +4453,23 @@ components:
           $ref: "#/components/schemas/EmailStatus"
         Expired:
           type: boolean
+        AcceptedAt:
+          type: string
+          format: date-time
+          description: When the invitation was accepted. Present only with `Status=accepted`.
+        AcceptedByUserId:
+          type: string
+          format: uuid
+          description: The user who accepted the invitation. Present only with `Status=accepted`.
+        AcceptedByName:
+          type: string
+          description: The name of the user who accepted the invitation. Present only with `Status=accepted`.
+    InvitationStatus:
+      type: string
+      enum: [open, accepted]
+      default: open
+      description: >-
+        `open` lists the invitations that are neither accepted nor revoked. `accepted` lists the accepted ones.
     InvitationResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"
