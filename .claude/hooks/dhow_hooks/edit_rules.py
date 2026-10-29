@@ -588,6 +588,7 @@ CHECKS = (
     check_connect_mounts,
     runner_rules.check_runner_layout,
     runner_rules.check_runner_imports,
+    runner_rules.check_shared_imports,
     check_ts,
     web_rules.check_web_imports,
     web_rules.check_web_text,

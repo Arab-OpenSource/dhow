@@ -4,9 +4,9 @@ import re
 from .common import GENERATED_PATH, is_test, new_lines
 
 WEB_LOCALES = "apps/web/Src/I18n/Locales/"
-GO_CATALOG_ROOTS = ("apps/server/internal/", "apps/runner/internal/", "apps/cli/")
-GO_CATALOG_NAME = re.compile(r"(?:^|\.)[A-Za-z]*Ar\.go$")
-EXCLUDED = ("apps/server/internal/Core/Installer/Prompt.go",)
+GO_CATALOG_ROOTS = ("apps/server/internal/", "apps/runner/internal/", "apps/cli/", "internal/installer/")
+GO_CATALOG_NAME = re.compile(r"(?:^|\.)[A-Za-z]*Ar\.go$|^[a-z]+_ar\.go$")
+EXCLUDED = ("apps/server/internal/Core/Installer/Prompt.go", "internal/installer/prompt.go")
 ROOT_DOCS = ("README.md", "CONTRIBUTING.md", "SECURITY.md")
 DOCS = "docs/"
 ENGLISH_DOCS = "docs/en/"

@@ -1,7 +1,6 @@
 package installer
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -9,9 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"go.yaml.in/yaml/v3"
-
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	engine "github.com/Khaymah/dhow/internal/installer"
 )
 
 const (
@@ -26,15 +24,15 @@ const (
 	ProxyExisting = "existing"
 	ProxyNone     = "none"
 
-	LangEn = "en"
-	LangAr = "ar"
+	LangEn = engine.LangEn
+	LangAr = engine.LangAr
 
-	maxAnswersBytes = 64 << 10
+	maxAnswersBytes = engine.MaxAnswersBytes
 	loopbackProxies = "127.0.0.1/32,::1/128"
 )
 
 var (
-	ErrInvalidAnswers = errors.New("invalid answers")
+	ErrInvalidAnswers = engine.ErrInvalidAnswers
 	hostnameRe        = regexp.MustCompile(`^(?i)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
 	emailRe           = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]+$`)
 )
@@ -83,25 +81,9 @@ func ParseInstalledAnswers(r io.Reader, urlStored bool) (Answers, error) {
 }
 
 func parseAnswers(r io.Reader, urlStored bool) (Answers, error) {
-	data, err := io.ReadAll(io.LimitReader(r, maxAnswersBytes+1))
-	if err != nil {
-		return Answers{}, fmt.Errorf("read answers: %w", err)
-	}
-	if len(data) > maxAnswersBytes {
-		return Answers{}, fmt.Errorf("%w: the file is larger than %d bytes", ErrInvalidAnswers, maxAnswersBytes)
-	}
 	a := DefaultAnswers()
-	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true)
-	if err := dec.Decode(&a); err != nil {
-		if errors.Is(err, io.EOF) {
-			return Answers{}, fmt.Errorf("%w: the file is empty", ErrInvalidAnswers)
-		}
-		return Answers{}, fmt.Errorf("%w: %w", ErrInvalidAnswers, err)
-	}
-	var extra yaml.Node
-	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
-		return Answers{}, fmt.Errorf("%w: only one YAML document is allowed", ErrInvalidAnswers)
+	if err := engine.DecodeAnswers(r, &a); err != nil {
+		return Answers{}, err
 	}
 	a.normalize()
 	a.Database.kept = urlStored
@@ -236,17 +218,7 @@ func (a Answers) BreachedCheck() bool {
 }
 
 func (a Answers) Marshal() ([]byte, error) {
-	var buf bytes.Buffer
-	buf.WriteString("# Written by dhow-server install. It holds no secrets.\n")
-	enc := yaml.NewEncoder(&buf)
-	enc.SetIndent(2)
-	if err := enc.Encode(a); err != nil {
-		return nil, fmt.Errorf("encode answers: %w", err)
-	}
-	if err := enc.Close(); err != nil {
-		return nil, fmt.Errorf("encode answers: %w", err)
-	}
-	return buf.Bytes(), nil
+	return engine.EncodeAnswers("# Written by dhow-server install. It holds no secrets.\n", a)
 }
 
 func (a *Answers) SetDatabaseURL(url string) { a.Database.url = url }

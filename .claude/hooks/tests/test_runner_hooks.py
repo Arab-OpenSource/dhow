@@ -21,7 +21,7 @@ def imp(path):
 
 class RunnerLayoutRules(unittest.TestCase):
     def test_allowed_locations(self):
-        for rel in ("App/App.go", "App/App.Run.go", "Config/Config.go", "Identity/Identity.go", "Client/Client.Auth.go",
+        for rel in ("App/App.go", "App/App.Run.go", "Installer/Installer.go", "Installer/Messages.Ar.go", "Config/Config.go", "Identity/Identity.go", "Client/Client.Auth.go",
                     "Executor/Executor.go", "Journal/Journal.go", "Masking/Masker.go", "Logs/Logs.Spill.go",
                     "Sandbox/Sandbox.go", "Sandbox/Fake/Fake.go", "Sandbox/Podman/Podman.Inspect.go", "Sandbox/Wire/Wire.go",
                     "Agent/Agent.go", "Executor/executor_test.go"):
@@ -44,7 +44,28 @@ class RunnerLayoutRules(unittest.TestCase):
 
     def test_command_and_other_trees_untouched(self):
         self.assertIsNone(edit("apps/runner/cmd/dhow-runner/main.go", "package main\n"))
-        self.assertIsNone(edit("internal/jobspec/x.go", imp("Executor")))
+        self.assertIsNone(edit("internal/jobspec/x.go", 'package x\n\nimport "github.com/Khaymah/dhow/internal/runnersig"\n'))
+
+
+class SharedInternalRules(unittest.TestCase):
+    def test_shared_packages_never_import_apps(self):
+        for rel in ("internal/jobspec/x.go", "internal/installer/steps.go", "internal/installer/fakesys/fakesys.go"):
+            for target in ("apps/runner/internal/Executor", "apps/server/internal/Config"):
+                reason = edit(rel, 'package x\n\nimport "github.com/Khaymah/dhow/' + target + '"\n')
+                self.assertIn("never import apps/", reason or "", rel)
+
+    def test_shared_tests_and_shared_imports_pass(self):
+        self.assertIsNone(edit("internal/installer/steps.go", 'package x\n\nimport "github.com/Khaymah/dhow/internal/buildinfo"\n'))
+
+    def test_the_real_shared_tree_passes(self):
+        for folder, _, names in os.walk(os.path.join(ROOT, "internal")):
+            for name in names:
+                if not name.endswith(".go"):
+                    continue
+                path = os.path.join(folder, name)
+                rel = os.path.relpath(path, ROOT).replace(os.sep, "/")
+                with open(path, encoding="utf-8") as fh:
+                    self.assertIsNone(edit(rel, fh.read()), rel)
 
 
 class RunnerImportRules(unittest.TestCase):
@@ -78,6 +99,15 @@ class RunnerImportRules(unittest.TestCase):
                  ("Sandbox/Fake/Fake.go", "Sandbox"), ("Sandbox/Fake/Fake.go", "Config"), ("Journal/Journal.go", "Config"))
         for src, dst in cases:
             self.assertIsNone(edit(RUNNER + src, imp(dst)), src + " -> " + dst)
+
+    def test_the_installer_sees_config_and_identity_only(self):
+        self.assertIsNone(edit(RUNNER + "App/App.go", imp("Installer")))
+        for dst in ("Config", "Identity"):
+            self.assertIsNone(edit(RUNNER + "Installer/Installer.go", imp(dst)), dst)
+        for dst in ("Client", "Executor", "Journal", "Sandbox", "App"):
+            self.assertIsNotNone(edit(RUNNER + "Installer/Installer.go", imp(dst)), dst)
+        for src in ("Executor/Executor.go", "Client/Client.go", "Identity/Identity.go"):
+            self.assertIn("forbidden import", edit(RUNNER + src, imp("Installer")), src)
 
     def test_the_agent_imports_only_the_sandbox_wire(self):
         self.assertIsNone(edit(RUNNER + "Agent/Agent.go", imp("Sandbox/Wire")))

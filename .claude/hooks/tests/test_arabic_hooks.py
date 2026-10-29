@@ -139,7 +139,8 @@ class ArabicRegisterRules(unittest.TestCase):
         for rel in ("apps/web/Src/I18n/Locales/Ar.ts", "apps/web/Src/I18n/Locales/Boot/Ar.ts",
                     "apps/web/Src/I18n/Locales/Workspace/Ar.ts", "apps/web/Src/I18n/Locales/Workspace/HomeAr.ts",
                     "apps/web/Src/I18n/Locales/Workspace/OrgPagesAr.ts", SERVER_AR, INSTALLER_AR,
-                    "apps/server/internal/Core/Mail/Templates.Ar.go", "apps/runner/internal/Logs/MessagesAr.go"):
+                    "apps/server/internal/Core/Mail/Templates.Ar.go", "apps/runner/internal/Logs/MessagesAr.go",
+                    "internal/installer/catalog_ar.go", "apps/runner/internal/Installer/Messages.Ar.go"):
             body = ts_line("دلوقتي") if rel.endswith(".ts") else go_line("دلوقتي")
             self.assertIn("ADR/0062", edit(rel, body) or "", rel)
 
@@ -147,7 +148,8 @@ class ArabicRegisterRules(unittest.TestCase):
         for rel in ("apps/server/internal/Core/Installer/Prompt.go", "apps/server/internal/Core/Installer/Prompt_test.go",
                     "apps/server/internal/Core/I18n/I18n_test.go", "apps/web/Src/I18n/I18n.test.tsx",
                     "apps/web/Src/I18n/Locales/Workspace/JobsEn.ts", "apps/server/internal/Core/I18n/I18n.En.go",
-                    "apps/server/internal/Core/Installer/Answers.go"):
+                    "apps/server/internal/Core/Installer/Answers.go", "internal/installer/prompt.go",
+                    "internal/installer/prompt_test.go", "internal/installer/catalog.go"):
             body = go_line("أيوه، مش دلوقتي") if rel.endswith(".go") else ts_line("أيوه، مش دلوقتي")
             reason = edit(rel, body)
             self.assertNotIn("ADR/0062", reason or "", rel)
@@ -163,7 +165,7 @@ class ArabicRegisterRules(unittest.TestCase):
 class CurrentCatalogs(unittest.TestCase):
     def catalogs(self):
         found = []
-        for base in ("apps/web/Src/I18n/Locales", "apps/server/internal", "apps/runner/internal", "apps/cli"):
+        for base in ("apps/web/Src/I18n/Locales", "apps/server/internal", "apps/runner/internal", "apps/cli", "internal/installer"):
             for folder, _, names in os.walk(os.path.join(ROOT, base)):
                 for name in names:
                     rel = os.path.relpath(os.path.join(folder, name), ROOT).replace(os.sep, "/")

@@ -5,26 +5,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	engine "github.com/Khaymah/dhow/internal/installer"
 )
 
-type Severity int
+type (
+	Severity = engine.Severity
+	Finding  = engine.Finding
+)
 
 const (
-	SeverityOK Severity = iota
-	SeverityInfo
-	SeverityWarn
-	SeverityFail
+	SeverityOK   = engine.SeverityOK
+	SeverityInfo = engine.SeverityInfo
+	SeverityWarn = engine.SeverityWarn
+	SeverityFail = engine.SeverityFail
 )
 
-var ErrUnhealthy = errors.New("doctor found problems")
-
-type Finding struct {
-	Severity Severity
-	Title    string
-	Detail   string
-	Advice   string
-	Fix      *Step
-}
+var ErrUnhealthy = engine.ErrUnhealthy
 
 type DoctorOptions struct {
 	Fix  bool
@@ -73,34 +70,13 @@ func (app App) Doctor(ctx context.Context, opts DoctorOptions) error {
 	}
 	d.b = &Builder{Sys: app.Sys, Det: det, A: a, M: m, Version: app.Version, Sleep: app.Sleep}
 	findings := d.Run(ctx)
-	app.printFindings(findings, m)
-	remaining := 0
-	prompter := NewPrompter(app.In, app.Out, app.InFD, m)
+	engine.PrintFindings(app.Out, findings, m)
 	interactive := IsTerminal(app.InFD)
-	for _, f := range findings {
-		if f.Severity < SeverityWarn {
-			continue
-		}
-		if f.Fix == nil {
-			remaining++
-			continue
-		}
-		apply := opts.Fix
-		if !apply && interactive {
-			ok, err := prompter.Confirm(m.T(KeyApplyFix, f.Fix.Title), false)
-			if err != nil {
-				return err
-			}
-			apply = ok
-		}
-		if !apply {
-			remaining++
-			continue
-		}
-		if err := (Runner{Out: app.Out, M: m}).Execute(ctx, []Step{*f.Fix}); err != nil {
-			app.say("  %s\n", err.Error())
-			remaining++
-		}
+	remaining, err := engine.ApplyFixes(ctx, findings, engine.FixOptions{
+		Fix: opts.Fix, Interactive: interactive, Prompter: NewPrompter(app.In, app.Out, app.InFD, m).Prompter, Out: app.Out, M: m,
+	})
+	if err != nil {
+		return err
 	}
 	if remaining > 0 {
 		if !opts.Fix && !interactive {
@@ -110,32 +86,6 @@ func (app App) Doctor(ctx context.Context, opts DoctorOptions) error {
 	}
 	app.say("\n%s\n", m.T(KeyDoctorClean))
 	return nil
-}
-
-func (app App) printFindings(findings []Finding, m Messages) {
-	labels := map[Severity]string{
-		SeverityOK:   m.T(KeySevOK),
-		SeverityInfo: m.T(KeySevInfo),
-		SeverityWarn: m.T(KeySevWarn),
-		SeverityFail: m.T(KeySevFail),
-	}
-	for _, f := range findings {
-		app.say("  %-5s %s\n", labels[f.Severity], f.Title)
-		if f.Detail != "" {
-			app.say("        %s\n", f.Detail)
-		}
-		if f.Severity >= SeverityWarn {
-			if f.Fix != nil {
-				app.say("        %s %s\n", m.T(KeyProposedFix), f.Fix.Title)
-				for _, c := range f.Fix.Commands {
-					app.say("          %s\n", c)
-				}
-			}
-			if f.Advice != "" {
-				app.say("        %s\n", f.Advice)
-			}
-		}
-	}
 }
 
 func (d Doctor) Run(ctx context.Context) []Finding {
@@ -153,7 +103,7 @@ func (d Doctor) Run(ctx context.Context) []Finding {
 	return out
 }
 
-func ok(title string) Finding { return Finding{Severity: SeverityOK, Title: title} }
+func ok(title string) Finding { return engine.OK(title) }
 
 func (d Doctor) nativeChecks(ctx context.Context) []Finding {
 	out := []Finding{d.installed()}

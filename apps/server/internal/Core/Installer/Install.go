@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	engine "github.com/Khaymah/dhow/internal/installer"
 )
 
 const setupURLKey = "setup_url"
@@ -139,12 +139,7 @@ func (app App) resolveDatabaseURL(ctx context.Context, a *Answers, m Messages) e
 	return nil
 }
 
-func yesNo(m Messages, v bool) string {
-	if v {
-		return m.T(KeyYes)
-	}
-	return m.T(KeyNo)
-}
+func yesNo(m Messages, v bool) string { return m.YesNo(v) }
 
 func (app App) printDetection(det Detection, m Messages) {
 	app.say("%s\n", m.T(KeyDetected))
@@ -198,42 +193,7 @@ func (app App) printDetection(det Detection, m Messages) {
 }
 
 func (app App) printPlan(ctx context.Context, plan Plan, m Messages) {
-	for _, n := range plan.Notes {
-		app.say("\n%s\n", n)
-	}
-	if len(plan.Blockers) > 0 {
-		app.say("\n%s\n", m.T(KeyBlockers))
-		for _, bl := range plan.Blockers {
-			app.say("  - %s\n", bl)
-		}
-		return
-	}
-	app.say("\n%s\n", m.T(KeyPlan))
-	for i, s := range plan.Steps {
-		state := ""
-		if s.Done != nil {
-			if done, err := s.Done(ctx); err == nil && done {
-				state = " (" + m.T(KeyStepAlreadyDone) + ")"
-			}
-		}
-		app.say("  %2d. %s%s\n", i+1, s.Title, state)
-		for _, f := range s.Files {
-			app.say("        %s %s\n", m.T(KeyPlanFile), f)
-		}
-		for _, p := range s.Packages {
-			app.say("        %s %s\n", m.T(KeyPlanPackage), p)
-		}
-		for _, c := range s.Commands {
-			app.say("        %s %s\n", m.T(KeyPlanCommand), c)
-		}
-	}
-	pkgs := plan.Packages()
-	sort.Strings(pkgs)
-	list := strings.Join(pkgs, " ")
-	if list == "" {
-		list = m.T(KeyNone)
-	}
-	app.say("\n%s %s\n", m.T(KeyPlanPackagesTotal), list)
+	engine.PrintPlan(ctx, app.Out, plan, m)
 }
 
 func (app App) finish(ctx context.Context, a Answers, m Messages) {

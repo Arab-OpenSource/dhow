@@ -2,108 +2,57 @@ package installer
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"io/fs"
-	"net/http"
-	"strings"
-	"time"
+	"io"
+
+	engine "github.com/Khaymah/dhow/internal/installer"
 )
 
-var ErrCommandFailed = errors.New("command failed")
+type (
+	Command     = engine.Command
+	Output      = engine.Output
+	FileMode    = engine.FileMode
+	FileInfo    = engine.FileInfo
+	Probe       = engine.Probe
+	ProbeResult = engine.ProbeResult
+	System      = engine.System
+	Host        = engine.Host
+)
 
-type Command struct {
-	Name  string
-	Args  []string
-	Stdin []byte
-	Env   []string
-	Dir   string
+const maxAttempts = engine.MaxAttempts
+
+var (
+	ErrCommandFailed = engine.ErrCommandFailed
+	ErrNoInput       = engine.ErrNoInput
+	ErrTooManyTries  = engine.ErrTooManyTries
+)
+
+func Cmd(name string, args ...string) Command { return engine.Cmd(name, args...) }
+
+func NewHost() *Host { return engine.NewHost() }
+
+func IsTerminal(fd int) bool { return engine.IsTerminal(fd) }
+
+type Option struct {
+	Value string
+	Label string
 }
 
-func Cmd(name string, args ...string) Command { return Command{Name: name, Args: args} }
+type Prompter struct{ *engine.Prompter }
 
-func (c Command) String() string { return strings.Join(append([]string{c.Name}, c.Args...), " ") }
-
-type Output struct {
-	Stdout   []byte
-	Stderr   []byte
-	ExitCode int
+func NewPrompter(in io.Reader, out io.Writer, fd int, m Messages) *Prompter {
+	return &Prompter{Prompter: engine.NewPrompter(in, out, fd, m)}
 }
 
-type FileMode struct {
-	Perm  fs.FileMode
-	Owner string
-	Group string
-}
-
-type FileInfo struct {
-	Mode  fs.FileMode
-	UID   int
-	GID   int
-	Size  int64
-	IsDir bool
-}
-
-type Probe struct {
-	Method  string
-	URL     string
-	Headers map[string]string
-	Timeout time.Duration
-}
-
-type ProbeResult struct {
-	Status   int
-	Header   http.Header
-	Body     []byte
-	CertDays int
-}
-
-type System interface {
-	Run(ctx context.Context, c Command) (Output, error)
-	LookPath(name string) bool
-	ReadFile(path string) ([]byte, error)
-	WriteFile(path string, data []byte, mode FileMode) error
-	Chmod(path string, mode FileMode) error
-	Stat(path string) (FileInfo, error)
-	Remove(path string) error
-	RemoveAll(path string) error
-	MkdirAll(path string, mode FileMode) error
-	Glob(pattern string) ([]string, error)
-	Fetch(ctx context.Context, url string, limit int64) ([]byte, error)
-	HTTP(ctx context.Context, p Probe) (ProbeResult, error)
-	FreeBytes(path string) (uint64, error)
-	IsRoot() bool
-	Executable() (string, error)
-	Now() time.Time
-}
-
-func run(ctx context.Context, sys System, c Command) (Output, error) {
-	out, err := sys.Run(ctx, c)
-	if err != nil {
-		return out, fmt.Errorf("%s: %w%s", c.String(), err, stderrTail(out.Stderr))
+func (p *Prompter) Choose(label string, options []Option, def string) (string, error) {
+	converted := make([]engine.Option, len(options))
+	for i, o := range options {
+		converted[i] = engine.Option{Value: o.Value, Label: o.Label}
 	}
-	return out, nil
+	return p.Prompter.Choose(label, converted, def)
 }
 
-func succeeds(ctx context.Context, sys System, c Command) bool {
-	_, err := sys.Run(ctx, c)
-	return err == nil
-}
+func run(ctx context.Context, sys System, c Command) (Output, error) { return engine.Run(ctx, sys, c) }
 
-const stderrTailLines = 6
+func succeeds(ctx context.Context, sys System, c Command) bool { return engine.Succeeds(ctx, sys, c) }
 
-func stderrTail(b []byte) string {
-	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-	if len(lines) == 1 && lines[0] == "" {
-		return ""
-	}
-	if len(lines) > stderrTailLines {
-		lines = lines[len(lines)-stderrTailLines:]
-	}
-	return "\n    " + strings.Join(lines, "\n    ")
-}
-
-func exists(sys System, path string) bool {
-	_, err := sys.Stat(path)
-	return err == nil
-}
+func exists(sys System, path string) bool { return engine.Exists(sys, path) }

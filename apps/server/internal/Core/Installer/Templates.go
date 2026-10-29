@@ -1,14 +1,13 @@
 package installer
 
 import (
-	"bufio"
-	"bytes"
 	"net"
 	"slices"
 	"strconv"
 	"strings"
 
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	engine "github.com/Khaymah/dhow/internal/installer"
 )
 
 const (
@@ -18,53 +17,13 @@ const (
 	envPGPass   = "POSTGRES_PASSWORD" //nolint:gosec // The name of a Compose variable, not a credential.
 )
 
-type EnvEntry struct {
-	Key   string
-	Value string
-}
+type EnvEntry = engine.EnvEntry
 
-func ParseEnv(data []byte) []EnvEntry {
-	var out []EnvEntry
-	sc := bufio.NewScanner(bytes.NewReader(data))
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		k, v, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		out = append(out, EnvEntry{Key: strings.TrimSpace(k), Value: unquote(strings.TrimSpace(v))})
-	}
-	return out
-}
+func ParseEnv(data []byte) []EnvEntry { return engine.ParseEnv(data) }
 
-func EnvValue(entries []EnvEntry, key string) string {
-	for _, e := range entries {
-		if e.Key == key {
-			return e.Value
-		}
-	}
-	return ""
-}
+func EnvValue(entries []EnvEntry, key string) string { return engine.EnvValue(entries, key) }
 
-func RenderEnv(managed, existing []EnvEntry) []byte {
-	var b bytes.Buffer
-	seen := map[string]bool{}
-	for _, e := range managed {
-		seen[e.Key] = true
-		b.WriteString(e.Key + "=" + e.Value + "\n")
-	}
-	for _, e := range existing {
-		if seen[e.Key] {
-			continue
-		}
-		seen[e.Key] = true
-		b.WriteString(e.Key + "=" + e.Value + "\n")
-	}
-	return b.Bytes()
-}
+func RenderEnv(managed, existing []EnvEntry) []byte { return engine.RenderEnv(managed, existing) }
 
 func breachedEntry(a Answers, managed, existing []EnvEntry) ([]EnvEntry, []EnvEntry) {
 	kept := make([]EnvEntry, 0, len(existing))
@@ -76,18 +35,18 @@ func breachedEntry(a Answers, managed, existing []EnvEntry) ([]EnvEntry, []EnvEn
 	if a.BreachedCheck() {
 		return managed, kept
 	}
-	return append(managed, EnvEntry{config.EnvBreachedPasswordCheck, strconv.FormatBool(false)}), kept
+	return append(managed, EnvEntry{Key: config.EnvBreachedPasswordCheck, Value: strconv.FormatBool(false)}), kept
 }
 
 func nativeEnv(a Answers, existing []EnvEntry) []byte {
 	managed := []EnvEntry{
-		{config.EnvPublicURL, a.EffectivePublicURL()},
-		{config.EnvListenAddr, a.ListenAddr},
-		{config.EnvTrustedProxies, a.TrustedProxies()},
+		{Key: config.EnvPublicURL, Value: a.EffectivePublicURL()},
+		{Key: config.EnvListenAddr, Value: a.ListenAddr},
+		{Key: config.EnvTrustedProxies, Value: a.TrustedProxies()},
 	}
 	managed, existing = breachedEntry(a, managed, existing)
 	if EnvValue(existing, envLogLevel) == "" {
-		managed = append(managed, EnvEntry{envLogLevel, "info"})
+		managed = append(managed, EnvEntry{Key: envLogLevel, Value: "info"})
 	}
 	return RenderEnv(managed, existing)
 }
@@ -97,16 +56,16 @@ func composeEnv(a Answers, existing []EnvEntry, secretKey, pgPassword, image, tr
 		image = v
 	}
 	managed := []EnvEntry{
-		{envPGPass, pgPassword},
-		{config.EnvSecretKey, secretKey},
-		{config.EnvPublicURL, a.EffectivePublicURL()},
-		{envImage, image},
-		{envPublish, a.ListenAddr},
-		{config.EnvTrustedProxies, trusted},
+		{Key: envPGPass, Value: pgPassword},
+		{Key: config.EnvSecretKey, Value: secretKey},
+		{Key: config.EnvPublicURL, Value: a.EffectivePublicURL()},
+		{Key: envImage, Value: image},
+		{Key: envPublish, Value: a.ListenAddr},
+		{Key: config.EnvTrustedProxies, Value: trusted},
 	}
 	managed, existing = breachedEntry(a, managed, existing)
 	if EnvValue(existing, envLogLevel) == "" {
-		managed = append(managed, EnvEntry{envLogLevel, "info"})
+		managed = append(managed, EnvEntry{Key: envLogLevel, Value: "info"})
 	}
 	return RenderEnv(managed, existing)
 }

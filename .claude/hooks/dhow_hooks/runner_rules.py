@@ -4,7 +4,9 @@ from .common import GENERATED_PATH, is_test, new_lines
 
 RUNNER_INTERNAL = "apps/runner/internal/"
 RUNNER_IMPORT_PREFIX = "github.com/Khaymah/dhow/apps/runner/internal/"
-RUNNER_LAYERS = ("App", "Agent", "Config", "Identity", "Client", "Egress", "Executor", "Journal", "Masking", "Logs", "Sandbox")
+RUNNER_LAYERS = (
+    "App", "Agent", "Config", "Identity", "Client", "Egress", "Executor", "Journal", "Masking", "Logs", "Sandbox", "Installer",
+)
 RUNNER_ALLOWED_IMPORTS = {
     "App": set(RUNNER_LAYERS),
     "Agent": {"Sandbox"},
@@ -17,11 +19,14 @@ RUNNER_ALLOWED_IMPORTS = {
     "Journal": {"Config"},
     "Masking": set(),
     "Config": set(),
+    "Installer": {"Config", "Identity"},
 }
 PASCAL_DIR = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 PASCAL_GO_FILE = re.compile(r"^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*\.go$")
 GO_IMPORT_PATH = re.compile(r'"' + re.escape(RUNNER_IMPORT_PREFIX) + r'([^"]+)"')
 SERVER_IMPORT = re.compile(r'"github\.com/Khaymah/dhow/apps/server/')
+APPS_IMPORT = re.compile(r'"github\.com/Khaymah/dhow/apps/')
+SHARED_INTERNAL = "internal/"
 
 
 def is_runner_go(rel):
@@ -74,4 +79,14 @@ def check_runner_imports(rel, added, old, **_):
             reason = runner_import_violation(parts[0], target)
             if reason:
                 return f"{rel}: forbidden import of internal/{m.group(1)}. {reason}"
+    return None
+
+
+def check_shared_imports(rel, added, old, **_):
+    if not rel.startswith(SHARED_INTERNAL) or not rel.endswith(".go"):
+        return None
+    for line in new_lines(added, old):
+        if APPS_IMPORT.search(line):
+            return (f"{rel}: the shared packages in internal/ serve every app, so they never import apps/. "
+                    "Move the shared part here, or pass what it needs in from the app (ADR-0004).")
     return None

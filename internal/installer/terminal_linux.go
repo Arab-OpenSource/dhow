@@ -8,7 +8,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var errNoTerminal = errors.New("not a terminal")
+var ErrNoTerminal = errors.New("not a terminal")
 
 func IsTerminal(fd int) bool {
 	if fd < 0 {
@@ -18,13 +18,13 @@ func IsTerminal(fd int) bool {
 	return err == nil
 }
 
-func disableEcho(fd int) (func(), error) {
+func DisableEcho(fd int) (func(), error) {
 	if fd < 0 {
-		return nil, errNoTerminal
+		return nil, ErrNoTerminal
 	}
 	t, err := unix.IoctlGetTermios(fd, unix.TCGETS)
 	if err != nil {
-		return nil, errNoTerminal
+		return nil, ErrNoTerminal
 	}
 	old := *t
 	t.Lflag &^= unix.ECHO

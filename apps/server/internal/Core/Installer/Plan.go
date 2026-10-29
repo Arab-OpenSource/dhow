@@ -2,12 +2,13 @@ package installer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
 	"time"
+
+	engine "github.com/Khaymah/dhow/internal/installer"
 )
 
 const (
@@ -180,68 +181,11 @@ func (b *Builder) track(s Step) Step {
 	return s
 }
 
-type fileSpec struct {
-	Path string
-	Data []byte
-	Mode FileMode
-}
-
-type savedFile struct {
-	data []byte
-	mode FileMode
-	had  bool
-}
-
 func (b *Builder) ConfigStep(title string, files []fileSpec, after []Command, done func(context.Context) (bool, error)) Step {
-	saved := map[string]savedFile{}
-	s := Step{Title: title, Done: done}
-	for _, f := range files {
-		s.Files = append(s.Files, f.Path)
-	}
-	for _, c := range after {
-		s.Commands = append(s.Commands, c.String())
-	}
-	s.Apply = func(ctx context.Context) error {
-		for _, f := range files {
-			if old, err := b.Sys.ReadFile(f.Path); err == nil {
-				saved[f.Path] = savedFile{data: old, mode: f.Mode, had: true}
-			} else {
-				saved[f.Path] = savedFile{mode: f.Mode}
-			}
-			if err := b.Sys.WriteFile(f.Path, f.Data, f.Mode); err != nil {
-				return err
-			}
-		}
-		for _, c := range after {
-			if _, err := run(ctx, b.Sys, c); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	s.Undo = func(context.Context) error {
-		var errs []error
-		for path, f := range saved {
-			if f.had {
-				errs = append(errs, b.Sys.WriteFile(path, f.data, f.mode))
-			} else {
-				errs = append(errs, b.Sys.Remove(path))
-			}
-		}
-		return errors.Join(errs...)
-	}
-	return s
+	return engine.FilesStep(b.Sys, title, files, after, done)
 }
 
-func (b *Builder) filesMatch(files []fileSpec) (bool, error) {
-	for _, f := range files {
-		same, err := sameFile(b.Sys, f.Path, f.Data, f.Mode.Perm)
-		if err != nil || !same {
-			return false, err
-		}
-	}
-	return true, nil
-}
+func (b *Builder) filesMatch(files []fileSpec) (bool, error) { return engine.FilesMatch(b.Sys, files) }
 
 func (b *Builder) readExisting(path string) []byte {
 	data, err := b.Sys.ReadFile(path)
