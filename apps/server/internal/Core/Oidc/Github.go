@@ -109,7 +109,9 @@ func (p *gitHubProvider) get(ctx context.Context, accessToken, path string, into
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	if accessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+	}
 	req.Header.Set("Accept", gitHubMediaType)
 	req.Header.Set("X-GitHub-Api-Version", gitHubAPIVersion)
 	res, err := p.client.Do(req)
