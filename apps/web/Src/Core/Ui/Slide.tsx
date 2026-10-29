@@ -176,7 +176,7 @@ export const SlideView = ({
         />
         <div className={SLIDE_BODY}>{slide.children}</div>
         {slide.footer ? (
-          <footer className="flex items-center gap-2 border-t border-line px-card py-3">{slide.footer}</footer>
+          <footer className="flex flex-wrap items-center gap-2 border-t border-line px-card py-3">{slide.footer}</footer>
         ) : null}
       </section>
       {under ? (
