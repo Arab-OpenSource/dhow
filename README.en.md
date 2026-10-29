@@ -1,9 +1,11 @@
+[العربية](README.md)
+
 # Dhow
 
 > **Ship to your own servers — safely.**
 > A secure, self-hosted continuous deployment platform. Arabic-first.
 
-**Status:** 🧱 Foundations (milestone M1 of the [roadmap](docs/roadmap.md)). `docker compose up` boots an empty,
+**Status:** 🧱 Foundations (milestone M1 of the [roadmap](docs/en/roadmap.md)). `docker compose up` boots an empty,
 hardened instance with the web shell and health endpoints. Sign-in, projects, runners and deployments come in the next
 milestones, so Dhow is not usable for real work yet. Feedback is welcome through issues and discussions.
 
@@ -38,32 +40,32 @@ GitLab CI build and hand Dhow the artifact through an official action.
 | **Business** | Commercial (`ee/`) | Governance for many teams: SAML/SCIM, custom roles, multi-reviewer approvals, canary/blue-green, HA, long audit retention. Priced per active user. |
 | **Enterprise** | Commercial (`ee/`) | Compliance and scale: Vault/KMS, microVM isolation, air-gapped install, SIEM export, OPA policies, SLA support. |
 
-See [docs/editions-and-licensing.md](docs/editions-and-licensing.md).
+See [docs/editions-and-licensing.md](docs/en/editions-and-licensing.md).
 
 ## Install
 
 Dhow installs with one Docker Compose file: `./init.sh` generates strong secrets, then `docker compose up -d` starts an empty, hardened instance with its own PostgreSQL. Images are signed with cosign and ship with an SBOM.
-See [docs/install/](docs/install/README.md) to choose a method, then the [Compose guide](docs/install/compose.md) for the quick start, upgrades, backups and signature verification.
-A host needs at least 1 CPU core, 2 GiB of memory and 5 GiB of free disk (2 cores, 4 GiB and 20 GiB recommended): see [Hardware requirements](docs/requirements.md).
+See [docs/install/](docs/en/install/README.md) to choose a method, then the [Compose guide](docs/en/install/compose.md) for the quick start, upgrades, backups and signature verification.
+A host needs at least 1 CPU core, 2 GiB of memory and 5 GiB of free disk (2 cores, 4 GiB and 20 GiB recommended): see [Hardware requirements](docs/en/requirements.md).
 
 ## Documentation
 
 | Doc | Contents |
 |---|---|
-| [Architecture](docs/architecture.md) | Components, data model, job lifecycle, storage, targets, install methods |
-| [Security model](docs/security-model.md) | Threat model, secure defaults, authn/authz, isolation, lessons learned |
-| [Pipeline spec](docs/pipeline-spec.md) | `.dhow.yml` schema v1 (draft) |
-| [UI principles](docs/ui-principles.md) | Arabic-first design, navigation model, performance budgets |
-| [Editions & licensing](docs/editions-and-licensing.md) | Open-core model, feature matrix, license enforcement |
-| [Install](docs/install/README.md) | Choosing a method, Docker Compose, reverse proxies, local runs, configuration, troubleshooting |
-| [Hardware requirements](docs/requirements.md) | Measured CPU, memory and disk for the server, PostgreSQL and runners |
-| [Development](docs/development.md) | Running Dhow from source on Linux, macOS or Windows, with or without Docker, and the tests |
-| [Sign in with OIDC](docs/guides/oidc.md) | Google, Keycloak, GitHub and any OIDC provider, account linking, allowed domains |
-| [The home page](docs/guides/home.md) | What is running, what needs attention, the sidebar counters, and the overview API behind them |
-| [Follow jobs in the web app](docs/guides/jobs.md) | The job list, stuck jobs without a runner, stopping a job, the live log, attempts and settings |
-| [Your organization and your account](docs/guides/organization.md) | Members and teams beside their details, invitations, API keys, organization settings, and your profile and security |
-| [Server settings](docs/guides/instance-settings.md) | Mail, organization creation, the breached-password check, rate limits and log limits from the dashboard, and how the environment locks them |
-| [Roadmap](docs/roadmap.md) | Milestones toward v1.0 |
+| [Architecture](docs/en/architecture.md) | Components, data model, job lifecycle, storage, targets, install methods |
+| [Security model](docs/en/security-model.md) | Threat model, secure defaults, authn/authz, isolation, lessons learned |
+| [Pipeline spec](docs/en/pipeline-spec.md) | `.dhow.yml` schema v1 (draft) |
+| [UI principles](docs/en/ui-principles.md) | Arabic-first design, navigation model, performance budgets |
+| [Editions & licensing](docs/en/editions-and-licensing.md) | Open-core model, feature matrix, license enforcement |
+| [Install](docs/en/install/README.md) | Choosing a method, Docker Compose, reverse proxies, local runs, configuration, troubleshooting |
+| [Hardware requirements](docs/en/requirements.md) | Measured CPU, memory and disk for the server, PostgreSQL and runners |
+| [Development](docs/en/development.md) | Running Dhow from source on Linux, macOS or Windows, with or without Docker, and the tests |
+| [Sign in with OIDC](docs/en/guides/oidc.md) | Google, Keycloak, GitHub and any OIDC provider, account linking, allowed domains |
+| [The home page](docs/en/guides/home.md) | What is running, what needs attention, the sidebar counters, and the overview API behind them |
+| [Follow jobs in the web app](docs/en/guides/jobs.md) | The job list, stuck jobs without a runner, stopping a job, the live log, attempts and settings |
+| [Your organization and your account](docs/en/guides/organization.md) | Members and teams beside their details, invitations, API keys, organization settings, and your profile and security |
+| [Server settings](docs/en/guides/instance-settings.md) | Mail, organization creation, the breached-password check, rate limits and log limits from the dashboard, and how the environment locks them |
+| [Roadmap](docs/en/roadmap.md) | Milestones toward v1.0 |
 | [ADRs](Plan/ADR/) | Every architectural and product decision, with alternatives |
 
 ## Relationship to Deploy Center

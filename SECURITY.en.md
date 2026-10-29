@@ -1,3 +1,5 @@
+[العربية](SECURITY.md)
+
 # Security Policy
 
 ## Reporting a vulnerability
