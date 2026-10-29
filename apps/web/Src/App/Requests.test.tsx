@@ -14,8 +14,13 @@ import { Ar } from '@/I18n/Locales/Ar';
 configure({ asyncUtilTimeout: 5000 });
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
-const SHELL = ['GET /api/v1/me', 'GET /api/v1/meta', 'GET /api/v1/me/preferences', 'GET /api/v1/health/ready'];
+const OVERVIEW = 'GET /api/v1/organizations/{id}/overview';
+const SHELL = ['GET /api/v1/me', 'GET /api/v1/meta', 'GET /api/v1/me/preferences', 'GET /api/v1/health/ready', OVERVIEW];
 const ORG = 'GET /api/v1/organizations/{id}';
+const JOBS = 'GET /api/v1/organizations/{id}/jobs';
+const RUNNERS = 'GET /api/v1/organizations/{id}/runners';
+const AUDIT = 'GET /api/v1/organizations/{id}/audit-events';
+const MEMBERS = 'GET /api/v1/organizations/{id}/members';
 
 const endpointOf = (request: Request): string => `${request.method} ${new URL(request.url).pathname.replace(UUID, '{id}')}`;
 
@@ -45,8 +50,8 @@ const settle = async (client: QueryClient, calls: readonly Request[], expected: 
   }
 };
 
-const mount = (url: string) => {
-  const backend = startBackend({ audit: auditFixture(3) });
+const mount = (url: string, role = 'owner') => {
+  const backend = startBackend({ role, audit: auditFixture(3) });
   const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
   const client = createQueryClient({ retry: false });
   const user = userEvent.setup();
@@ -55,7 +60,7 @@ const mount = (url: string) => {
 };
 
 const ROUTES: readonly [string, string, readonly string[]][] = [
-  ['/', Ar['home.title'], []],
+  ['/', Ar['home.title'], [JOBS, RUNNERS, AUDIT, MEMBERS]],
   ['/jobs', Ar['jobs.title'], ['GET /api/v1/organizations/{id}/jobs']],
   ['/runners', Ar['runners.title'], ['GET /api/v1/organizations/{id}/runners']],
   ['/runners/tokens', Ar['runners.tokens.title'], ['GET /api/v1/organizations/{id}/runner-registration-tokens']],
@@ -90,6 +95,37 @@ describe('API requests per page', () => {
 
     expect(repeated(view.calls)).toEqual([]);
     expect([...new Set(view.calls.map(endpointOf))].sort()).toEqual([...expected].sort());
+  });
+
+  it.each([
+    ['owner', [JOBS, RUNNERS, AUDIT, MEMBERS]],
+    ['admin', [JOBS, RUNNERS, AUDIT, MEMBERS]],
+    ['maintainer', [JOBS, RUNNERS]],
+    ['developer', [JOBS, RUNNERS]],
+    ['viewer', [JOBS]],
+  ] as const)('opens / cold as a %s with only the cards the role may read', async (role, own) => {
+    const view = mount('/', role);
+    await screen.findByRole('heading', { level: 1, name: Ar['home.title'] });
+    const expected = [...SHELL, ...own];
+    await settle(view.client, view.calls, expected);
+
+    expect(repeated(view.calls)).toEqual([]);
+    expect([...new Set(view.calls.map(endpointOf))].sort()).toEqual([...expected].sort());
+    expect(view.calls.map(requestOf).filter((call) => call.startsWith(JOBS) || call.startsWith(RUNNERS) || call.startsWith(AUDIT))).toEqual(
+      expect.arrayContaining(own.filter((endpoint) => endpoint !== MEMBERS).map((endpoint) => `${endpoint}?Page=1&Limit=5`)),
+    );
+  });
+
+  it('shares one overview request between the home and the sidebar counters', async () => {
+    const view = mount('/');
+    await screen.findByRole('heading', { level: 1, name: Ar['home.title'] });
+    await settle(view.client, view.calls, SHELL);
+    const nav = screen.getByRole('navigation', { name: Ar['shell.nav.label'] });
+    for (const label of [Ar['shell.nav.members'], Ar['shell.nav.jobs'], Ar['shell.nav.home']]) {
+      await view.user.click(within(nav).getByRole('link', { name: label }));
+      await settle(view.client, view.calls, []);
+    }
+    expect(countsOf(view.calls, endpointOf)[OVERVIEW]).toBe(1);
   });
 
   it('moves between pages without asking for anything twice', async () => {

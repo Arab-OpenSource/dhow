@@ -12,16 +12,17 @@ export type TCreatedRegistrationToken = components['schemas']['CreatedRunnerRegi
 
 export const RUNNERS_PAGE_SIZE = 20;
 export const TOKENS_PAGE_SIZE = 10;
+export const RUNNERS_SUMMARY_LIMIT = 5;
 
 export const runnersKey = (organizationId: string) => ['runners', organizationId] as const;
 export const runnerListKey = (organizationId: string) => [...runnersKey(organizationId), 'list'] as const;
 export const runnerKey = (organizationId: string, runnerId: string) => [...runnersKey(organizationId), 'detail', runnerId] as const;
 export const registrationTokensKey = (organizationId: string) => ['runner-registration-tokens', organizationId] as const;
 
-export const listRunners = (organizationId: string, page: number): Promise<IPage<TRunner>> =>
+export const listRunners = (organizationId: string, page: number, limit: number = RUNNERS_PAGE_SIZE): Promise<IPage<TRunner>> =>
   requestPage(() =>
     ApiClient.GET('/organizations/{id}/runners', {
-      params: { path: { id: organizationId }, query: { Page: page, Limit: RUNNERS_PAGE_SIZE } },
+      params: { path: { id: organizationId }, query: { Page: page, Limit: limit } },
     }),
   );
 

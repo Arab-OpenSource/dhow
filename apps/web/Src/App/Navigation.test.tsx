@@ -56,7 +56,6 @@ describe('the side menu', () => {
     const groups = within(nav).getAllByRole('group').map((group) => group.getAttribute('data-menu-group'));
     expect(groups).toEqual(['run', 'org', 'watch']);
     expect(within(nav).getAllByRole('link')[0]).toHaveTextContent(Ar['shell.nav.home']);
-    expect(within(nav).queryByText(Ar['home.projects.title'])).not.toBeInTheDocument();
     expect(within(nav).queryByRole('button', { name: /المشاريع/ })).not.toBeInTheDocument();
   });
 

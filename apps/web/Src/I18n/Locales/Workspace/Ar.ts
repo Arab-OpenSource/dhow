@@ -1,4 +1,5 @@
 import { AuditAr } from '@/I18n/Locales/Workspace/AuditAr';
+import { HomeAr } from '@/I18n/Locales/Workspace/HomeAr';
 import { JobsAr } from '@/I18n/Locales/Workspace/JobsAr';
 import { OrganizationAr } from '@/I18n/Locales/Workspace/OrganizationAr';
 import { PagesAr } from '@/I18n/Locales/Workspace/PagesAr';
@@ -14,13 +15,6 @@ export const WorkspaceAr = {
   'palette.command.systemStatus': 'افتح حالة السيرفر',
   'palette.command.notifications': 'افتح الإشعارات',
   'palette.command.language': 'بدّل اللغة إلى {language}',
-
-  'home.title': 'الرئيسية',
-  'home.start.title': 'ابدأ من هنا',
-  'home.status.sub': 'شوف النسخة الشغّالة وحالة الفحوصات',
-  'home.appearance.sub': 'اختار الثيم والألوان اللي تريّحك',
-  'home.projects.title': 'المشاريع',
-  'home.projects.empty': 'لسه مفيش مشاريع هنا. أول ما تضيف مشروع هيظهر في الرئيسية.',
 
   'slides.trail': 'مسار الشرائح المفتوحة',
   'slides.back': 'ارجع خطوة',
@@ -381,4 +375,5 @@ export const WorkspaceAr = {
   ...JobsAr,
   ...RunnersAr,
   ...PagesAr,
+  ...HomeAr,
 } as const;

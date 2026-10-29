@@ -5,6 +5,7 @@ import type { IPage } from '@/Core/Api/Client';
 import { getAuditEvent, listAuditEvents, type IAuditQuery, type TAuditEvent } from '@/Modules/Audit/Api/AuditApi';
 
 export const AUDIT_PAGE_SIZE = 20;
+export const RECENT_EVENTS_LIMIT = 5;
 export const AUDIT_QUERY_KEY = ['audit', 'events'] as const;
 
 export const useAuditEvents = (
@@ -18,6 +19,12 @@ export const useAuditEvents = (
     enabled: organizationId !== undefined,
     placeholderData: keepPreviousData,
     staleTime: 0,
+  });
+
+export const useRecentAuditEvents = (organizationId: string): UseQueryResult<IPage<TAuditEvent>, ApiError> =>
+  useQuery<IPage<TAuditEvent>, ApiError>({
+    queryKey: [...AUDIT_QUERY_KEY, organizationId, 'recent'],
+    queryFn: () => listAuditEvents(organizationId, 1, RECENT_EVENTS_LIMIT),
   });
 
 export const useAuditEvent = (organizationId: string, eventId: string): UseQueryResult<TAuditEvent, ApiError> =>

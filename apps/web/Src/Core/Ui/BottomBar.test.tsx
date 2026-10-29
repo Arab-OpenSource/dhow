@@ -41,6 +41,15 @@ describe('BottomBar', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
+  it('marks an item with a dot and says why to screen readers', () => {
+    const list = items().map((item) => (item.id === 'jobs' ? { ...item, dot: '2 jobs wait with no runner' } : item));
+    renderUi(<BottomBar label="Sections" items={list} />);
+    const jobs = screen.getByRole('link', { name: /Jobs/ });
+    expect(jobs.querySelector('[data-dot="warn"]')).not.toBeNull();
+    expect(within(jobs).getByText('2 jobs wait with no runner')).toHaveClass('sr-only');
+    expect(screen.getByRole('link', { name: 'Home' }).querySelector('[data-dot]')).toBeNull();
+  });
+
   it('renders an empty bar without links', () => {
     renderUi(<BottomBar label="Sections" items={[]} />);
     expect(within(screen.getByRole('navigation')).queryAllByRole('link')).toHaveLength(0);

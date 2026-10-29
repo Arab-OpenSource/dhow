@@ -27,6 +27,7 @@ import (
 	audit "github.com/Khaymah/dhow/apps/server/internal/Modules/Audit"
 	identity "github.com/Khaymah/dhow/apps/server/internal/Modules/Identity"
 	jobs "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs"
+	overview "github.com/Khaymah/dhow/apps/server/internal/Modules/Overview"
 	preferences "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences"
 	runners "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Khaymah/dhow/apps/server/internal/Modules/Session"
@@ -156,6 +157,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Audit:     auditService,
 		Runners:   runnersService,
 		Jobs:      jobsService,
+		Overview:  overview.NewService(overview.Options{Counter: sqlc.New(in.Pool), Log: in.Log, Now: in.Now}),
 		Tokens:    tokensService,
 		Prefs:     preferences.NewService(in.Pool, in.Log, in.Now),
 		Gate:      gate,

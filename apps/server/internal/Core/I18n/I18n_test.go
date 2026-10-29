@@ -62,6 +62,7 @@ func TestCatalogsCoverTheSameKeys(t *testing.T) {
 		"jobs.job.created",
 		"jobs.job.cancelRequested",
 		"jobs.logs.loaded",
+		"overview.loaded",
 		"errors.attemptNotFound",
 		"errors.tooManyStreams",
 		"errors.rateLimited",

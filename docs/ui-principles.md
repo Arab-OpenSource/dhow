@@ -46,6 +46,7 @@ Decisions: ADR-0021 to ADR-0023, ADR-0034 and ADR-0059.
   4. **Monitoring:** Audit log (`/audit`) and Server status (`/system`).
   5. The account at the bottom: avatar, name and role, and sign out. It opens Profile (`/account/profile`), and the account pages link to Security (`/account/security`) and Preferences (`/account/preferences`, appearance, themes and language).
   - Projects join the menu, right after Home, with M4. Until then they are hidden.
+  - **Counters** sit next to the items that need attention: Jobs shows the queued jobs (in the warning tone when some have no matching runner), Runners the offline runners and Invitations the pending ones. A counter is hidden at zero, while loading and when the role may not read it, and screen readers hear what it counts. On phones, a dot on Jobs means jobs wait with no matching runner. See [The home page](guides/home.md).
 - **Detail pages:** a job (`/jobs/<id>`), a runner (`/runners/<id>`), a member (`/org/members/<id>`), a team (`/org/teams/<id>`), an audit event (`/audit/<id>`) and a server check (`/system/checks/<name>`). Runners also has Registration tokens (`/runners/tokens`). The organization switcher is at `/organizations`.
   - Ids in the address are checked. An invalid or unknown id shows the not-found state.
   - A page the role cannot open shows the not-found state, never an empty page, and asks the server for nothing.

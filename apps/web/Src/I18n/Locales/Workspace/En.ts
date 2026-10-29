@@ -1,4 +1,5 @@
 import { AuditEn } from '@/I18n/Locales/Workspace/AuditEn';
+import { HomeEn } from '@/I18n/Locales/Workspace/HomeEn';
 import { JobsEn } from '@/I18n/Locales/Workspace/JobsEn';
 import { OrganizationEn } from '@/I18n/Locales/Workspace/OrganizationEn';
 import { PagesEn } from '@/I18n/Locales/Workspace/PagesEn';
@@ -15,13 +16,6 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'palette.command.systemStatus': 'Open server status',
   'palette.command.notifications': 'Open notifications',
   'palette.command.language': 'Switch the language to {language}',
-
-  'home.title': 'Home',
-  'home.start.title': 'Start here',
-  'home.status.sub': 'See the running version and the checks',
-  'home.appearance.sub': 'Pick the theme and colors you like',
-  'home.projects.title': 'Projects',
-  'home.projects.empty': 'No projects here yet. Once you add a project, it will show up on Home.',
 
   'slides.trail': 'Open slides',
   'slides.back': 'Go back one',
@@ -382,4 +376,5 @@ export const WorkspaceEn: TWorkspaceMessages = {
   ...JobsEn,
   ...RunnersEn,
   ...PagesEn,
+  ...HomeEn,
 };

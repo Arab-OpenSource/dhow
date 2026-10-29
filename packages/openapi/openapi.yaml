@@ -48,6 +48,10 @@ tags:
     description: >-
       Jobs, their attempts and steps. Served by the Jobs module. In M3 a job is created directly from a job spec; runners
       lease jobs over Connect on /runner-api/.
+  - name: overview
+    description: >-
+      Counts for the home page and the sidebar, in one request. Served by the Overview module, which reads the jobs,
+      runners and invitations tables and never writes them.
 paths:
   /health/live:
     get:
@@ -2115,6 +2119,36 @@ paths:
             text/event-stream:
               schema:
                 type: string
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/overview:
+    get:
+      operationId: getOrganizationOverview
+      tags: [overview]
+      summary: Counts of what needs attention in an organization
+      description: >-
+        Needs `org.read`. One request for the home page and the sidebar counters, so the client does not page through
+        every list to count. Each block needs the same permission as its list: `Jobs` needs `job.read`, `Runners`
+        needs `runner.read` and `Invitations` needs `member.manage`. A block the caller may not read is `null`, never
+        zero, so the client can tell "none" from "not yours to see". `Jobs.Running` counts the `leased` and `running`
+        states. `Jobs.QueuedNoRunner` counts queued jobs whose `QueuedReason` is `NO_MATCHING_RUNNER`.
+        `Jobs.FailedLast24h` counts the `failed` and `timed_out` states that finished in the last 24 hours.
+        `Runners.Online` and `Runners.Offline` follow the `Status` rule of the runners list (seen in the last two
+        minutes) for active runners, and `Runners.Paused` counts disabled runners. Revoked runners are not counted.
+        `Invitations.Pending` counts invitations that are not accepted, revoked or expired. A caller who is not a
+        member gets 404.
+      security:
+        - SessionCookie: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: The counts the caller may read.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationOverviewResponse"
         default:
           $ref: "#/components/responses/Error"
 components:
@@ -4369,3 +4403,71 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Job"
+    OverviewJobs:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required: [Running, Queued, QueuedNoRunner, FailedLast24h]
+      properties:
+        Running:
+          type: integer
+          minimum: 0
+          description: Jobs in the `leased` or `running` state.
+        Queued:
+          type: integer
+          minimum: 0
+          description: Jobs in the `queued` state.
+        QueuedNoRunner:
+          type: integer
+          minimum: 0
+          description: Queued jobs with `QueuedReason` `NO_MATCHING_RUNNER`. Part of `Queued`.
+        FailedLast24h:
+          type: integer
+          minimum: 0
+          description: Jobs that finished `failed` or `timed_out` in the last 24 hours.
+    OverviewRunners:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required: [Online, Offline, Paused]
+      properties:
+        Online:
+          type: integer
+          minimum: 0
+          description: Active runners seen in the last two minutes.
+        Offline:
+          type: integer
+          minimum: 0
+          description: Active runners not seen in the last two minutes.
+        Paused:
+          type: integer
+          minimum: 0
+          description: Disabled runners, by an admin or because a clone was suspected.
+    OverviewInvitations:
+      type: object
+      nullable: true
+      additionalProperties: false
+      required: [Pending]
+      properties:
+        Pending:
+          type: integer
+          minimum: 0
+          description: Invitations that are not accepted, revoked or expired.
+    OrganizationOverview:
+      type: object
+      additionalProperties: false
+      required: [Jobs, Runners, Invitations]
+      properties:
+        Jobs:
+          $ref: "#/components/schemas/OverviewJobs"
+        Runners:
+          $ref: "#/components/schemas/OverviewRunners"
+        Invitations:
+          $ref: "#/components/schemas/OverviewInvitations"
+    OrganizationOverviewResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/OrganizationOverview"

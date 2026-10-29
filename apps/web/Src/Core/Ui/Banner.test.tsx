@@ -28,4 +28,11 @@ describe('Banner', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
+
+  it('lets the action wrap under the text only when asked', () => {
+    const { rerender } = render(<Banner title="Stuck" action={<button type="button">Fix</button>} />);
+    expect(screen.getByRole('status')).not.toHaveClass('flex-wrap');
+    rerender(<Banner wrap title="Stuck" action={<button type="button">Fix</button>} />);
+    expect(screen.getByRole('status')).toHaveClass('flex-wrap');
+  });
 });

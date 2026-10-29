@@ -1,0 +1,171 @@
+import { useNavigate } from '@tanstack/react-router';
+
+import { Page } from '@/App/Layout/Page';
+import { canManageRunners, canReadAudit, canReadRunners, type TMembership } from '@/Core/Auth/AuthTypes';
+import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
+import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
+import { Button } from '@/Core/Ui/Button';
+import { Card } from '@/Core/Ui/Card';
+import { EmptyState } from '@/Core/Ui/EmptyState';
+import { InlineAlert } from '@/Core/Ui/InlineAlert';
+import { Skeleton } from '@/Core/Ui/Skeleton';
+import { useT } from '@/I18n/useT';
+import { RecentEventsCard } from '@/Modules/Audit/Components/RecentEventsCard';
+import type { TJobState } from '@/Modules/Jobs/Api/JobsApi';
+import { RecentJobsCard } from '@/Modules/Jobs/Components/RecentJobsCard';
+import { AttentionCard } from '@/Modules/Overview/Components/AttentionCard';
+import { OverviewStats } from '@/Modules/Overview/Components/OverviewStats';
+import { StuckBanner } from '@/Modules/Overview/Components/StuckBanner';
+import { useOverview } from '@/Modules/Overview/Hooks/useOverview';
+import type { IOverviewLinks, TOverviewTarget } from '@/Modules/Overview/Types/OverviewTargets';
+import { RunnersSummaryCard } from '@/Modules/Runners/Components/RunnersSummaryCard';
+import { ServerStatusCard } from '@/Modules/System/Components/ServerStatusCard';
+import { useReadiness } from '@/Modules/System/Hooks/useReadiness';
+
+type TTargetPath = '/jobs' | '/runners' | '/runners/tokens' | '/org/invitations' | '/system';
+
+const TARGETS: Record<TOverviewTarget, { to: TTargetPath; state?: TJobState }> = {
+  running: { to: '/jobs', state: 'running' },
+  queued: { to: '/jobs', state: 'queued' },
+  stuck: { to: '/jobs', state: 'queued' },
+  failed: { to: '/jobs', state: 'failed' },
+  runners: { to: '/runners' },
+  offline: { to: '/runners' },
+  invitations: { to: '/org/invitations' },
+  checks: { to: '/system' },
+  addRunner: { to: '/runners/tokens' },
+};
+
+const useLinks = (): IOverviewLinks => {
+  const navigate = useNavigate();
+  return {
+    href: (target) => {
+      const { to, state } = TARGETS[target];
+      return state === undefined ? to : `${to}?state=${state}`;
+    },
+    open: (target) => {
+      const { to, state } = TARGETS[target];
+      void navigate(state === undefined ? { to } : { to: '/jobs', search: { state } });
+    },
+  };
+};
+
+const HomeStats = ({ organizationId, links }: { organizationId: string; links: IOverviewLinks }) => {
+  const t = useT();
+  const errorText = useApiErrorText();
+  const overview = useOverview(organizationId);
+  if (overview.isError) {
+    return (
+      <div className="grid justify-items-start gap-3">
+        <InlineAlert accent="failed" title={t('home.overview.error')}>
+          {errorText(overview.error)}
+        </InlineAlert>
+        <Button
+          size="sm"
+          onClick={() => {
+            void overview.refetch();
+          }}
+        >
+          {t('jobs.retry')}
+        </Button>
+      </div>
+    );
+  }
+  if (overview.data === undefined) return <Skeleton label={t('home.overview.loading')} lines={3} />;
+  return <OverviewStats overview={overview.data} links={links} />;
+};
+
+const HomeContent = ({ membership }: { membership: TMembership }) => {
+  const navigate = useNavigate();
+  const links = useLinks();
+  const organizationId = membership.OrganizationId;
+  const role = membership.Role;
+  const overview = useOverview(organizationId);
+  const readiness = useReadiness();
+  const failingChecks = readiness.data?.Checks.filter((check) => !check.Ok).length ?? 0;
+
+  return (
+    <>
+      <StuckBanner jobs={overview.data?.Jobs ?? null} canAddRunner={canManageRunners(role)} links={links} />
+      <HomeStats organizationId={organizationId} links={links} />
+      <div className="grid gap-block lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+        <div className="contents lg:grid lg:gap-block">
+          <RecentJobsCard
+            className="order-2"
+            organizationId={organizationId}
+            onOpenJob={(jobId) => {
+              void navigate({ to: '/jobs/$jobId', params: { jobId } });
+            }}
+            onShowAll={() => {
+              void navigate({ to: '/jobs' });
+            }}
+          />
+          {canReadAudit(role) ? (
+            <RecentEventsCard
+              className="order-4"
+              organizationId={organizationId}
+              onOpenEvent={(eventId) => {
+                void navigate({ to: '/audit/$eventId', params: { eventId } });
+              }}
+              onShowAll={() => {
+                void navigate({ to: '/audit' });
+              }}
+            />
+          ) : null}
+        </div>
+        <div className="contents lg:grid lg:gap-block">
+          <AttentionCard className="order-1" overview={overview} failingChecks={failingChecks} links={links} />
+          {canReadRunners(role) ? (
+            <RunnersSummaryCard
+              className="order-3"
+              organizationId={organizationId}
+              onOpenRunner={(runnerId) => {
+                void navigate({ to: '/runners/$runnerId', params: { runnerId } });
+              }}
+              onShowAll={() => {
+                void navigate({ to: '/runners' });
+              }}
+              onAddRunner={
+                canManageRunners(role)
+                  ? () => {
+                      links.open('addRunner');
+                    }
+                  : undefined
+              }
+            />
+          ) : null}
+          <ServerStatusCard
+            className="order-5"
+            onOpenCheck={(check) => {
+              void navigate({ to: '/system/checks/$check', params: { check } });
+            }}
+            onOpenStatus={() => {
+              void navigate({ to: '/system' });
+            }}
+          />
+        </div>
+      </div>
+    </>
+  );
+};
+
+export const HomePage = () => {
+  const t = useT();
+  const me = useMe();
+  const membership = useCurrentMembership();
+  const homeless = me.data?.Memberships.length === 0;
+
+  return (
+    <Page
+      title={t('home.title')}
+      lead={membership ? t('home.lead', { organization: membership.OrganizationName }) : undefined}
+    >
+      {homeless ? (
+        <Card title={t('organizations.none.title')} icon="building">
+          <EmptyState icon="building" text={t('organizations.none.body')} />
+        </Card>
+      ) : null}
+      {membership ? <HomeContent membership={membership} /> : null}
+    </Page>
+  );
+};

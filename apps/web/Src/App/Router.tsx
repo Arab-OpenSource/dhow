@@ -12,6 +12,7 @@ import { NotFoundPage } from '@/App/Layout/NotFoundPage';
 import { RootLayout } from '@/App/Layout/RootLayout';
 import { ShellGate } from '@/App/Layout/ShellGate';
 import { legacyStackHref } from '@/App/LegacyLinks';
+import { parseJobsSearch } from '@/App/Navigation/JobsSearch';
 import { SHELL_PAGES } from '@/App/Navigation/ShellPages';
 import { parseShellSearch } from '@/App/Panels';
 import { LoginRoute, preloadLoginPage } from '@/App/Routes/LoginRoute';
@@ -44,8 +45,13 @@ const shellRoute = createRoute({
 const page = <TPath extends string>(path: TPath, component: RouteComponent) =>
   createRoute({ getParentRoute: () => shellRoute, path, component });
 
-const workspaceRoute = page('/', SHELL_PAGES.home);
-const jobsRoute = page('jobs', SHELL_PAGES.jobs);
+const homeRoute = page('/', SHELL_PAGES.home);
+const jobsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: 'jobs',
+  component: SHELL_PAGES.jobs,
+  validateSearch: parseJobsSearch,
+});
 const jobRoute = page('jobs/$jobId', SHELL_PAGES.job);
 const runnersRoute = page('runners', SHELL_PAGES.runners);
 const runnerTokensRoute = page('runners/tokens', SHELL_PAGES.runnerTokens);
@@ -111,7 +117,7 @@ const oidcCallbackRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   shellRoute.addChildren([
-    workspaceRoute,
+    homeRoute,
     jobsRoute,
     jobRoute,
     runnersRoute,

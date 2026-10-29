@@ -9,6 +9,7 @@ export interface IBottomBarItem {
   label: string;
   href: string;
   current?: boolean;
+  dot?: string;
   onSelect: () => void;
 }
 
@@ -34,8 +35,14 @@ export const BottomBar = ({ label, items }: IBottomBarProps) => (
               item.current ? 'text-primary' : 'text-tertiary hover:text-primary',
             )}
           >
-            <Icon name={item.icon} size={20} className={item.current ? 'text-accent' : undefined} />
+            <span className="relative inline-flex">
+              <Icon name={item.icon} size={20} className={item.current ? 'text-accent' : undefined} />
+              {item.dot === undefined ? null : (
+                <i aria-hidden="true" data-dot="warn" className="absolute -end-1 -top-0.5 size-2 rounded-full bg-accent-amber ring-2 ring-rail" />
+              )}
+            </span>
             <span className="max-w-full truncate px-0.5">{item.label}</span>
+            {item.dot === undefined ? null : <span className="sr-only">{item.dot}</span>}
           </a>
         </li>
       ))}

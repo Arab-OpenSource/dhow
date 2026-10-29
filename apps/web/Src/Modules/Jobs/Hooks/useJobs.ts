@@ -6,6 +6,7 @@ import { cancelJob, getJob, listJobs, type TJob, type TJobDetail, type TJobState
 import { isFinalState } from '@/Modules/Jobs/Types/JobStates';
 
 export const JOBS_PAGE_SIZE = 20;
+export const RECENT_JOBS_LIMIT = 5;
 export const WAITING_LIMIT = 100;
 export const LIST_REFRESH_MS = 10_000;
 export const DETAIL_REFRESH_MS = 5_000;
@@ -24,6 +25,13 @@ export const useJobs = (
     queryKey: [...JOBS_QUERY_KEY, 'list', organizationId, page, state],
     queryFn: () => listJobs(organizationId, page, JOBS_PAGE_SIZE, state),
     placeholderData: keepPreviousData,
+    refetchInterval: (query) => (anyActive(query.state.data) ? LIST_REFRESH_MS : false),
+  });
+
+export const useRecentJobs = (organizationId: string): UseQueryResult<IPage<TJob>, ApiError> =>
+  useQuery<IPage<TJob>, ApiError>({
+    queryKey: [...JOBS_QUERY_KEY, 'recent', organizationId],
+    queryFn: () => listJobs(organizationId, 1, RECENT_JOBS_LIMIT, null),
     refetchInterval: (query) => (anyActive(query.state.data) ? LIST_REFRESH_MS : false),
   });
 

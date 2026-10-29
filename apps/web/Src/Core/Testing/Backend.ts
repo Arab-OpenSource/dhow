@@ -94,6 +94,23 @@ export const membersFixture = (): IMemberFixture[] => [
   },
 ];
 
+export interface IOverviewFixture {
+  Jobs: { Running: number; Queued: number; QueuedNoRunner: number; FailedLast24h: number } | null;
+  Runners: { Online: number; Offline: number; Paused: number } | null;
+  Invitations: { Pending: number } | null;
+}
+
+const RUNNER_READERS = ['owner', 'admin', 'maintainer', 'developer'];
+const MEMBER_MANAGERS = ['owner', 'admin'];
+
+export const overviewFixture =
+  (counts: { Jobs?: Partial<NonNullable<IOverviewFixture['Jobs']>>; Runners?: Partial<NonNullable<IOverviewFixture['Runners']>>; Pending?: number } = {}) =>
+  (role: string): IOverviewFixture => ({
+    Jobs: { Running: 0, Queued: 0, QueuedNoRunner: 0, FailedLast24h: 0, ...counts.Jobs },
+    Runners: RUNNER_READERS.includes(role) ? { Online: 0, Offline: 0, Paused: 0, ...counts.Runners } : null,
+    Invitations: MEMBER_MANAGERS.includes(role) ? { Pending: counts.Pending ?? 0 } : null,
+  });
+
 export type TRouteHandler = (request: Request, url: URL) => Response | Promise<Response> | undefined;
 
 export interface IPreferencesFixture {
@@ -123,6 +140,7 @@ export interface IBackendOptions {
   identities?: unknown[];
   tokens?: unknown[];
   preferences?: IPreferencesFixture;
+  overview?: (role: string) => IOverviewFixture;
 }
 
 export interface IBackendState {
@@ -237,6 +255,7 @@ const organizationReply = async (request: Request, url: URL, options: IBackendOp
   if (pathname.endsWith('/audit-events/verify')) {
     return options.verify?.() ?? envelope({ Success: true, Data: { Valid: true, Checked: (options.audit ?? []).length } });
   }
+  if (pathname.endsWith('/overview')) return envelope({ Success: true, Data: (options.overview ?? overviewFixture())(state.role) });
   if (pathname.endsWith('/audit-events')) return pageOf(options.audit ?? [], url);
   if (pathname.endsWith('/members')) return pageOf(options.members ?? membersFixture(), url);
   if (request.method === 'GET' && /\/(runners|jobs|runner-registration-tokens)$/.test(pathname)) return pageOf([], url);
