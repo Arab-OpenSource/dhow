@@ -36,7 +36,7 @@ The details show the role (and the higher role a team grants, if any), the secon
 
 On your own row, the page points to your Security settings instead.
 
-The details also show when the member was last active: the last time they used the dashboard, from their newest sign-in session, updated at most once a minute. It counts sessions that have ended too, and shows **No recorded activity** for a member who has never signed in. It comes with the members list (`LastActiveAt` on each member).
+Owners and admins also see when the member was last active in this organization: the last signed-in request to one of its pages, recorded at most once a minute. Activity in another organization does not count, and a member who has not used this organization yet shows **No recorded activity in this organization**. It comes with the members list (`LastActiveAt` on each member, only for callers with `member.manage`).
 
 ## Teams (`/org/teams`)
 

@@ -39,6 +39,7 @@ const (
 	SessionPrivilegedIdleTimeout = 4 * time.Hour
 	SessionAbsoluteTimeout       = 7 * 24 * time.Hour
 	SessionTouchInterval         = time.Minute
+	MembershipTouchInterval      = time.Minute
 	SessionTokenBytes            = 32
 	AccountSecurityPath          = "/?stack=account"
 	SecondFactorGrace            = 7 * 24 * time.Hour

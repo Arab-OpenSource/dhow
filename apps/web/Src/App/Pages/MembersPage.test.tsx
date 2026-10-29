@@ -102,6 +102,13 @@ describe('the members page', () => {
     expect(within(page).getByRole('region', { name: Ar['shell.crumb.member'] })).toHaveTextContent(Ar['member.facts.lastActive.none']);
   });
 
+  it('shows last activity to people who manage members only', async () => {
+    const { page } = await open(`/org/members/${HANA}`, { role: 'developer' });
+    const facts = await within(page).findByRole('region', { name: Ar['shell.crumb.member'] });
+    await within(facts).findByText(Ar['member.facts.joined']);
+    expect(facts).not.toHaveTextContent(Ar['member.facts.lastActive']);
+  });
+
   it('shows the not-found state for a member who is not in the organization', async () => {
     const { page } = await open('/org/members/0198a000-0000-7000-8000-0000000000f9');
     expect(await within(page).findByText(Ar['member.error'])).toBeInTheDocument();

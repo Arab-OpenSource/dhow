@@ -8,7 +8,7 @@ export const OrgPagesAr = {
   'member.facts.mfa': 'الخطوة الثانية',
   'member.facts.joined': 'انضم في',
   'member.facts.lastActive': 'آخر نشاط',
-  'member.facts.lastActive.none': 'لا يوجد نشاط مسجّل',
+  'member.facts.lastActive.none': 'لا يوجد نشاط مسجّل في هذه المؤسسة',
   'member.facts.teams': 'الفرق',
   'member.facts.teams.none': 'لا توجد فرق',
   'member.self.open': 'افتح إعدادات الأمان',

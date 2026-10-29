@@ -124,13 +124,15 @@ const MemberFacts = ({ actor, rule, member, ...links }: { actor: TRole; rule: TS
         <Fact label={t('member.facts.joined')}>
           <When iso={member.JoinedAt} />
         </Fact>
-        <Fact label={t('member.facts.lastActive')}>
-          {member.LastActiveAt === undefined || member.LastActiveAt === null ? (
-            <span className="text-secondary">{t('member.facts.lastActive.none')}</span>
-          ) : (
-            <When iso={member.LastActiveAt} />
-          )}
-        </Fact>
+        {canManageMembers(actor) ? (
+          <Fact label={t('member.facts.lastActive')}>
+            {member.LastActiveAt === undefined || member.LastActiveAt === null ? (
+              <span className="text-secondary">{t('member.facts.lastActive.none')}</span>
+            ) : (
+              <When iso={member.LastActiveAt} />
+            )}
+          </Fact>
+        ) : null}
       </dl>
     </Card>
   );

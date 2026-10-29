@@ -115,6 +115,7 @@ type Membership struct {
 	OrganizationID  uuid.UUID
 	Role            Role
 	SecondFactorDue time.Time
+	LastSeenAt      time.Time
 }
 
 type Subject struct {

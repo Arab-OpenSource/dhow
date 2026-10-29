@@ -135,6 +135,12 @@ func (s *Service) resolve(ctx context.Context, tokenHash []byte, now time.Time, 
 	}, nil
 }
 
+func (s *Service) TouchMembership(ctx context.Context, user, org uuid.UUID, now time.Time) error {
+	return s.queries().TouchMembership(ctx, sqlc.TouchMembershipParams{
+		OrganizationID: org, UserID: user, Now: now, TouchBefore: now.Add(-config.MembershipTouchInterval),
+	})
+}
+
 func (s *Service) ConfirmFactor(ctx context.Context, p auth.Principal, f auth.Factor) error {
 	if p.ViaToken() || p.SessionID == uuid.Nil {
 		return apperrors.SessionRequired()

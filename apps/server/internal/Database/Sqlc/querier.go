@@ -265,6 +265,7 @@ type Querier interface {
 	TakeWebauthnChallenge(ctx context.Context, arg TakeWebauthnChallengeParams) ([]byte, error)
 	TouchApiToken(ctx context.Context, arg TouchApiTokenParams) error
 	TouchIdentity(ctx context.Context, arg TouchIdentityParams) error
+	TouchMembership(ctx context.Context, arg TouchMembershipParams) error
 	TouchRunner(ctx context.Context, arg TouchRunnerParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	TryLockLogPartitions(ctx context.Context) (bool, error)

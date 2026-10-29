@@ -472,7 +472,7 @@ type Member struct {
 	Email         string    `json:"Email"`
 	JoinedAt      time.Time `json:"JoinedAt"`
 
-	// LastActiveAt The last time the member used the dashboard: the newest `LastSeenAt` of their sign-in sessions, which the server updates at most once a minute. Absent when no session is left, for example a member who never signed in. It comes from the same query as the page of members and needs `member.read`, like the list.
+	// LastActiveAt The last time the member used this organization in the dashboard: a signed-in request to one of its endpoints, recorded at most once a minute. Present only for callers with `member.manage`, and absent when the member has not used the organization since this was added.
 	LastActiveAt *time.Time `json:"LastActiveAt,omitempty"`
 	Mfa          *MfaState  `json:"Mfa,omitempty"`
 

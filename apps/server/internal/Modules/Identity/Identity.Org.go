@@ -103,11 +103,12 @@ func (s *Service) ListMembers(ctx context.Context, id uuid.UUID, page, limit int
 		}
 		m := models.Member{
 			UserID: r.UserId, Name: r.Name, Email: r.Email, Role: r.Role, EffectiveRole: string(effective), JoinedAt: r.JoinedAt,
-			LastActiveAt: r.LastActiveAt, Teams: memberTeams(r.TeamIds, r.TeamNames),
+			Teams: memberTeams(r.TeamIds, r.TeamNames),
 		}
 		if manager {
 			m.Mfa = mfaOf(r.HasTotp, r.HasPasskey)
 			m.MfaResetPending = r.MfaResetAt != nil && m.Mfa == "none"
+			m.LastActiveAt = r.LastActiveAt
 		}
 		out = append(out, m)
 	}

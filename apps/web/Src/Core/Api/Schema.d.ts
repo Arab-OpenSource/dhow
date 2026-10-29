@@ -2032,7 +2032,7 @@ export interface components {
             JoinedAt: string;
             /**
              * Format: date-time
-             * @description The last time the member used the dashboard: the newest `LastSeenAt` of their sign-in sessions, which the server updates at most once a minute. Absent when no session is left, for example a member who never signed in. It comes from the same query as the page of members and needs `member.read`, like the list.
+             * @description The last time the member used this organization in the dashboard: a signed-in request to one of its endpoints, recorded at most once a minute. Present only for callers with `member.manage`, and absent when the member has not used the organization since this was added.
              */
             LastActiveAt?: string | null;
             /** @description The member's strongest second factor. Present only for callers with `member.manage`. */

@@ -228,16 +228,9 @@ SELECT u."Id" AS "UserId", u."Name", u."Email", m."Role", m."CreatedAt" AS "Join
        u."MfaResetAt",
        COALESCE(teams."Ids", '{}')::uuid[] AS "TeamIds",
        COALESCE(teams."Names", '{}')::text[] AS "TeamNames",
-       seen."LastSeenAt" AS "LastActiveAt"
+       m."LastSeenAt" AS "LastActiveAt"
 FROM "Memberships" m
 JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted"
-LEFT JOIN "Sessions" seen ON seen."Id" = (
-    SELECT s."Id"
-    FROM "Sessions" s
-    WHERE s."UserId" = m."UserId" AND NOT s."IsDeleted"
-    ORDER BY s."LastSeenAt" DESC
-    LIMIT 1
-)
 LEFT JOIN LATERAL (
     SELECT array_agg(t."Id" ORDER BY lower(t."Name"), t."Id") AS "Ids",
            array_agg(t."Name" ORDER BY lower(t."Name"), t."Id") AS "Names"
