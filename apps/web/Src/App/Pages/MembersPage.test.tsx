@@ -81,19 +81,13 @@ describe('the members page', () => {
     expect(listRequests(calls)).toBe(1);
   });
 
-  it('shows the teams, the second step and the join date of the member', async () => {
+  it('shows the second step and the join date of the member, and never asks for every team', async () => {
     const { page } = await open(`/org/members/${HANA}`, { secondFactorRule: 'everyone' });
     const facts = await within(page).findByRole('region', { name: Ar['shell.crumb.member'] });
-    const teams = await within(facts).findByRole('list', { name: Ar['member.facts.teams'] });
-    expect(teams).toHaveTextContent('Backend');
-    expect(facts).toHaveTextContent(Ar['members.mfa.none']);
+    expect(await within(facts).findByText(Ar['members.mfa.none'])).toBeInTheDocument();
+    expect(within(facts).queryByRole('list')).not.toBeInTheDocument();
     expect(facts).toHaveTextContent(Ar['members.mfa.needs']);
     expect(facts).toHaveTextContent(Ar['member.facts.joined']);
-  });
-
-  it('says when a member is in no team', async () => {
-    const { page } = await open(`/org/members/${MONA}`);
-    expect(await within(page).findByText(Ar['member.teams.none'])).toBeInTheDocument();
   });
 
   it('shows the not-found state for a member who is not in the organization', async () => {

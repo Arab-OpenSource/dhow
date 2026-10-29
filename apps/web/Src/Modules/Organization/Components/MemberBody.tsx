@@ -15,7 +15,7 @@ import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { useT } from '@/I18n/useT';
 import { MemberMfaCard, MemberRemoveCard, MemberRoleCard } from '@/Modules/Organization/Components/MemberCards';
 import { MfaBadge } from '@/Modules/Organization/Components/MembersCard';
-import { ALL_MEMBERS, useMemberTeams } from '@/Modules/Organization/Hooks/useOrganization';
+import { ALL_MEMBERS } from '@/Modules/Organization/Hooks/useOrganization';
 
 export interface IMemberBodyProps {
   organizationId: string;
@@ -53,26 +53,7 @@ const MemberHeader = ({ member }: { member: TMember }) => {
   );
 };
 
-const MemberTeams = ({ organizationId, userId }: { organizationId: string; userId: string }) => {
-  const t = useT();
-  const teams = useMemberTeams(organizationId, userId);
-  if (teams.Failed) return <span className="text-secondary">{t('member.teams.error')}</span>;
-  if (teams.Teams === undefined) return <span className="text-tertiary">{t('member.teams.loading')}</span>;
-  if (teams.Teams.length === 0) return <span className="text-secondary">{t('member.teams.none')}</span>;
-  return (
-    <ul aria-label={t('member.facts.teams')} className="m-0 flex list-none flex-wrap gap-1.5 p-0">
-      {teams.Teams.map((team) => (
-        <li key={team.Id}>
-          <Badge tone="mute">
-            <bdi>{team.Name}</bdi>
-          </Badge>
-        </li>
-      ))}
-    </ul>
-  );
-};
-
-const MemberFacts = ({ organizationId, actor, rule, member }: { organizationId: string; actor: TRole; rule: TSecondFactorRule; member: TMember }) => {
+const MemberFacts = ({ actor, rule, member }: { actor: TRole; rule: TSecondFactorRule; member: TMember }) => {
   const t = useT();
   const time = useRelativeTime();
   return (
@@ -83,9 +64,6 @@ const MemberFacts = ({ organizationId, actor, rule, member }: { organizationId: 
           {member.EffectiveRole === member.Role ? null : (
             <span className="block text-body-sm text-secondary">{t('member.effective', { role: t(`role.${member.EffectiveRole}`) })}</span>
           )}
-        </Fact>
-        <Fact label={t('member.facts.teams')}>
-          <MemberTeams organizationId={organizationId} userId={member.UserId} />
         </Fact>
         {canManageMembers(actor) && member.Mfa !== undefined ? (
           <Fact label={t('member.facts.mfa')}>
@@ -147,7 +125,7 @@ export const MemberBody = ({ organizationId, actor, rule, userId, onRemove, onOp
   return (
     <>
       <MemberHeader member={member} />
-      <MemberFacts organizationId={organizationId} actor={actor} rule={rule} member={member} />
+      <MemberFacts actor={actor} rule={rule} member={member} />
       {member.UserId === me ? (
         <InlineAlert accent="building" title={t('member.self')}>
           <Button size="sm" variant="ghost" iconStart="shield" className="mt-2" onClick={onOpenAccount}>

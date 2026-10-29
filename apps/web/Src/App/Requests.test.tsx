@@ -66,7 +66,7 @@ const ROUTES: readonly [string, string, readonly string[]][] = [
   ['/runners/tokens', Ar['runners.tokens.title'], ['GET /api/v1/organizations/{id}/runner-registration-tokens']],
   ['/org/members', Ar['shell.nav.members'], [ORG, 'GET /api/v1/organizations/{id}/members']],
   ['/org/teams', Ar['shell.nav.teams'], ['GET /api/v1/organizations/{id}/teams']],
-  ['/org/members/0198a000-0000-7000-8000-0000000000b3', Ar['shell.nav.members'], [ORG, MEMBERS, 'GET /api/v1/organizations/{id}/teams', 'GET /api/v1/me/mfa']],
+  ['/org/members/0198a000-0000-7000-8000-0000000000b3', Ar['shell.nav.members'], [ORG, MEMBERS, 'GET /api/v1/me/mfa']],
   [
     '/org/teams/0198a000-0000-7000-8000-0000000000d1',
     Ar['shell.nav.teams'],

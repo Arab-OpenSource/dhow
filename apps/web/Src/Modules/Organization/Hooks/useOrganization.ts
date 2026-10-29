@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import type { ApiError } from '@/Core/Api/ApiError';
@@ -37,32 +37,6 @@ export const useTeam = (organizationId: string, teamId: string): UseQueryResult<
     queryKey: teamKey(organizationId, teamId),
     queryFn: () => getTeam(organizationId, teamId),
   });
-
-export interface IMemberTeams {
-  Teams: TTeamDetail[] | undefined;
-  Failed: boolean;
-}
-
-export const useMemberTeams = (organizationId: string, userId: string): IMemberTeams => {
-  const teams = useTeams(organizationId);
-  const details = useQueries({
-    queries: (teams.data ?? [])
-      .filter((team) => team.MemberCount > 0)
-      .map((team) => ({
-        queryKey: teamKey(organizationId, team.Id),
-        queryFn: () => getTeam(organizationId, team.Id),
-      })),
-  });
-  const Failed = teams.isError || details.some((detail) => detail.isError);
-  const pending = teams.data === undefined || details.some((detail) => detail.data === undefined);
-  if (Failed || pending) return { Teams: undefined, Failed };
-  return {
-    Teams: details.flatMap((detail) =>
-      detail.data?.Members.some((member) => member.UserId === userId) ? [detail.data] : [],
-    ),
-    Failed,
-  };
-};
 
 export const useInvitations = (organizationId: string, enabled: boolean): UseQueryResult<TInvitation[], ApiError> =>
   useQuery<TInvitation[], ApiError>({
