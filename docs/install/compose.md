@@ -64,7 +64,7 @@ Sign-in uses a cookie that lives for at most 7 days and ends after 12 hours with
 
 ## Configuration
 
-Set these in `.env`. Compose reads the file automatically, and values exported in your shell take precedence. [Configuration](configuration.md) describes every `DHOW_*` variable and its validation.
+Set these in `.env`. Compose reads the file automatically, and values exported in your shell take precedence. [Configuration](configuration.md) describes every `DHOW_*` variable and its validation. The mail, organization, password, rate-limit and log settings can also be changed by the instance owner in **Server settings**. Leave them empty in `.env` to do that: a value set here wins and shows read-only in the dashboard.
 
 | Variable | Default | Meaning |
 |---|---|---|

@@ -84,7 +84,6 @@ cat > /etc/dhow/dhow.env <<'EOF'
 DHOW_PUBLIC_URL=https://dhow.example.com
 DHOW_LISTEN_ADDR=127.0.0.1:8080
 DHOW_TRUSTED_PROXIES=127.0.0.1/32,::1/128
-DHOW_BREACHED_PASSWORD_CHECK=true
 DHOW_LOG_LEVEL=info
 EOF
 chmod 600 /etc/dhow/dhow.env

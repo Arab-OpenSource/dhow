@@ -66,13 +66,26 @@ func RenderEnv(managed, existing []EnvEntry) []byte {
 	return b.Bytes()
 }
 
+func breachedEntry(a Answers, managed, existing []EnvEntry) ([]EnvEntry, []EnvEntry) {
+	kept := make([]EnvEntry, 0, len(existing))
+	for _, e := range existing {
+		if e.Key != config.EnvBreachedPasswordCheck {
+			kept = append(kept, e)
+		}
+	}
+	if a.BreachedCheck() {
+		return managed, kept
+	}
+	return append(managed, EnvEntry{config.EnvBreachedPasswordCheck, strconv.FormatBool(false)}), kept
+}
+
 func nativeEnv(a Answers, existing []EnvEntry) []byte {
 	managed := []EnvEntry{
 		{config.EnvPublicURL, a.EffectivePublicURL()},
 		{config.EnvListenAddr, a.ListenAddr},
 		{config.EnvTrustedProxies, a.TrustedProxies()},
-		{config.EnvBreachedPasswordCheck, strconv.FormatBool(a.BreachedCheck())},
 	}
+	managed, existing = breachedEntry(a, managed, existing)
 	if EnvValue(existing, envLogLevel) == "" {
 		managed = append(managed, EnvEntry{envLogLevel, "info"})
 	}
@@ -90,8 +103,8 @@ func composeEnv(a Answers, existing []EnvEntry, secretKey, pgPassword, image, tr
 		{envImage, image},
 		{envPublish, a.ListenAddr},
 		{config.EnvTrustedProxies, trusted},
-		{config.EnvBreachedPasswordCheck, strconv.FormatBool(a.BreachedCheck())},
 	}
+	managed, existing = breachedEntry(a, managed, existing)
 	if EnvValue(existing, envLogLevel) == "" {
 		managed = append(managed, EnvEntry{envLogLevel, "info"})
 	}

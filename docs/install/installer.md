@@ -68,7 +68,7 @@ The installer speaks English or Arabic. It follows `--lang en|ar`, then `lang` i
    - **None**, when TLS ends somewhere else. Dhow then listens on `127.0.0.1:8080` only.
 
    The nginx and Caddy files are the configurations tested by `make proxy-check` in [Put Dhow behind a reverse proxy](reverse-proxy.md), with your domain filled in. For nginx, `http2 on;` is left out because the distributions' nginx is older than 1.25.1, which introduced it. With a managed proxy on SELinux, the installer turns on `httpd_can_network_connect` so the proxy can reach Dhow.
-5. **The breached-password check.** Answer no on hosts without internet access; it sets `DHOW_BREACHED_PASSWORD_CHECK=false`.
+5. **The breached-password check.** Answer no on hosts without internet access; it sets `DHOW_BREACHED_PASSWORD_CHECK=false`, which locks the setting in the dashboard. Answering yes writes nothing, so the instance owner can change it later in **Server settings** ([ADR-0063](../../Plan/ADR/0063-instance-settings-in-the-database.md)). A re-run removes a `DHOW_BREACHED_PASSWORD_CHECK=true` line an older installer wrote.
 6. **The firewall.** Asked only with Caddy or nginx and an active ufw or firewalld: open ports 80 and 443, and nothing else. The default is no.
 7. **Missing packages.** The installer lists every package it would install, for example `postgresql-18 caddy`, and installs nothing unless you agree.
 
@@ -90,7 +90,7 @@ At the end it prints the one-time setup link from the journal, which creates the
 | `/etc/dhow/`, `/etc/dhow/credentials/` | `700` | |
 | `/etc/dhow/credentials/dhow-secret-key` | `600` | 32 random bytes as hex, from the kernel's random generator |
 | `/etc/dhow/credentials/dhow-database-url` | `600` | The database URL. For a local database: `postgres://dhow:<generated>@/dhow?host=/var/run/postgresql&port=5432&sslmode=require`, a Unix socket that never touches the network |
-| `/etc/dhow/dhow.env` | `600` | `DHOW_PUBLIC_URL`, `DHOW_LISTEN_ADDR`, `DHOW_TRUSTED_PROXIES`, `DHOW_BREACHED_PASSWORD_CHECK`, `DHOW_LOG_LEVEL` |
+| `/etc/dhow/dhow.env` | `600` | `DHOW_PUBLIC_URL`, `DHOW_LISTEN_ADDR`, `DHOW_TRUSTED_PROXIES`, `DHOW_LOG_LEVEL`, and `DHOW_BREACHED_PASSWORD_CHECK=false` only when the check is turned off |
 | `/etc/dhow/answers.yaml` | `600` | Your answers, without any secret, for re-runs, `doctor` and `uninstall` |
 | `/etc/systemd/system/dhow.service` | `644` | [`deploy/systemd/dhow.service`](../../deploy/systemd/dhow.service) |
 | `/etc/apt/keyrings/dhow-pgdg.asc`, `/etc/apt/sources.list.d/dhow-pgdg.sources` | `644` | The PGDG key and repository on apt systems |

@@ -85,7 +85,13 @@ func TestEnvFiles(t *testing.T) {
 	existing := ParseEnv([]byte("# note\nDHOW_LOG_LEVEL=debug\nDHOW_PUBLIC_URL=\"https://old.example.com\"\nEXTRA=1\n"))
 	a := Answers{Domain: "new.example.com", ListenAddr: DefaultListen, Proxy: ProxyAnswers{Kind: ProxyCaddy}}
 	got := string(nativeEnv(a, existing))
-	assert.Equal(t, "DHOW_PUBLIC_URL=https://new.example.com\nDHOW_LISTEN_ADDR=127.0.0.1:8080\nDHOW_TRUSTED_PROXIES=127.0.0.1/32,::1/128\nDHOW_BREACHED_PASSWORD_CHECK=true\nDHOW_LOG_LEVEL=debug\nEXTRA=1\n", got)
+	assert.Equal(t, "DHOW_PUBLIC_URL=https://new.example.com\nDHOW_LISTEN_ADDR=127.0.0.1:8080\nDHOW_TRUSTED_PROXIES=127.0.0.1/32,::1/128\nDHOW_LOG_LEVEL=debug\nEXTRA=1\n", got)
+	off := false
+	upgraded := ParseEnv([]byte("DHOW_BREACHED_PASSWORD_CHECK=true\n"))
+	assert.NotContains(t, string(nativeEnv(a, upgraded)), "DHOW_BREACHED_PASSWORD_CHECK", "the default is left to the dashboard, even on an upgrade")
+	a.BreachedPasswordCheck = &off
+	assert.Contains(t, string(nativeEnv(a, upgraded)), "DHOW_BREACHED_PASSWORD_CHECK=false\n", "turning the check off at install time stays in env")
+	a.BreachedPasswordCheck = nil
 	compose := string(composeEnv(a, ParseEnv([]byte("DHOW_IMAGE=ghcr.io/khaymah/dhow@sha256:abc\n")), "k", "p", ComposeImageFor("v1.2.3"), ""))
 	assert.Contains(t, compose, "DHOW_IMAGE=ghcr.io/khaymah/dhow@sha256:abc\n", "a pinned image is kept")
 	assert.Equal(t, "ghcr.io/khaymah/dhow:1.2.3", ComposeImageFor("v1.2.3"))
