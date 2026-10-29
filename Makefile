@@ -172,7 +172,7 @@ help: ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
 .PHONY: check
-check: lint lint-runner lint-actions proto-lint test test-runner vuln hooks-test ## Everything CI checks
+check: lint lint-runner lint-actions proto-lint test test-runner vuln hooks-test docs-check ## Everything CI checks
 
 .PHONY: fmt
 fmt: ## Format Go code
@@ -189,6 +189,10 @@ lint-runner: ## Run golangci-lint on the runner with the fake driver build tag
 .PHONY: lint-actions
 lint-actions: ## Lint GitHub Actions workflows
 	$(GO) run github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
+
+.PHONY: docs-check
+docs-check: ## Check that the Arabic docs and their English mirror in docs/en have the same files, headings, tables, code and links
+	$(GO) test -count=1 ./deploy/docs-check/
 
 .PHONY: hooks-test
 hooks-test: ## Test the Claude Code project hooks
