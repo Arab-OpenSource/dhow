@@ -37,8 +37,8 @@ jobs:
           persist-credentials: false
       - name: Check the shell scripts
         run: |
-          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/install/e2e/get-runner.sh deploy/release/dist.sh deploy/systemd/*.sh deploy/dev/setup.sh deploy/dev/lib/*.sh deploy/dev/stack/*.sh
-          shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/install/e2e/get-runner.sh deploy/release/dist.sh deploy/systemd/*.sh
+          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/install/e2e/get-runner.sh deploy/install/e2e/get-runner-box.sh deploy/release/dist.sh deploy/systemd/*.sh deploy/dev/setup.sh deploy/dev/lib/*.sh deploy/dev/stack/*.sh
+          shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/install/e2e/get-runner.sh deploy/install/e2e/get-runner-box.sh deploy/release/dist.sh deploy/systemd/*.sh
           shellcheck -x deploy/dev/setup.sh
           shellcheck deploy/dev/test/fresh.sh
           shellcheck -x deploy/dev/test/settings.sh

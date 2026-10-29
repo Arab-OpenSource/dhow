@@ -30,7 +30,7 @@ bash get.sh --component runner
 3. checks the archive against its own line in `SHA256SUMS`, and stops if the line is missing or does not match;
 4. installs `/usr/local/bin/dhow-runner` (`0755`) and `/etc/systemd/system/dhow-runner.service` (`0644`), and reloads systemd. It does not enable or start the unit.
 
-It does not run `dhow-runner install` yet; it prints the steps below instead. Install `cosign` first to get the signature check: without it, the checksum only proves the download was not damaged, not who built it.
+It does not run `dhow-runner install` yet; it prints the steps below instead. Install `cosign` first to get the signature check: without it, the checksum only proves the download was not damaged, not who built it. From a mirror (`DHOW_DOWNLOAD_URL`) cosign is required, as described in [the installer guide](../install/installer.md). When run as a normal user, the script copies the files into a directory only root can write, and checks and unpacks them there before it installs anything with `sudo`.
 
 ### By hand
 

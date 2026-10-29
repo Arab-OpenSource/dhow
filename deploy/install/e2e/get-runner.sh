@@ -71,34 +71,42 @@ for _ in $(seq 50); do
   sleep 0.2
 done
 
-get() {
-  local name=$1 log=$2
-  shift 2
+run_get() {
+  local user=$1 name=$2 log=$3
+  shift 3
   docker run --rm --network host --platform "linux/$arch" -v "$here/../get.sh:/get.sh:ro" -v "$work/ca.pem:/ca.pem:ro" \
-    -e CURL_CA_BUNDLE=/ca.pem -e DHOW_DOWNLOAD_URL="https://127.0.0.1:$port/$name" -e NO_PROXY='*' \
-    "$image" bash -c 'bash /get.sh "$@" && if [[ -e /usr/local/bin/dhow-runner ]]; then /usr/local/bin/dhow-runner version && stat -c "%a %U %n" /usr/local/bin/dhow-runner /etc/systemd/system/dhow-runner.service; fi' \
-    get.sh "$@" >"$log" 2>&1
+    -v "$here/get-runner-box.sh:/box.sh:ro" -e CURL_CA_BUNDLE=/ca.pem -e DHOW_DOWNLOAD_URL="https://127.0.0.1:$port/$name" \
+    -e NO_PROXY='*' -e GET_AS="$user" "$image" bash /box.sh "$@" >"$log" 2>&1
 }
+get() { run_get root "$@"; }
+skip=--insecure-skip-signature
 
 printf 'get.sh --component runner against a local %s release\n' "$version"
-expect "a good release installs" get good "$work/good.log" --component runner --version "$version"
+expect "a mirror without cosign is refused" fails get good "$work/nocosign.log" --component runner --version "$version"
+expect "the refusal asks for cosign" grep -q 'cosign is required when DHOW_DOWNLOAD_URL or DHOW_REPO is set' "$work/nocosign.log"
+expect "nothing is installed without the signature" lacks 'installed dhow-runner' "$work/nocosign.log"
+expect "a good release installs with --insecure-skip-signature" get good "$work/good.log" --component runner --version "$version" "$skip"
 cat -- "$work/good.log"
-expect "it warns that only the checksum was checked without cosign" grep -q 'cosign is not installed' "$work/good.log"
+expect "the opt-out prints a loud warning" grep -q 'WARNING: --insecure-skip-signature' "$work/good.log"
 expect "it installs the binary 0755 root" grep -q '^755 root /usr/local/bin/dhow-runner$' "$work/good.log"
 expect "it installs the unit 0644 root" grep -q '^644 root /etc/systemd/system/dhow-runner.service$' "$work/good.log"
 expect "the installed runner runs" grep -q "^dhow-runner $version " "$work/good.log"
 expect "it says it does not run dhow-runner install yet" grep -q "does not run 'dhow-runner install' yet" "$work/good.log"
 expect "it prints the register step" grep -q 'dhow-runner register --url' "$work/good.log"
 
-expect "a tampered archive is refused" fails get tampered "$work/tampered.log" --component runner --version "$version"
+expect "a user with sudo installs from a root-owned copy" run_get user good "$work/user.log" --component runner --version "$version" "$skip"
+expect "the user install puts root-owned files in place" grep -q '^755 root /usr/local/bin/dhow-runner$' "$work/user.log"
+expect "the root-owned staging directory is removed" grep -q '^no staging directory left$' "$work/user.log"
+
+expect "a tampered archive is refused" fails get tampered "$work/tampered.log" --component runner --version "$version" "$skip"
 expect "the refusal names the checksum" grep -q 'does not match SHA256SUMS' "$work/tampered.log"
 expect "nothing is installed from a tampered archive" lacks 'installed dhow-runner' "$work/tampered.log"
-expect "an archive missing from SHA256SUMS is refused" fails get unlisted "$work/unlisted.log" --component runner --version "$version"
+expect "an archive missing from SHA256SUMS is refused" fails get unlisted "$work/unlisted.log" --component runner --version "$version" "$skip"
 expect "the refusal says the line is missing" grep -q 'SHA256SUMS has no line for' "$work/unlisted.log"
-expect "the server stays the default component" get good "$work/server.log" --version "$version" --yes
+expect "the server stays the default component" get good "$work/server.log" --version "$version" --yes "$skip"
 expect "the server path runs dhow-server install with the options" grep -q '^dhow-server install --yes$' "$work/server.log"
-expect "an unknown component is refused" fails get good "$work/component.log" --component agent --version "$version"
-expect "installer options are refused for the runner" fails get good "$work/options.log" --component runner --version "$version" --yes
+expect "an unknown component is refused" fails get good "$work/component.log" --component agent --version "$version" "$skip"
+expect "installer options are refused for the runner" fails get good "$work/options.log" --component runner --version "$version" --yes "$skip"
 
 if ((failures != 0)); then
   printf '\n%d get.sh check(s) failed\n' "$failures" >&2
