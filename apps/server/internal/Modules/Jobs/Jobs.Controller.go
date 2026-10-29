@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -37,15 +38,15 @@ func NewController(service *Service, guard Reauthorizer) *Controller {
 
 func (c *Controller) ListJobs(ctx context.Context, req gen.ListJobsRequestObject) (gen.ListJobsResponseObject, error) {
 	page, limit := response.PageParams(req.Params.Page, req.Params.Limit)
-	var state *string
+	var raw []string
 	if req.Params.State != nil {
-		v := string(*req.Params.State)
-		if !slices.Contains(models.JobStates(), v) {
-			return nil, apperrors.ValidationFailed(invalid("State"))
-		}
-		state = &v
+		raw = *req.Params.State
 	}
-	list, total, err := c.service.List(ctx, req.Id, state, page, limit)
+	states, err := stateFilter(raw)
+	if err != nil {
+		return nil, err
+	}
+	list, total, err := c.service.List(ctx, req.Id, states, page, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +57,22 @@ func (c *Controller) ListJobs(ctx context.Context, req gen.ListJobsRequestObject
 	return gen.ListJobs200JSONResponse{
 		Success: true, Message: ptrOf(messageListed), Data: &items, Meta: &gen.PageMeta{Page: page, Limit: limit, Total: int(total)},
 	}, nil
+}
+
+func stateFilter(raw []string) ([]string, error) {
+	out := []string{}
+	for _, part := range raw {
+		for v := range strings.SplitSeq(part, ",") {
+			v = strings.TrimSpace(v)
+			if !slices.Contains(models.JobStates(), v) {
+				return nil, apperrors.ValidationFailed(invalid("State"))
+			}
+			if !slices.Contains(out, v) {
+				out = append(out, v)
+			}
+		}
+	}
+	return out, nil
 }
 
 func (c *Controller) CreateJob(ctx context.Context, req gen.CreateJobRequestObject) (gen.CreateJobResponseObject, error) {

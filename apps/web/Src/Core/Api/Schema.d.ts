@@ -1321,7 +1321,7 @@ export interface paths {
         };
         /**
          * List the jobs of an organization
-         * @description Needs `job.read`. Newest first, optionally filtered by state. A queued job that no active runner of the organization can take carries `QueuedReason` `NO_MATCHING_RUNNER`, as in the job itself. A caller who is not a member gets 404.
+         * @description Needs `job.read`. Newest first, optionally filtered by one or more states. A queued job that no active runner of the organization can take carries `QueuedReason` `NO_MATCHING_RUNNER`, as in the job itself. A caller who is not a member gets 404.
          */
         get: operations["listJobs"];
         put?: never;
@@ -2967,7 +2967,8 @@ export interface components {
         LogLimit: number;
         /** @description The `id` of the last chunk event the client received, `<attempt>:<seq>`. When it names the attempt the stream follows, the stream resumes after that seq and ignores `FromSeq`. An id of another attempt (the job was retried while the client was away) is ignored, so the new attempt starts from `FromSeq` or the beginning. */
         LastEventId: string;
-        JobStateFilter: components["schemas"]["JobState"];
+        /** @description Keep only jobs in these states. Repeat the parameter (`State=failed&State=timed_out`) or separate the states with commas (`State=failed,timed_out`). An unknown state is refused with 422 `VALIDATION_FAILED`. */
+        JobStateFilter: string[];
         UserId: string;
         TeamId: string;
         InvitationId: string;
@@ -4916,6 +4917,7 @@ export interface operations {
             query?: {
                 Page?: components["parameters"]["Page"];
                 Limit?: components["parameters"]["Limit"];
+                /** @description Keep only jobs in these states. Repeat the parameter (`State=failed&State=timed_out`) or separate the states with commas (`State=failed,timed_out`). An unknown state is refused with 422 `VALIDATION_FAILED`. */
                 State?: components["parameters"]["JobStateFilter"];
             };
             header?: never;

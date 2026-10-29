@@ -101,14 +101,36 @@ describe('the home page', () => {
     });
   });
 
+  it('opens both failed states from the failed tile, and still opens a single state', async () => {
+    const { user, router, calls } = await mount({ overview: BUSY });
+    const failed = await within(main()).findByRole('link', { name: new RegExp(Ar['home.stat.failed']) });
+    expect(failed).toHaveAttribute('href', '/jobs?state=failed,timed_out');
+    await user.click(failed);
+    await screen.findByRole('heading', { level: 1, name: Ar['jobs.title'] });
+    expect(router.state.location.search).toEqual({ state: 'failed,timed_out' });
+    const filter = screen.getByRole('group', { name: Ar['jobs.filter.label'] });
+    expect(within(filter).getByRole('button', { name: Ar['jobs.state.failed'] })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(filter).getByRole('button', { name: Ar['jobs.state.timed_out'] })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(filter).getByRole('button', { name: Ar['jobs.filter.all'] })).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => {
+      const lists = calls.map((call) => new URL(call.url)).filter((url) => url.pathname.endsWith('/jobs'));
+      expect(lists.some((url) => url.searchParams.getAll('State').join() === 'failed,timed_out')).toBe(true);
+    });
+
+    await user.click(within(filter).getByRole('button', { name: Ar['jobs.state.failed'] }));
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({ state: 'timed_out' });
+    });
+  });
+
   it('opens the jobs page filtered from a number', async () => {
     const { user, router } = await mount({ overview: BUSY });
     await user.click(await within(main()).findByRole('link', { name: new RegExp(Ar['home.stat.queued']) }));
     await screen.findByRole('heading', { level: 1, name: Ar['jobs.title'] });
     expect(router.state.location.href).toBe('/jobs?state=queued');
-    const filter = screen.getByRole('radiogroup', { name: Ar['jobs.filter.label'] });
-    expect(within(filter).getByRole('radio', { name: Ar['jobs.state.queued'] })).toHaveAttribute('aria-checked', 'true');
-    await user.click(within(filter).getByRole('radio', { name: Ar['jobs.filter.all'] }));
+    const filter = screen.getByRole('group', { name: Ar['jobs.filter.label'] });
+    expect(within(filter).getByRole('button', { name: Ar['jobs.state.queued'] })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(filter).getByRole('button', { name: Ar['jobs.filter.all'] }));
     await waitFor(() => {
       expect(router.state.location.href).toBe('/jobs');
     });

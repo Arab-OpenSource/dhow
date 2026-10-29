@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 
 import { Page } from '@/App/Layout/Page';
+import { jobsSearchOf } from '@/App/Navigation/JobsSearch';
 import { canManageRunners, canReadAudit, canReadRunners, type TMembership } from '@/Core/Auth/AuthTypes';
 import { useCurrentMembership, useMe } from '@/Core/Auth/useMe';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
@@ -24,11 +25,11 @@ import { useReadiness } from '@/Modules/System/Hooks/useReadiness';
 
 type TTargetPath = '/jobs' | '/runners' | '/runners/tokens' | '/org/invitations' | '/system';
 
-const TARGETS: Record<TOverviewTarget, { to: TTargetPath; state?: TJobState }> = {
-  running: { to: '/jobs', state: 'running' },
-  queued: { to: '/jobs', state: 'queued' },
-  stuck: { to: '/jobs', state: 'queued' },
-  failed: { to: '/jobs', state: 'failed' },
+const TARGETS: Record<TOverviewTarget, { to: TTargetPath; states?: readonly TJobState[] }> = {
+  running: { to: '/jobs', states: ['running'] },
+  queued: { to: '/jobs', states: ['queued'] },
+  stuck: { to: '/jobs', states: ['queued'] },
+  failed: { to: '/jobs', states: ['failed', 'timed_out'] },
   runners: { to: '/runners' },
   offline: { to: '/runners' },
   invitations: { to: '/org/invitations' },
@@ -40,12 +41,13 @@ const useLinks = (): IOverviewLinks => {
   const navigate = useNavigate();
   return {
     href: (target) => {
-      const { to, state } = TARGETS[target];
+      const { to, states } = TARGETS[target];
+      const { state } = jobsSearchOf(states ?? []);
       return state === undefined ? to : `${to}?state=${state}`;
     },
     open: (target) => {
-      const { to, state } = TARGETS[target];
-      void navigate(state === undefined ? { to } : { to: '/jobs', search: { state } });
+      const { to, states } = TARGETS[target];
+      void navigate(states === undefined ? { to } : { to: '/jobs', search: jobsSearchOf(states) });
     },
   };
 };

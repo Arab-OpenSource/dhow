@@ -5,7 +5,8 @@ Open **Run › Jobs** in the side menu (or type "jobs" in the command palette). 
 ## The list
 
 - Newest first, 20 to a page, with each job's state, when it was created, how long it waited, ran or took, its attempts and, for a job that ended badly, the reason in plain words.
-- The chips above the list filter by state. The filter is part of the address (`/jobs?state=queued`), so the numbers on the [home page](home.md) open the list already filtered.
+- The chips above the list filter by state. Each chip turns its state on or off, so you can show several states at once, and **All** clears the filter. The filter is part of the address (`/jobs?state=queued`, or `/jobs?state=failed,timed_out` for several), so the numbers on the [home page](home.md) open the list already filtered.
+- The API takes the same list: repeat `State` or separate the states with commas (`GET /api/v1/organizations/{id}/jobs?State=failed,timed_out`).
 - **Jobs that no runner can take are called out at the top.** A queued job needs an active runner in the organization that has every label the job asks for and supports its isolation level. When none exists, the list shows how many jobs are stuck, marks each one, and offers to show only the waiting jobs. Register a runner with the right labels ([Register a runner](../runner/register.md)) and they start on their own. A job still waiting after 24 hours fails with `QUEUE_TIMEOUT`.
 - The list refreshes every 10 seconds while any job on the page is still active.
 

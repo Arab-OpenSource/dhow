@@ -8,7 +8,7 @@ The home page (`/`) answers two questions at a glance: is everything OK, and wha
 - **Four numbers**, each a link to the matching page:
   - **Running now** (blue): jobs in the `leased` or `running` state. Opens `/jobs?state=running`.
   - **Queued** (violet): jobs in the `queued` state, with a note when some have no matching runner. Opens `/jobs?state=queued`.
-  - **Failed in the last 24 hours** (coral): jobs that ended `failed` or `timed_out` in the last 24 hours. Opens `/jobs?state=failed`, which lists the `failed` state; pick **Timed out** in the chips for the rest.
+  - **Failed in the last 24 hours** (coral): jobs that ended `failed` or `timed_out` in the last 24 hours. Opens `/jobs?state=failed,timed_out`, which lists both states.
   - **Runners connected** (green): active runners seen in the last two minutes, with a note when some are offline. Opens `/runners`. Viewers cannot read runners, so they see three numbers.
 - **Needs your attention:** stuck jobs, server checks that fail, offline runners and pending invitations. Only the rows that exist appear, each with its count and a link. When nothing needs you, it says so in one line.
 - **Latest jobs** (the five newest), **Runners** (the first five), **Latest events** (the five newest audit events, for owners and admins only) and **Server status** (the same summary as `/system`, with each check and the version).

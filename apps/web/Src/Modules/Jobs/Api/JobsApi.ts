@@ -15,10 +15,15 @@ export type TJobLogChunk = TSchemas['JobLogChunk'];
 export type TJobLogStatus = TSchemas['JobLogStatus'];
 export type TJobLogStream = TSchemas['JobLogStream'];
 
-export const listJobs = (organizationId: string, page: number, limit: number, state: TJobState | null): Promise<IPage<TJob>> =>
+export const listJobs = (
+  organizationId: string,
+  page: number,
+  limit: number,
+  states: readonly TJobState[],
+): Promise<IPage<TJob>> =>
   requestPage(() =>
     ApiClient.GET('/organizations/{id}/jobs', {
-      params: { path: { id: organizationId }, query: { Page: page, Limit: limit, ...(state === null ? {} : { State: state }) } },
+      params: { path: { id: organizationId }, query: { Page: page, Limit: limit, ...(states.length === 0 ? {} : { State: [...states] }) } },
     }),
   );
 

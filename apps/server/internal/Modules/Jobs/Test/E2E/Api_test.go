@@ -113,6 +113,54 @@ func TestListFiltersByState(t *testing.T) {
 	assert.Equal(t, http.StatusUnprocessableEntity, bad.Status, string(bad.Raw))
 }
 
+func TestListFiltersBySeveralStates(t *testing.T) {
+	w := newWorld(t)
+	failed := w.job(t, apptest.SimpleSpec(), nil)
+	timedOut := w.job(t, apptest.SimpleSpec(), nil)
+	w.job(t, apptest.SimpleSpec(), nil)
+	moves := []struct {
+		id    string
+		state string
+	}{{failed.String(), "failed"}, {timedOut.String(), "leased"}, {timedOut.String(), "running"}, {timedOut.String(), "timed_out"}}
+	for _, m := range moves {
+		_, err := w.env.Pool.Exec(t.Context(), `UPDATE "Jobs" SET "State" = $1::text,
+			"FinishedAt" = CASE WHEN $1::text IN ('failed', 'timed_out') THEN now() END WHERE "Id" = $2`, m.state, m.id)
+		require.NoError(t, err)
+	}
+	tests := []struct {
+		name   string
+		query  string
+		status int
+		want   []string
+	}{
+		{"one state as before", "?State=failed", http.StatusOK, []string{failed.String()}},
+		{"states separated by commas", "?State=failed,timed_out", http.StatusOK, []string{timedOut.String(), failed.String()}},
+		{"a repeated parameter", "?State=failed&State=timed_out", http.StatusOK, []string{timedOut.String(), failed.String()}},
+		{"both forms and a duplicate", "?State=failed,timed_out&State=failed", http.StatusOK, []string{timedOut.String(), failed.String()}},
+		{"an unknown state among known ones", "?State=failed,paused", http.StatusUnprocessableEntity, nil},
+		{"an empty state", "?State=failed,", http.StatusUnprocessableEntity, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := w.owner.Get(w.path("/jobs" + tt.query))
+			require.Equal(t, tt.status, res.Status, string(res.Raw))
+			if tt.want == nil {
+				require.NotNil(t, res.Error)
+				assert.Equal(t, "VALIDATION_FAILED", res.Error.Code)
+				return
+			}
+			var items []struct{ Id string }
+			res.Decode(t, &items)
+			got := make([]string, 0, len(items))
+			for _, it := range items {
+				got = append(got, it.Id)
+			}
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, len(tt.want), res.Meta.Total, "the total counts the same states")
+		})
+	}
+}
+
 func TestQueuedReasonShowsWhenNoRunnerCanTakeTheJob(t *testing.T) {
 	w := newWorld(t)
 	spec := apptest.SimpleSpec()

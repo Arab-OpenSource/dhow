@@ -86,7 +86,7 @@ describe('the jobs page', () => {
     expect(within(list).getAllByText(Ar['jobs.stuck.badge'])).toHaveLength(3);
 
     await user.click(within(dialog).getByRole('button', { name: Ar['jobs.stuck.show'] }));
-    expect(within(dialog).getByRole('radio', { name: Ar['jobs.state.queued'] })).toHaveAttribute('aria-checked', 'true');
+    expect(within(dialog).getByRole('button', { name: Ar['jobs.state.queued'] })).toHaveAttribute('aria-pressed', 'true');
     await waitFor(() => {
       expect(within(dialog).getByText(Ar['jobs.list.total'].replace('{count}', '3'))).toBeInTheDocument();
     });
@@ -102,7 +102,7 @@ describe('the jobs page', () => {
     });
     expect(listCalls(calls).map((url) => url.searchParams.get('Limit'))).toContain('20');
 
-    await user.click(within(dialog).getByRole('radio', { name: Ar['jobs.state.lost'] }));
+    await user.click(within(dialog).getByRole('button', { name: Ar['jobs.state.lost'] }));
     expect(await within(dialog).findByText(Ar['jobs.empty.filtered'])).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: Ar['jobs.empty.showAll'] }));
     expect(await within(dialog).findByRole('list', { name: Ar['jobs.list.title'] })).toBeInTheDocument();

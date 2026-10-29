@@ -20,11 +20,12 @@ import { isFinalState, isStuck, JOBS_GUIDE_URL } from '@/Modules/Jobs/Types/JobS
 
 export interface IJobsBodyProps {
   onOpenJob: (jobId: string) => void;
-  filter?: TJobState | null;
-  onFilterChange?: (state: TJobState | null) => void;
+  filter?: readonly TJobState[];
+  onFilterChange?: (states: TJobState[]) => void;
 }
 
 const MINUTE_MS = 60_000;
+const NO_FILTER: readonly TJobState[] = [];
 
 const StuckAlert = ({ organizationId, onShow }: { organizationId: string; onShow: () => void }) => {
   const t = useT();
@@ -47,15 +48,16 @@ const JobsContent = ({ organizationId, onOpenJob, filter, onFilterChange }: IJob
   const t = useT();
   const errorText = useApiErrorText();
   const [Page, setPage] = useState(1);
-  const [OwnFilter, setOwnFilter] = useState<TJobState | null>(filter ?? null);
-  const Filter = onFilterChange === undefined ? OwnFilter : (filter ?? null);
+  const [OwnFilter, setOwnFilter] = useState<readonly TJobState[]>(filter ?? NO_FILTER);
+  const Filter = onFilterChange === undefined ? OwnFilter : (filter ?? NO_FILTER);
   const setFilter = onFilterChange ?? setOwnFilter;
   const jobs = useJobs(organizationId, Page, Filter);
+  const unfiltered = Filter.length === 0;
   const items = jobs.data?.Items ?? [];
   const now = useNow(items.some((job) => !isFinalState(job.State)), MINUTE_MS / 4);
 
-  const HandleFilter = (state: TJobState | null) => {
-    setFilter(state);
+  const HandleFilter = (states: TJobState[]) => {
+    setFilter(states);
     setPage(1);
   };
 
@@ -64,7 +66,7 @@ const JobsContent = ({ organizationId, onOpenJob, filter, onFilterChange }: IJob
       <StuckAlert
         organizationId={organizationId}
         onShow={() => {
-          HandleFilter('queued');
+          HandleFilter(['queued']);
         }}
       />
       <JobFilter value={Filter} onChange={HandleFilter} />
@@ -86,17 +88,17 @@ const JobsContent = ({ organizationId, onOpenJob, filter, onFilterChange }: IJob
       {jobs.data === undefined && !jobs.isError ? <Skeleton label={t('jobs.loading')} lines={6} /> : null}
       {jobs.data !== undefined && items.length === 0 ? (
         <Card>
-          {Filter === null ? (
+          {unfiltered ? (
             <div className="grid gap-1 px-5 pt-6 pb-2 text-center">
               <h3 className="m-0 text-title-card">{t('jobs.empty.title')}</h3>
             </div>
           ) : null}
           <EmptyState
             icon="play"
-            className={Filter === null ? 'pt-2' : undefined}
-            text={Filter === null ? t('jobs.empty.about') : t('jobs.empty.filtered')}
+            className={unfiltered ? 'pt-2' : undefined}
+            text={unfiltered ? t('jobs.empty.about') : t('jobs.empty.filtered')}
             action={
-              Filter === null ? (
+              unfiltered ? (
                 <a href={JOBS_GUIDE_URL} target="_blank" rel="noreferrer" className="text-label-sm text-primary underline underline-offset-4">
                   {t('jobs.empty.guide')}
                 </a>
@@ -104,7 +106,7 @@ const JobsContent = ({ organizationId, onOpenJob, filter, onFilterChange }: IJob
                 <Button
                   size="sm"
                   onClick={() => {
-                    HandleFilter(null);
+                    HandleFilter([]);
                   }}
                 >
                   {t('jobs.empty.showAll')}
