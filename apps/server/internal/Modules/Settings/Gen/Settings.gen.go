@@ -104,6 +104,9 @@ type BooleanSetting struct {
 	Env    string `json:"Env"`
 	Locked bool   `json:"Locked"`
 
+	// LockedBy The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked.
+	LockedBy *string `json:"LockedBy,omitempty"`
+
 	// Source Where the value in effect comes from. An environment variable wins over the database.
 	Source SettingSource `json:"Source"`
 	Value  bool          `json:"Value"`
@@ -195,6 +198,9 @@ type IntegerSetting struct {
 	Env    string `json:"Env"`
 	Locked bool   `json:"Locked"`
 
+	// LockedBy The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked.
+	LockedBy *string `json:"LockedBy,omitempty"`
+
 	// Source Where the value in effect comes from. An environment variable wins over the database.
 	Source SettingSource `json:"Source"`
 	Value  int64         `json:"Value"`
@@ -212,7 +218,7 @@ type MailSettings struct {
 	From StringSetting `json:"From"`
 	Host StringSetting `json:"Host"`
 
-	// Password A write-only secret. Its value never comes back, only whether one is saved.
+	// Password A write-only secret. Its value never comes back, only whether one is set.
 	Password SecretSetting  `json:"Password"`
 	Port     IntegerSetting `json:"Port"`
 	Tls      StringSetting  `json:"Tls"`
@@ -265,11 +271,16 @@ type RateLimitSettings struct {
 	Version                int64          `json:"Version"`
 }
 
-// SecretSetting A write-only secret. Its value never comes back, only whether one is saved.
+// SecretSetting A write-only secret. Its value never comes back, only whether one is set.
 type SecretSetting struct {
 	Env    string `json:"Env"`
 	Locked bool   `json:"Locked"`
-	Set    bool   `json:"Set"`
+
+	// Saved True when a copy is saved in the database. With `Locked`, that copy is unused, and sending "" removes it.
+	Saved bool `json:"Saved"`
+
+	// Set True when a value is in effect, from the environment or the database.
+	Set bool `json:"Set"`
 }
 
 // SettingSource Where the value in effect comes from. An environment variable wins over the database.
@@ -282,6 +293,9 @@ type StringSetting struct {
 
 	// Locked True when the environment variable `Env` sets it. The dashboard cannot change it then.
 	Locked bool `json:"Locked"`
+
+	// LockedBy The environment variable that locks this setting: `Env` itself, or `DHOW_SMTP_PASSWORD` for the mail server, port and encryption when the SMTP password comes from the environment. Absent when not locked.
+	LockedBy *string `json:"LockedBy,omitempty"`
 
 	// Source Where the value in effect comes from. An environment variable wins over the database.
 	Source SettingSource `json:"Source"`
@@ -304,7 +318,7 @@ type UpdateMailSettingsRequest struct {
 	From          *string       `json:"From,omitempty"`
 	Host          *string       `json:"Host,omitempty"`
 
-	// Password Leave out to keep the saved password, send a value to replace it, or send "" to clear it.
+	// Password Leave out to keep the saved password, send a value to replace it, or send "" to clear it. When `Host` changes and a password is saved, send the password again (`400 SETTING_INVALID` otherwise), so a saved password never goes to a new server without the owner typing it. When `DHOW_SMTP_PASSWORD` is set in the environment, `Host`, `Port` and `Tls` are locked too (`409 SETTING_LOCKED_BY_ENV`), and "" only removes the unused database copy. From the dashboard, `Tls` may be `none` only for a loopback host.
 	Password *string                       `json:"Password,omitempty"`
 	Port     *int                          `json:"Port,omitempty"`
 	Tls      *UpdateMailSettingsRequestTls `json:"Tls,omitempty"`

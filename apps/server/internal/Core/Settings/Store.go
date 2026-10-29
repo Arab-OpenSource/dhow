@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -43,6 +44,7 @@ type Listener func(ctx context.Context) (*pgx.Conn, error)
 
 type Stored struct {
 	Raw       settingspec.Raw
+	Sealed    bool
 	Version   int64
 	UpdatedAt *time.Time
 	UpdatedBy *uuid.UUID
@@ -55,7 +57,28 @@ type Snapshot struct {
 	env     settingspec.Raw
 }
 
-func (s *Snapshot) Locked(env string) bool { return s.env.Has(env) }
+var passwordBound = []string{settingspec.EnvSMTPHost, settingspec.EnvSMTPPort, settingspec.EnvSMTPTLS}
+
+func (s *Snapshot) LockedBy(env string) string {
+	if s.env.Has(env) {
+		return env
+	}
+	if slices.Contains(passwordBound, env) && s.env.Has(settingspec.EnvSMTPPassword) {
+		return settingspec.EnvSMTPPassword
+	}
+	return ""
+}
+
+func (s *Snapshot) Locked(env string) bool { return s.LockedBy(env) != "" }
+
+func (s *Snapshot) SecretStored(env string) bool {
+	k, ok := settingspec.KeyByEnv(env)
+	if !ok || !k.Secret {
+		return false
+	}
+	st := s.Stored[k.Group]
+	return st.Sealed || st.Raw.Get(env) != ""
+}
 
 func (s *Snapshot) SecretSet(env string) bool {
 	if s.env.Get(env) != "" {
@@ -178,13 +201,13 @@ func (s *Store) read(ctx context.Context, q *sqlc.Queries) (map[settingspec.Grou
 			errs = append(errs, fmt.Errorf("instance setting group %q in the database is unknown", r.Group))
 			continue
 		}
-		raw, err := s.decode(g, r.Value, r.Secrets)
+		raw, unread, err := s.decodeRow(g, r.Value, r.Secrets)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
 		at := r.UpdatedAt
-		out[g] = Stored{Raw: raw, Version: r.Version, UpdatedAt: &at, UpdatedBy: r.UpdatedBy}
+		out[g] = Stored{Raw: raw, Sealed: unread, Version: r.Version, UpdatedAt: &at, UpdatedBy: r.UpdatedBy}
 	}
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
@@ -228,6 +251,29 @@ func describe(src Source) string {
 }
 
 func sealContext(g settingspec.Group) []byte { return []byte(contextPrefix + string(g)) }
+
+func (s *Store) secretsLocked(g settingspec.Group) bool {
+	found := false
+	for _, k := range settingspec.KeysOf(g) {
+		if !k.Secret {
+			continue
+		}
+		if !s.env.Has(k.Env) {
+			return false
+		}
+		found = true
+	}
+	return found
+}
+
+func (s *Store) decodeRow(g settingspec.Group, value, secrets []byte) (settingspec.Raw, bool, error) {
+	if len(secrets) > 0 && s.secretsLocked(g) {
+		raw, err := s.decode(g, value, nil)
+		return raw, true, err
+	}
+	raw, err := s.decode(g, value, secrets)
+	return raw, false, err
+}
 
 func (s *Store) decode(g settingspec.Group, value, secrets []byte) (settingspec.Raw, error) {
 	raw := settingspec.Raw{}

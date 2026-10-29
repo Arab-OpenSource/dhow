@@ -193,4 +193,8 @@ var arMessages = map[string]string{ //nolint:gosec // This is a message catalog,
 	"settings.invalid.jobLogMaxBytes":              "اكتب عدد بايتات صحيحًا من 1048576 (1 MiB) إلى 1073741824 (1 GiB).",
 	"mail.settingsTest.subject":                    "رسالة تجربة من داو",
 	"mail.settingsTest.body":                       "هذه رسالة تجربة من سيرفر داو.\n\nإذا وصلتك، فإعدادات البريد تعمل. أرسلناها في {at}.\n",
+	"errors.settingLockedByPassword":               "كلمة مرور البريد محدَّدة من متغيرات البيئة، لذلك خادم البريد والمنفذ والتشفير مقفلة أيضًا.",
+	"settings.invalid.smtpHostBlocked":             "هذا عنوان محلي للشبكة أو عنوان بيانات السحابة. اكتب عنوان خادم البريد.",
+	"settings.invalid.smtpPlainRemote":             "بدون تشفير يرسل داو البريد فقط إلى خادم على هذا الجهاز. اختر STARTTLS أو TLS.",
+	"settings.invalid.passwordAgain":               "غيّرت خادم البريد. اكتب كلمة المرور مرة أخرى حتى تصل إلى الخادم الجديد فقط.",
 }

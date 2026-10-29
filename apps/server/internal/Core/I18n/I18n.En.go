@@ -193,4 +193,8 @@ var enMessages = map[string]string{ //nolint:gosec // This is a message catalog,
 	"settings.invalid.jobLogMaxBytes":              "Enter a whole number of bytes from 1048576 (1 MiB) to 1073741824 (1 GiB).",
 	"mail.settingsTest.subject":                    "Test email from Dhow",
 	"mail.settingsTest.body":                       "This is a test email from your Dhow server.\n\nIf it reached you, the mail settings work. It was sent at {at}.\n",
+	"errors.settingLockedByPassword":               "The SMTP password is set by an environment variable, so the mail server, port and encryption are locked too.",
+	"settings.invalid.smtpHostBlocked":             "This address is a link-local or cloud metadata address. Use your mail server's address.",
+	"settings.invalid.smtpPlainRemote":             "Without encryption, Dhow sends mail only to a server on this machine. Choose STARTTLS or TLS.",
+	"settings.invalid.passwordAgain":               "You changed the mail server. Type the password again so it goes only to the new server.",
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -35,84 +34,13 @@ func detail(field, message string) apperrors.IErrorDetail {
 
 func (s *Store) Check(g settingspec.Group, version int64, changes []Change) error {
 	snap := s.Current()
-	if _, _, err := s.plan(snap, g, snap.Stored[g].Raw, changes); err != nil {
+	if _, err := s.plan(snap, g, snap.Stored[g].Raw, changes); err != nil {
 		return err
 	}
 	if snap.Version(g) > version {
 		return apperrors.SettingChanged()
 	}
 	return nil
-}
-
-func (s *Store) plan(snap *Snapshot, g settingspec.Group, base settingspec.Raw, changes []Change) (settingspec.Raw, []string, error) {
-	next := settingspec.Raw{}
-	for _, k := range settingspec.KeysOf(g) {
-		if v, ok := base[k.Env]; ok {
-			next[k.Env] = v
-		}
-	}
-	var locked, invalid []apperrors.IErrorDetail
-	seen := map[string]bool{}
-	for _, c := range changes {
-		k, ok := settingspec.KeyByField(g, c.Field)
-		if !ok || seen[c.Field] {
-			return nil, nil, apperrors.BadRequest()
-		}
-		seen[c.Field] = true
-		if snap.Locked(k.Env) {
-			locked = append(locked, detail(k.Field, apperrors.KeySettingLockedByEnv))
-			continue
-		}
-		if c.Value == "" {
-			delete(next, k.Env)
-			continue
-		}
-		if e := settingspec.ValidateValue(k.Env, c.Value); e != nil {
-			invalid = append(invalid, detail(k.Field, invalidPrefix+e.Rule))
-			continue
-		}
-		next[k.Env] = c.Value
-	}
-	if len(locked) > 0 {
-		return nil, nil, apperrors.SettingLockedByEnv(locked...)
-	}
-	if len(invalid) > 0 {
-		return nil, nil, apperrors.SettingInvalid(invalid...)
-	}
-	merged := snap.merged()
-	for _, k := range settingspec.KeysOf(g) {
-		if snap.Locked(k.Env) {
-			continue
-		}
-		delete(merged, k.Env)
-		if v, ok := next[k.Env]; ok {
-			merged[k.Env] = v
-		}
-	}
-	if _, errs := settingspec.Parse(merged); len(errs) > 0 {
-		for _, e := range errs {
-			if k, ok := settingspec.KeyByEnv(e.Env); ok && k.Group == g {
-				invalid = append(invalid, detail(k.Field, invalidPrefix+e.Rule))
-			}
-		}
-		if len(invalid) > 0 {
-			return nil, nil, apperrors.SettingInvalid(invalid...)
-		}
-	}
-	return next, changedFields(g, base, next), nil
-}
-
-func changedFields(g settingspec.Group, before, after settingspec.Raw) []string {
-	var out []string
-	for _, k := range settingspec.KeysOf(g) {
-		b, bok := before[k.Env]
-		a, aok := after[k.Env]
-		if bok != aok || b != a {
-			out = append(out, k.Field)
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 func (s *Store) Update(ctx context.Context, g settingspec.Group, version int64, changes []Change, actor uuid.UUID) (Result, error) {
@@ -127,27 +55,31 @@ func (s *Store) Update(ctx context.Context, g settingspec.Group, version int64, 
 			return err
 		}
 		base := settingspec.Raw{}
+		unread := false
 		var current int64
 		if exists {
 			current = row.Version
-			if base, err = s.decode(g, row.Value, row.Secrets); err != nil {
+			if base, unread, err = s.decodeRow(g, row.Value, row.Secrets); err != nil {
 				return err
 			}
 		}
 		if current != version {
 			return apperrors.SettingChanged()
 		}
-		next, changed, err := s.plan(s.Current(), g, base, changes)
+		p, err := s.plan(s.Current(), g, base, changes)
 		if err != nil {
 			return err
 		}
-		res.Changed, res.Version = changed, current
-		if len(changed) == 0 {
+		res.Changed, res.Version = p.changed, current
+		if len(p.changed) == 0 {
 			return nil
 		}
-		value, secrets, err := s.encode(g, next)
+		value, secrets, err := s.encode(g, p.next)
 		if err != nil {
 			return err
+		}
+		if unread && !p.clearSealed {
+			secrets = row.Secrets
 		}
 		if exists {
 			res.Version, err = q.UpdateInstanceSetting(ctx, sqlc.UpdateInstanceSettingParams{

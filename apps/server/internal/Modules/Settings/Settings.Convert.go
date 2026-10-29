@@ -13,27 +13,31 @@ type view struct {
 	snap *instancesettings.Snapshot
 }
 
-func (v view) meta(env string) (gen.SettingSource, bool) {
-	return gen.SettingSource(v.snap.Sources[env]), v.snap.Locked(env)
+func (v view) meta(env string) (gen.SettingSource, bool, *string) {
+	by := v.snap.LockedBy(env)
+	if by == "" {
+		return gen.SettingSource(v.snap.Sources[env]), false, nil
+	}
+	return gen.SettingSource(v.snap.Sources[env]), true, &by
 }
 
 func (v view) text(env, value string) gen.StringSetting {
-	src, locked := v.meta(env)
-	return gen.StringSetting{Value: value, Source: src, Locked: locked, Env: env}
+	src, locked, by := v.meta(env)
+	return gen.StringSetting{Value: value, Source: src, Locked: locked, LockedBy: by, Env: env}
 }
 
 func (v view) number(env string, value int64) gen.IntegerSetting {
-	src, locked := v.meta(env)
-	return gen.IntegerSetting{Value: value, Source: src, Locked: locked, Env: env}
+	src, locked, by := v.meta(env)
+	return gen.IntegerSetting{Value: value, Source: src, Locked: locked, LockedBy: by, Env: env}
 }
 
 func (v view) flag(env string, value bool) gen.BooleanSetting {
-	src, locked := v.meta(env)
-	return gen.BooleanSetting{Value: value, Source: src, Locked: locked, Env: env}
+	src, locked, by := v.meta(env)
+	return gen.BooleanSetting{Value: value, Source: src, Locked: locked, LockedBy: by, Env: env}
 }
 
 func (v view) secret(env string) gen.SecretSetting {
-	return gen.SecretSetting{Set: v.snap.SecretSet(env), Locked: v.snap.Locked(env), Env: env}
+	return gen.SecretSetting{Set: v.snap.SecretSet(env), Locked: v.snap.Locked(env), Saved: v.snap.SecretStored(env), Env: env}
 }
 
 func settingsToGen(snap *instancesettings.Snapshot) gen.InstanceSettings {

@@ -46,7 +46,7 @@ func TestASaveReachesEveryInstanceOnTheDatabaseWithoutARestart(t *testing.T) {
 	save(t, owner, "rate-limits", fresh(), map[string]any{"Public": 1234})
 	save(t, owner, "passwords", fresh(), map[string]any{"BreachedCheck": false})
 	save(t, owner, "logs", fresh(), map[string]any{"RetentionDays": 9})
-	save(t, owner, "mail", fresh(), map[string]any{"Host": "relay.internal", "From": "dhow@example.com", "Tls": "none"})
+	save(t, owner, "mail", fresh(), map[string]any{"Host": "127.0.0.1", "From": "dhow@example.com", "Tls": "none"})
 	require.Eventually(t, func() bool {
 		v := second.Wired.Settings.Current().Values
 		return v.RateLimits.Public == 1234 && !v.BreachedPasswordCheck && v.Logs.RetentionDays == 9 && v.Mail.Enabled()

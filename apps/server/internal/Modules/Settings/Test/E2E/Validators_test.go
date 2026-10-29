@@ -39,6 +39,9 @@ func badValues() []badValue {
 		{"a public limit of zero", settingspec.EnvRateLimitPublic, "rate-limits", "Public", "0", 0, "rateLimit", nil},
 		{"an invitation limit past the bound", settingspec.EnvRateLimitInvitesOrg, "rate-limits", "InvitesPerOrganization", "100001", 100001, "rateLimit", nil},
 		{"retention of zero days", settingspec.EnvLogRetentionDays, "logs", "RetentionDays", "0", 0, "retentionDays", nil},
+		{"a link-local host", settingspec.EnvSMTPHost, "mail", "Host", "169.254.169.254", "169.254.169.254", "smtpHostBlocked", map[string]any{"From": "dhow@example.com"}},
+		{"a cloud metadata name", settingspec.EnvSMTPHost, "mail", "Host", "Metadata.Google.Internal.", "Metadata.Google.Internal.", "smtpHostBlocked", map[string]any{"From": "dhow@example.com"}},
+		{"the Alibaba metadata address", settingspec.EnvSMTPHost, "mail", "Host", "100.100.100.200", "100.100.100.200", "smtpHostBlocked", map[string]any{"From": "dhow@example.com"}},
 		{"a log cap under 1 MiB", settingspec.EnvJobLogMaxBytes, "logs", "JobLogMaxBytes", "65536", 65536, "jobLogMaxBytes", nil},
 	}
 }
@@ -98,8 +101,8 @@ func TestCrossFieldMailRulesRunOnTheMergedValues(t *testing.T) {
 			assert.NotContains(t, string(res.Raw), "relay-credential")
 		})
 	}
-	v := save(t, owner, "mail", fresh(), map[string]any{"Host": "relay.internal", "From": "Dhow <dhow@example.com>", "Tls": "none", "Port": 25})
-	assert.Equal(t, "relay.internal", v.field(t, "Mail", "Host").text(t))
+	v := save(t, owner, "mail", fresh(), map[string]any{"Host": "localhost", "From": "Dhow <dhow@example.com>", "Tls": "none", "Port": 25})
+	assert.Equal(t, "localhost", v.field(t, "Mail", "Host").text(t))
 	assert.Equal(t, "Dhow <dhow@example.com>", v.field(t, "Mail", "From").text(t))
 	assert.Equal(t, int64(25), v.field(t, "Mail", "Port").number(t))
 	assert.Equal(t, "database", v.field(t, "Mail", "Tls").Source)
