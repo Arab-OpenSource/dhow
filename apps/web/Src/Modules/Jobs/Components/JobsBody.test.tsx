@@ -27,7 +27,12 @@ describe('the jobs page', () => {
   it('says how jobs get created when there are none', async () => {
     const { dialog } = await mount({ jobs: [] });
     expect(await within(dialog).findByText(Ar['jobs.empty.title'])).toBeInTheDocument();
-    expect(within(dialog).getByText(/POST \/api\/v1\/organizations\/[0-9a-f-]{36}\/jobs/)).toBeInTheDocument();
+    expect(within(dialog).getByText(Ar['jobs.empty.about'])).toBeInTheDocument();
+    const guide = within(dialog).getByRole('link', { name: Ar['jobs.empty.guide'] });
+    expect(guide).toHaveAttribute('href', 'https://github.com/Khaymah/dhow/blob/main/docs/guides/jobs.md#create-a-job-through-the-api');
+    expect(guide).toHaveAttribute('rel', 'noreferrer');
+    expect(dialog.textContent).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/);
+    expect(dialog.textContent).not.toContain('/api/v1');
   });
 
   it('shows a skeleton while the first page loads', async () => {

@@ -28,6 +28,8 @@ const STATUS: Record<TJobState, TStatus> = {
 
 export const NO_MATCHING_RUNNER = 'NO_MATCHING_RUNNER';
 
+export const JOBS_GUIDE_URL = 'https://github.com/Khaymah/dhow/blob/main/docs/guides/jobs.md#create-a-job-through-the-api';
+
 export const FAILURE_REASONS = [
   'CANCELED',
   'QUEUE_TIMEOUT',

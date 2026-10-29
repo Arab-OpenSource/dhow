@@ -17,4 +17,24 @@ Open **Run › Jobs** in the side menu (or type "jobs" in the command palette). 
 - **Attempts:** each attempt with its state, reason, exit code, the runner that took it and its fencing token. A newer attempt always has a larger token, and the server refuses any call that carries an older one.
 - **Settings:** the image, the steps (a step marked "Changes a target" stops automatic retries once it begins), the resources, the time limit, the labels, the isolation level and the hosts the job may reach. Secret values never appear.
 
-In this version jobs are created through the API (`POST /api/v1/organizations/{id}/jobs`, owners and admins). Pipelines will create them once they arrive.
+## Create a job through the API
+
+Pipelines (milestone M4) will create jobs on their own. Until then, an owner or admin creates one through the API. When the organization has no jobs yet, the empty list links here.
+
+```sh
+curl -X POST https://dhow.example.com/api/v1/organizations/<org-id>/jobs \
+  -H 'Content-Type: application/json' --cookie ... --header 'X-CSRF-Token: ...' \
+  -d '{
+    "Name": "build-web",
+    "Spec": {
+      "Image": "node:22@sha256:<digest>",
+      "Steps": [{"Name": "test", "Run": "npm ci && npm test"}],
+      "Labels": ["linux-builders"],
+      "Isolation": "container"
+    }
+  }'
+```
+
+- `<org-id>` is `Memberships[].OrganizationId` in the answer of `GET /api/v1/me`. The request needs the session of an owner or admin, with a second factor when the organization asks for one.
+- The image must be pinned by digest. The full spec, including resources, secrets and allowed hosts, is in [the API reference](../../packages/openapi/openapi.yaml) under `CreateJobRequest`.
+- The job waits in the queue until an active runner has every label in `Labels` and supports its `Isolation`.
