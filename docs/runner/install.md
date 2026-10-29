@@ -2,17 +2,15 @@
 
 # تثبيت جهاز تشغيل
 
-جهاز التشغيل (runner) ملف تنفيذي واحد ثابت لـ Linux، اسمه `dhow-runner`، لمعماريتي `amd64` و`arm64`. كل إصدار يأتي به في أرشيف موقّع مع خدمة systemd الخاصة به. الأمر `get.sh --component runner` ينزّل هذا الأرشيف ويفحصه ويثبّت الملفين. أما الخطوات التي بعد ذلك (المستخدم، والتسجيل، والتشغيل) فما زالت يدوية كما يلي، حتى يأتي `dhow-runner install` في إصدار لاحق.
+جهاز التشغيل (runner) ملف تنفيذي واحد ثابت لـ Linux، اسمه `dhow-runner`، لمعماريتي `amd64` و`arm64`. كل إصدار يأتي به في أرشيف موقّع مع خدمة systemd الخاصة به. الأمر `get.sh --component runner` ينزّل هذا الأرشيف ويفحصه ويثبّت الملفين. ثم يكمل `sudo dhow-runner install` الباقي: يفحص الجهاز، وينشئ مستخدم جهاز التشغيل والـ sub-ids والمجلدات، ويسجّل جهاز التشغيل، ويحفظ هويته مشفّرة بـ `systemd-creds` إذا سمح الجهاز بذلك، ثم يشغّله.
 
 ## المتطلبات
 
-- **Linux** على `amd64` أو `arm64`. لا ندعم أجهزة تشغيل Windows وmacOS.
+- **Linux** على `amd64` أو `arm64`، مع systemd. لا ندعم أجهزة تشغيل Windows وmacOS.
 - **اتصال HTTPS خارجي** إلى سيرفر داو (Dhow)، مباشرة أو عبر وكيل HTTP (نحترم `HTTPS_PROXY`، ويبقى TLS من الطرف إلى الطرف عبره).
-- **مستخدم مخصّص**، `dhow-runner`، لا يملك أي شيء آخر. جهاز التشغيل لا يحتاج إلى root أبدًا.
-- **لمشغّل Podman (M3.6):** Podman 5.4 أو أحدث، و`crun`، و`uidmap`، وcgroup v2 مع التفويض (delegation)، وuser namespaces. هذه موجودة في Debian 13 وUbuntu 26.04 وFedora وRHEL 9.6+ (Rocky وAlma). Debian 12 وUbuntu 24.04 لا يوفّرانها من مستودعاتهما. يمنع Ubuntu 24.04 أيضًا user namespaces للبرامج التي ليس لها ملف AppArmor. اضبط `kernel.apparmor_restrict_unprivileged_userns=0` في `/etc/sysctl.d/` أو أعطِ Podman ملفًا، وإلا تفشل فحوص البدء في جهاز التشغيل.
-- **Sub-ids لمستخدم جهاز التشغيل:** 65536 على الأقل لكل تشغيل يعمل في الوقت نفسه، في `/etc/subuid` و`/etc/subgid` (كل تشغيل يحصل على user namespace خاص به).
+- **رمز تسجيل** من صفحة **أجهزة التشغيل** في السيرفر ([تسجيل جهاز تشغيل](register.md#1-إنشاء-رمز-تسجيل)).
+- **لمشغّل Podman (M3.6):** Podman 5.4 أو أحدث، و`crun`، و`uidmap`، وcgroup v2 مع التفويض (delegation)، وuser namespaces. هذه موجودة في Debian 13 وUbuntu 26.04 وFedora وRHEL 9.6+ أو 10 (Rocky وAlma). Debian 12 وUbuntu 24.04 لا يوفّرانها من مستودعاتهما، ويتوقف `install` عليهما ويذكر الإصدار الذي وجده. ويمنع Ubuntu أيضًا user namespaces للبرامج التي ليس لها ملف AppArmor. اضبط `kernel.apparmor_restrict_unprivileged_userns=0` في `/etc/sysctl.d/` أو أعطِ Podman ملفًا، وإلا يتوقف `install` ويخبرك بالسبب.
 - **جهاز خاص به، أو `/proc` خاص.** لا يستطيع المستخدمون المحليون الآخرون عرض مجلد حالة جهاز التشغيل. لكن معرّف الحاوية يظهر في سطر أوامر `conmon`، وبه قد يقرأ مستخدم محلي ملفات صورة التشغيل (وليس `/workspace` أو الأسرار أبدًا، فهي في tmpfs الخاص بالحاوية). شغّل جهاز التشغيل على جهاز لا يدخل إليه أحد غيرك، أو اربط (mount) `/proc` بالخيار `hidepid=2`.
-
 
 ## احصل على الملف التنفيذي
 
@@ -33,7 +31,7 @@ bash get.sh --component runner
 3. يفحص الأرشيف مقابل سطره في `SHA256SUMS`، ويتوقف إذا كان السطر ناقصًا أو لا يطابق؛
 4. يثبّت `/usr/local/bin/dhow-runner` (`0755`) و`/etc/systemd/system/dhow-runner.service` (`0644`)، ويعيد تحميل systemd. لا يفعّل الخدمة ولا يشغّلها.
 
-لا يشغّل `dhow-runner install` بعد، بل يطبع الخطوات التالية بدلًا من ذلك. ثبّت `cosign` أولًا لتحصل على فحص التوقيع: بدونه، يثبت الـ checksum فقط أن التنزيل لم يتلف، ولا يثبت من بناه. مع مرآة (`DHOW_DOWNLOAD_URL`) يصبح cosign إلزاميًا، كما في [دليل المثبّت](../install/installer.md). عند تشغيله بمستخدم عادي، ينسخ السكربت الملفات إلى مجلد لا يكتب فيه إلا root، ويفحصها ويفك أرشيفها هناك قبل أن يثبّت أي شيء بـ `sudo`.
+في النهاية يطلب منك تشغيل `sudo dhow-runner install`. ثبّت `cosign` أولًا لتحصل على فحص التوقيع: بدونه، يثبت الـ checksum فقط أن التنزيل لم يتلف، ولا يثبت من بناه. مع مرآة (`DHOW_DOWNLOAD_URL`) يصبح cosign إلزاميًا، كما في [دليل المثبّت](../install/installer.md). عند تشغيله بمستخدم عادي، ينسخ السكربت الملفات إلى مجلد لا يكتب فيه إلا root، ويفحصها ويفك أرشيفها هناك قبل أن يثبّت أي شيء بـ `sudo`.
 
 ### يدويًا
 
@@ -63,11 +61,88 @@ sudo install -m 0755 bin/dhow-runner /usr/local/bin/dhow-runner
 sudo install -m 0644 deploy/systemd/dhow-runner.service /etc/systemd/system/dhow-runner.service
 ```
 
-## أنشئ المستخدم والمجلدات
+## التثبيت بالأمر dhow-runner install
+
+```sh
+sudo dhow-runner install
+```
+
+يعرض ما وجده على الجهاز، ثم يسأل عن عنوان السيرفر، ورمز التسجيل (لا يظهر أثناء الكتابة)، واسم جهاز التشغيل، ومكان حفظ المفاتيح الخاصة، وعدد التشغيلات التي تعمل في الوقت نفسه. ثم يطبع الخطة كاملة، ويسأل مرة واحدة قبل أن يغيّر أي شيء. الخيار `--dry-run` يتوقف بعد الخطة، و`--yes` يتخطى السؤال الأخير، و`--lang ar` أو `--lang en` يختار اللغة (الافتراضي يتبع إعدادات اللغة في النظام).
+
+### ما الذي يفعله
+
+كل خطوة تفحص أولًا هل تمت من قبل، لذلك لا يغيّر تشغيل `install` مرة أخرى إلا الناقص:
+
+1. **يفحص** Podman 5.4+، و`crun`، و`newuidmap`، وcgroup v2، وuser namespaces، وإعداد AppArmor، ويتوقف بسبب واضح إذا نقص شيء. ومع `install_packages: true` يثبّت `podman` و`crun` و`uidmap` (أو `shadow-utils`) من التوزيعة أولًا، ثم يفحص إصدار Podman مرة أخرى.
+2. **ينشئ مستخدم النظام** `dhow-runner`، دون shell للدخول، ومجلده المنزلي `/var/lib/dhow-runner`.
+3. **يعطيه 1048576 من الـ sub-ids** (16 تشغيلًا في الوقت نفسه، 65536 لكل تشغيل) في `/etc/subuid` و`/etc/subgid`، من أول نطاق فارغ يبدأ من 1048576 أو بعده.
+4. **ينشئ** `/var/lib/dhow-runner` (`0700 dhow-runner`) و`/etc/dhow-runner` (`0750 root:dhow-runner`).
+5. **يكتب** `/etc/dhow-runner/runner.env` (`0640 root:dhow-runner`) بعنوان السيرفر، والـ origin، وملف CA، والمشغّل، والسعة، وأي [إعدادات](configuration.md) أخرى. الأسطر التي أضفتها بنفسك ولا تديرها الإجابات تبقى كما هي.
+6. **يثبّت** الملف التنفيذي في `/usr/local/bin/dhow-runner` والخدمة في `/etc/systemd/system/dhow-runner.service`.
+7. **يسجّل** جهاز التشغيل برمز التسجيل. يقرأ الرمز من الملف، أو من الإدخال القياسي، أو من السؤال المخفي، ويحفظه في الذاكرة فقط: لا يضعه أبدًا في سطر أوامر، ولا في متغيرات البيئة، ولا في سجل، ولا على القرص.
+8. **يحفظ الهوية مشفّرة** بـ `systemd-creds` في `/var/lib/dhow-runner/identity.cred`، ويضيف ملف drop-in هو `/etc/systemd/system/dhow-runner.service.d/10-dhow-identity.conf` الذي يمرّرها إلى الخدمة ([الهوية المشفّرة](keys.md#الهوية-المشفرة)). إذا لم يستطع `systemd-creds` التشفير على الجهاز (لا توجد شريحة TPM2 ولا مفتاح جهاز صالح)، أو اخترت `identity: file`، تبقى الهوية في `/var/lib/dhow-runner/identity` بالصلاحية `0600`، وتذكر الخطة والنتيجة ذلك. والهوية غير المشفّرة التي تركها إعداد يدوي يشفّرها في مكانها.
+9. **يحفظ الإجابات**، دون رمز التسجيل، في `/etc/dhow-runner/answers.yaml` (`0600 root`).
+10. **يفعّل الخدمة ويشغّلها**، ثم ينتظر حتى دقيقتين حتى يسجّل جهاز التشغيل الدخول ويطلب عملًا. إذا لم يحدث ذلك، يطبع السبب وآخر أسطر سجل الخدمة.
+
+### دون أسئلة: ملف الإجابات
+
+الخيار `--answers <file>` يقرأ كل الإجابات من ملف YAML ولا يسأل عن شيء:
+
+```yaml
+url: https://dhow.example.com
+token_file: /root/dhow-runner-token
+name: build-01
+identity: auto
+capacity: 2
+install_packages: true
+env:
+  DHOW_RUNNER_MAX_MEMORY: 4GiB
+```
+
+```sh
+sudo dhow-runner install --answers runner.yaml
+```
+
+| المفتاح | الافتراضي | المعنى |
+|---|---|---|
+| `url` | (مطلوب) | عنوان السيرفر، كما في `DHOW_RUNNER_URL`. |
+| `token_file` | (مطلوب في أول تثبيت) | ملف فيه رمز التسجيل، أو `-` لقراءته من الإدخال القياسي. لا تحتاجه بعد تسجيل جهاز التشغيل، ولا نحفظه أبدًا. |
+| `name` | اسم الجهاز | الاسم الذي يظهر في داو. |
+| `server_origin` | الـ origin الخاص بـ `url` | `DHOW_RUNNER_SERVER_ORIGIN`، لـ listener منفصل لأجهزة التشغيل. |
+| `ca_file` | شهادات النظام | `DHOW_RUNNER_CA_FILE`. |
+| `driver` | `podman` | مشغّل العزل. نسخ الاختبار تقبل `fake` أيضًا. |
+| `capacity` | `1` | `DHOW_RUNNER_CAPACITY`، من 1 إلى 16. |
+| `identity` | `auto` | `encrypted` (يحتاج `systemd-creds`)، أو `file`، أو `auto` الذي يشفّر إذا سمح الجهاز. |
+| `install_packages` | `false` | تثبيت الـ packages الناقصة من التوزيعة. |
+| `env` | لا شيء | إعدادات `DHOW_RUNNER_*` أخرى لملف `runner.env`. |
+| `dev` | `false` | يسمح بـ `http://` العادي إلى عنوان loopback، للتطوير المحلي فقط. |
+| `lang` | لغة النظام | `en` أو `ar`. |
+
+نرفض المفاتيح غير المعروفة، ووثيقة YAML ثانية، والملف الأكبر من 64 KiB. ونرفض أيضًا `--token` في سطر الأوامر.
+
+## افحص جهاز التشغيل
+
+```sh
+sudo dhow-runner doctor
+```
+
+يفحص متطلبات العزل، والخدمة وتحصينها، والملفات وصلاحياتها، ومكان حفظ الهوية، وتغيير مفاتيح لم يكتمل، وهل يرد السيرفر وهل يسجّل جهاز التشغيل الدخول. يخرج برمز غير صفري إذا وجد مشكلة، والخيار `--fix` يطبّق الإصلاحات التي يقترحها. اقرأ [فحص جهاز التشغيل بالأمر doctor](doctor.md).
+
+## أزل جهاز التشغيل
+
+```sh
+sudo dhow-runner uninstall
+```
+
+يوقف الخدمة ويعطّلها، ثم يلغي جهاز التشغيل نهائيًا على السيرفر: يوقّع جهاز التشغيل طلب الإلغاء بمفتاحه، وينهي السيرفر جلساته ويسجّل `runner.revoked`. إذا لم يستطع جهاز التشغيل الوصول إلى السيرفر أو تسجيل الدخول، يطبع معرّف جهاز التشغيل ويطلب منك إلغاءه من لوحة التحكم. بعد ذلك يحذف الخدمة وملف الـ drop-in، و`/var/lib/dhow-runner` (الهوية، والـ credential، والـ journal)، و`/etc/dhow-runner`، والملف التنفيذي. يبقى المستخدم `dhow-runner` والـ sub-ids الخاصة به، إلا إذا أضفت `--remove-user`. وإذا شغّلته مرة أخرى لا يجد شيئًا يحذفه. الخيار `--yes` يتخطى السؤال.
+
+## الإعداد اليدوي
+
+الأمر `install` يفعل كل هذا بدلًا منك. وإذا أردت أن تفعله بنفسك:
 
 ```sh
 sudo useradd --system --home-dir /var/lib/dhow-runner --shell /usr/sbin/nologin dhow-runner
-sudo usermod --add-subuids 1000000-2048575 --add-subgids 1000000-2048575 dhow-runner
+sudo usermod --add-subuids 1048576-2097151 --add-subgids 1048576-2097151 dhow-runner
 sudo install -d -m 0700 -o dhow-runner -g dhow-runner /var/lib/dhow-runner
 sudo install -d -m 0750 -o root -g dhow-runner /etc/dhow-runner
 sudo install -m 0640 -o root -g dhow-runner /dev/null /etc/dhow-runner/runner.env
@@ -76,6 +151,8 @@ sudo install -m 0640 -o root -g dhow-runner /dev/null /etc/dhow-runner/runner.en
 - نطاق الـ sub-ids يعطي جهاز التشغيل 1048576 معرّفًا، وهذا يكفي 16 تشغيلًا في الوقت نفسه (65536 لكل تشغيل). اختر نطاقًا لا يتداخل معه أي سطر آخر في `/etc/subuid` و`/etc/subgid`.
 - `/var/lib/dhow-runner` هو مجلد الحالة. فيه الهوية (المفاتيح الخاصة)، وسجل الحجوزات (journal)، ومجلد لكل محاولة تعمل. يرفض جهاز التشغيل البدء إذا استطاع مستخدمون آخرون الكتابة فيه، أو إذا كان ملف `identity` أو `journal` مقروءًا لأي أحد غير مستخدم جهاز التشغيل.
 - `/etc/dhow-runner/runner.env` فيه [الإعدادات](configuration.md). يمكن أن يبقى فارغًا. ليس فيه أسرار، لكن اجعل الكتابة فيه لـ root فقط. ترفض الخدمة البدء بدونه.
+
+ثم [سجّل جهاز التشغيل](register.md#2-التسجيل-على-جهاز-التشغيل) وشغّله بالأمر `sudo systemctl enable --now dhow-runner`. التسجيل اليدوي يحفظ الهوية في ملف عادي بالصلاحية `0600`، وتشغيل `sudo dhow-runner install` بعد ذلك يشفّرها.
 
 ## خدمة systemd
 
@@ -90,7 +167,7 @@ sudo install -m 0640 -o root -g dhow-runner /dev/null /etc/dhow-runner/runner.en
 
 ### التحصين
 
-يقيّم `systemd-analyze security dhow-runner.service` الخدمة بـ **5.2 MEDIUM** (systemd 255 و259)، ويفشل CI إذا تجاوز التقييم 6.9. المستوى أقل من مستوى السيرفر لأن جهاز التشغيل يدير حاويات: Podman بلا root يحتاج إلى `newuidmap`، وهو أداة setuid (أو بـ file capabilities)، وإلى كل أنواع الـ namespaces. جرّبنا كل توجيه أدناه مع Podman بلا root يشغّل صورة تشغيل داخل الخدمة، ويشغّل CI مجموعتي اختبار الهروب والحدود داخل العزل نفسه.
+يقيّم `systemd-analyze security dhow-runner.service` الخدمة بـ **5.2 MEDIUM** (systemd 255 و257 و259)، ويفشل CI إذا تجاوز التقييم 6.9. المستوى أقل من مستوى السيرفر لأن جهاز التشغيل يدير حاويات: Podman بلا root يحتاج إلى `newuidmap`، وهو أداة setuid (أو بـ file capabilities)، وإلى كل أنواع الـ namespaces. جرّبنا كل توجيه أدناه مع Podman بلا root يشغّل صورة تشغيل داخل الخدمة، ويشغّل CI مجموعتي اختبار الهروب والحدود داخل العزل نفسه.
 
 | التوجيه | الأثر |
 |---|---|
@@ -124,4 +201,4 @@ sudo install -m 0640 -o root -g dhow-runner /dev/null /etc/dhow-runner/runner.en
 | `UMask=0077` | الفائدة قليلة: جهاز التشغيل ينشئ ملفاته بـ `0600` ومجلداته بـ `0700` بالفعل. ويجب أن يمر user namespace الخاص بالتشغيل عبر بعض المجلدات التي ينشئها Podman، ولم نختبر المشغّل كاملًا بقناع أضيق. |
 | `PrivateNetwork=yes`، `IPAddressDeny=` | يجب أن يصل جهاز التشغيل إلى السيرفر، وإلى سجلات الصور للتشغيلات. |
 
-الخطوة التالية: [سجّل جهاز التشغيل](register.md).
+الخطوة التالية: [افحص جهاز التشغيل](doctor.md)، ثم [شغّله](run.md).

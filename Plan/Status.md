@@ -1,6 +1,6 @@
 # حالة داو: اللي اتعمل واللي لسه
 
-**آخر تحديث:** 2026-10-29 · **main:** `c7dbc32` (#55)، وبعده PR التحديث ده
+**آخر تحديث:** 2026-10-29 · **main:** `c3c7413` (#58)
 
 الوثيقة دي نقطة البداية لأي جلسة جديدة. التفاصيل في [سجل التقدّم](Progress/README.md) والقرارات في [`ADR/`](ADR/README.md) والخطة الكاملة في [`docs/roadmap.md`](../docs/roadmap.md).
 
@@ -48,6 +48,8 @@
 | ADR-0059 الخطوة 4 | جدول «لماذا ينتظر؟»، والجهاز جنب القايمة (`MasterDetail`)، وصفحة التشغيلات الفاضية، وأمر التسجيل `sudo -u dhow-runner` و`--dev` | #50 |
 | ADR-0059 الخطوة 5 | العضو والفريق جنب القايمة، والدعوات، وإعدادات المؤسسة بمنطقة خطر، وصفحات الحساب، و`<bdi>` للأسماء | #51 |
 | العربي المبسّط | كل نص بيقراه المستخدم (الواجهة ورسايل السيرفر والإيميلات والـ installer) بالعربي المبسّط، ودليل أسلوب وhook (ADR-0062) | #53 |
+| M3.10 الجزء أ | أرشيفات الـ runner، ووحدة systemd (5.2 MEDIUM)، و`rotate-keys`، و`get.sh --component runner` (ADR-0065) | #57 |
+| الوثائق بالعربي أولًا | `docs/` بالعربي المبسّط و`docs/en/` بالإنجليزي، و`make docs-check`، وhook الـ commit (ADR-0064) | #58 |
 | إعدادات السيرفر، الجزء 1 | البريد والمؤسسات وكلمات السر المسرّبة وحدود الطلبات والسجلات من «إعدادات السيرفر»، وenv بيكسب ويقفل، و`pg_notify` لكل instance (ADR-0063) | #54 |
 | إعدادات السيرفر، الجزء 2 | مزوّدي الدخول من اللوحة بجدول `"OidcProviders"`، و«جرّب الاتصال»، والشيل اللي مايقفلش حد برّه (ADR-0063) | #55 |
 
@@ -57,8 +59,7 @@
 
 | الشغل | الـ branch | الـ PR | اللي فاضل |
 |---|---|---|---|
-| M3.10 الجزء أ: أرشيفات الـ runner، ووحدة systemd (5.2 MEDIUM)، و`rotate-keys`، و`get.sh --component runner` (ADR-0065) | `feat/runner-packaging` | لسه | الـ PR، والـ CI (الـ suites تحت الوحدة والـ smoke محتاجين cgroup v2)، والمراجعة الأمنية |
-| الوثائق بالعربي أولًا (ADR-0064): `docs/` بالعربي المبسّط و`docs/en/` بالإنجليزي، وREADME وCONTRIBUTING وSECURITY بالعربي وجنبهم `.en.md`، و`make docs-check`، وhook الـ commit، وروابط الواجهة والمنصّب حسب اللغة | `docs/arabic-first` | #58 | المراجعة والدمج |
+| M3.10 الجزء ب: الـ engine في `internal/installer`، و`dhow-runner install` و`doctor` و`uninstall`، والهوية مشفّرة بـ `systemd-creds`، و`AuthService.Revoke`، وsmoke في container بـ systemd، وjob `runner-install`، و`make vm-test` (ADR-0066) | `feat/runner-install` | لسه | الـ PR، والـ CI (`runner-install` بـ Podman حقيقي و`vm-test` على KVM ماتجرّبوش هنا)، والمراجعة الأمنية |
 
 M2.6 وM3.6 والتطوير المحلي وإصلاحات مراجعة M3.6 وتغيير الاسم وM3.7 وتجهيز Windows وM3.9 اتدمجوا في 2026-10-28، ومن #35 لـ #55 اتدمجوا في 2026-10-28 و2026-10-29.
 
@@ -76,7 +77,7 @@ M3.12 (الشرائح خلصت)          M3.13 في الآخر
 | المرحلة | المحتوى |
 |---|---|
 | M3.8 | gVisor كـ spike بشروط go/no-go، ولو فشل يتأجّل على الـ host بـ ADR |
-| M3.10 | الجزء أ على `feat/runner-packaging` (الأرشيفات والوحدة و`rotate-keys` و`get.sh`). الجزء ب: `install` و`doctor` و`uninstall` والـ engine المشترك و`make vm-test` |
+| M3.10 | الجزء أ اتدمج (#57). الجزء ب على `feat/runner-install`: `install` و`doctor` و`uninstall` والـ engine المشترك والهوية المشفّرة و`make vm-test` |
 | M3.11 | driver الـ Kubernetes والـ Helm chart، و`make helm-e2e` على kind |
 | M3.12 | خلص (#39، #44، #48، #50) |
 | M3.13 | fuzz إضافي، ومراجعة تهديدات الـ runner plane، و`deploy/m3-demo/run.sh` لشرط الخلاص |

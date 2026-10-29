@@ -21,7 +21,7 @@ curl -X POST https://dhow.example.com/api/v1/organizations/<org-id>/runner-regis
 
 ## 2. التسجيل على جهاز التشغيل
 
-نقرأ الرمز من ملف أو من stdin، وليس من سطر الأوامر أبدًا، حيث يحفظه سجل الـ shell و`ps`:
+الأمر `sudo dhow-runner install` يقوم بهذه الخطوة بدلًا منك ([ثبّت جهاز تشغيل](install.md#التثبيت-بالأمر-dhow-runner-install)) ويحفظ الهوية مشفّرة. وإذا أردت التسجيل يدويًا: نقرأ الرمز من ملف أو من stdin، وليس من سطر الأوامر أبدًا، حيث يحفظه سجل الـ shell و`ps`:
 
 ```sh
 sudo -u dhow-runner dhow-runner register --url https://dhow.example.com --token-file -

@@ -2,7 +2,7 @@
 
 # تدوير مفاتيح جهاز التشغيل
 
-هوية جهاز التشغيل (runner) زوجان من المفاتيح أنشأهما `dhow-runner register` على جهاز التشغيل: Ed25519، الذي يوقّع الدخول وبدء التشغيلات، وMLKEM768-X25519، الذي يشفّر له السيرفر أسرار التشغيلات. الأمر `dhow-runner rotate-keys` يستبدل الزوجين بزوجين جديدين، ويحتفظ جهاز التشغيل بمعرّفه وأوسمته وتاريخه. المفاتيح الخاصة تُنشأ على جهاز التشغيل ولا تغادره أبدًا.
+هوية جهاز التشغيل (runner) زوجان من المفاتيح أنشأهما `dhow-runner install` (أو `dhow-runner register`) على جهاز التشغيل: Ed25519، الذي يوقّع الدخول وبدء التشغيلات، وMLKEM768-X25519، الذي يشفّر له السيرفر أسرار التشغيلات. الأمر `dhow-runner rotate-keys` يستبدل الزوجين بزوجين جديدين، ويحتفظ جهاز التشغيل بمعرّفه وأوسمته وتاريخه. المفاتيح الخاصة تُنشأ على جهاز التشغيل ولا تغادره أبدًا.
 
 ## متى تحتاج إلى التدوير
 
@@ -18,12 +18,11 @@
 
 ```sh
 sudo systemctl stop dhow-runner
-sudo systemd-run --uid=dhow-runner --gid=dhow-runner --pipe --wait --collect \
-  -p EnvironmentFile=/etc/dhow-runner/runner.env /usr/local/bin/dhow-runner rotate-keys
+sudo dhow-runner rotate-keys
 sudo systemctl start dhow-runner
 ```
 
-`systemd-run` يعطي الأمر ملف `runner.env` نفسه الذي تستخدمه الخدمة، فيُستخدم أي `DHOW_RUNNER_STATE_DIR` أو `DHOW_RUNNER_URL` أو `DHOW_RUNNER_CA_FILE` مخصّص. إذا كان `runner.env` فارغًا، يكفي `sudo -u dhow-runner dhow-runner rotate-keys`. الخيار `--dev` يسمح بـ `http://` العادي إلى عنوان loopback، كما في `register`.
+عند تشغيله بصلاحيات root، يقرأ `rotate-keys` الملف `/etc/dhow-runner/runner.env` بنفسه، فيُستخدم أي `DHOW_RUNNER_STATE_DIR` أو `DHOW_RUNNER_URL` أو `DHOW_RUNNER_CA_FILE` مخصّص، ويكتب ملفات الحالة باسم المستخدم `dhow-runner`. الهوية المشفّرة بـ `systemd-creds` تحتاج إلى root، لأن root وحده يستطيع فتحها وتشفيرها. أما الهوية غير المشفّرة فيمكن تدويرها أيضًا بمستخدم جهاز التشغيل، بالأمر `sudo systemd-run --uid=dhow-runner --gid=dhow-runner --pipe --wait --collect -p EnvironmentFile=/etc/dhow-runner/runner.env /usr/local/bin/dhow-runner rotate-keys`. الخيار `--dev` يسمح بـ `http://` العادي إلى عنوان loopback، كما في `register`.
 
 يطبع الأمر إصدار المفتاح الجديد:
 
@@ -32,6 +31,21 @@ Rotated the keys of runner 0190c8a2-…: key version 2. The old key no longer wo
 ```
 
 من تلك اللحظة يرفض السيرفر المفتاح القديم، وينهي كل جلسات جهاز التشغيل، ويشفّر الأسرار الجديدة للمفتاح الجديد فقط. ويسجّل سجل أحداث المؤسسة `runner.keys_rotated` مع إصدار المفتاح الجديد.
+
+## الهوية المشفرة
+
+يحفظ `dhow-runner install` الهوية مشفّرة بـ `systemd-creds` إذا سمح الجهاز: بشريحة TPM2 ومفتاح الجهاز، أو بمفتاح الجهاز وحده (`/var/lib/systemd/credential.secret`، ولا يقرؤه إلا root). عندها لا تُفتح نسخة مجلد الحالة على أي جهاز آخر، سواء جاءت من نسخة احتياطية أو من قرص خرج من المبنى.
+
+| الملف | ما فيه |
+|---|---|
+| `/var/lib/dhow-runner/identity.cred` | الهوية مشفّرة (`0600 root`). |
+| `/var/lib/dhow-runner/identity.pending.cred` | الهوية الجديدة لتدوير لم يكتمل، مشفّرة. |
+| `/etc/systemd/system/dhow-runner.service.d/10-dhow-identity.conf` | `LoadCredentialEncrypted=identity:/var/lib/dhow-runner/identity.cred`، حتى يفتحها systemd عند بدء الخدمة. |
+
+- **الخدمة** تحصل على الهوية مفتوحة من systemd في `$CREDENTIALS_DIRECTORY/identity`، وهو مجلد خاص في الذاكرة لا تقرؤه إلا الخدمة، ويحذفه systemd عندما تتوقف. ويقرؤها جهاز التشغيل من هناك. لا تُكتب المفاتيح الخاصة على القرص دون تشفير أبدًا: البحث عنها بـ `grep` في القرص أو في الـ journal لا يجد شيئًا (ويفحص CI ذلك).
+- **الأمر `rotate-keys`** يعمل بصلاحيات root. يفتح الهوية بـ `systemd-creds`، ويشفّر الهوية الجديدة في `identity.pending.cred` قبل أن يعرف السيرفر بالمفاتيح الجديدة، ثم يشفّرها مرة أخرى في `identity.cred` بعد أن يؤكد السيرفر، بالترتيب نفسه والكتابة الآمنة نفسها التي يستخدمها مع الملف غير المشفّر.
+- **بعد الانقطاع** لا يستطيع `run` فتح `identity.pending.cred`، لأن root وحده يستطيع. إذا كان المفتاح الحالي ما زال يدخل، فالسيرفر لم يأخذ المفاتيح الجديدة أبدًا، فيحذف `run` الملف ويكمل. وإذا رفض السيرفر المفتاح الحالي، يتوقف `run` بالرسالة `an unfinished key rotation left new keys that only root can open`: شغّل `sudo dhow-runner rotate-keys` ليكمل التدوير، ثم ابدأ جهاز التشغيل.
+- **دون `systemd-creds`** (لا توجد شريحة TPM2 ولا مفتاح جهاز صالح، أو اخترت `identity: file` في الإجابات)، تبقى الهوية في `/var/lib/dhow-runner/identity` بالصلاحية `0600`. ويذكر `install` ذلك في خطته ونتيجته، ويعرضه `doctor` كمعلومة.
 
 ## ما يحدث عند الانقطاع
 
@@ -59,6 +73,8 @@ Rotated the keys of runner 0190c8a2-…: key version 2. The old key no longer wo
 | `the server did not confirm the new keys` | فشل الطلب أو انتهت مهلته. المفتاح الحالي ما زال مستخدمًا. شغّل `rotate-keys` مرة أخرى. وإذا كان السيرفر قد بدّل، فسيكمل جهاز التشغيل التدوير أيضًا في بدئه التالي. |
 | `the server took the new keys, but the identity file was not switched yet` | فشلت كتابة الهوية (قرص ممتلئ أو للقراءة فقط). أصلح القرص، ثم شغّل `rotate-keys` مرة أخرى أو ابدأ جهاز التشغيل. |
 | `the pending identity belongs to another runner or server` | `identity.pending` لا يطابق `identity`. نسخ شخص ما ملفات بين مجلدات الحالة. احذف `identity.pending` فقط إذا كنت متأكدًا أنه لا يوجد تدوير غير مكتمل لجهاز التشغيل هذا. |
+| `an unfinished key rotation left new keys that only root can open` | الهوية مشفّرة ولم يكتمل تدوير. شغّل `sudo dhow-runner rotate-keys`، ثم ابدأ جهاز التشغيل. |
+| `the identity is encrypted with systemd-creds` | لا يفتحها إلا الخدمة وroot. شغّل الأمر بصلاحيات root، أو ابدأ الخدمة. |
 | `RUNNER_REVOKED` | أُلغي جهاز التشغيل. سجّل الجهاز مرة أخرى. |
 
-التصميم في [ADR-0065](../../Plan/ADR/0065-runner-packaging-part-a.md).
+التصميم في [ADR-0065](../../Plan/ADR/0065-runner-packaging-part-a.md) و[ADR-0066](../../Plan/ADR/0066-runner-install-and-encrypted-identity.md).
