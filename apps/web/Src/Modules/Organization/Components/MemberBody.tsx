@@ -42,6 +42,19 @@ const Fact = ({ label, children }: { label: string; children: ReactNode }) => (
   </div>
 );
 
+const When = ({ iso }: { iso: string }) => {
+  const time = useRelativeTime();
+  return (
+    <>
+      <time dateTime={iso}>{time.full(iso)}</time>
+      <span className="text-tertiary">
+        {' · '}
+        {time.ago(iso)}
+      </span>
+    </>
+  );
+};
+
 const MemberHeader = ({ member }: { member: TMember }) => {
   const t = useT();
   return (
@@ -86,7 +99,6 @@ const MemberTeams = ({ member, teamHrefOf, onOpenTeam }: { member: TMember } & I
 
 const MemberFacts = ({ actor, rule, member, ...links }: { actor: TRole; rule: TSecondFactorRule; member: TMember } & ITeamLinks) => {
   const t = useT();
-  const time = useRelativeTime();
   return (
     <Card title={t('member.facts.title')} icon="user">
       <dl className="m-0 grid">
@@ -110,11 +122,14 @@ const MemberFacts = ({ actor, rule, member, ...links }: { actor: TRole; rule: TS
           <MemberTeams member={member} {...links} />
         </Fact>
         <Fact label={t('member.facts.joined')}>
-          <time dateTime={member.JoinedAt}>{time.full(member.JoinedAt)}</time>
-          <span className="text-tertiary">
-            {' · '}
-            {time.ago(member.JoinedAt)}
-          </span>
+          <When iso={member.JoinedAt} />
+        </Fact>
+        <Fact label={t('member.facts.lastActive')}>
+          {member.LastActiveAt === undefined || member.LastActiveAt === null ? (
+            <span className="text-secondary">{t('member.facts.lastActive.none')}</span>
+          ) : (
+            <When iso={member.LastActiveAt} />
+          )}
         </Fact>
       </dl>
     </Card>

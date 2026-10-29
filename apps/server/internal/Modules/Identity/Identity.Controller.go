@@ -96,7 +96,7 @@ func (c *Controller) ListMembers(ctx context.Context, req gen.ListMembersRequest
 		}
 		item := gen.Member{
 			UserId: m.UserID, Name: m.Name, Email: m.Email, Role: gen.Role(m.Role), EffectiveRole: gen.Role(m.EffectiveRole), JoinedAt: m.JoinedAt,
-			Teams: teams,
+			LastActiveAt: m.LastActiveAt, Teams: teams,
 		}
 		if m.Mfa != "" {
 			item.Mfa = ptr(gen.MfaState(m.Mfa))

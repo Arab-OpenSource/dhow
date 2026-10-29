@@ -160,6 +160,71 @@ func (q *Queries) IsMemberByEmail(ctx context.Context, arg IsMemberByEmailParams
 	return exists, err
 }
 
+const listAcceptedInvitations = `-- name: ListAcceptedInvitations :many
+SELECT i."Id", i."Email", i."Role", i."CreatedAt", i."ExpiresAt", i."SentAt", i."SendCount", i."EmailStatus",
+       u."Name" AS "InvitedByName", i."AcceptedAt"::timestamptz AS "AcceptedAt", i."AcceptedByUserId"::uuid AS "AcceptedByUserId",
+       COALESCE(a."Name", '') AS "AcceptedByName"
+FROM "Invitations" i
+JOIN "Users" u ON u."Id" = i."InvitedByUserId"
+LEFT JOIN "Users" a ON a."Id" = i."AcceptedByUserId" AND NOT a."IsDeleted"
+WHERE i."OrganizationId" = $1 AND i."AcceptedAt" IS NOT NULL AND NOT i."IsDeleted"
+ORDER BY i."AcceptedAt" DESC, i."Id" DESC
+LIMIT $2
+`
+
+type ListAcceptedInvitationsParams struct {
+	OrganizationID uuid.UUID
+	MaxRows        int32
+}
+
+type ListAcceptedInvitationsRow struct {
+	Id               uuid.UUID
+	Email            string
+	Role             string
+	CreatedAt        time.Time
+	ExpiresAt        time.Time
+	SentAt           time.Time
+	SendCount        int32
+	EmailStatus      string
+	InvitedByName    string
+	AcceptedAt       time.Time
+	AcceptedByUserId uuid.UUID
+	AcceptedByName   string
+}
+
+func (q *Queries) ListAcceptedInvitations(ctx context.Context, arg ListAcceptedInvitationsParams) ([]ListAcceptedInvitationsRow, error) {
+	rows, err := q.db.Query(ctx, listAcceptedInvitations, arg.OrganizationID, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAcceptedInvitationsRow{}
+	for rows.Next() {
+		var i ListAcceptedInvitationsRow
+		if err := rows.Scan(
+			&i.Id,
+			&i.Email,
+			&i.Role,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.SentAt,
+			&i.SendCount,
+			&i.EmailStatus,
+			&i.InvitedByName,
+			&i.AcceptedAt,
+			&i.AcceptedByUserId,
+			&i.AcceptedByName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenInvitations = `-- name: ListOpenInvitations :many
 SELECT i."Id", i."Email", i."Role", i."CreatedAt", i."ExpiresAt", i."SentAt", i."SendCount", i."EmailStatus",
        u."Name" AS "InvitedByName"

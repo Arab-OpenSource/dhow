@@ -227,9 +227,17 @@ SELECT u."Id" AS "UserId", u."Name", u."Email", m."Role", m."CreatedAt" AS "Join
        EXISTS (SELECT 1 FROM "Passkeys" p WHERE p."UserId" = u."Id" AND NOT p."IsDeleted") AS "HasPasskey",
        u."MfaResetAt",
        COALESCE(teams."Ids", '{}')::uuid[] AS "TeamIds",
-       COALESCE(teams."Names", '{}')::text[] AS "TeamNames"
+       COALESCE(teams."Names", '{}')::text[] AS "TeamNames",
+       seen."LastSeenAt" AS "LastActiveAt"
 FROM "Memberships" m
 JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted"
+LEFT JOIN "Sessions" seen ON seen."Id" = (
+    SELECT s."Id"
+    FROM "Sessions" s
+    WHERE s."UserId" = m."UserId" AND NOT s."IsDeleted"
+    ORDER BY s."LastSeenAt" DESC
+    LIMIT 1
+)
 LEFT JOIN LATERAL (
     SELECT array_agg(t."Id" ORDER BY lower(t."Name"), t."Id") AS "Ids",
            array_agg(t."Name" ORDER BY lower(t."Name"), t."Id") AS "Names"
@@ -249,17 +257,18 @@ type ListMembersParams struct {
 }
 
 type ListMembersRow struct {
-	UserId     uuid.UUID
-	Name       string
-	Email      string
-	Role       string
-	JoinedAt   time.Time
-	TeamRoles  []string
-	HasTotp    bool
-	HasPasskey bool
-	MfaResetAt *time.Time
-	TeamIds    []uuid.UUID
-	TeamNames  []string
+	UserId       uuid.UUID
+	Name         string
+	Email        string
+	Role         string
+	JoinedAt     time.Time
+	TeamRoles    []string
+	HasTotp      bool
+	HasPasskey   bool
+	MfaResetAt   *time.Time
+	TeamIds      []uuid.UUID
+	TeamNames    []string
+	LastActiveAt *time.Time
 }
 
 func (q *Queries) ListMembers(ctx context.Context, arg ListMembersParams) ([]ListMembersRow, error) {
@@ -283,6 +292,7 @@ func (q *Queries) ListMembers(ctx context.Context, arg ListMembersParams) ([]Lis
 			&i.MfaResetAt,
 			&i.TeamIds,
 			&i.TeamNames,
+			&i.LastActiveAt,
 		); err != nil {
 			return nil, err
 		}

@@ -18,10 +18,24 @@ const (
 )
 
 func invitationToGen(i models.Invitation) gen.Invitation {
-	return gen.Invitation{
+	out := gen.Invitation{
 		Id: i.ID, Email: i.Email, Role: gen.BindableRole(i.Role), InvitedByName: i.InvitedByName, CreatedAt: i.CreatedAt,
 		ExpiresAt: i.ExpiresAt, SentAt: i.SentAt, SendCount: i.SendCount, EmailStatus: gen.EmailStatus(i.EmailStatus), Expired: i.Expired,
 	}
+	if a := i.Accepted; a != nil {
+		out.AcceptedAt, out.AcceptedByUserId, out.AcceptedByName = ptr(a.At), ptr(a.UserID), ptr(a.UserName)
+	}
+	return out
+}
+
+func invitationStatus(s *gen.InvitationStatus) (string, error) {
+	if s == nil {
+		return models.InvitationsOpen, nil
+	}
+	if !s.Valid() {
+		return "", apperrors.ValidationFailed(invalid(fieldStatus))
+	}
+	return string(*s), nil
 }
 
 func issuedToGen(i models.InvitationIssued) *gen.InvitationIssued {
@@ -36,7 +50,11 @@ func acceptedToGen(a models.InvitationAccepted) *gen.InvitationAccepted {
 }
 
 func (c *Controller) ListInvitations(ctx context.Context, req gen.ListInvitationsRequestObject) (gen.ListInvitationsResponseObject, error) {
-	list, err := c.service.ListInvitations(ctx, req.Id)
+	status, err := invitationStatus(req.Params.Status)
+	if err != nil {
+		return nil, err
+	}
+	list, err := c.service.ListInvitations(ctx, req.Id, status)
 	if err != nil {
 		return nil, err
 	}

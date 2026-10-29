@@ -32,6 +32,17 @@ WHERE i."OrganizationId" = @organization_id AND i."AcceptedAt" IS NULL AND i."Re
 ORDER BY i."CreatedAt" DESC, i."Id" DESC
 LIMIT @max_rows;
 
+-- name: ListAcceptedInvitations :many
+SELECT i."Id", i."Email", i."Role", i."CreatedAt", i."ExpiresAt", i."SentAt", i."SendCount", i."EmailStatus",
+       u."Name" AS "InvitedByName", i."AcceptedAt"::timestamptz AS "AcceptedAt", i."AcceptedByUserId"::uuid AS "AcceptedByUserId",
+       COALESCE(a."Name", '') AS "AcceptedByName"
+FROM "Invitations" i
+JOIN "Users" u ON u."Id" = i."InvitedByUserId"
+LEFT JOIN "Users" a ON a."Id" = i."AcceptedByUserId" AND NOT a."IsDeleted"
+WHERE i."OrganizationId" = @organization_id AND i."AcceptedAt" IS NOT NULL AND NOT i."IsDeleted"
+ORDER BY i."AcceptedAt" DESC, i."Id" DESC
+LIMIT @max_rows;
+
 -- name: GetOpenInvitation :one
 SELECT i."Id", i."Email", i."Role", i."CreatedAt", i."ExpiresAt", i."SentAt", i."SendCount", i."EmailStatus",
        u."Name" AS "InvitedByName"

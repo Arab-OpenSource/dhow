@@ -65,6 +65,7 @@ export interface IMemberFixture {
   Role: string;
   EffectiveRole: string;
   JoinedAt: string;
+  LastActiveAt?: string;
   Mfa?: string;
   MfaResetPending?: boolean;
   Teams: { Id: string; Name: string }[];
@@ -91,7 +92,7 @@ export const membersFixture = (): IMemberFixture[] => [
   },
   {
     UserId: '0198a000-0000-7000-8000-0000000000b3', Name: 'Hana Samir', Email: 'hana@future.dev', Role: 'developer', EffectiveRole: 'developer',
-    JoinedAt: '2026-10-10T08:00:00Z', Mfa: 'none', Teams: [{ Id: '0198a000-0000-7000-8000-0000000000d1', Name: 'Backend' }],
+    JoinedAt: '2026-10-10T08:00:00Z', LastActiveAt: '2026-10-28T09:30:00Z', Mfa: 'none', Teams: [{ Id: '0198a000-0000-7000-8000-0000000000d1', Name: 'Backend' }],
   },
 ];
 

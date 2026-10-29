@@ -125,6 +125,7 @@ type Querier interface {
 	IsMemberByEmail(ctx context.Context, arg IsMemberByEmailParams) (bool, error)
 	JobCancelRequestedAt(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	JobExists(ctx context.Context, arg JobExistsParams) (bool, error)
+	ListAcceptedInvitations(ctx context.Context, arg ListAcceptedInvitationsParams) ([]ListAcceptedInvitationsRow, error)
 	ListActiveUserSessions(ctx context.Context, arg ListActiveUserSessionsParams) ([]ListActiveUserSessionsRow, error)
 	ListApiTokens(ctx context.Context, arg ListApiTokensParams) ([]ListApiTokensRow, error)
 	ListAuditEvents(ctx context.Context, arg ListAuditEventsParams) ([]ListAuditEventsRow, error)

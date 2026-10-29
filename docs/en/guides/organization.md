@@ -36,7 +36,7 @@ The details show the role (and the higher role a team grants, if any), the secon
 
 On your own row, the page points to your Security settings instead.
 
-The web app does not show when a member was last active, because the API does not return it yet.
+The details also show when the member was last active: the last time they used the dashboard, from their newest sign-in session, updated at most once a minute. It counts sessions that have ended too, and shows **No recorded activity** for a member who has never signed in. It comes with the members list (`LastActiveAt` on each member).
 
 ## Teams (`/org/teams`)
 
@@ -44,7 +44,7 @@ A team groups members and can grant them one role in the organization; a member 
 
 ## Invitations (`/org/invitations`)
 
-One list holds the pending invitations first and the expired ones after them, each with its role, its expiry date and who sent it. **New link** replaces the link with a fresh one valid for 7 days, so the old one stops working, and emails it when email is set up (at most 5 sends per invitation). **Revoke** stops the link at once. **Invite a member** opens the invite slide. Accepted invitations are not listed: the member appears in Members instead.
+One list holds the pending invitations first and the expired ones after them, each with its role, its expiry date and who sent it. **New link** replaces the link with a fresh one valid for 7 days, so the old one stops working, and emails it when email is set up (at most 5 sends per invitation). **Revoke** stops the link at once. **Invite a member** opens the invite slide. Accepted invitations are not listed: the member appears in Members instead. The API can list them with `GET /api/v1/organizations/<id>/invitations?Status=accepted`, newest first, with when each was accepted (`AcceptedAt`) and who accepted it (`AcceptedByUserId`, `AcceptedByName`). It needs the same permission as the list.
 
 ## API keys (`/org/api-keys`)
 

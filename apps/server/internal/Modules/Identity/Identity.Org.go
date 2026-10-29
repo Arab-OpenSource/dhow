@@ -103,7 +103,7 @@ func (s *Service) ListMembers(ctx context.Context, id uuid.UUID, page, limit int
 		}
 		m := models.Member{
 			UserID: r.UserId, Name: r.Name, Email: r.Email, Role: r.Role, EffectiveRole: string(effective), JoinedAt: r.JoinedAt,
-			Teams: memberTeams(r.TeamIds, r.TeamNames),
+			LastActiveAt: r.LastActiveAt, Teams: memberTeams(r.TeamIds, r.TeamNames),
 		}
 		if manager {
 			m.Mfa = mfaOf(r.HasTotp, r.HasPasskey)

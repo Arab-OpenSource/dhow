@@ -1439,18 +1439,25 @@ paths:
     get:
       operationId: listInvitations
       tags: [invitations]
-      summary: List the open invitations of an organization
+      summary: List the open or accepted invitations of an organization
       description: >-
-        Needs `member.manage`. Open means neither accepted nor revoked; expired ones are listed with `Expired` so they
-        can be resent. Newest first.
+        Needs `member.manage`. With `Status=open`, the default, it lists the invitations that are neither accepted nor
+        revoked; expired ones are listed with `Expired` so they can be resent. With `Status=accepted` it lists the
+        accepted ones with `AcceptedAt` and who accepted them. Newest first, at most 200.
       security:
         - SessionCookie: []
         - ApiToken: []
       parameters:
         - $ref: "#/components/parameters/Id"
+        - name: Status
+          in: query
+          required: false
+          description: Which invitations to list.
+          schema:
+            $ref: "#/components/schemas/InvitationStatus"
       responses:
         "200":
-          description: The open invitations.
+          description: The invitations.
           content:
             application/json:
               schema:
@@ -3424,6 +3431,14 @@ components:
         JoinedAt:
           type: string
           format: date-time
+        LastActiveAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: >-
+            The last time the member used the dashboard: the newest `LastSeenAt` of their sign-in sessions, which the
+            server updates at most once a minute. Absent when no session is left, for example a member who never signed
+            in. It comes from the same query as the page of members and needs `member.read`, like the list.
         Mfa:
           $ref: "#/components/schemas/MfaState"
           description: The member's strongest second factor. Present only for callers with `member.manage`.
@@ -4431,6 +4446,23 @@ components:
           $ref: "#/components/schemas/EmailStatus"
         Expired:
           type: boolean
+        AcceptedAt:
+          type: string
+          format: date-time
+          description: When the invitation was accepted. Present only with `Status=accepted`.
+        AcceptedByUserId:
+          type: string
+          format: uuid
+          description: The user who accepted the invitation. Present only with `Status=accepted`.
+        AcceptedByName:
+          type: string
+          description: The name of the user who accepted the invitation. Present only with `Status=accepted`.
+    InvitationStatus:
+      type: string
+      enum: [open, accepted]
+      default: open
+      description: >-
+        `open` lists the invitations that are neither accepted nor revoked. `accepted` lists the accepted ones.
     InvitationResponse:
       allOf:
         - $ref: "#/components/schemas/Envelope"

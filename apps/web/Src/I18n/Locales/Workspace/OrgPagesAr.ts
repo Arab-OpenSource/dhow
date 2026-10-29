@@ -7,6 +7,8 @@ export const OrgPagesAr = {
   'member.facts.role': 'الدور',
   'member.facts.mfa': 'الخطوة الثانية',
   'member.facts.joined': 'انضم في',
+  'member.facts.lastActive': 'آخر نشاط',
+  'member.facts.lastActive.none': 'لا يوجد نشاط مسجّل',
   'member.facts.teams': 'الفرق',
   'member.facts.teams.none': 'لا توجد فرق',
   'member.self.open': 'افتح إعدادات الأمان',

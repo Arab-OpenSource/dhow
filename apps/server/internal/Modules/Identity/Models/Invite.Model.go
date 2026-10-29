@@ -10,6 +10,9 @@ const (
 	EmailDisabled = "disabled"
 	EmailSent     = "sent"
 	EmailFailed   = "failed"
+
+	InvitationsOpen     = "open"
+	InvitationsAccepted = "accepted"
 )
 
 type Invitation struct {
@@ -23,6 +26,13 @@ type Invitation struct {
 	SendCount     int
 	EmailStatus   string
 	Expired       bool
+	Accepted      *InvitationAcceptance
+}
+
+type InvitationAcceptance struct {
+	At       time.Time
+	UserID   uuid.UUID
+	UserName string
 }
 
 type InvitationIssued struct {
