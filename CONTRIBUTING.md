@@ -5,7 +5,7 @@ Dhow is in the **design phase**, and design feedback is the most valuable contri
 - **Discuss** a design document or ADR by opening an issue or discussion. Reference the doc and section.
 - **Propose a decision change** by opening a PR that adds a new ADR in `Plan/ADR/` superseding the old one. Accepted ADRs are not edited in place.
 - **Sign off your commits.** Contributions are accepted under the [Developer Certificate of Origin](https://developercertificate.org/); sign each commit with `git commit -s`.
-- **Documentation language.** Public docs in `docs/` are written in English. Internal plans and ADRs in `Plan/` are written in Arabic. User-facing UI copy is written Arabic-first.
+- **Documentation language.** Public docs in `docs/` are written in English. Internal plans and ADRs in `Plan/` are written in Arabic. User-facing copy is written Arabic-first, in simple Arabic: Modern Standard grammar with short sentences, neither colloquial nor heavy classical (see `docs/ui-principles.md`).
 - **Security issues** must never go in public issues. See [SECURITY.md](SECURITY.md).
 
 ## Code contributions

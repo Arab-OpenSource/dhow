@@ -73,7 +73,7 @@ func TestInterviewInArabicWithoutATerminal(t *testing.T) {
 	assert.Equal(t, ProxyCaddy, a.Proxy.Kind)
 	assert.True(t, a.BreachedCheck())
 	assert.True(t, a.InstallPackages)
-	assert.Contains(t, out.String(), "الدومين اللي المستخدمين هيفتحوه")
+	assert.Contains(t, out.String(), "النطاق الذي يفتحه المستخدمون")
 	assert.Contains(t, out.String(), "postgresql-18 caddy")
 	assert.NotContains(t, out.String(), "Docker", "the compose path is offered only when Docker is present")
 }

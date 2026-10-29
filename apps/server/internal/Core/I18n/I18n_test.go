@@ -16,9 +16,9 @@ func TestTranslate(t *testing.T) {
 		key    string
 		want   string
 	}{
-		{"arabic", i18n.Ar, "errors.notFound", "المورد المطلوب مش موجود."},
+		{"arabic", i18n.Ar, "errors.notFound", "المورد المطلوب غير موجود."},
 		{"english", i18n.En, "errors.notFound", "The requested resource does not exist."},
-		{"unknown locale uses arabic", i18n.Locale("fr"), "errors.notFound", "المورد المطلوب مش موجود."},
+		{"unknown locale uses arabic", i18n.Locale("fr"), "errors.notFound", "المورد المطلوب غير موجود."},
 		{"unknown key returns the key", i18n.Ar, "no.such.key", "no.such.key"},
 	}
 	for _, tt := range tests {

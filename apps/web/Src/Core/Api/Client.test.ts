@@ -30,10 +30,10 @@ describe('API client', () => {
   });
 
   it('turns an error envelope into an ApiError carrying Code and the server message', async () => {
-    stubFetch(() => envelope({ Success: false, Error: { Code: 'SERVICE_UNAVAILABLE', Message: 'مش جاهز' } }, 503));
+    stubFetch(() => envelope({ Success: false, Error: { Code: 'SERVICE_UNAVAILABLE', Message: 'غير جاهز' } }, 503));
     const failure = await getMeta().catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(ApiError);
-    expect(failure).toMatchObject({ Code: 'SERVICE_UNAVAILABLE', Message: 'مش جاهز', Status: 503 });
+    expect(failure).toMatchObject({ Code: 'SERVICE_UNAVAILABLE', Message: 'غير جاهز', Status: 503 });
   });
 
   it('reports an unreachable server as NETWORK', async () => {

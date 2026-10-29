@@ -80,7 +80,7 @@ describe('my account pages', () => {
     expect(within(chrome).queryByRole('button')).not.toBeInTheDocument();
     expect(within(chrome).getByText('203.0.113.7')).toBeInTheDocument();
     const firefox = await rowOf('Firefox على Windows');
-    expect(within(firefox).getByText(/من 2 ساعة/)).toBeInTheDocument();
+    expect(within(firefox).getByText(/منذ 2 ساعة/)).toBeInTheDocument();
     expect(within(firefox).getByRole('button', { name: Ar['sessions.revoke.aria'].replace('{device}', 'Firefox على Windows') })).toBeInTheDocument();
     expect(await rowOf('Safari على iOS')).toBeInTheDocument();
     expect(within(dialog).getByText(Ar['account.sessions.count'].replace('{count}', '3'))).toBeInTheDocument();
@@ -117,12 +117,12 @@ describe('signing out one device', () => {
 
   it('shows the failure and keeps the device when the server refuses', async () => {
     const { user } = await mount({
-      routes: [(request) => (request.method === 'DELETE' ? backendFailure('INTERNAL', 'حصل خطأ في السيرفر.', 500) : undefined)],
+      routes: [(request) => (request.method === 'DELETE' ? backendFailure('INTERNAL', 'حدث خطأ في السيرفر.', 500) : undefined)],
     });
     const firefox = await rowOf('Firefox على Windows');
     await user.click(within(firefox).getByRole('button'));
     await user.click(within(firefox).getByRole('button', { name: Ar['sessions.revoke.confirm'] }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('حصل خطأ في السيرفر.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('حدث خطأ في السيرفر.');
     expect(await rowOf('Firefox على Windows')).toBeInTheDocument();
   });
 });
@@ -161,7 +161,7 @@ describe('signing out every other device', () => {
       routes: [
         (request, url) =>
           failing && request.method === 'GET' && url.pathname.endsWith('/sessions')
-            ? backendFailure('INTERNAL', 'حصل خطأ في السيرفر.', 500)
+            ? backendFailure('INTERNAL', 'حدث خطأ في السيرفر.', 500)
             : undefined,
       ],
     });

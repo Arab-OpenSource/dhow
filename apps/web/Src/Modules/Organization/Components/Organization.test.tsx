@@ -97,21 +97,21 @@ describe('renaming the organization', () => {
   });
 
   it('shows the server reason when the rename is refused', async () => {
-    const { user, dialog } = await settings({ renameReply: () => backendFailure('FORBIDDEN', 'مش مسموحلك تغيّر الاسم.', 403) });
+    const { user, dialog } = await settings({ renameReply: () => backendFailure('FORBIDDEN', 'لا يُسمح لك بتغيير الاسم.', 403) });
     const input = await within(dialog).findByLabelText(Ar['organization.name']);
     await user.type(input, ' 2');
     await save(user);
-    expect(await screen.findByRole('alert')).toHaveTextContent('مش مسموحلك تغيّر الاسم.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('لا يُسمح لك بتغيير الاسم.');
   });
 
   it('puts server field errors on the name', async () => {
     const { user, dialog } = await settings({
       renameReply: () =>
-        envelope({ Success: false, Error: { Code: 'VALIDATION_FAILED', Message: 'x', Details: [{ Field: 'Name', Message: 'الاسم مش مقبول.' }] } }, 422),
+        envelope({ Success: false, Error: { Code: 'VALIDATION_FAILED', Message: 'x', Details: [{ Field: 'Name', Message: 'الاسم غير مقبول.' }] } }, 422),
     });
     await user.type(await within(dialog).findByLabelText(Ar['organization.name']), ' 2');
     await save(user);
-    expect(await screen.findByText('الاسم مش مقبول.')).toBeInTheDocument();
+    expect(await screen.findByText('الاسم غير مقبول.')).toBeInTheDocument();
   });
 
   it.each(['maintainer', 'developer', 'viewer'])('shows the name read-only to a %s', async (role) => {
@@ -202,7 +202,7 @@ describe('the members list', () => {
   it('shows an error with a retry when the members cannot be loaded', async () => {
     let failing = true;
     const { dialog, user } = await mount({
-      routes: [(_request, url) => (failing && url.pathname.endsWith('/members') ? backendFailure('INTERNAL', 'حصل خطأ في السيرفر.', 500) : undefined)],
+      routes: [(_request, url) => (failing && url.pathname.endsWith('/members') ? backendFailure('INTERNAL', 'حدث خطأ في السيرفر.', 500) : undefined)],
     });
     expect(await within(dialog).findByText(Ar['members.error'])).toBeInTheDocument();
     failing = false;

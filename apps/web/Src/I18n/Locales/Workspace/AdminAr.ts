@@ -39,7 +39,7 @@ export const AdminAr = {
   'audit.target.identity': 'حساب دخول خارجي',
   'audit.target.job': 'تشغيل',
   'audit.target.runner': 'جهاز تشغيل',
-  'audit.target.runner_registration_token': 'توكن تسجيل جهاز تشغيل',
+  'audit.target.runner_registration_token': 'رمز تسجيل جهاز تشغيل',
   'audit.target.session': 'جلسة دخول',
   'orgTokens.title': 'مفاتيح API للمؤسسة',
   'orgTokens.subtitle': 'كل المفاتيح التي أنشأها أعضاء المؤسسة.',

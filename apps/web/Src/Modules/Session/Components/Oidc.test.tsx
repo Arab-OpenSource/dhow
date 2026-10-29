@@ -57,12 +57,12 @@ describe('sign-in choices', () => {
     stubFetch((request) =>
       path(request).endsWith('/oidc/providers')
         ? envelope({ Success: true, Data: PROVIDERS })
-        : backendFailure('OIDC_PROVIDER_UNAVAILABLE', 'خدمة الدخول مش متاحة.', 503),
+        : backendFailure('OIDC_PROVIDER_UNAVAILABLE', 'خدمة الدخول غير متاحة.', 503),
     );
     const navigate = vi.fn();
     const { user } = renderWithProviders(<SignInChoices onSignedIn={vi.fn()} navigate={navigate} />);
     await user.click(await screen.findByRole('button', { name: label('login.oidc.with', 'Corp SSO') }));
-    expect(await screen.findByText('خدمة الدخول مش متاحة.')).toBeInTheDocument();
+    expect(await screen.findByText('خدمة الدخول غير متاحة.')).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: label('login.oidc.with', 'Corp SSO') })).toBeEnabled();
   });
@@ -131,8 +131,8 @@ describe('finishing the sign-in', () => {
 
   it('shows the server reason, such as an identity that is not linked', async () => {
     useOidcCallbackStore.getState().Set({ Provider: 'corp', Code: 'abc', State: 'xyz', Error: '' });
-    callbackPage(() => backendFailure('OIDC_NOT_LINKED', 'مفيش حساب مربوط بالهوية دي.', 401));
-    expect(await screen.findByText('مفيش حساب مربوط بالهوية دي.')).toBeInTheDocument();
+    callbackPage(() => backendFailure('OIDC_NOT_LINKED', 'لا يوجد حساب مربوط بهذه الهوية.', 401));
+    expect(await screen.findByText('لا يوجد حساب مربوط بهذه الهوية.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: Ar['oidc.callback.failed'] })).toBeInTheDocument();
   });
 
@@ -196,13 +196,13 @@ describe('linked sign-in accounts', () => {
 
   it('unlinks after confirming the factor and refuses the last way in with the server message', async () => {
     backend([identity], (request) =>
-      path(request).endsWith('/remove') ? backendFailure('LAST_SIGN_IN_METHOD', 'دي آخر طريقة تدخل بيها.', 409) : undefined,
+      path(request).endsWith('/remove') ? backendFailure('LAST_SIGN_IN_METHOD', 'هذه آخر طريقة للدخول.', 409) : undefined,
     );
     const { user } = renderWithProviders(<IdentitiesCard />);
     await user.click(await screen.findByRole('button', { name: Ar['identities.unlink'] }));
     await user.type(screen.getByLabelText(Ar['factor.method.password']), 'correct horse battery staple');
     await user.click(screen.getByRole('button', { name: Ar['identities.unlink.confirm'] }));
-    expect(await screen.findByText('دي آخر طريقة تدخل بيها.')).toBeInTheDocument();
+    expect(await screen.findByText('هذه آخر طريقة للدخول.')).toBeInTheDocument();
   });
 
   it('stays out of the way when nothing is configured or linked', async () => {

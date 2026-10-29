@@ -86,9 +86,9 @@ describe('SystemStatusBody', () => {
   });
 
   it('shows the server message for a server-side error', async () => {
-    stubFetch(() => envelope({ Success: false, Error: { Code: 'INTERNAL', Message: 'حصل خطأ في السيرفر' } }, 500));
+    stubFetch(() => envelope({ Success: false, Error: { Code: 'INTERNAL', Message: 'حدث خطأ في السيرفر' } }, 500));
     open();
-    expect(await screen.findByRole('alert')).toHaveTextContent('حصل خطأ في السيرفر');
+    expect(await screen.findByRole('alert')).toHaveTextContent('حدث خطأ في السيرفر');
   });
 
   it('refreshes on demand and disables the button while it works', async () => {

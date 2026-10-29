@@ -2,11 +2,13 @@
 
 Status: **Accepted**. The current visual direction is "control room" (ADR-0059, which amends ADR-0034).
 
-Decisions: ADR-0021 to ADR-0023, ADR-0034 and ADR-0059.
+Decisions: ADR-0021 to ADR-0023, ADR-0034, ADR-0059 and ADR-0062.
 
 ## 1. Arabic-first, not "mirrored English" (ADR-0021)
 
-- The **primary product language is Arabic**, written in a friendly Egyptian-leaning register for UI copy.
+- The **primary product language is Arabic**, written in **simple Arabic** (ADR-0062): Modern Standard grammar, short sentences and words any Arab reader understands, neither Egyptian colloquial nor heavy classical. This covers the UI, server messages and emails, and the installer and `doctor` output.
+  - Buttons say exactly what they do (أضف جهاز تشغيل، احفظ التغييرات). Errors say what happened, then what to do (لم نتمكن من حفظ التغييرات. حاول مرة أخرى.).
+  - A project hook rejects colloquial markers (such as دلوقتي، مش، اللي، مفيش) and heavy classical ones (such as يتعذّر، ريثما) in the Arabic message catalogs.
   - English is the second first-class language.
   - Further languages come later through community translation.
 - **Screens are designed RTL first**, then adapted to LTR. Layout, iconography direction, reading order, number and date formatting, and empty states are all considered natively in Arabic.

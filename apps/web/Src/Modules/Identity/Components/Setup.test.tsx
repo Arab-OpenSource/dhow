@@ -122,9 +122,9 @@ describe('setup without a link', () => {
   });
 
   it('says the link was refused, in the server words', () => {
-    useSetupTokenStore.getState().Reject('الرابط ده مش صح.');
+    useSetupTokenStore.getState().Reject('هذا الرابط غير صحيح.');
     mount();
-    expect(screen.getByRole('alert')).toHaveTextContent('الرابط ده مش صح.');
+    expect(screen.getByRole('alert')).toHaveTextContent('هذا الرابط غير صحيح.');
     expect(screen.getByText(Ar['setup.guide.rejected.detail'])).toBeInTheDocument();
   });
 
@@ -222,17 +222,17 @@ describe('setup errors from the server', () => {
   });
 
   it('SETUP_TOKEN_INVALID drops the token and shows the guide with the server message', async () => {
-    backend({ setup: () => failure('SETUP_TOKEN_INVALID', 'رابط الإعداد مش صح أو انتهى.', 403) });
+    backend({ setup: () => failure('SETUP_TOKEN_INVALID', 'رابط الإعداد غير صحيح أو انتهت صلاحيته.', 403) });
     const { user } = mount();
     await fill(user);
     await submit(user);
-    expect(await screen.findByRole('alert')).toHaveTextContent('رابط الإعداد مش صح أو انتهى.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('رابط الإعداد غير صحيح أو انتهت صلاحيته.');
     expect(useSetupTokenStore.getState().Token).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: Ar['setup.guide.title'] })).toBeInTheDocument();
   });
 
   it('SETUP_COMPLETED shows the finished-setup page', async () => {
-    backend({ setup: () => failure('SETUP_COMPLETED', 'الإعداد اتعمل قبل كده.', 409) });
+    backend({ setup: () => failure('SETUP_COMPLETED', 'اكتمل الإعداد من قبل.', 409) });
     const { user } = mount();
     await fill(user);
     await submit(user);
@@ -241,11 +241,11 @@ describe('setup errors from the server', () => {
   });
 
   it('PASSWORD_BREACHED explains itself on the password field, focuses it and clears the passwords', async () => {
-    const { calls } = backend({ setup: () => failure('PASSWORD_BREACHED', 'كلمة السر دي ظهرت في تسريب.', 422) });
+    const { calls } = backend({ setup: () => failure('PASSWORD_BREACHED', 'ظهرت كلمة السر هذه في تسريب.', 422) });
     const { user } = mount();
     await fill(user);
     await submit(user);
-    expect(await screen.findByText('كلمة السر دي ظهرت في تسريب.')).toBeInTheDocument();
+    expect(await screen.findByText('ظهرت كلمة السر هذه في تسريب.')).toBeInTheDocument();
     const password = screen.getAllByLabelText(Ar['field.password'])[0];
     expect(password).toHaveFocus();
     expect(password).toHaveValue('');
@@ -253,20 +253,20 @@ describe('setup errors from the server', () => {
   });
 
   it('puts server field errors next to their fields', async () => {
-    backend({ setup: () => failure('VALIDATION_FAILED', 'البيانات مش صح.', 422, [{ Field: 'Email', Message: 'الإيميل ده مش مقبول.' }]) });
+    backend({ setup: () => failure('VALIDATION_FAILED', 'البيانات غير صحيحة.', 422, [{ Field: 'Email', Message: 'هذا البريد غير مقبول.' }]) });
     const { user } = mount();
     await fill(user);
     await submit(user);
-    expect(await screen.findByText('الإيميل ده مش مقبول.')).toBeInTheDocument();
+    expect(await screen.findByText('هذا البريد غير مقبول.')).toBeInTheDocument();
     expect(screen.getByLabelText(Ar['field.email'])).toHaveFocus();
   });
 
   it('shows any other failure in an alert and keeps the form', async () => {
-    backend({ setup: () => failure('INTERNAL', 'حصل خطأ في السيرفر.', 500) });
+    backend({ setup: () => failure('INTERNAL', 'حدث خطأ في السيرفر.', 500) });
     const { user } = mount();
     await fill(user);
     await submit(user);
-    expect(await screen.findByRole('alert')).toHaveTextContent('حصل خطأ في السيرفر.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('حدث خطأ في السيرفر.');
     expect(screen.getByLabelText(Ar['setup.ownerName'])).toHaveValue('Sabry Dawood');
   });
 });

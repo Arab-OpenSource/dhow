@@ -47,5 +47,5 @@ func TestMainRunsADryRunInArabic(t *testing.T) {
 	app, out := newApp(f, "")
 	require.NoError(t, Main(context.Background(), []string{"install", "--answers", "/root/a.yaml", "--dry-run", "--lang", "ar"}, app, &bytes.Buffer{}))
 	assert.Contains(t, out.String(), "الخطة:")
-	assert.Contains(t, out.String(), "تجربة بس: مفيش حاجة اتغيّرت.")
+	assert.Contains(t, out.String(), "تجربة فقط: لم يتغير شيء.")
 }

@@ -55,7 +55,7 @@ describe('ThemeEditor form', () => {
   it('labels a1 as the primary button colour', async () => {
     await mount();
     expect(hexOf('a1')).toHaveValue(DEFAULT_COLORS.a1);
-    expect(Ar['theme.token.a1']).toContain('الزرار الأساسي');
+    expect(Ar['theme.token.a1']).toContain('الزر الأساسي');
   });
 
   it('shows a colour change on the whole app as it happens', async () => {

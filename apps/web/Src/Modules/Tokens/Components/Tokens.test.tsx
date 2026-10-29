@@ -127,11 +127,11 @@ describe('creating an API token', () => {
   });
 
   it('shows the server refusal, such as a wrong factor, and keeps the form', async () => {
-    const { user } = newToken('owner', () => backendFailure('INVALID_CURRENT_FACTOR', 'مقدرناش نتأكد إنه إنت.', 403));
+    const { user } = newToken('owner', () => backendFailure('INVALID_CURRENT_FACTOR', 'لم نتمكن من التأكد من هويتك.', 403));
     await user.type(await screen.findByLabelText(Ar['tokens.form.name']), 'CI');
     await user.type(screen.getByLabelText(Ar['factor.method.password']), 'wrong password here');
     await user.click(screen.getByRole('button', { name: Ar['tokens.form.submit'] }));
-    expect(await screen.findByText('مقدرناش نتأكد إنه إنت.')).toBeInTheDocument();
+    expect(await screen.findByText('لم نتمكن من التأكد من هويتك.')).toBeInTheDocument();
     expect(screen.getByLabelText(Ar['tokens.form.name'])).toHaveValue('CI');
   });
 });

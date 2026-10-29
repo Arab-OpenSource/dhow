@@ -130,11 +130,11 @@ describe('the invitation page', () => {
     useInviteTokenStore.getState().Set(TOKEN);
     backend({
       previewReply: () =>
-        envelope({ Success: false, Error: { Code: 'INVITATION_INVALID', Message: 'رابط الدعوة ده مبقاش شغّال.' } }, 410),
+        envelope({ Success: false, Error: { Code: 'INVITATION_INVALID', Message: 'رابط الدعوة هذا لم يعد يعمل.' } }, 410),
     });
     mount();
     expect(await screen.findByText(Ar['invite.page.invalid.title'])).toBeInTheDocument();
-    expect(screen.getByText('رابط الدعوة ده مبقاش شغّال.')).toBeInTheDocument();
+    expect(screen.getByText('رابط الدعوة هذا لم يعد يعمل.')).toBeInTheDocument();
   });
 
   it('sends an existing account to sign in first', async () => {

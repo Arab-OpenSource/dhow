@@ -77,12 +77,12 @@ describe('sign-in throttle', () => {
   });
 
   it('treats a wrong password without Retry-After as an ordinary failure', async () => {
-    stubFetch(() => envelope({ Success: false, Error: { Code: 'INVALID_CREDENTIALS', Message: 'غلط.' } }, 401));
+    stubFetch(() => envelope({ Success: false, Error: { Code: 'INVALID_CREDENTIALS', Message: 'خطأ.' } }, 401));
     const { user } = renderWithProviders(<LoginForm onSignedIn={vi.fn()} />, { advanceTimers: advance });
     await user.type(screen.getByLabelText(Ar['field.email']), 'sabry@future.dev');
     await user.type(screen.getByLabelText(Ar['field.password']), 'x');
     await user.click(screen.getByRole('button', { name: Ar['login.submit'] }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('غلط.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('خطأ.');
     expect(screen.queryByRole('timer')).not.toBeInTheDocument();
   });
 });
