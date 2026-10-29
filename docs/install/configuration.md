@@ -1,6 +1,11 @@
 # Configuration
 
-Dhow reads its configuration from environment variables when it starts. It checks all of them first and refuses to start if any is invalid, listing every problem at once:
+Dhow has two kinds of settings ([ADR-0063](../../Plan/ADR/0063-instance-settings-in-the-database.md)):
+
+- **Server variables** are what the server needs before it reaches the database, or what belongs to one machine: the database, the secret key, the public address, listeners, proxies and per-instance capacity. They live only in the environment.
+- **Dashboard settings** are mail, who may create organizations, the breached-password check, rate limits and log limits. The instance owner changes them on **Server settings** (`/system/settings`) without a restart. Each one can still be set by an environment variable, and then the variable wins and locks it. See [Who wins](#who-wins) and the guide [Server settings](../guides/instance-settings.md).
+
+Dhow reads the environment when it starts. It checks every variable first and refuses to start if any is invalid, listing every problem at once:
 
 ```text
 dhow-server: invalid configuration:
@@ -23,29 +28,53 @@ There is no configuration file and no fallback value for a secret. A missing or 
 | `DHOW_TRUSTED_PROXIES` | No | empty | `127.0.0.1`, `10.0.0.5,172.18.0.1/32` | Reverse proxies whose `X-Forwarded-For` header Dhow trusts, as a comma-separated list of IP addresses and CIDR ranges. Spaces around entries are ignored, and an IPv4-mapped IPv6 address counts as IPv4. Empty means Dhow uses the address of the TCP connection. See [Trusted proxies](reverse-proxy.md#trusted-proxies). |
 | `DHOW_LOG_LEVEL` | No | `info` | `debug` | `debug`, `info`, `warn` (or `warning`) or `error`, in any case. Logs are JSON lines on standard output. |
 | `DHOW_DEV` | No | `false` | `true` | Development mode. It allows an `http://` public URL and a database URL without a secure `sslmode`, and Dhow logs a warning at every start. It accepts `true` or `false` and the other spellings of Go's `strconv.ParseBool` (`1`, `0`, `t`, `f`, `TRUE`, `FALSE`, ...). Never set it on a host that other people can reach, see [Run Dhow locally](local.md). |
-| `DHOW_BREACHED_PASSWORD_CHECK` | No | `true` | `false` | Rejects new passwords that appear in known breaches, using the Have I Been Pwned range API. Only the first 5 hex characters of the password's SHA-1 leave the server, and the check is skipped with a warning when the service cannot be reached within 3 seconds. Set `false` on networks without internet access. It accepts the same spellings as `DHOW_DEV`. |
 | `DHOW_RUNNER_LISTEN_ADDR` | No | empty | `0.0.0.0:7443` | Moves the runner plane (`/runner-api/`, where runners register and sign in) off `DHOW_LISTEN_ADDR` onto a listener of its own, so a firewall or a Kubernetes NetworkPolicy can separate it. The path stays `/runner-api/`. Empty keeps the runner plane on the main listener. It must be `host:port` and differ from `DHOW_LISTEN_ADDR`. It needs both TLS files below, except with `DHOW_DEV=true`, where it serves plain HTTP and logs a warning. |
 | `DHOW_RUNNER_TLS_CERT_FILE` | With `DHOW_RUNNER_LISTEN_ADDR` | none | `/etc/dhow/runner-tls.crt` | The PEM certificate chain of the separate runner listener. It is refused without `DHOW_RUNNER_LISTEN_ADDR`, without `DHOW_RUNNER_TLS_KEY_FILE`, or when the pair does not load. |
 | `DHOW_RUNNER_TLS_KEY_FILE` | With `DHOW_RUNNER_LISTEN_ADDR` | none | `/etc/dhow/runner-tls.key` | The PEM private key of that certificate. Like a secret file, other users must not be able to read or write it (`chmod 600`). |
 | `DHOW_RUNNER_MAX_POLLS` | No | `500` | `200` | How many `Lease` long-polls one server instance keeps open at once. A waiting poll holds no database connection, but every wake-up runs one short claim transaction, so the default is 25 polls for each of the 20 pooled database connections. Above the limit a runner gets `RESOURCE_EXHAUSTED` with `Retry-After` and backs off. A whole number from 1 to 10000. |
-| `DHOW_JOB_LOG_MAX_BYTES` | No | `67108864` (64 MiB) | `268435456` | The most log output one job attempt may store, in bytes. The chunk that crosses it is cut at the limit, one `system` line says the log was truncated, and later output is dropped while the job keeps running. A whole number from 1048576 (1 MiB) to 1073741824 (1 GiB), without a unit. Logs live in PostgreSQL until log segments move to object storage, so the limit and the retention below decide how much they add to the database and its backups. |
-| `DHOW_LOG_RETENTION_DAYS` | No | `30` | `7` | How many days of job logs to keep. Logs are stored in one PostgreSQL partition per UTC day, and every hour each instance drops the partitions older than this, under an advisory lock so instances never race. A whole number from 1 to 3650. |
 | `DHOW_SSE_MAX_STREAMS` | No | `2000` | `500` | How many live log streams (server-sent events) one server instance serves at once. One user may hold 10 of them on an instance, and one organization a tenth of this value (at least 20). Above either limit the browser gets `429 TOO_MANY_STREAMS` with `Retry-After`. A whole number from 1 to 100000. |
 | `DHOW_LOG_READ_CONNS` | No | `4` | `8` | Database connections set aside for reading job logs: history pages and live streams. They are a pool of their own, next to the 20 connections of the API and the runner plane, so many open streams can slow each other down but never the rest of Dhow. Each statement on them stops after 5 seconds. A whole number from 1 to 20. |
-| `DHOW_ORG_CREATION` | No | `instance-owner` | `any-user` | Who may create more organizations. `instance-owner` allows only the instance owner, the account made by the first-owner setup. `any-user` allows every signed-in user. Any other value stops the server. |
-| `DHOW_SMTP_HOST` | No | empty | `smtp.example.com` | The mail server for invitation emails. Empty turns email off: an admin still gets the invitation link and sends it themselves. A host name or an IP address, without a port. See [Email](#email). |
-| `DHOW_SMTP_PORT` | No | `587`, or `465` with `DHOW_SMTP_TLS=tls` | `2525` | The mail server's port, from 1 to 65535. |
-| `DHOW_SMTP_TLS` | No | `starttls` | `tls`, `none` | `starttls` connects in plain text and requires `STARTTLS` before anything else is sent. `tls` connects over TLS from the first byte (usually port 465). `none` sends in plain text and is accepted only without a username and password, for a relay on a private network. The server certificate is always verified. |
-| `DHOW_SMTP_USERNAME` | No | empty | `dhow` | The SMTP login. Set it together with a password, or leave both empty for a relay that needs no login. |
-| `DHOW_SMTP_PASSWORD` | No | empty | none | The SMTP password. It is sent only over TLS (`AUTH PLAIN`) and never logged. |
 | `DHOW_SMTP_PASSWORD_FILE` | No | none | `/run/secrets/dhow-smtp-password` | A file that holds `DHOW_SMTP_PASSWORD`, see [Secrets in files](#secrets-in-files). |
-| `DHOW_SMTP_FROM` | With `DHOW_SMTP_HOST` | none | `Dhow <dhow@example.com>` | The sender of invitation emails, as one RFC 5322 address with an optional display name. |
 | `DHOW_OIDC_PROVIDERS` | No | empty | `google,github` | Turns on sign-in with external identity providers. A comma-separated list of provider ids (lowercase letters and digits, starting with a letter, at most 32, at most 10 providers). Each id needs its own `DHOW_OIDC_<ID>_*` variables, see [Sign-in providers](#sign-in-providers). Empty turns external sign-in off. |
-| `DHOW_RATE_LIMIT_PUBLIC` | No | `300` | `1000` | How many requests one client network may send in 10 minutes to each group of public sign-in routes: password sign-in, the second step, passkey sign-in and its options, OIDC authorize and callback, invitation preview and accept, and the first-owner setup. Only requests that pass the `Origin` check count, so a page on another site cannot spend the limit of your users. A client network is one IPv4 address or one IPv6 `/64`, found as described below. Above it the answer is `429 RATE_LIMITED` with `Retry-After`. The counters live in the database, so every instance shares them. Raise it when many people sign in from behind one NAT. A whole number from 1 to 100000, see [Rate limits](#rate-limits). |
-| `DHOW_RATE_LIMIT_INVITES_USER` | No | `50` | `200` | How many invitations one member may create or resend in an hour, across all organizations. A whole number from 1 to 100000. |
-| `DHOW_RATE_LIMIT_INVITES_ORG` | No | `200` | `1000` | How many invitations one organization may create or resend in an hour, whoever sends them. A whole number from 1 to 100000. |
 
 `DHOW_DEV=true` never turns off the `Secure` flag of the session cookie, the `Origin` check or the secret key checks.
+
+## Dashboard settings
+
+The instance owner changes these on **Server settings** in the dashboard. Each one also has an environment variable. When the variable is set, it wins: the dashboard shows the value as read-only with the variable's name, and the API answers `409 SETTING_LOCKED_BY_ENV`. The same checks run on the variable at start-up and on every save from the dashboard, so a value that would stop the server is never saved.
+
+| Variable | Dashboard | Default | Example | Purpose and validation |
+|---|---|---|---|---|
+| `DHOW_SMTP_HOST` | Mail → Host | empty | `smtp.example.com` | The mail server for invitation emails. Empty turns email off: an admin still gets the invitation link and sends it themselves. A host name or an IP address, without a port. See [Email](#email). |
+| `DHOW_SMTP_PORT` | Mail → Port | `587`, or `465` with `DHOW_SMTP_TLS=tls` | `2525` | The mail server's port, from 1 to 65535. |
+| `DHOW_SMTP_TLS` | Mail → TLS | `starttls` | `tls`, `none` | `starttls` connects in plain text and requires `STARTTLS` before anything else is sent. `tls` connects over TLS from the first byte (usually port 465). `none` sends in plain text and is accepted only without a username and password, for a relay on a private network. The server certificate is always verified. |
+| `DHOW_SMTP_USERNAME` | Mail → Username | empty | `dhow` | The SMTP login. Set it together with a password, or leave both empty for a relay that needs no login. |
+| `DHOW_SMTP_PASSWORD` | Mail → Password | empty | none | The SMTP password. It is sent only over TLS (`AUTH PLAIN`) and never logged. |
+| `DHOW_SMTP_FROM` | Mail → Sender | none | `Dhow <dhow@example.com>` | The sender of invitation emails, as one RFC 5322 address with an optional display name. |
+| `DHOW_ORG_CREATION` | Organizations → Who may create | `instance-owner` | `any-user` | Who may create more organizations. `instance-owner` allows only the instance owner, the account made by the first-owner setup. `any-user` allows every signed-in user. Any other value stops the server. |
+| `DHOW_BREACHED_PASSWORD_CHECK` | Passwords → Breached-password check | `true` | `false` | Rejects new passwords that appear in known breaches, using the Have I Been Pwned range API. Only the first 5 hex characters of the password's SHA-1 leave the server, and the check is skipped with a warning when the service cannot be reached within 3 seconds. Set `false` on networks without internet access. It accepts the same spellings as `DHOW_DEV`. |
+| `DHOW_RATE_LIMIT_PUBLIC` | Rate limits → Public sign-in | `300` | `1000` | How many requests one client network may send in 10 minutes to each group of public sign-in routes: password sign-in, the second step, passkey sign-in and its options, OIDC authorize and callback, invitation preview and accept, and the first-owner setup. Only requests that pass the `Origin` check count, so a page on another site cannot spend the limit of your users. A client network is one IPv4 address or one IPv6 `/64`, found as described below. Above it the answer is `429 RATE_LIMITED` with `Retry-After`. The counters live in the database, so every instance shares them. Raise it when many people sign in from behind one NAT. A whole number from 1 to 100000, see [Rate limits](#rate-limits). |
+| `DHOW_RATE_LIMIT_INVITES_USER` | Rate limits → Invitations per member | `50` | `200` | How many invitations one member may create or resend in an hour, across all organizations. A whole number from 1 to 100000. |
+| `DHOW_RATE_LIMIT_INVITES_ORG` | Rate limits → Invitations per organization | `200` | `1000` | How many invitations one organization may create or resend in an hour, whoever sends them. A whole number from 1 to 100000. |
+| `DHOW_LOG_RETENTION_DAYS` | Logs → Days to keep | `30` | `7` | How many days of job logs to keep. Logs are stored in one PostgreSQL partition per UTC day, and every hour each instance drops the partitions older than this, under an advisory lock so instances never race. A whole number from 1 to 3650. |
+| `DHOW_JOB_LOG_MAX_BYTES` | Logs → Largest attempt log | `67108864` (64 MiB) | `268435456` | The most log output one job attempt may store, in bytes. The chunk that crosses it is cut at the limit, one `system` line says the log was truncated, and later output is dropped while the job keeps running. A whole number from 1048576 (1 MiB) to 1073741824 (1 GiB), without a unit. Logs live in PostgreSQL until log segments move to object storage, so this limit and the retention decide how much they add to the database and its backups. |
+
+## Who wins
+
+Each dashboard setting is resolved on its own, in this order:
+
+| Set in the environment | Saved in the dashboard | In effect | Dashboard shows |
+|---|---|---|---|
+| Yes | Yes or no | The environment variable | The value, read-only, with the variable's name |
+| No | Yes | The saved value | The value, editable |
+| No | No | The documented default | The default, editable |
+
+- **Nothing is copied.** Dhow never copies an environment value into the database. If you remove a variable, the setting unlocks and takes the saved value, or the default.
+- **No restart.** A save notifies every instance on the same database (`pg_notify` on `dhow_settings_changed`), and each one reloads within a moment. Mail, rate limits, organization creation, the breached-password check and log retention take effect at once. A new largest attempt log applies to attempts that start after the save.
+- **Fail closed.** At start-up, a saved value that is not valid (for example after a hand edit in the database) stops the server, and the error names the variable and where the value came from. A saved secret that the current `DHOW_SECRET_KEY` cannot decrypt stops it too.
+- **Secrets.** A saved SMTP password is encrypted with a key derived from `DHOW_SECRET_KEY` (AES-GCM, its own label) and never leaves the server: not in a response, a log line, an audit event or an email. The dashboard only shows whether one is saved.
+- **Who may change them.** Only the instance owner, the account made by the first-owner setup, with two-step verification on and a fresh second factor for each save. API tokens never can. Every save writes the audit event `system.settings.changed` with the group and the names of the changed fields, never their values.
+- **`dhow-server doctor`** prints where each setting comes from: the environment, the database or the default. It never prints a value.
 
 ## Rate limits
 
@@ -81,7 +110,7 @@ With SMTP set up, Dhow also emails the link to the invited address in the invite
 
 - The link is the only secret in the email. It works once and expires after 7 days, and resending an invitation makes a new link and voids the old one.
 - `DHOW_SMTP_FROM`, the organization name and the inviter's name are the only values that reach the headers, and a value that contains a line break never does.
-- Test the settings by inviting your own address.
+- Test the settings with **Send a test email** on **Server settings**, or by inviting your own address.
 
 ## Sign-in providers
 
@@ -110,4 +139,4 @@ The [Compose stack](compose.md) reads a few more variables from `.env` that neve
 
 ## Keeping this page current
 
-A Go test in `apps/server/internal/Config` fails when the config package declares a `DHOW_*` variable that the first two tables on this page do not list, or when a table lists one that the code no longer reads.
+A Go test in `apps/server/internal/Config` fails when the config package declares a `DHOW_*` variable that the server, dashboard and development tables on this page do not list, when a table lists one that the code no longer reads, or when the dashboard table and the settings the dashboard can change differ.
