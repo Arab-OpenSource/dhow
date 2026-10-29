@@ -1,6 +1,8 @@
+[العربية](../../runner/README.md)
+
 # Dhow runners
 
-A runner is the `dhow-runner` process that takes jobs from a Dhow server and runs each one in a fresh, isolated sandbox. It only ever connects out to the server, over HTTPS, so it can sit behind a firewall or NAT. The design is in [ADR-0041](../../Plan/ADR/0041-runner-identity-and-registration.md), [ADR-0042](../../Plan/ADR/0042-runner-protocol-and-leasing.md), [ADR-0043](../../Plan/ADR/0043-job-sandbox-rootless-podman.md) and [ADR-0053](../../Plan/ADR/0053-runner-implementation.md).
+A runner is the `dhow-runner` process that takes jobs from a Dhow server and runs each one in a fresh, isolated sandbox. It only ever connects out to the server, over HTTPS, so it can sit behind a firewall or NAT. The design is in [ADR-0041](../../../Plan/ADR/0041-runner-identity-and-registration.md), [ADR-0042](../../../Plan/ADR/0042-runner-protocol-and-leasing.md), [ADR-0043](../../../Plan/ADR/0043-job-sandbox-rootless-podman.md) and [ADR-0053](../../../Plan/ADR/0053-runner-implementation.md).
 
 | Guide | What it covers |
 |---|---|
@@ -24,7 +26,7 @@ Each job gets a fresh container that the runner creates with its own Podman conf
 - **Limits that fail closed.** CPU, memory without swap, processes and disk come from cgroup v2. After `podman create` the runner inspects the container and refuses to run anything if one setting differs from what it asked for.
 - **An agent as PID 1.** The runner binary runs inside as the agent: it turns off ptrace on itself, ignores the signals a job could send it, runs each step as `/bin/sh -e -s` with the script on stdin, keeps secret files on a `noexec` tmpfs only for the step, and exits when the runner's control channel closes, so the container dies with the runner. When a step's shell exits, the agent kills every process the step left behind before it reports the step, so nothing started in one step can read the secrets of a later one. `/workspace` is shared, though: a step can still change files a later step runs.
 
-The escape and limits suites (`apps/runner/Test/Isolation`, `make runner-isolation`) run a probe inside a real container and fail if any escape works. CI runs them on every pull request that touches the runner. The decisions are in [ADR-0043](../../Plan/ADR/0043-job-sandbox-rootless-podman.md) and [ADR-0055](../../Plan/ADR/0055-podman-driver-and-agent-implementation.md) and [ADR-0056](../../Plan/ADR/0056-sandbox-hardening-after-the-m3-6-review.md).
+The escape and limits suites (`apps/runner/Test/Isolation`, `make runner-isolation`) run a probe inside a real container and fail if any escape works. CI runs them on every pull request that touches the runner. The decisions are in [ADR-0043](../../../Plan/ADR/0043-job-sandbox-rootless-podman.md) and [ADR-0055](../../../Plan/ADR/0055-podman-driver-and-agent-implementation.md) and [ADR-0056](../../../Plan/ADR/0056-sandbox-hardening-after-the-m3-6-review.md).
 
 ## How a runner works
 

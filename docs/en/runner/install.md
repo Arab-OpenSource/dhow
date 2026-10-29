@@ -1,3 +1,5 @@
+[العربية](../../runner/install.md)
+
 # Install a runner
 
 The runner is a single static Linux binary, `dhow-runner`, for `amd64` and `arm64`. A packaged install with the `runner` mode of the interactive installer comes with M3.10. Until then, set it up by hand as below.

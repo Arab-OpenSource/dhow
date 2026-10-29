@@ -1,3 +1,5 @@
+[العربية](../../runner/register.md)
+
 # Register a runner
 
 Registration turns a one-time token into a runner identity: a pair of keys that stays on the runner host, and a runner record in your organization.

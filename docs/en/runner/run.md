@@ -1,3 +1,5 @@
+[العربية](../../runner/run.md)
+
 # Run a runner
 
 ```sh

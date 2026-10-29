@@ -1,6 +1,8 @@
+[العربية](../../runner/chaos.md)
+
 # Chaos scenarios
 
-The chaos suite (`apps/runner/Test/Chaos`) runs the real `dhow-server` and `dhow-runner` as processes, with the Podman driver, against PostgreSQL 18. It then breaks things on purpose and checks that a job never runs twice at once and that nothing is left behind. The design is in [ADR-0058](../../Plan/ADR/0058-graded-kill-and-chaos-suite.md).
+The chaos suite (`apps/runner/Test/Chaos`) runs the real `dhow-server` and `dhow-runner` as processes, with the Podman driver, against PostgreSQL 18. It then breaks things on purpose and checks that a job never runs twice at once and that nothing is left behind. The design is in [ADR-0058](../../../Plan/ADR/0058-graded-kill-and-chaos-suite.md).
 
 ## What it checks
 
