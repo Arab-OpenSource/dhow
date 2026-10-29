@@ -11,6 +11,7 @@ import {
   revokeRunner,
   runnerKey,
   runnerListKey,
+  RUNNERS_ALL_LIMIT,
   RUNNERS_SUMMARY_LIMIT,
   updateRunner,
   type TRegistrationToken,
@@ -29,6 +30,12 @@ export const useRunnerSummary = (organizationId: string): UseQueryResult<IPage<T
   useQuery<IPage<TRunner>, ApiError>({
     queryKey: [...runnerListKey(organizationId), 'summary'],
     queryFn: () => listRunners(organizationId, 1, RUNNERS_SUMMARY_LIMIT),
+  });
+
+export const useAllRunners = (organizationId: string): UseQueryResult<IPage<TRunner>, ApiError> =>
+  useQuery<IPage<TRunner>, ApiError>({
+    queryKey: [...runnerListKey(organizationId), 'all'],
+    queryFn: () => listRunners(organizationId, 1, RUNNERS_ALL_LIMIT),
   });
 
 export const useRunner = (organizationId: string, runnerId: string): UseQueryResult<TRunner, ApiError> => {
