@@ -10,7 +10,7 @@ import {
 } from '@/Core/Auth/AuthTypes';
 
 export const SHELL_PAGES = {
-  home: lazyPage(() => import('@/Modules/System/Pages/WorkspacePage').then((module) => module.WorkspacePage)),
+  home: lazyPage(() => import('@/App/Pages/HomePage').then((module) => module.HomePage)),
   jobs: lazyPage(() => import('@/App/Pages/JobsPage').then((module) => module.JobsPage), member),
   job: lazyPage(() => import('@/App/Pages/JobPage').then((module) => module.JobPage), member),
   runners: lazyPage(() => import('@/App/Pages/RunnersPage').then((module) => module.RunnersPage), canReadRunners),

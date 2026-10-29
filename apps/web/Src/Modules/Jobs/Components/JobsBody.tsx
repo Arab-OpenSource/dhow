@@ -20,6 +20,8 @@ import { isFinalState, isStuck } from '@/Modules/Jobs/Types/JobStates';
 
 export interface IJobsBodyProps {
   onOpenJob: (jobId: string) => void;
+  filter?: TJobState | null;
+  onFilterChange?: (state: TJobState | null) => void;
 }
 
 const MINUTE_MS = 60_000;
@@ -41,11 +43,13 @@ const StuckAlert = ({ organizationId, onShow }: { organizationId: string; onShow
   );
 };
 
-const JobsContent = ({ organizationId, onOpenJob }: IJobsBodyProps & { organizationId: string }) => {
+const JobsContent = ({ organizationId, onOpenJob, filter, onFilterChange }: IJobsBodyProps & { organizationId: string }) => {
   const t = useT();
   const errorText = useApiErrorText();
   const [Page, setPage] = useState(1);
-  const [Filter, setFilter] = useState<TJobState | null>(null);
+  const [OwnFilter, setOwnFilter] = useState<TJobState | null>(filter ?? null);
+  const Filter = onFilterChange === undefined ? OwnFilter : (filter ?? null);
+  const setFilter = onFilterChange ?? setOwnFilter;
   const jobs = useJobs(organizationId, Page, Filter);
   const items = jobs.data?.Items ?? [];
   const now = useNow(items.some((job) => !isFinalState(job.State)), MINUTE_MS / 4);
@@ -128,8 +132,8 @@ const JobsContent = ({ organizationId, onOpenJob }: IJobsBodyProps & { organizat
   );
 };
 
-export const JobsBody = ({ onOpenJob }: IJobsBodyProps) => {
+export const JobsBody = (props: IJobsBodyProps) => {
   const membership = useCurrentMembership();
   if (membership === undefined) return null;
-  return <JobsContent organizationId={membership.OrganizationId} onOpenJob={onOpenJob} />;
+  return <JobsContent organizationId={membership.OrganizationId} {...props} />;
 };

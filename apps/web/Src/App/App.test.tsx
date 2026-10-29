@@ -141,9 +141,9 @@ describe('unknown routes', () => {
 });
 
 describe('system module in the shell', () => {
-  it('opens server status from the Home list and shows the build', async () => {
+  it('opens server status from the Home card and shows the build', async () => {
     const { router, user } = await renderApp();
-    await user.click(screen.getByRole('button', { name: new RegExp(Ar['home.status.sub']) }));
+    await user.click(await screen.findByRole('button', { name: Ar['home.status.open'] }));
     expect(await screen.findByRole('heading', { level: 1, name: Ar['status.title'] })).toBeInTheDocument();
     expect(await screen.findByText('v0.1.0')).toBeInTheDocument();
     expect(router.state.location.href).toBe('/system');

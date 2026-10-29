@@ -10,6 +10,7 @@ import { isStuck } from '@/Modules/Jobs/Types/JobStates';
 export interface IJobRowProps {
   job: TJob;
   now: number;
+  compact?: boolean;
   onOpen: (jobId: string) => void;
 }
 
@@ -26,16 +27,20 @@ const useTiming = (job: TJob, now: number): string => {
   return '';
 };
 
-export const JobRow = ({ job, now, onOpen }: IJobRowProps) => {
+export const JobRow = ({ job, now, compact = false, onOpen }: IJobRowProps) => {
   const t = useT();
   const time = useRelativeTime();
   const text = useJobText();
   const timing = useTiming(job, now);
-  const parts = [
-    t('jobs.row.created', { time: time.ago(job.CreatedAt) }),
-    timing,
-    job.AttemptCount > 0 ? t('jobs.row.attempts', { count: job.AttemptCount }) : t('jobs.row.noAttempts'),
-  ].filter((part) => part !== '');
+  const parts = (
+    compact
+      ? [timing === '' ? t('jobs.row.created', { time: time.ago(job.CreatedAt) }) : timing]
+      : [
+          t('jobs.row.created', { time: time.ago(job.CreatedAt) }),
+          timing,
+          job.AttemptCount > 0 ? t('jobs.row.attempts', { count: job.AttemptCount }) : t('jobs.row.noAttempts'),
+        ]
+  ).filter((part) => part !== '');
   const reason = job.FailureReason === undefined ? null : text.reason(job.FailureReason);
 
   return (
@@ -50,7 +55,7 @@ export const JobRow = ({ job, now, onOpen }: IJobRowProps) => {
       }
       end={
         <span className="flex flex-wrap items-center justify-end gap-2">
-          {isStuck(job) ? (
+          {isStuck(job) && !compact ? (
             <Badge tone="warn" icon="alert">
               {t('jobs.stuck.badge')}
             </Badge>

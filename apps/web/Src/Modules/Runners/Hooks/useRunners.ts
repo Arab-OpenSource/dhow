@@ -11,6 +11,7 @@ import {
   revokeRunner,
   runnerKey,
   runnerListKey,
+  RUNNERS_SUMMARY_LIMIT,
   updateRunner,
   type TRegistrationToken,
   type TRunner,
@@ -22,6 +23,12 @@ export const useRunners = (organizationId: string, page: number): UseQueryResult
     queryKey: [...runnerListKey(organizationId), page],
     queryFn: () => listRunners(organizationId, page),
     placeholderData: keepPreviousData,
+  });
+
+export const useRunnerSummary = (organizationId: string): UseQueryResult<IPage<TRunner>, ApiError> =>
+  useQuery<IPage<TRunner>, ApiError>({
+    queryKey: [...runnerListKey(organizationId), 'summary'],
+    queryFn: () => listRunners(organizationId, 1, RUNNERS_SUMMARY_LIMIT),
   });
 
 export const useRunner = (organizationId: string, runnerId: string): UseQueryResult<TRunner, ApiError> => {

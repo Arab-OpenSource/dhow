@@ -146,6 +146,7 @@ describe('verifying the chain', () => {
     await waitFor(() => {
       expect(router.state.location.href).toBe('/');
     });
+    await screen.findByRole('heading', { level: 1, name: Ar['home.title'] });
     await user.click(within(nav).getByRole('link', { name: Ar['shell.nav.audit'] }));
     expect(await screen.findByText(Ar['audit.verify.idle.title'])).toBeInTheDocument();
   });

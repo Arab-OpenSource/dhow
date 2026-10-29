@@ -1416,6 +1416,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Counts of what needs attention in an organization
+         * @description Needs `org.read`. One request for the home page and the sidebar counters, so the client does not page through every list to count. Each block needs the same permission as its list: `Jobs` needs `job.read`, `Runners` needs `runner.read` and `Invitations` needs `member.manage`. A block the caller may not read is `null`, never zero, so the client can tell "none" from "not yours to see". `Jobs.Running` counts the `leased` and `running` states. `Jobs.QueuedNoRunner` counts queued jobs whose `QueuedReason` is `NO_MATCHING_RUNNER`. `Jobs.FailedLast24h` counts the `failed` and `timed_out` states that finished in the last 24 hours. `Runners.Online` and `Runners.Offline` follow the `Status` rule of the runners list (seen in the last two minutes) for active runners, and `Runners.Paused` counts disabled runners. Revoked runners are not counted. `Invitations.Pending` counts invitations that are not accepted, revoked or expired. A caller who is not a member gets 404.
+         */
+        get: operations["getOrganizationOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2418,6 +2438,36 @@ export interface components {
         };
         JobListResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Job"][];
+        };
+        OverviewJobs: {
+            /** @description Jobs in the `leased` or `running` state. */
+            Running: number;
+            /** @description Jobs in the `queued` state. */
+            Queued: number;
+            /** @description Queued jobs with `QueuedReason` `NO_MATCHING_RUNNER`. Part of `Queued`. */
+            QueuedNoRunner: number;
+            /** @description Jobs that finished `failed` or `timed_out` in the last 24 hours. */
+            FailedLast24h: number;
+        } | null;
+        OverviewRunners: {
+            /** @description Active runners seen in the last two minutes. */
+            Online: number;
+            /** @description Active runners not seen in the last two minutes. */
+            Offline: number;
+            /** @description Disabled runners, by an admin or because a clone was suspected. */
+            Paused: number;
+        } | null;
+        OverviewInvitations: {
+            /** @description Invitations that are not accepted, revoked or expired. */
+            Pending: number;
+        } | null;
+        OrganizationOverview: {
+            Jobs: components["schemas"]["OverviewJobs"];
+            Runners: components["schemas"]["OverviewRunners"];
+            Invitations: components["schemas"]["OverviewInvitations"];
+        };
+        OrganizationOverviewResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["OrganizationOverview"];
         };
     };
     responses: {
@@ -4557,6 +4607,29 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getOrganizationOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The counts the caller may read. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationOverviewResponse"];
                 };
             };
             default: components["responses"]["Error"];
