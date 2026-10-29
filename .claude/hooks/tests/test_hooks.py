@@ -154,6 +154,15 @@ class FileRules(unittest.TestCase):
         self.assertIsNotNone(edit("apps/server/NOTES.md", "# x\n"))
         self.assertIsNone(edit("Plan/Progress/2026-10-28.md", "# x\n"))
         self.assertIsNone(edit("docs/new.md", "# x\n"))
+        self.assertIsNone(edit("docs/en/new.md", "# x\n"))
+        self.assertIn("docs/en/", edit("apps/server/NOTES.md", "# x\n"))
+
+    def test_root_markdown_pairs(self):
+        for rel in ("README.md", "README.en.md", "CONTRIBUTING.md", "CONTRIBUTING.en.md", "SECURITY.md",
+                    "SECURITY.en.md", "CLAUDE.md", "LICENSE.md"):
+            self.assertIsNone(edit(rel, "# x\n"), rel)
+        for rel in ("README.ar.md", "NOTES.md", "CLAUDE.en.md"):
+            self.assertIsNotNone(edit(rel, "# x\n"), rel)
 
     def test_length_limit(self):
         big = "package a\n" + "var x = 1\n" * 500

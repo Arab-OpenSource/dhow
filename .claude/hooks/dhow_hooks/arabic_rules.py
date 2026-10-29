@@ -7,6 +7,11 @@ WEB_LOCALES = "apps/web/Src/I18n/Locales/"
 GO_CATALOG_ROOTS = ("apps/server/internal/", "apps/runner/internal/", "apps/cli/")
 GO_CATALOG_NAME = re.compile(r"(?:^|\.)[A-Za-z]*Ar\.go$")
 EXCLUDED = ("apps/server/internal/Core/Installer/Prompt.go",)
+ROOT_DOCS = ("README.md", "CONTRIBUTING.md", "SECURITY.md")
+DOCS = "docs/"
+ENGLISH_DOCS = "docs/en/"
+FENCE = re.compile(r"^\s*(```|~~~)")
+INLINE_CODE = re.compile(r"`+[^`]*`+")
 ADR = "Plan/ADR/0062-simple-arabic-for-users.md"
 
 DIACRITICS = re.compile(r"[ـً-ْٰ]")
@@ -75,6 +80,28 @@ def is_arabic_catalog(rel):
     return False
 
 
+def is_arabic_doc(rel):
+    if rel in ROOT_DOCS:
+        return True
+    return rel.startswith(DOCS) and not rel.startswith(ENGLISH_DOCS) and rel.endswith(".md")
+
+
+def code_lines(text):
+    inside, found = False, set()
+    for line in text.splitlines():
+        if FENCE.match(line):
+            inside = not inside
+            found.add(line.strip())
+        elif inside:
+            found.add(line.strip())
+    return found
+
+
+def prose_lines(added, old, final_content):
+    skip = code_lines(added) | code_lines(final_content or "")
+    return [INLINE_CODE.sub(" ", ln) for ln in new_lines(added, old) if ln.strip() not in skip]
+
+
 def find_marker(text):
     plain = DIACRITICS.sub("", text)
     for pattern, hint in COMPILED:
@@ -84,10 +111,14 @@ def find_marker(text):
     return None
 
 
-def check_arabic_register(rel, added, old, **_):
-    if not is_arabic_catalog(rel):
+def check_arabic_register(rel, added, old, final_content=None, **_):
+    if is_arabic_doc(rel):
+        lines = prose_lines(added, old, final_content)
+    elif is_arabic_catalog(rel):
+        lines = new_lines(added, old)
+    else:
         return None
-    for line in new_lines(added, old):
+    for line in lines:
         hit = find_marker(line)
         if hit:
             word, hint = hit

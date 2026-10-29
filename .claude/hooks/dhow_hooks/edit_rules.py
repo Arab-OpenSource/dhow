@@ -9,7 +9,10 @@ CSS_EXT = (".css",)
 PROTO_DIRECTIVE = re.compile(r"^//\s*buf:lint:ignore\s")
 MAX_LINES = 500
 
-ROOT_MARKDOWN = {"README.md", "README.ar.md", "CLAUDE.md", "CONTRIBUTING.md", "SECURITY.md", "LICENSE.md"}
+ROOT_MARKDOWN = {
+    "README.md", "README.en.md", "CLAUDE.md", "CONTRIBUTING.md", "CONTRIBUTING.en.md", "SECURITY.md", "SECURITY.en.md",
+    "LICENSE.md",
+}
 MARKDOWN_DIRS = ("docs/", "Plan/", ".github/", ".claude/")
 
 SERVER_INTERNAL = "apps/server/internal/"
@@ -155,7 +158,7 @@ def check_markdown_location(rel, exists, **_):
         return None
     if rel in ROOT_MARKDOWN or rel.startswith(MARKDOWN_DIRS):
         return None
-    return (f"{rel}: documentation lives in docs/ (public, English) or Plan/ (internal, Arabic). "
+    return (f"{rel}: documentation lives in docs/ (public, Arabic, with English in docs/en/) or Plan/ (internal, Arabic). "
             "Do not create Markdown files elsewhere.")
 
 
