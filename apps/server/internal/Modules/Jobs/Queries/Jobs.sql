@@ -12,7 +12,7 @@ SELECT pg_notify('dhow_jobs_queued', @organization_id::text);
 SELECT count(*)
 FROM "Jobs"
 WHERE "OrganizationId" = @organization_id AND NOT "IsDeleted"
-  AND (sqlc.narg(state)::text IS NULL OR "State" = sqlc.narg(state)::text);
+  AND (cardinality(@states::text[]) = 0 OR "State" = ANY(@states::text[]));
 
 -- name: ListJobs :many
 SELECT "Id", "CreatedAt", "OrganizationId", "CreatedByUserId", "Name", "SpecDigest", "Image", "Labels", "Isolation",
@@ -20,7 +20,7 @@ SELECT "Id", "CreatedAt", "OrganizationId", "CreatedByUserId", "Name", "SpecDige
        "CancelRequestedAt", "AttemptCount", "MaxInfraRetries"
 FROM "Jobs"
 WHERE "OrganizationId" = @organization_id AND NOT "IsDeleted"
-  AND (sqlc.narg(state)::text IS NULL OR "State" = sqlc.narg(state)::text)
+  AND (cardinality(@states::text[]) = 0 OR "State" = ANY(@states::text[]))
 ORDER BY "CreatedAt" DESC, "Id" DESC
 LIMIT @page_limit OFFSET @page_offset;
 

@@ -10,6 +10,7 @@ var arMessages = map[Key]string{ //nolint:gosec // User-facing text that names s
 	KeyAdviceReinstall:       "شغّل dhow-server install مرة أخرى، وهو يحافظ على الأسرار والبيانات.",
 	KeyAdviceRenew:           "جدّد الشهادة في البرنامج الذي يتولى TLS عندك.",
 	KeyAdviceSecrets:         "استرجع الملف من النسخة الاحتياطية. المفتاح الجديد لا يستطيع فك البيانات المشفّرة بالقديم، لذلك لا يولّد doctor مفتاحًا أبدًا.",
+	KeyAdviceSettings:        "لم نتمكن من إعادة تحميل إعدادات السيرفر، ونعيد المحاولة تلقائيًا. ابحث في سجل الخدمة عن instance settings were not reloaded لتعرف السبب: journalctl -u dhow -n 100",
 	KeyAfterInstall:          "إجاباتك (دون الأسرار) في %s. شغّل dhow-server doctor في أي وقت لتفحص التثبيت، وشغّل installer من إصدار أحدث لتجري ترقية.",
 	KeyApplyFix:              "هل نطبّق الإصلاح «%s»؟",
 	KeyAskBreached:           "هل نفحص كلمات السر الجديدة في قائمة الكلمات المسرّبة عبر Have I Been Pwned؟ لا يخرج من السيرفر إلا أول 5 حروف من SHA-1 لكلمة السر. اختر «لا» إذا كان السيرفر غير متصل بالإنترنت.",

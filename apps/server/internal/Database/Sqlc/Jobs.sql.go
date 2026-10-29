@@ -121,16 +121,16 @@ const countJobs = `-- name: CountJobs :one
 SELECT count(*)
 FROM "Jobs"
 WHERE "OrganizationId" = $1 AND NOT "IsDeleted"
-  AND ($2::text IS NULL OR "State" = $2::text)
+  AND (cardinality($2::text[]) = 0 OR "State" = ANY($2::text[]))
 `
 
 type CountJobsParams struct {
 	OrganizationID uuid.UUID
-	State          pgtype.Text
+	States         []string
 }
 
 func (q *Queries) CountJobs(ctx context.Context, arg CountJobsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countJobs, arg.OrganizationID, arg.State)
+	row := q.db.QueryRow(ctx, countJobs, arg.OrganizationID, arg.States)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -790,14 +790,14 @@ SELECT "Id", "CreatedAt", "OrganizationId", "CreatedByUserId", "Name", "SpecDige
        "CancelRequestedAt", "AttemptCount", "MaxInfraRetries"
 FROM "Jobs"
 WHERE "OrganizationId" = $1 AND NOT "IsDeleted"
-  AND ($2::text IS NULL OR "State" = $2::text)
+  AND (cardinality($2::text[]) = 0 OR "State" = ANY($2::text[]))
 ORDER BY "CreatedAt" DESC, "Id" DESC
 LIMIT $4 OFFSET $3
 `
 
 type ListJobsParams struct {
 	OrganizationID uuid.UUID
-	State          pgtype.Text
+	States         []string
 	PageOffset     int32
 	PageLimit      int32
 }
@@ -828,7 +828,7 @@ type ListJobsRow struct {
 func (q *Queries) ListJobs(ctx context.Context, arg ListJobsParams) ([]ListJobsRow, error) {
 	rows, err := q.db.Query(ctx, listJobs,
 		arg.OrganizationID,
-		arg.State,
+		arg.States,
 		arg.PageOffset,
 		arg.PageLimit,
 	)

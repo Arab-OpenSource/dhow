@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { backendFailure } from '@/Core/Testing/Backend';
 import { envelope, meBody, ORG_ID, stubFetch, USER_ID } from '@/Core/Testing/Fetch';
 import { renderWithProviders } from '@/Core/Testing/Render';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 import {
   OrganizationTokenNewBody,
@@ -60,7 +61,7 @@ describe('the organization API tokens slide', () => {
     expect(within(active).getByText(Ar['orgTokens.expires'])).toBeInTheDocument();
     expect(within(revoked).getByText(Ar['orgTokens.revokedAt'])).toBeInTheDocument();
     expect(within(revoked).queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.getByText(Ar['orgTokens.count'].replace('{count}', '1'))).toBeInTheDocument();
+    expect(screen.getByText(arText('orgTokens.count', { count: 1 }))).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('dhow_pat_');
   });
 

@@ -13,6 +13,7 @@ const (
 	CheckDatabase      HealthCheckName = "database"
 	CheckMigrations    HealthCheckName = "migrations"
 	CheckLogPartitions HealthCheckName = "log_partitions"
+	CheckSettings      HealthCheckName = "settings"
 )
 
 type HealthCheck struct {

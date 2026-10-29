@@ -10,6 +10,7 @@ const (
 	KeyAdviceReinstall       Key = "advice.reinstall"
 	KeyAdviceRenew           Key = "advice.renew"
 	KeyAdviceSecrets         Key = "advice.secrets"
+	KeyAdviceSettings        Key = "advice.settings"
 	KeyAfterInstall          Key = "after.install"
 	KeyApplyFix              Key = "apply.fix"
 	KeyAskBreached           Key = "ask.breached"

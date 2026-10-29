@@ -8,6 +8,7 @@ import { canManageMembers, type TRole } from '@/Core/Auth/AuthTypes';
 import { NAME_MAX } from '@/Core/Forms/Fields';
 import { applyFieldErrors } from '@/Core/Hooks/FormErrors';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
+import { useCrumbTitle } from '@/Core/Hooks/useCrumbTitle';
 import { useFormMessage } from '@/Core/Hooks/useFormMessage';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { Button } from '@/Core/Ui/Button';
@@ -142,6 +143,7 @@ export const TeamBody = ({ organizationId, actor, teamId, onDeleted }: ITeamBody
   const t = useT();
   const errorText = useApiErrorText();
   const team = useTeam(organizationId, teamId);
+  useCrumbTitle(teamId, team.data?.Name);
   if (isApiError(team.error) && team.error.Status === 404) {
     return (
       <Card>

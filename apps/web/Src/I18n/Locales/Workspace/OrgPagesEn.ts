@@ -9,6 +9,8 @@ export const OrgPagesEn: Record<keyof typeof OrgPagesAr, string> = {
   'member.facts.role': 'Role',
   'member.facts.mfa': 'Second step',
   'member.facts.joined': 'Joined',
+  'member.facts.teams': 'Teams',
+  'member.facts.teams.none': 'No teams',
   'member.self.open': 'Open security settings',
   'member.role.pick': 'New role',
   'member.remove.subtitle': 'The member loses access right away.',

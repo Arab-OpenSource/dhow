@@ -2,6 +2,7 @@ import type { TLocale } from '@/I18n/Locale';
 import { BootAr } from '@/I18n/Locales/Boot/Ar';
 import { BootEn } from '@/I18n/Locales/Boot/En';
 import type { TMessageKey, TMessageParams, TMessages, TWorkspaceMessages } from '@/I18n/Messages';
+import { selectPlurals } from '@/I18n/Plural';
 import { useCatalogStore } from '@/I18n/useCatalogStore';
 
 type TCatalog = Readonly<Partial<TMessages>>;
@@ -17,7 +18,7 @@ export const translate = (
   params?: TMessageParams,
   workspace: TCatalog | undefined = loadedWorkspace(locale),
 ): string => {
-  const template = BOOT[locale][key] ?? workspace?.[key] ?? key;
+  const template = selectPlurals(locale, BOOT[locale][key] ?? workspace?.[key] ?? key, params);
   if (!params) return template;
   return template.replace(/\{(\w+)\}/g, (placeholder, name: string) => {
     const value = params[name];

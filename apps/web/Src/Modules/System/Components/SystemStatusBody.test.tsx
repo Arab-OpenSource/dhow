@@ -115,3 +115,26 @@ describe('SystemStatusBody', () => {
     expect(onOpenCheck).toHaveBeenCalledWith('migrations');
   });
 });
+
+describe('the settings reload check', () => {
+  it.each([
+    [true, 'status.state.live'],
+    [false, 'status.state.failed'],
+  ] as const)('shows the settings reload check, healthy %s', async (ok, state) => {
+    const body = {
+      Success: ok,
+      ...(ok ? {} : { Error: { Code: 'SERVICE_UNAVAILABLE', Message: 'x' } }),
+      Data: {
+        Status: ok ? 'ok' : 'unavailable',
+        Checks: [
+          { Name: 'database', Ok: true },
+          { Name: 'settings', Ok: ok },
+        ],
+      },
+    };
+    stubFetch((request) => (request.url.endsWith('/meta') ? envelope(META_BODY) : envelope(body, ok ? 200 : 503)));
+    open();
+    const settings = await screen.findByText(Ar['status.check.settings']);
+    expect(within(settings.closest('li') as HTMLElement).getByText(Ar[state])).toBeInTheDocument();
+  });
+});

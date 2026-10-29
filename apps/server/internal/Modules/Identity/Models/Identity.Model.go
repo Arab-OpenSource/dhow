@@ -31,6 +31,12 @@ type Member struct {
 	JoinedAt        time.Time
 	Mfa             string
 	MfaResetPending bool
+	Teams           []MemberTeam
+}
+
+type MemberTeam struct {
+	ID   uuid.UUID
+	Name string
 }
 
 type SetupInput struct {

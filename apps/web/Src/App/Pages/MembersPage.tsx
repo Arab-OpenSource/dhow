@@ -55,6 +55,10 @@ export const MembersPage = () => {
                     onOpenAccount={() => {
                       void navigate({ to: '/account/security' });
                     }}
+                    teamHrefOf={(teamId) => `/org/teams/${teamId}`}
+                    onOpenTeam={(teamId) => {
+                      void navigate({ to: '/org/teams/$teamId', params: { teamId } });
+                    }}
                   />
                 </>
               )

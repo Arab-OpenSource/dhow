@@ -90,8 +90,13 @@ func (c *Controller) ListMembers(ctx context.Context, req gen.ListMembersRequest
 	}
 	items := make([]gen.Member, 0, len(members))
 	for _, m := range members {
+		teams := make([]gen.MemberTeam, 0, len(m.Teams))
+		for _, team := range m.Teams {
+			teams = append(teams, gen.MemberTeam{Id: team.ID, Name: team.Name})
+		}
 		item := gen.Member{
 			UserId: m.UserID, Name: m.Name, Email: m.Email, Role: gen.Role(m.Role), EffectiveRole: gen.Role(m.EffectiveRole), JoinedAt: m.JoinedAt,
+			Teams: teams,
 		}
 		if m.Mfa != "" {
 			item.Mfa = ptr(gen.MfaState(m.Mfa))

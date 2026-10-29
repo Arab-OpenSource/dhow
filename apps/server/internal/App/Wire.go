@@ -151,7 +151,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Log:    in.Log,
 		System: system.Deps{
 			DB: in.Pool, Migrations: in.Migrations, Queries: sqlc.New(in.Pool), Build: in.Build, Log: in.Log,
-			Checks: []system.ReadinessCheck{{Name: systemmodels.CheckLogPartitions, Run: jobsService.CheckLogPartition}},
+			Checks: readinessChecks(jobsService, store),
 		},
 		Identity:  identityService,
 		Session:   sessionService,
@@ -179,6 +179,13 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
 	}
 	return wired, nil
+}
+
+func readinessChecks(jobsService *jobs.Service, store *instancesettings.Store) []system.ReadinessCheck {
+	return []system.ReadinessCheck{
+		{Name: systemmodels.CheckLogPartitions, Run: jobsService.CheckLogPartition},
+		{Name: systemmodels.CheckSettings, Run: store.Ready},
+	}
 }
 
 func settingsFor(

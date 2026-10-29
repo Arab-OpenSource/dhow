@@ -9,7 +9,7 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { backendFailure, membersFixture, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { ORG_ID } from '@/Core/Testing/Fetch';
-import { orgBackend } from '@/Core/Testing/OrgBackend';
+import { orgBackend, TEAM_ID } from '@/Core/Testing/OrgBackend';
 import { findPage } from '@/Core/Testing/Pages';
 import { Ar } from '@/I18n/Locales/Ar';
 
@@ -82,10 +82,10 @@ describe('the members page', () => {
   });
 
   it('shows the second step and the join date of the member, and never asks for every team', async () => {
-    const { page } = await open(`/org/members/${HANA}`, { secondFactorRule: 'everyone' });
+    const { page, calls } = await open(`/org/members/${HANA}`, { secondFactorRule: 'everyone' });
     const facts = await within(page).findByRole('region', { name: Ar['shell.crumb.member'] });
     expect(await within(facts).findByText(Ar['members.mfa.none'])).toBeInTheDocument();
-    expect(within(facts).queryByRole('list')).not.toBeInTheDocument();
+    expect(calls.filter((call) => new URL(call.url).pathname.endsWith('/teams'))).toEqual([]);
     expect(facts).toHaveTextContent(Ar['members.mfa.needs']);
     expect(facts).toHaveTextContent(Ar['member.facts.joined']);
   });
@@ -113,7 +113,7 @@ describe('the members page', () => {
   it('isolates names in the list so an Arabic name keeps its place in English text', async () => {
     const members = [
       ...membersFixture(),
-      { UserId: '0198a000-0000-7000-8000-0000000000b5', Name: 'صبري داود', Email: 'sabry2@future.dev', Role: 'viewer', EffectiveRole: 'viewer', JoinedAt: '2026-10-08T08:00:00Z', Mfa: 'totp' },
+      { UserId: '0198a000-0000-7000-8000-0000000000b5', Name: 'صبري داود', Email: 'sabry2@future.dev', Role: 'viewer', EffectiveRole: 'viewer', JoinedAt: '2026-10-08T08:00:00Z', Mfa: 'totp', Teams: [] },
     ];
     const { page } = await open('/org/members', { members });
     const list = await listOf(page);
@@ -188,5 +188,32 @@ describe('member actions per role', () => {
     const router = createAppRouter(createMemoryHistory({ initialEntries: [`/org/members/${HANA}`] }));
     render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
     expect(await screen.findByText(Ar['notFound.text'])).toBeInTheDocument();
+  });
+});
+
+describe("a member's teams", () => {
+  it('lists the teams from the members list, without a request per team, and opens one', async () => {
+    const { page, user, router, calls } = await open(`/org/members/${HANA}`);
+    await within(page).findByRole('heading', { level: 2, name: 'Hana Samir' });
+    const facts = within(page).getByRole('region', { name: Ar['shell.crumb.member'] });
+    const row = within(facts).getByText(Ar['member.facts.teams']).closest('div') as HTMLElement;
+    const link = within(row).getByRole('link', { name: 'Backend' });
+    expect(link).toHaveAttribute('href', `/org/teams/${TEAM_ID}`);
+    expect(within(link).getByText('Backend').tagName).toBe('BDI');
+    expect(calls.filter((call) => new URL(call.url).pathname.includes('/teams'))).toEqual([]);
+
+    await user.click(link);
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(`/org/teams/${TEAM_ID}`);
+    });
+  });
+
+  it('says so when the member has no team', async () => {
+    const { page } = await open(`/org/members/${MONA}`);
+    await within(page).findByRole('heading', { level: 2, name: 'Mona Adel' });
+    const facts = within(page).getByRole('region', { name: Ar['shell.crumb.member'] });
+    const row = within(facts).getByText(Ar['member.facts.teams']).closest('div') as HTMLElement;
+    expect(within(row).getByText(Ar['member.facts.teams.none'])).toBeInTheDocument();
+    expect(within(row).queryByRole('link')).not.toBeInTheDocument();
   });
 });

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { backendFailure } from '@/Core/Testing/Backend';
 import { envelope, meBody, ORG_ID, stubFetch, USER_ID } from '@/Core/Testing/Fetch';
 import { renderWithProviders } from '@/Core/Testing/Render';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 import { RunnerBody } from '@/Modules/Runners/Components/RunnerBody';
 import { RunnerNewBody } from '@/Modules/Runners/Components/RunnerNewBody';
@@ -44,7 +45,7 @@ describe('a runner', () => {
     expect(await screen.findByText(Ar['runners.about.offline'])).toBeInTheDocument();
     expect(screen.getByRole('list', { name: Ar['runners.facts.capabilities'] })).toHaveTextContent('dhow.isolation=container');
     expect(screen.getByText('linux/amd64')).toBeInTheDocument();
-    expect(screen.getByText(Ar['runners.facts.capacity.value'].replace('{count}', '2'))).toBeInTheDocument();
+    expect(screen.getByText(arText('runners.facts.capacity.value', { count: 2 }))).toBeInTheDocument();
     expect(screen.getByText(Ar['runners.detail.readOnly'])).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: Ar['runners.revoke.action'] })).not.toBeInTheDocument();
   });

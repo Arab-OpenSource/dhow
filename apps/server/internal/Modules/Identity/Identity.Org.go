@@ -67,6 +67,17 @@ func mfaOf(totp, passkey bool) string {
 	}
 }
 
+func memberTeams(ids []uuid.UUID, names []string) []models.MemberTeam {
+	out := make([]models.MemberTeam, 0, len(ids))
+	for i, id := range ids {
+		if i >= len(names) {
+			break
+		}
+		out = append(out, models.MemberTeam{ID: id, Name: names[i]})
+	}
+	return out
+}
+
 func (s *Service) ListMembers(ctx context.Context, id uuid.UUID, page, limit int) ([]models.Member, int64, error) {
 	_, actor, err := actorIn(ctx, id)
 	if err != nil {
@@ -90,7 +101,10 @@ func (s *Service) ListMembers(ctx context.Context, id uuid.UUID, page, limit int
 		if !ok {
 			continue
 		}
-		m := models.Member{UserID: r.UserId, Name: r.Name, Email: r.Email, Role: r.Role, EffectiveRole: string(effective), JoinedAt: r.JoinedAt}
+		m := models.Member{
+			UserID: r.UserId, Name: r.Name, Email: r.Email, Role: r.Role, EffectiveRole: string(effective), JoinedAt: r.JoinedAt,
+			Teams: memberTeams(r.TeamIds, r.TeamNames),
+		}
 		if manager {
 			m.Mfa = mfaOf(r.HasTotp, r.HasPasskey)
 			m.MfaResetPending = r.MfaResetAt != nil && m.Mfa == "none"

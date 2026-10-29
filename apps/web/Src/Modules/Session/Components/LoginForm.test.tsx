@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { envelope, stubFetch } from '@/Core/Testing/Fetch';
 import { renderWithProviders } from '@/Core/Testing/Render';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 import { LoginForm } from '@/Modules/Session/Components/LoginForm';
 
@@ -66,7 +67,7 @@ describe('sign-in throttle', () => {
   it('announces the lock once without announcing every tick', async () => {
     await mountLocked();
     const status = screen.getByRole('status');
-    expect(status).toHaveTextContent(Ar['login.locked.announce'].replace('{seconds}', '30'));
+    expect(status).toHaveTextContent(arText('login.locked.announce', { seconds: 30 }));
     expect(screen.getByRole('timer')).toHaveAttribute('aria-live', 'off');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
