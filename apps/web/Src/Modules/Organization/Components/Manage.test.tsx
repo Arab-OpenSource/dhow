@@ -83,9 +83,9 @@ describe('inviting a member', () => {
 
 describe('a member page', () => {
   it('changes a role and says the sessions ended', async () => {
-    const { user, dialog, calls } = await open(`/org/members/${HANA}`, Ar['shell.crumb.member']);
-    const roles = await within(dialog).findByRole('radiogroup', { name: Ar['member.role.title'] });
-    await user.click(within(roles).getByRole('radio', { name: new RegExp(Ar['role.maintainer']) }));
+    const { user, dialog, calls } = await open(`/org/members/${HANA}`, Ar['shell.nav.members']);
+    const role = await within(dialog).findByRole('combobox', { name: Ar['member.role.pick'] });
+    await user.selectOptions(role, 'maintainer');
     await user.click(within(dialog).getByRole('button', { name: Ar['member.role.save'] }));
     await waitFor(() => {
       expect(useToastStore.getState().Toasts.some((toast) => toast.Title.includes('Hana Samir'))).toBe(true);
@@ -94,9 +94,8 @@ describe('a member page', () => {
   });
 
   it('asks for a current factor before granting the owner role', async () => {
-    const { user, dialog, calls } = await open(`/org/members/${HANA}`, Ar['shell.crumb.member']);
-    const roles = await within(dialog).findByRole('radiogroup', { name: Ar['member.role.title'] });
-    await user.click(within(roles).getByRole('radio', { name: new RegExp(Ar['role.owner']) }));
+    const { user, dialog, calls } = await open(`/org/members/${HANA}`, Ar['shell.nav.members']);
+    await user.selectOptions(await within(dialog).findByRole('combobox', { name: Ar['member.role.pick'] }), 'owner');
     await user.click(within(dialog).getByRole('button', { name: Ar['member.role.save'] }));
     await user.type(await within(dialog).findByLabelText(Ar['factor.method.password']), 'correct horse battery staple');
     await user.click(within(dialog).getAllByRole('button', { name: Ar['member.role.save'] }).at(-1) ?? dialog);
@@ -109,7 +108,7 @@ describe('a member page', () => {
   });
 
   it('resets a lost second factor after the actor confirms', async () => {
-    const { user, dialog, calls } = await open(`/org/members/${MONA}`, Ar['shell.crumb.member']);
+    const { user, dialog, calls } = await open(`/org/members/${MONA}`, Ar['shell.nav.members']);
     await user.click(await within(dialog).findByRole('button', { name: Ar['member.mfa.reset'] }));
     await user.type(await within(dialog).findByLabelText(Ar['factor.method.password']), 'correct horse battery staple');
     await user.click(within(dialog).getAllByRole('button', { name: Ar['member.mfa.reset'] }).at(-1) ?? dialog);
@@ -126,29 +125,44 @@ describe('a member page', () => {
       ...membersFixture(),
       { UserId: coOwner, Name: 'Laila Owner', Email: 'laila@future.dev', Role: 'owner', EffectiveRole: 'owner', JoinedAt: '2026-10-06T08:00:00Z', Mfa: 'totp' },
     ];
-    const { dialog } = await open(`/org/members/${coOwner}`, Ar['shell.crumb.member'], { members });
+    const { dialog } = await open(`/org/members/${coOwner}`, Ar['shell.nav.members'], { members });
     expect(await within(dialog).findByText(Ar['member.remove.ownerFirst'].replace('{name}', 'Laila Owner'))).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: Ar['member.remove.action'].replace('{name}', 'Laila Owner') })).not.toBeInTheDocument();
   });
 
-  it('points to My account on your own member slide', async () => {
+  it('points to the security page on your own member page', async () => {
     const owner = '0198a000-0000-7000-8000-0000000000b1';
-    const { dialog } = await open(`/org/members/${owner}`, Ar['shell.crumb.member'], { role: 'admin' });
+    const { user, dialog, router } = await open(`/org/members/${owner}`, Ar['shell.nav.members'], { role: 'admin' });
     expect(await within(dialog).findByText(Ar['member.self'])).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: Ar['member.self.open'] }));
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/account/security');
+    });
   });
 });
 
 describe('teams', () => {
   it('opens a team, raises its role and reports the ended sessions', async () => {
-    const { user, dialog, calls } = await open(`/org/teams/${TEAM_ID}`, Ar['shell.crumb.team']);
-    const roles = await within(dialog).findByRole('radiogroup', { name: Ar['team.role'] });
-    expect(within(dialog).getByText('Hana Samir')).toBeInTheDocument();
-    await user.click(within(roles).getByRole('radio', { name: new RegExp(Ar['role.admin']) }));
+    const { user, dialog, calls } = await open(`/org/teams/${TEAM_ID}`, Ar['shell.nav.teams']);
+    const role = await within(dialog).findByRole('combobox', { name: Ar['team.role.pick'] });
+    expect(within(dialog).getByRole('list', { name: Ar['team.members.title'] })).toHaveTextContent('Hana Samir');
+    await user.selectOptions(role, 'admin');
     await user.click(within(dialog).getByRole('button', { name: Ar['team.role.save'] }));
     await waitFor(() => {
       expect(useToastStore.getState().Toasts.some((toast) => toast.Detail === Ar['team.revoked'].replace('{count}', '1'))).toBe(true);
     });
     expect(await bodyOf(calls, 'PATCH', '/role-bindings/0198a000-0000-7000-8000-0000000000d2')).toEqual({ Role: 'admin' });
+  });
+
+  it('adds a member picked from the organization', async () => {
+    const { user, dialog, calls } = await open(`/org/teams/${TEAM_ID}`, Ar['shell.nav.teams']);
+    await user.click(await within(dialog).findByRole('button', { name: Ar['team.members.add'] }));
+    const pick = await within(dialog).findByRole('combobox', { name: Ar['team.members.pick'] });
+    await user.selectOptions(pick, MONA);
+    await user.click(within(dialog).getByRole('button', { name: Ar['team.members.addPicked'] }));
+    await waitFor(async () => {
+      expect(await bodyOf(calls, 'POST', `/teams/${TEAM_ID}/members`)).toEqual({ UserId: MONA });
+    });
   });
 
   it('lists teams with their organization role', async () => {
@@ -183,12 +197,17 @@ describe('switching and leaving organizations', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('leaves after a confirmation', async () => {
-    const { user, dialog, calls } = await open('/org/settings', Ar['shell.nav.orgSettings'], { role: 'developer' });
+  it('leaves after a confirmation slide', async () => {
+    const { user, dialog, calls, router } = await open('/org/settings', Ar['shell.nav.orgSettings'], { role: 'developer' });
     await user.click(await within(dialog).findByRole('button', { name: Ar['organization.leave.action'].replace('{name}', 'Future Solution') }));
-    await user.click(within(dialog).getByRole('button', { name: Ar['organization.leave.confirm'] }));
+    const slide = await screen.findByRole('dialog', { name: Ar['organization.leave.title'] });
+    expect(calls.some((call) => call.method === 'POST' && call.url.endsWith('/leave'))).toBe(false);
+    await user.click(within(slide).getByRole('button', { name: Ar['organization.leave.confirm'] }));
     await waitFor(() => {
       expect(calls.some((call) => call.method === 'POST' && call.url.endsWith(`/organizations/${ORG_ID}/leave`))).toBe(true);
+    });
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/');
     });
   });
 

@@ -1,0 +1,198 @@
+import { createMemoryHistory } from '@tanstack/react-router';
+import { configure, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { App } from '@/App/App';
+import { createAppRouter } from '@/App/Router';
+import { createQueryClient } from '@/Core/Api/QueryClient';
+import { useToastStore } from '@/Core/Store/useToastStore';
+import { backendFailure, membersFixture, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
+import { ORG_ID } from '@/Core/Testing/Fetch';
+import { orgBackend } from '@/Core/Testing/OrgBackend';
+import { findPage } from '@/Core/Testing/Pages';
+import { Ar } from '@/I18n/Locales/Ar';
+
+configure({ asyncUtilTimeout: 5000 });
+
+const HANA = '0198a000-0000-7000-8000-0000000000b3';
+const MONA = '0198a000-0000-7000-8000-0000000000b2';
+const LIST_PAGE = `/api/v1/organizations/${ORG_ID}/members?Page=1&Limit=25`;
+
+const open = async (url: string, options: IBackendOptions = {}) => {
+  const org = orgBackend();
+  const backend = startBackend({ ...options, routes: [...(options.routes ?? []), ...org.routes] });
+  const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));
+  const user = userEvent.setup();
+  render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
+  const page = await findPage(Ar['shell.nav.members']);
+  return { ...backend, router, user, page };
+};
+
+const listOf = (page: HTMLElement) => within(page).findByRole('list', { name: Ar['members.title'] });
+
+const linkTo = (list: HTMLElement, name: string) => {
+  const link = within(list).getByText(name).closest('a');
+  if (link === null) throw new Error(`no link for ${name}`);
+  return link;
+};
+
+const listRequests = (calls: readonly Request[]) => calls.filter((call) => call.method === 'GET' && call.url.endsWith(LIST_PAGE)).length;
+
+afterEach(() => {
+  useToastStore.setState({ Toasts: [] });
+});
+
+describe('the members page', () => {
+  it('shows the list alone until a member is picked', async () => {
+    const { page } = await open('/org/members');
+    const list = await listOf(page);
+    expect(within(list).getAllByRole('link')).toHaveLength(3);
+    expect(page.querySelector('[data-master-detail]')).toBeNull();
+    expect(within(list).queryByRole('link', { current: 'page' })).toBeNull();
+  });
+
+  it('puts the member beside the list on wide screens and alone with a way back below them', async () => {
+    const { page } = await open(`/org/members/${HANA}`);
+    const list = await listOf(page);
+    expect(await within(page).findByRole('heading', { level: 2, name: 'Hana Samir' })).toBeInTheDocument();
+    expect(page.querySelector('[data-master-list]')).toHaveClass('max-xl:hidden');
+    expect(page.querySelector('[data-master-list]')?.parentElement).toHaveClass('xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]');
+    expect(within(list).getByRole('link', { current: 'page' })).toHaveTextContent('Hana Samir');
+    const back = within(page).getByRole('link', { name: Ar['members.back'] });
+    expect(back).toHaveAttribute('href', '/org/members');
+    expect(back).toHaveClass('xl:hidden');
+  });
+
+  it('switches members without remounting or refetching the list', async () => {
+    const { page, user, calls, router } = await open(`/org/members/${HANA}`);
+    const list = await listOf(page);
+    await within(page).findByRole('heading', { level: 2, name: 'Hana Samir' });
+    expect(listRequests(calls)).toBe(1);
+
+    await user.click(linkTo(list, 'Mona Adel'));
+    expect(await within(page).findByRole('heading', { level: 2, name: 'Mona Adel' })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/org/members/${MONA}`);
+    expect(await listOf(page)).toBe(list);
+    expect(within(list).getByRole('link', { current: 'page' })).toHaveTextContent('Mona Adel');
+    await user.click(linkTo(list, 'Hana Samir'));
+    await within(page).findByRole('heading', { level: 2, name: 'Hana Samir' });
+    expect(await listOf(page)).toBe(list);
+    expect(listRequests(calls)).toBe(1);
+  });
+
+  it('shows the teams, the second step and the join date of the member', async () => {
+    const { page } = await open(`/org/members/${HANA}`, { secondFactorRule: 'everyone' });
+    const facts = await within(page).findByRole('region', { name: Ar['shell.crumb.member'] });
+    const teams = await within(facts).findByRole('list', { name: Ar['member.facts.teams'] });
+    expect(teams).toHaveTextContent('Backend');
+    expect(facts).toHaveTextContent(Ar['members.mfa.none']);
+    expect(facts).toHaveTextContent(Ar['members.mfa.needs']);
+    expect(facts).toHaveTextContent(Ar['member.facts.joined']);
+  });
+
+  it('says when a member is in no team', async () => {
+    const { page } = await open(`/org/members/${MONA}`);
+    expect(await within(page).findByText(Ar['member.teams.none'])).toBeInTheDocument();
+  });
+
+  it('shows the not-found state for a member who is not in the organization', async () => {
+    const { page } = await open('/org/members/0198a000-0000-7000-8000-0000000000f9');
+    expect(await within(page).findByText(Ar['member.error'])).toBeInTheDocument();
+  });
+
+  it('offers a retry when the members cannot be loaded', async () => {
+    let failing = true;
+    const { page, user } = await open(`/org/members/${HANA}`, {
+      routes: [
+        (request, url) =>
+          failing && request.method === 'GET' && url.pathname.endsWith('/members') ? backendFailure('INTERNAL', 'x', 500) : undefined,
+      ],
+    });
+    const detail = await within(page).findByRole('region', { name: Ar['shell.crumb.member'] });
+    expect(await within(detail).findByText(Ar['members.error'])).toBeInTheDocument();
+    failing = false;
+    await user.click(within(detail).getByRole('button', { name: Ar['status.retry'] }));
+    expect(await within(page).findByRole('heading', { level: 2, name: 'Hana Samir' })).toBeInTheDocument();
+  });
+
+  it('isolates names in the list so an Arabic name keeps its place in English text', async () => {
+    const members = [
+      ...membersFixture(),
+      { UserId: '0198a000-0000-7000-8000-0000000000b5', Name: 'صبري داود', Email: 'sabry2@future.dev', Role: 'viewer', EffectiveRole: 'viewer', JoinedAt: '2026-10-08T08:00:00Z', Mfa: 'totp' },
+    ];
+    const { page } = await open('/org/members', { members });
+    const list = await listOf(page);
+    expect(within(list).getByText('صبري داود').tagName).toBe('BDI');
+    expect(within(list).getByText('sabry2@future.dev').tagName).toBe('BDI');
+  });
+});
+
+describe('removing a member', () => {
+  it('asks in a slide and removes only after the confirmation', async () => {
+    const { page, user, calls, router } = await open(`/org/members/${HANA}`);
+    await user.click(await within(page).findByRole('button', { name: Ar['member.remove.action'].replace('{name}', 'Hana Samir') }));
+    const slide = await screen.findByRole('dialog', { name: Ar['member.remove.title'] });
+    expect(router.state.location.search).toEqual({ slide: 'member-remove' });
+    expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
+
+    await user.click(within(slide).getByRole('button', { name: Ar['member.cancel'] }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
+
+    await user.click(within(page).getByRole('button', { name: Ar['member.remove.action'].replace('{name}', 'Hana Samir') }));
+    const again = await screen.findByRole('dialog', { name: Ar['member.remove.title'] });
+    await user.click(within(again).getByRole('button', { name: Ar['member.remove.confirm'] }));
+    await waitFor(() => {
+      expect(calls.some((call) => call.method === 'DELETE' && call.url.endsWith(`/members/${HANA}`))).toBe(true);
+    });
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/org/members');
+    });
+  });
+
+  it('refuses the slide for a member the actor cannot remove', async () => {
+    const members = membersFixture().map((member) => (member.UserId === MONA ? { ...member, Role: 'owner', EffectiveRole: 'owner' } : member));
+    await open(`/org/members/${MONA}?slide=member-remove`, { role: 'admin', members });
+    expect(await screen.findByText(Ar['member.remove.unavailable'])).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: Ar['member.remove.confirm'] })).not.toBeInTheDocument();
+  });
+});
+
+describe('member actions per role', () => {
+  it.each([
+    ['owner', true],
+    ['admin', true],
+    ['maintainer', false],
+    ['developer', false],
+  ] as const)('as a %s, can manage another member: %s', async (role, manage) => {
+    const { page } = await open(`/org/members/${HANA}`, { role });
+    await within(page).findByRole('heading', { level: 2, name: 'Hana Samir' });
+    const remove = within(page).queryByRole('button', { name: Ar['member.remove.action'].replace('{name}', 'Hana Samir') });
+    const roleSelect = within(page).queryByRole('combobox', { name: Ar['member.role.pick'] });
+    const invite = within(page).queryByRole('button', { name: Ar['organization.invite'] });
+    for (const control of [remove, roleSelect, invite]) {
+      if (manage) expect(control).toBeInTheDocument();
+      else expect(control).not.toBeInTheDocument();
+    }
+    expect(within(page).queryAllByText(Ar['member.facts.mfa']).length > 0).toBe(manage);
+  });
+
+  it('keeps an admin away from the role and the removal of an owner', async () => {
+    const members = membersFixture().map((member) => (member.UserId === MONA ? { ...member, Role: 'owner', EffectiveRole: 'owner' } : member));
+    const { page } = await open(`/org/members/${MONA}`, { role: 'admin', members });
+    await within(page).findByRole('heading', { level: 2, name: 'Mona Adel' });
+    expect(within(page).queryByRole('combobox', { name: Ar['member.role.pick'] })).not.toBeInTheDocument();
+    expect(within(page).queryByRole('button', { name: Ar['member.remove.action'].replace('{name}', 'Mona Adel') })).not.toBeInTheDocument();
+    expect(within(page).queryByRole('button', { name: Ar['member.mfa.reset'] })).not.toBeInTheDocument();
+  });
+
+  it('is not a page for a viewer', async () => {
+    startBackend({ role: 'viewer' });
+    const router = createAppRouter(createMemoryHistory({ initialEntries: [`/org/members/${HANA}`] }));
+    render(<App router={router} queryClient={createQueryClient({ retry: false })} />);
+    expect(await screen.findByText(Ar['notFound.text'])).toBeInTheDocument();
+  });
+});

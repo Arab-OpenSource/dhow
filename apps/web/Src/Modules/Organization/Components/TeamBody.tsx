@@ -3,9 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-import type { ApiError } from '@/Core/Api/ApiError';
+import { isApiError, type ApiError } from '@/Core/Api/ApiError';
 import { canManageMembers, type TRole } from '@/Core/Auth/AuthTypes';
-import { useCurrentMembership } from '@/Core/Auth/useMe';
 import { NAME_MAX } from '@/Core/Forms/Fields';
 import { applyFieldErrors } from '@/Core/Hooks/FormErrors';
 import { useApiErrorText } from '@/Core/Hooks/useApiErrorText';
@@ -13,11 +12,11 @@ import { useFormMessage } from '@/Core/Hooks/useFormMessage';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { Button } from '@/Core/Ui/Button';
 import { Card } from '@/Core/Ui/Card';
+import { CardStates, cardStateOf } from '@/Core/Ui/CardStates';
 import { EmptyState } from '@/Core/Ui/EmptyState';
 import { Field } from '@/Core/Ui/Field';
 import { InlineAlert } from '@/Core/Ui/InlineAlert';
 import { Input } from '@/Core/Ui/Input';
-import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
 import { deleteTeam, updateTeam, type TTeamDetail } from '@/Modules/Organization/Api/OrganizationApi';
 import { TeamMembersCard, TeamRoleCard } from '@/Modules/Organization/Components/TeamCards';
@@ -25,6 +24,8 @@ import { teamKey, useRefreshOrganization, useTeam } from '@/Modules/Organization
 import { TEAM_DESCRIPTION_MAX, TEAM_FIELDS, teamFormSchema, type TTeamForm } from '@/Modules/Organization/Types/Forms';
 
 export interface ITeamBodyProps {
+  organizationId: string;
+  actor: TRole;
   teamId: string;
   onDeleted: () => void;
 }
@@ -77,7 +78,7 @@ const DetailsCard = ({ organizationId, team }: ITeamPartProps) => {
         <Field label={t('team.description')} error={message(errors.Description?.message)}>
           <Input maxLength={TEAM_DESCRIPTION_MAX} autoComplete="off" {...form.register('Description')} />
         </Field>
-        <Button type="submit" size="sm" variant="primary" className="justify-self-start" disabled={!isDirty || save.isPending}>
+        <Button type="submit" size="sm" className="justify-self-start" disabled={!isDirty || save.isPending}>
           {t('team.save')}
         </Button>
       </form>
@@ -85,7 +86,9 @@ const DetailsCard = ({ organizationId, team }: ITeamPartProps) => {
   );
 };
 
-const DeleteCard = ({ organizationId, team, onDeleted }: ITeamPartProps & { onDeleted: () => void }) => {
+type TDeleteCardProps = ITeamPartProps & Pick<ITeamBodyProps, 'onDeleted'>;
+
+const DeleteCard = ({ organizationId, team, onDeleted }: TDeleteCardProps) => {
   const t = useT();
   const errorText = useApiErrorText();
   const refresh = useRefreshOrganization(organizationId);
@@ -135,11 +138,36 @@ const DeleteCard = ({ organizationId, team, onDeleted }: ITeamPartProps & { onDe
   );
 };
 
-const Loaded = ({ organizationId, actor, teamId, onDeleted }: ITeamBodyProps & { organizationId: string; actor: TRole }) => {
+export const TeamBody = ({ organizationId, actor, teamId, onDeleted }: ITeamBodyProps) => {
   const t = useT();
+  const errorText = useApiErrorText();
   const team = useTeam(organizationId, teamId);
-  if (team.isError) return <EmptyState icon="users" text={t('team.error')} />;
-  if (team.data === undefined) return <Skeleton label={t('ui.loading')} lines={5} />;
+  if (isApiError(team.error) && team.error.Status === 404) {
+    return (
+      <Card>
+        <EmptyState icon="users" text={t('team.error')} />
+      </Card>
+    );
+  }
+  if (team.data === undefined) {
+    return (
+      <Card>
+        <CardStates
+          state={cardStateOf(team, false)}
+          loadingLabel={t('team.loading')}
+          errorTitle={t('team.loadError')}
+          errorText={team.error ? errorText(team.error) : undefined}
+          retryLabel={t('status.retry')}
+          onRetry={() => {
+            void team.refetch();
+          }}
+          emptyIcon="users"
+          emptyText={t('team.error')}
+          lines={5}
+        />
+      </Card>
+    );
+  }
   const manager = canManageMembers(actor);
   return (
     <>
@@ -148,21 +176,20 @@ const Loaded = ({ organizationId, actor, teamId, onDeleted }: ITeamBodyProps & {
       ) : (
         <Card padded>
           <div className="grid gap-1">
-            <span className="text-title-card">{team.data.Name}</span>
-            {team.data.Description === '' ? null : <p className="m-0 text-body-sm text-secondary">{team.data.Description}</p>}
+            <h2 className="m-0 text-title-section">
+              <bdi>{team.data.Name}</bdi>
+            </h2>
+            {team.data.Description === '' ? null : (
+              <p className="m-0 text-body-sm text-secondary">
+                <bdi>{team.data.Description}</bdi>
+              </p>
+            )}
           </div>
         </Card>
       )}
-      <TeamRoleCard key={team.data.Bindings.map((binding) => binding.Role).join()} organizationId={organizationId} actor={actor} team={team.data} />
       <TeamMembersCard organizationId={organizationId} actor={actor} team={team.data} />
+      <TeamRoleCard key={team.data.Bindings.map((binding) => binding.Role).join()} organizationId={organizationId} actor={actor} team={team.data} />
       {manager ? <DeleteCard organizationId={organizationId} team={team.data} onDeleted={onDeleted} /> : null}
     </>
   );
-};
-
-export const TeamBody = ({ teamId, onDeleted }: ITeamBodyProps) => {
-  const t = useT();
-  const membership = useCurrentMembership();
-  if (membership === undefined) return <Skeleton label={t('ui.loading')} lines={5} />;
-  return <Loaded organizationId={membership.OrganizationId} actor={membership.Role} teamId={teamId} onDeleted={onDeleted} />;
 };

@@ -46,7 +46,6 @@ export const AdminAr = {
   'orgTokens.lead': 'كل مفتاح يعمل بصلاحياته وبدور صاحبه في المؤسسة. ألغِ أي مفتاح لا تعرفه أو لم يعد مستخدمًا.',
   'orgTokens.list': 'المفاتيح',
   'orgTokens.count': '{count} مفتاح فعّال',
-  'orgTokens.owner': 'أنشأه {name}',
   'orgTokens.scopes': 'الصلاحيات',
   'orgTokens.created': 'تاريخ الإنشاء',
   'orgTokens.lastUsed': 'آخر استخدام',
@@ -57,8 +56,5 @@ export const AdminAr = {
   'orgTokens.loading': 'جارٍ تحميل مفاتيح API',
   'orgTokens.empty': 'لا توجد مفاتيح API في هذه المؤسسة بعد.',
   'orgTokens.new.subtitle': 'المفتاح لهذه المؤسسة. اختر الصلاحيات والمدة.',
-  'organization.tokens.title': 'مفاتيح API للمؤسسة',
-  'organization.tokens.about': 'راجع كل المفاتيح التي أنشأها الأعضاء، وألغِ ما لا تحتاجه.',
-  'organization.tokens.open': 'افتح مفاتيح API',
   'palette.command.organizationTokens': 'افتح مفاتيح API للمؤسسة',
 } as const;

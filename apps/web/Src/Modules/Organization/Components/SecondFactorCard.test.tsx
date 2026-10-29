@@ -102,10 +102,12 @@ describe('the second-step rule of the organization', () => {
     expect(await within(dialog).findByText('مقدرناش نتأكد إنه إنت.')).toBeInTheDocument();
   });
 
-  it('is not shown to an admin', async () => {
-    const { dialog } = await mountSettings({ role: 'admin' });
+  it('shows an admin the rule without a way to change it', async () => {
+    const { dialog } = await mountSettings({ role: 'admin', secondFactorRule: 'admins' });
     await within(dialog).findByLabelText(Ar['organization.name']);
-    expect(within(dialog).queryByText(Ar['organization.secondFactor.title'])).toBeNull();
+    expect(within(dialog).getByText(Ar['organization.secondFactor.rule.admins'])).toBeInTheDocument();
+    expect(within(dialog).getByText(Ar['orgSettings.security.ownerOnly'])).toBeInTheDocument();
+    expect(within(dialog).queryByRole('radiogroup', { name: Ar['organization.secondFactor.title'] })).toBeNull();
   });
 });
 

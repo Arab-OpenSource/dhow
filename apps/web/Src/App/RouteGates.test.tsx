@@ -33,9 +33,9 @@ const GATES: readonly IGateCase[] = [
   { url: `/runners/${ID}`, title: Ar['runners.detail.title'], endpoint: /\/runners\//, allowed: BUILDERS },
   { url: '/runners/tokens', title: Ar['runners.tokens.title'], endpoint: /\/runner-registration-tokens/, allowed: ADMINS },
   { url: '/org/members', title: Ar['shell.nav.members'], endpoint: /\/members/, allowed: BUILDERS },
-  { url: `/org/members/${ID}`, title: Ar['shell.crumb.member'], endpoint: /\/members/, allowed: ADMINS },
+  { url: `/org/members/${ID}`, title: Ar['shell.nav.members'], endpoint: /\/members/, allowed: BUILDERS },
   { url: '/org/teams', title: Ar['shell.nav.teams'], endpoint: /\/teams/, allowed: BUILDERS },
-  { url: `/org/teams/${ID}`, title: Ar['shell.crumb.team'], endpoint: /\/teams/, allowed: BUILDERS },
+  { url: `/org/teams/${ID}`, title: Ar['shell.nav.teams'], endpoint: /\/teams/, allowed: BUILDERS },
   { url: '/org/invitations', title: Ar['shell.nav.invitations'], endpoint: /\/invitations/, allowed: ADMINS },
   { url: '/org/api-keys', title: Ar['shell.nav.apiKeys'], endpoint: /\/organizations\/[^/]+\/api-tokens/, allowed: ADMINS },
   { url: '/org/settings', title: Ar['shell.nav.orgSettings'], endpoint: /^$/, allowed: EVERYONE },
@@ -83,6 +83,8 @@ describe('slides the role cannot use', () => {
     ['developer', '/runners?slide=runner-new'],
     ['developer', '/org/teams?slide=team-new'],
     ['maintainer', '/org/members?slide=organization-invite'],
+    ['developer', `/org/members/${ID}?slide=member-remove`],
+    ['viewer', '/org/settings?slide=member-remove'],
   ])('refuses them for a %s at %s and keeps the page', async (role, url) => {
     startBackend({ role });
     const router = createAppRouter(createMemoryHistory({ initialEntries: [url] }));

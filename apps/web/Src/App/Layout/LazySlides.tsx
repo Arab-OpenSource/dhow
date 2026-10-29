@@ -36,6 +36,10 @@ const TransferBody = lazyComponent(() =>
   import('@/Modules/Organization/Components/TransferBody').then((module) => module.TransferBody),
 );
 const TeamNewBody = lazyComponent(() => import('@/Modules/Organization/Components/TeamNewBody').then((module) => module.TeamNewBody));
+const MemberRemoveBody = lazyComponent(() =>
+  import('@/Modules/Organization/Components/MemberRemoveBody').then((module) => module.MemberRemoveBody),
+);
+const LeaveBody = lazyComponent(() => import('@/Modules/Organization/Components/LeaveBody').then((module) => module.LeaveBody));
 const RunnerNewBody = lazyComponent(() => import('@/Modules/Runners/Components/RunnerNewBody').then((module) => module.RunnerNewBody));
 
 type TSlidePart = Exclude<TSlideId, `theme-edit-${string}`>;
@@ -51,6 +55,8 @@ const PARTS: Record<TSlidePart, readonly IPreloadable[]> = {
   'organization-transfer': [TransferBody],
   'team-new': [TeamNewBody],
   'runner-new': [RunnerNewBody],
+  'member-remove': [MemberRemoveBody],
+  'organization-leave': [LeaveBody],
 };
 
 const preloadAll = (components: readonly IPreloadable[]): Promise<void> =>
@@ -98,3 +104,5 @@ export const LazyInviteFooter = withNothing(InviteFooter);
 export const LazyTransferBody = withSkeleton(TransferBody);
 export const LazyTeamNewBody = withSkeleton(TeamNewBody);
 export const LazyRunnerNewBody = withSkeleton(RunnerNewBody);
+export const LazyMemberRemoveBody = withSkeleton(MemberRemoveBody);
+export const LazyLeaveBody = withSkeleton(LeaveBody);

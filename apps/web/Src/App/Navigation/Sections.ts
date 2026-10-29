@@ -113,7 +113,7 @@ export const SECTIONS: readonly ISection[] = [
     group: 'org',
     menu: true,
     detail: 'shell.crumb.member',
-    detailAllow: canManageMembers,
+    detailAllow: canReadMembers,
     allow: canReadMembers,
   },
   {
