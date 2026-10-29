@@ -1,6 +1,8 @@
 import re
 import subprocess
 
+from . import common
+
 ADR = "Plan/ADR/0064-arabic-first-documentation.md"
 DOCS = "docs/"
 ENGLISH = "docs/en/"
@@ -11,8 +13,7 @@ ROOT_PAIRS = {
 }
 ROOT_PAIRS.update({english: arabic for arabic, english in list(ROOT_PAIRS.items())})
 
-VALUE = r"(?:[^\s\"';&|]|\"[^\"]*\"|'[^']*')+"
-GIT_COMMIT = re.compile(r"(?:^|[\n;&|(]|\bthen\b|\bdo\b)\s*(?:\w+=\S+\s+)*git(?:\s+-[cC]\s+" + VALUE + r")*\s+commit\b")
+GIT_COMMIT = common.git_subcommand("commit")
 STRINGS = re.compile(r"\"(?:[^\"\\]|\\.)*\"|'[^']*'")
 ALL_FLAG = re.compile(r"(?:^|\s)(?:--all|-[a-zA-Z]*a[a-zA-Z]*)(?=\s|$)")
 
@@ -57,7 +58,7 @@ def missing_pairs(paths):
 
 
 def check_docs_pairs(command, cwd, workdir):
-    m = GIT_COMMIT.search(command)
+    m = common.find_git(GIT_COMMIT, command)
     if not m:
         return None
     root = workdir(command, cwd)
