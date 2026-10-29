@@ -33,7 +33,7 @@
 
 ### الصلاحيات
 - **الـ route:** `org.read` من خلال `can()`، بالـ session أو بالـ API token. وغير العضو بياخد 404 زي باقي endpoints المؤسسة.
-- **كل block بنفس صلاحية القايمة بتاعته:** `Jobs` بـ `job.read`، و`Runners` بـ `runner.read`، و`Invitations` بـ `member.manage`. الخدمة بتسأل `policy.Can` لكل block، والـ token لازم يكون معاه الـ scope بتاع الـ block كمان.
+- **كل block بنفس صلاحية القايمة بتاعته:** `Jobs` بـ `job.read`، و`Runners` بـ `runner.read`، و`Invitations` بـ `member.manage`. الخدمة بتسأل `policy.Can` و`policy.SecondFactorBlocks` لكل block، زي الـ Guard بالظبط. فالعضو اللي فاتت مهلة الخطوة التانية بتاعته مابيشوفش عدد الدعوات، زي ما القايمة نفسها بترفضه (اتصلّحت بعد المراجعة الأمنية). والـ token لازم يكون معاه الـ scope بتاع الـ block كمان.
 - **الـ block اللي الدور مايقدرش يقراه بيرجع `null`، مش صفر:**
   - الصفر معناه «مفيش»، و`null` معناه «مش من حقك تشوف». لو رجّعنا صفر، الواجهة هتعرض «0 أجهزة متصلة» للـ viewer، وده كدب.
   - الـ query بتاعة الـ block الممنوع مابتتنفذش أصلًا، فمفيش أي رقم بيتسرّب حتى في الـ logs.

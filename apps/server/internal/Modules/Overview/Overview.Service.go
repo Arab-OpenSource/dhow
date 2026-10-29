@@ -49,22 +49,25 @@ func (s *Service) Get(ctx context.Context, org uuid.UUID) (models.Overview, erro
 	}
 	resource := policy.Resource{OrganizationID: org}
 	now := s.now().UTC()
+	allowed := func(action policy.Action) bool {
+		return policy.Can(p.Subject, action, resource) && !policy.SecondFactorBlocks(p.Subject, action, resource, now)
+	}
 	var out models.Overview
-	if policy.Can(p.Subject, policy.JobRead, resource) {
+	if allowed(policy.JobRead) {
 		jobs, err := s.jobs(ctx, org, now)
 		if err != nil {
 			return models.Overview{}, err
 		}
 		out.Jobs = &jobs
 	}
-	if policy.Can(p.Subject, policy.RunnerRead, resource) {
+	if allowed(policy.RunnerRead) {
 		runners, err := s.runners(ctx, org, now)
 		if err != nil {
 			return models.Overview{}, err
 		}
 		out.Runners = &runners
 	}
-	if policy.Can(p.Subject, policy.MemberManage, resource) {
+	if allowed(policy.MemberManage) {
 		pending, err := s.counter.CountOverviewInvitations(ctx, sqlc.CountOverviewInvitationsParams{OrganizationID: org, Now: now})
 		if err != nil {
 			return models.Overview{}, fmt.Errorf("count pending invitations: %w", err)

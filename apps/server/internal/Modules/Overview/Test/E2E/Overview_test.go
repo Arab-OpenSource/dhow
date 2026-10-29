@@ -180,6 +180,15 @@ func TestATokenSeesOnlyTheBlocksOfItsScopes(t *testing.T) {
 	assert.JSONEq(t, "null", string(raw["Runners"]))
 	assert.JSONEq(t, "null", string(raw["Invitations"]))
 
+	orgOnly := w.env.SeedAPIToken(w.ids[policy.RoleOwner], w.org, "org.read")
+	bare := w.env.Bearer(orgOnly.Value, apptest.Request{Method: http.MethodGet, Path: apptest.OrgPath(w.org, "/overview")})
+	require.Equal(t, http.StatusOK, bare.Status, string(bare.Raw))
+	var none map[string]json.RawMessage
+	bare.Decode(t, &none)
+	for _, block := range []string{"Jobs", "Runners", "Invitations"} {
+		assert.JSONEq(t, "null", string(none[block]), block)
+	}
+
 	narrow := w.env.SeedAPIToken(w.ids[policy.RoleOwner], w.org, "job.read")
 	denied := w.env.Bearer(narrow.Value, apptest.Request{Method: http.MethodGet, Path: apptest.OrgPath(w.org, "/overview")})
 	assert.Equal(t, http.StatusForbidden, denied.Status, string(denied.Raw))
