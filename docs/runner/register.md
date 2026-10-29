@@ -51,7 +51,7 @@ If the server uses a private CA, set `DHOW_RUNNER_CA_FILE` before registering. I
 | Paused: copied identity | Dhow paused it because one identity was used from several machines ([copying a runner](#copying-a-runner)). Resume it only if you are sure it runs on one machine. |
 | Revoked | Cut off for good. Register the machine again with a new token. |
 
-Open a runner to see its OS and architecture, version, capacity, isolation levels, capability labels and identity key version, to rename it or change its labels, to pause or resume it, and to revoke it.
+Open a runner to see its OS and architecture, version, capacity, isolation levels, capability labels and identity key version, to rename it or change its labels, to pause or resume it, and to revoke it. Each runner has its own address (`/runners/<id>`). On screens 1280 pixels wide or more it opens beside the list, so you can move from one runner to the next; on smaller screens it takes the whole page, with **All runners** to go back.
 
 ## When it fails
 
