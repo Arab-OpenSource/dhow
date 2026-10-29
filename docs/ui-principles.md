@@ -36,13 +36,26 @@ Decisions: ADR-0021 to ADR-0023, ADR-0034 and ADR-0059.
   - Nothing is smaller than 13px, and 13px is only for badges, dates and code. Titles go up to weight 600.
 - **Spacing:** a 4px grid. The page gutter is 32px (16px on phones), cards have 20px of padding (14px on phones), blocks are 16px apart, and the top bar is 60px high.
 
-## 2. Navigation model (ADR-0022)
+## 2. Navigation model (ADR-0022, ADR-0059)
 
-- **One workspace.** The home screen is the org's projects and environments, shown as a calm overview of what is deployed where and what needs attention.
-- **Slide-over panels.** Details (deployment, job logs, environment settings, approvals) open in panels that slide in from the inline-end edge. Panels stack, and closing them returns you exactly where you were. Users rarely change pages.
-- **⌘K / Ctrl+K command palette** for everything: jump to a project, deploy, roll back, approve, search runs, switch org.
+- **Every section is a full page with its own URL.** The shell has three parts: a side menu, a top bar and the page.
+- **Side menu** (248px wide), grouped in this order. Group titles are labels, not links, and the current item is marked with `aria-current="page"`. Items a role cannot open are hidden.
+  1. Home (`/`).
+  2. **Run:** Jobs (`/jobs`) and Runners (`/runners`).
+  3. **Organization:** Members (`/org/members`), Teams (`/org/teams`), Invitations (`/org/invitations`), API keys (`/org/api-keys`) and Organization settings (`/org/settings`).
+  4. **Monitoring:** Audit log (`/audit`) and Server status (`/system`).
+  5. The account at the bottom: avatar, name and role, and sign out. It opens Profile (`/account/profile`), and the account pages link to Security (`/account/security`) and Preferences (`/account/preferences`, appearance, themes and language).
+  - Projects join the menu, right after Home, with M4. Until then they are hidden.
+- **Detail pages:** a job (`/jobs/<id>`), a runner (`/runners/<id>`), a member (`/org/members/<id>`), a team (`/org/teams/<id>`), an audit event (`/audit/<id>`) and a server check (`/system/checks/<name>`). Runners also has Registration tokens (`/runners/tokens`). The organization switcher is at `/organizations`.
+  - Ids in the address are checked. An invalid or unknown id shows the not-found state.
+  - A page the role cannot open shows the not-found state, never an empty page, and asks the server for nothing.
+- **Every page has a header:** the title, one line of context, and at most one primary action.
+- **Top bar** (60px): the page path (for example "Run › Jobs › Job details"), search, which opens the command palette (Ctrl K / ⌘K), a server status dot that links to `/system`, notifications and the language switch.
+- **Phones** (below the `md` breakpoint): the side menu is hidden and a bottom bar shows five items, each with an icon and its name: Home, Jobs, Runners, Organization (opens Members, or the first organization page the role can open) and Account. Pages of the organization and of the account link to their sibling pages at the top.
+- **Slides are for create and confirm only:** invite a member, new team, new organization API key, new registration token, new personal API key, change the password, set up TOTP, transfer ownership, new organization and edit a theme. They are 560px wide and open over the current page. The open slide is part of the URL (`?slide=<id>`), so a reload or a shared link opens it again, and the browser back button closes it.
+- **Old links keep working.** A link from before this change (`/?stack=…`) is replaced in the history with the matching page, and a create slide in it opens over that page.
+- **Command palette** (Ctrl K / ⌘K): every page the role can open, the create actions (each opens its slide over its page), sign out and the language switch.
 - **Motion:** transitions are short slides of 150–250 ms with eased curves, and they respect `prefers-reduced-motion`.
-- Every view has a **deep-linkable URL**, including open panels, so links in notifications land in the right context.
 
 ## 3. Calm, low-density visual style
 
@@ -50,7 +63,7 @@ Decisions: ADR-0021 to ADR-0023, ADR-0034 and ADR-0059.
 - **Progressive disclosure:**
   - Summaries come first and details appear on demand.
   - Tables are not the default view.
-  - Show the ~5 things that matter and put the rest behind a panel.
+  - Show the ~5 things that matter and put the rest on a detail page.
 - Four dark system themes, plus custom ones. Text meets WCAG AA on every surface of every theme, and cards stand out with a hairline instead of a shadow.
 - Status has its own colors, each with a background and a foreground: green for success, blue for running, violet for queued, amber for warnings and coral for failures.
 

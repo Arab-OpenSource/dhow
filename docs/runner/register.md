@@ -4,7 +4,7 @@ Registration turns a one-time token into a runner identity: a pair of keys that 
 
 ## 1. Create a registration token
 
-An organization owner or admin creates it in the dashboard: open **Runners** in the side menu and choose **Add a runner**. Pick the labels, how many machines the token may register (1 to 50) and how long it stays valid (1, 6 or 24 hours). The next screen shows the token once, next to the exact `dhow-runner register` command for your server and the command that starts the service. Copy the token before you close it: the dashboard never shows it again, and a lost token is revoked from the **Registration tokens** list on the same page.
+An organization owner or admin creates it in the dashboard: open **Runners** in the side menu and choose **Add a runner**. Pick the labels, how many machines the token may register (1 to 50) and how long it stays valid (1, 6 or 24 hours). The next screen shows the token once, next to the exact `dhow-runner register` command for your server and the command that starts the service. Copy the token before you close it: the dashboard never shows it again. A lost token is revoked from the **Registration tokens** page (`/runners/tokens`, linked at the top of **Runners**).
 
 With the API:
 

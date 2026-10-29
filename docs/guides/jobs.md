@@ -1,6 +1,6 @@
 # Follow jobs in the web app
 
-Open **Jobs** in the side menu (or type "jobs" in the command palette). Every member of the organization sees the list. Viewers see the jobs but not their logs.
+Open **Run › Jobs** in the side menu (or type "jobs" in the command palette). The list lives at `/jobs` and each job has its own page at `/jobs/<id>`, so you can bookmark or share a link to it. Every member of the organization sees the list. Viewers see the jobs but not their logs.
 
 ## The list
 
