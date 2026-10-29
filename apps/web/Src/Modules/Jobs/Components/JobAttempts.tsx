@@ -61,7 +61,7 @@ const AttemptItem = ({ attempt, now }: { attempt: TJobAttempt; now: number }) =>
       </small>
       {attempt.FailureReason === undefined ? null : <p className="m-0 text-body-sm">{text.reason(attempt.FailureReason)}</p>}
       {attempt.MutationStartedAt === undefined ? null : (
-        <p className="m-0 text-caption text-warn-fg">{t('jobs.attempts.mutation')}</p>
+        <p className="m-0 text-body-sm text-warn-fg">{t('jobs.attempts.mutation')}</p>
       )}
       {attempt.Steps.length > 0 ? (
         <ol className="m-0 grid list-none divide-y divide-line p-0">
@@ -89,7 +89,7 @@ export const JobAttempts = ({ attempts, maxRetries }: { attempts: readonly TJobA
           ))}
         </ol>
       )}
-      <p className="m-0 border-t border-line px-4 py-2.5 text-caption text-tertiary">
+      <p className="m-0 border-t border-line px-4 py-2.5 text-body-sm text-tertiary">
         {t('jobs.attempts.retries', { count: maxRetries })}
       </p>
     </Card>

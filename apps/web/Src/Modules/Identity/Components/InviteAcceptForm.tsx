@@ -64,7 +64,7 @@ export const InviteAcceptForm = ({ token, preview, onAccepted, onGone }: IInvite
           <PasswordInput autoComplete="new-password" {...form.register('Password')} />
         </Field>
         <StrengthMeter password={password} />
-        <p className="m-0 text-caption text-tertiary">{t('password.hint')}</p>
+        <p className="m-0 text-body-sm text-tertiary">{t('password.hint')}</p>
       </div>
       <Button type="submit" variant="primary" className="w-full" disabled={Busy}>
         {Busy ? t('invite.page.submitting') : t('invite.page.submit')}

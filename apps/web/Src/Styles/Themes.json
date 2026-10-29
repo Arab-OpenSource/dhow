@@ -62,7 +62,7 @@
    "key": "t1",
    "variable": "--color-primary",
    "group": "text",
-   "usage": "Headings, values, body on canvas and every surface (≥15:1)."
+   "usage": "Headings, values, body on canvas and every surface (≥11:1)."
   },
   {
    "key": "t2",
@@ -140,7 +140,7 @@
    "key": "blue",
    "variable": "--color-accent-blue",
    "group": "status",
-   "usage": "Category: building / running; also the focus ring."
+   "usage": "Category: building / running and information; also the focus ring."
   },
   {
    "key": "amber",
@@ -158,19 +158,19 @@
    "key": "violet-soft",
    "variable": "--color-accent-violet-soft",
    "group": "status",
-   "usage": "Queued at small sizes (dots)."
+   "usage": "Category: queued. Dots and the queued tone."
   }
  ],
  "themes": [
   {
    "id": "sea",
    "colors": {
-    "canvas": "#071318",
-    "rail": "#0b1a20",
-    "input": "#040d11",
-    "inset": "#0e1d23",
-    "surface": "#10222a",
-    "raised": "#163039",
+    "canvas": "#061015",
+    "rail": "#0a171d",
+    "input": "#030b0e",
+    "inset": "#0b1a20",
+    "surface": "#0f2129",
+    "raised": "#17323c",
     "top": "#1c3842",
     "track": "#27464f",
     "t1": "#f3f4f6",
@@ -195,12 +195,12 @@
   {
    "id": "teak",
    "colors": {
-    "canvas": "#100d0b",
-    "rail": "#17130f",
-    "input": "#0a0806",
-    "inset": "#1a1511",
-    "surface": "#1d1814",
-    "raised": "#262019",
+    "canvas": "#0e0b09",
+    "rail": "#15110d",
+    "input": "#070604",
+    "inset": "#16120f",
+    "surface": "#1c1713",
+    "raised": "#28221b",
     "top": "#2e2720",
     "track": "#3d342b",
     "t1": "#f3f4f6",
@@ -225,12 +225,12 @@
   {
    "id": "dusk",
    "colors": {
-    "canvas": "#0c1015",
-    "rail": "#13171c",
-    "input": "#05060f",
-    "inset": "#161a1e",
-    "surface": "#1a1e23",
-    "raised": "#22262b",
+    "canvas": "#0b0e12",
+    "rail": "#11151a",
+    "input": "#04050c",
+    "inset": "#13171a",
+    "surface": "#191d22",
+    "raised": "#24282d",
     "top": "#2a2e31",
     "track": "#34383d",
     "t1": "#f3f4f6",
@@ -255,12 +255,12 @@
   {
    "id": "indigo",
    "colors": {
-    "canvas": "#0a0b18",
-    "rail": "#0f1024",
-    "input": "#06071a",
-    "inset": "#121430",
-    "surface": "#151733",
-    "raised": "#1c1f42",
+    "canvas": "#090a15",
+    "rail": "#0e0f21",
+    "input": "#050617",
+    "inset": "#10122c",
+    "surface": "#141632",
+    "raised": "#1d2045",
     "top": "#24274f",
     "track": "#31355f",
     "t1": "#f3f4f6",

@@ -20,10 +20,10 @@ export const ACCENT_DOT: Record<TAccent, string> = {
 
 export const ACCENT_SURFACE: Record<TAccent, string> = {
   live: 'border-ok-line bg-ok-wash',
-  building: 'border-line bg-surface-inset',
+  building: 'border-info-line bg-info-wash',
   awaiting: 'border-warn-line bg-warn-wash',
   failed: 'border-bad-line bg-bad-wash',
-  queued: 'border-line bg-surface-inset',
+  queued: 'border-queue-line bg-queue-wash',
 };
 
 export const ACCENT_ICON: Record<TAccent, TIconName> = {

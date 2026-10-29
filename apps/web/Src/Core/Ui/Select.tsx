@@ -22,7 +22,7 @@ export const Select = ({ options, compact = false, className, ...rest }: ISelect
       aria-describedby={field?.errorId}
       className={cx(
         'w-full min-w-0 cursor-pointer rounded-input border border-line-2 bg-input text-primary',
-        compact ? 'h-btn-sm px-2.5 text-caption' : 'h-input px-3.5 text-body',
+        compact ? 'h-btn-sm px-2.5 text-body-sm' : 'h-input px-3.5 text-body',
         className,
       )}
       {...rest}

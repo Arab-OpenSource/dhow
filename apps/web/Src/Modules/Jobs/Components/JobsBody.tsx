@@ -84,7 +84,7 @@ const JobsContent = ({ organizationId, onOpenJob }: IJobsBodyProps & { organizat
         <Card>
           {Filter === null ? (
             <div className="grid gap-1 px-5 pt-6 pb-2 text-center">
-              <h3 className="m-0 text-title-sm">{t('jobs.empty.title')}</h3>
+              <h3 className="m-0 text-title-card">{t('jobs.empty.title')}</h3>
             </div>
           ) : null}
           <EmptyState

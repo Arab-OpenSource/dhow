@@ -20,7 +20,7 @@ export const InlineAlert = ({ accent = 'building', title, children, className }:
     <Icon name={ACCENT_ICON[accent]} size={17} className={cx('mt-[3px]', ACCENT_TEXT[accent])} />
     <span className="grid gap-0.5">
       {title}
-      {children ? <span className="text-caption text-secondary">{children}</span> : null}
+      {children ? <span className="text-body-sm text-secondary">{children}</span> : null}
     </span>
   </div>
 );

@@ -65,7 +65,7 @@ const TotpForm = ({ enrollment, status, onDone }: { enrollment: TTotpEnrollment;
     >
       <QrCode value={enrollment.Uri} />
       <div className="grid gap-1 rounded-md border border-dashed border-line-2 px-4 py-3">
-        <small className="text-caption text-secondary">{t('totp.manual')}</small>
+        <small className="text-body-sm text-secondary">{t('totp.manual')}</small>
         <bdi dir="ltr" className="font-mono text-body-sm tracking-wider select-all">
           {enrollment.Secret.match(KEY_GROUP)?.join(' ')}
         </bdi>

@@ -11,7 +11,7 @@ export interface ITopBarProps {
 }
 
 export const TopBar = ({ start, searchLabel, shortcut, onSearch, children }: ITopBarProps) => (
-  <header className="flex h-topbar flex-none items-center gap-4 bg-canvas px-4 md:px-6">
+  <header className="flex h-topbar flex-none items-center gap-4 bg-canvas px-gutter">
     {start}
     <button
       type="button"
@@ -25,7 +25,7 @@ export const TopBar = ({ start, searchLabel, shortcut, onSearch, children }: ITo
     >
       <Icon name="search" size={18} />
       <span className="max-md:hidden">{searchLabel}</span>
-      <kbd className="ms-auto rounded-xs border border-line-2 px-1.5 font-mono text-caption text-tertiary max-md:hidden">
+      <kbd className="ms-auto rounded-xs border border-line-2 px-1.5 font-mono text-code text-tertiary max-md:hidden">
         {shortcut}
       </kbd>
     </button>

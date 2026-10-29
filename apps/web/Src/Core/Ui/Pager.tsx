@@ -29,7 +29,7 @@ export const Pager = ({ page, limit, total, busy = false, onPage }: IPagerProps)
       >
         {t('pager.previous')}
       </Button>
-      <span className="text-caption text-secondary">{t('pager.status', { page, pages })}</span>
+      <span className="text-body-sm text-secondary">{t('pager.status', { page, pages })}</span>
       <Button
         size="sm"
         disabled={busy || page >= pages}

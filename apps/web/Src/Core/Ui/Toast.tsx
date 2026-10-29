@@ -18,7 +18,7 @@ export const Toast = ({ accent = 'live', title, detail, dismissLabel, onDismiss 
     <i aria-hidden="true" className={cx('size-2 flex-none rounded-full', ACCENT_DOT[accent])} />
     <span className="grid flex-1 gap-px">
       {title}
-      {detail ? <span className="text-caption text-secondary">{detail}</span> : null}
+      {detail ? <span className="text-body-sm text-secondary">{detail}</span> : null}
     </span>
     <button
       type="button"

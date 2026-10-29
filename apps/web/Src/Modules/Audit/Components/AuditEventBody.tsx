@@ -33,7 +33,7 @@ const Mono = ({ children }: { children: ReactNode }) => (
 
 const Fact = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className="grid gap-0.5 border-t border-line px-4 py-3 first:border-t-0">
-    <dt className="text-caption text-tertiary">{label}</dt>
+    <dt className="text-body-sm text-tertiary">{label}</dt>
     <dd className="m-0 min-w-0 text-body-sm text-primary">{children}</dd>
   </div>
 );
@@ -60,7 +60,7 @@ const EventDetail = ({ event, actor }: { event: TAuditEvent; actor: string }) =>
         <div className="flex items-start gap-3">
           <Icon name={actionIcon(event.Action)} size={22} className="mt-0.5 text-secondary" />
           <div className="grid min-w-0 flex-1 gap-1">
-            <h3 className="m-0 text-title-sm">{key === null ? <Mono>{event.Action}</Mono> : t(key)}</h3>
+            <h3 className="m-0 text-title-card">{key === null ? <Mono>{event.Action}</Mono> : t(key)}</h3>
             {key === null ? null : (
               <small className="text-caption text-tertiary">
                 <Mono>{event.Action}</Mono>

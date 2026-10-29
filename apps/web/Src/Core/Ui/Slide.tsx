@@ -30,12 +30,12 @@ export interface ISlideViewProps {
   onReturn: () => void;
 }
 
-export const SLIDE_BODY = 'grid min-h-0 flex-1 auto-rows-max content-start gap-3.5 overflow-auto px-5 py-4';
+export const SLIDE_BODY = 'grid min-h-0 flex-1 auto-rows-max content-start gap-block overflow-auto px-card py-card';
 
-export const SlideContent = ({ children }: { children: ReactNode }) => <div className="flex flex-col gap-3.5">{children}</div>;
+export const SlideContent = ({ children }: { children: ReactNode }) => <div className="flex flex-col gap-block">{children}</div>;
 
 export const SlidePinned = ({ children }: { children: ReactNode }) => (
-  <div data-slide-pinned="" className="sticky -top-4 z-10 -mt-4 -mb-3.5 bg-canvas pt-4 pb-3.5">
+  <div data-slide-pinned="" className="sticky -top-card z-10 -mt-card -mb-block bg-canvas pt-card pb-block">
     {children}
   </div>
 );
@@ -54,7 +54,7 @@ const Trail = ({ trail, index, onCrumb }: TTrailProps) => {
 
   return (
     <nav aria-label={t('slides.trail')}>
-      <ol className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-caption text-tertiary">
+      <ol className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 text-body-sm text-tertiary">
         {trail.map((title, position) => (
           <li key={position} className="inline-flex items-center gap-1.5">
             {position > 0 ? <Icon name="next" size={12} className="text-tertiary" /> : null}
@@ -69,7 +69,7 @@ const Trail = ({ trail, index, onCrumb }: TTrailProps) => {
                   onCrumb(position);
                 }}
                 className={
-                  'cursor-pointer rounded-xs border-0 bg-transparent px-1 py-0.5 text-caption text-secondary ' +
+                  'cursor-pointer rounded-xs border-0 bg-transparent px-1 py-0.5 text-body-sm text-secondary ' +
                   'hover:bg-hover hover:text-primary'
                 }
               >
@@ -86,20 +86,20 @@ const Trail = ({ trail, index, onCrumb }: TTrailProps) => {
 const SlideHeader = ({ slide, index, total, trail, top, onBack, onCloseAll, onCrumb }: ISlideHeaderProps) => {
   const t = useT();
   const heading = (
-    <h2 className="m-0 min-w-0 truncate text-title-xl">
+    <h2 className="m-0 min-w-0 truncate text-title-section">
       <bdi>{slide.title}</bdi>
     </h2>
   );
 
   return (
-    <header className="grid gap-2 border-b border-line px-5 pt-4 pb-3.5">
+    <header className="grid gap-2 border-b border-line px-card pt-4 pb-3.5">
       <div className="flex items-center gap-2.5">
         {index > 0 ? (
           <IconButton icon="back" size="sm" label={t('slides.back')} onClick={onBack} />
         ) : null}
         {top ? <Dialog.Title asChild>{heading}</Dialog.Title> : heading}
         <div className="ms-auto flex items-center gap-2">
-          <span className="rounded-pill bg-wash px-2.5 text-caption whitespace-nowrap text-secondary">
+          <span className="rounded-pill border border-line bg-wash px-2.5 text-caption font-medium whitespace-nowrap text-secondary">
             {t('slides.level', { current: index + 1, total })}
           </span>
           <IconButton icon="close" size="sm" label={t('slides.closeAll')} onClick={onCloseAll} />
@@ -176,7 +176,7 @@ export const SlideView = ({
         />
         <div className={SLIDE_BODY}>{slide.children}</div>
         {slide.footer ? (
-          <footer className="flex items-center gap-2 border-t border-line px-5 py-3">{slide.footer}</footer>
+          <footer className="flex flex-wrap items-center gap-2 border-t border-line px-card py-3">{slide.footer}</footer>
         ) : null}
       </section>
       {under ? (

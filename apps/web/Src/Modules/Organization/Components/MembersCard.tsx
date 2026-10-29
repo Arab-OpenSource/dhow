@@ -79,7 +79,7 @@ const MembersList = ({ organizationId, role, rule, onOpenMember }: IMembersCardP
 
   if (members.isError) {
     return (
-      <div className="grid justify-items-start gap-3 p-4">
+      <div className="grid justify-items-start gap-3 p-card">
         <InlineAlert accent="failed" title={t('members.error')}>
           {errorText(members.error)}
         </InlineAlert>
@@ -94,7 +94,7 @@ const MembersList = ({ organizationId, role, rule, onOpenMember }: IMembersCardP
       </div>
     );
   }
-  if (members.data === undefined) return <Skeleton label={t('members.loading')} lines={4} className="p-4" />;
+  if (members.data === undefined) return <Skeleton label={t('members.loading')} lines={4} className="p-card" />;
 
   const { Items, Meta } = members.data;
   return (
@@ -121,7 +121,7 @@ const MembersList = ({ organizationId, role, rule, onOpenMember }: IMembersCardP
           />
         ))}
       </Rows>
-      <div className="px-4 py-2 empty:hidden">
+      <div className="px-card py-2 empty:hidden">
         <Pager page={Meta.Page} limit={Meta.Limit || PAGE_SIZE} total={Meta.Total} busy={members.isFetching} onPage={setPage} />
       </div>
     </>

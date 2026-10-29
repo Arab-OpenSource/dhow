@@ -29,14 +29,14 @@ const TeamsList = ({ organizationId, onOpenTeam }: TTeamsListProps) => {
 
   if (teams.isError) {
     return (
-      <div className="p-4">
+      <div className="p-card">
         <InlineAlert accent="failed" title={t('teams.error')}>
           {errorText(teams.error)}
         </InlineAlert>
       </div>
     );
   }
-  if (teams.data === undefined) return <Skeleton label={t('teams.loading')} lines={3} className="p-4" />;
+  if (teams.data === undefined) return <Skeleton label={t('teams.loading')} lines={3} className="p-card" />;
   if (teams.data.length === 0) return <EmptyState icon="users" text={t('teams.empty')} />;
   return (
     <Rows label={t('teams.title')}>

@@ -1,5 +1,7 @@
 export type TTone = 'ok' | 'warn' | 'bad';
 
+export type TStatusTone = TTone | 'info' | 'queue';
+
 export const TONE_SURFACE: Record<TTone, string> = {
   ok: 'border-ok-line bg-ok-wash',
   warn: 'border-warn-line bg-warn-wash',

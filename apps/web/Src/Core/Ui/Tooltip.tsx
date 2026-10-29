@@ -35,7 +35,7 @@ export const Tooltip = ({ label, side = 'top', phoneOnly = false, children }: IT
           side={physicalSide(side, dir)}
           sideOffset={8}
           className={cx(
-            'z-50 rounded-sm border border-line-2 bg-surface-top px-3 py-1.5 text-caption whitespace-nowrap text-primary',
+            'z-50 rounded-sm border border-line-2 bg-surface-top px-3 py-1.5 text-body-sm whitespace-nowrap text-primary',
             phoneOnly && 'md:hidden',
           )}
         >

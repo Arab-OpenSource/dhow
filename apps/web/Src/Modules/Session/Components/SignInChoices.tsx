@@ -26,7 +26,7 @@ export const SignInChoices = ({ onSignedIn, navigate }: ISignInChoicesProps) => 
     <div role="group" aria-label={t('login.oidc.label')} className="grid gap-3">
       {passkey ? <PasskeySignIn onSignedIn={onSignedIn} /> : null}
       <OidcButtons providers={list} navigate={navigate} />
-      <p className="m-0 mt-1 flex items-center gap-3 text-caption text-tertiary">
+      <p className="m-0 mt-1 flex items-center gap-3 text-body-sm text-tertiary">
         <span className="h-px flex-1 bg-line" />
         {t('login.or')}
         <span className="h-px flex-1 bg-line" />

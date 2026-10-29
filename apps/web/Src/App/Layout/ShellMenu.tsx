@@ -53,7 +53,7 @@ export const ShellMenu = () => {
         <div className="grid min-w-0 gap-2.5">
           <span className="flex items-center gap-2.5">
             <Mark size={28} />
-            <span className="text-title-xl">{t('shell.brand')}</span>
+            <span className="text-title-section">{t('shell.brand')}</span>
           </span>
           <OrganizationChip />
         </div>

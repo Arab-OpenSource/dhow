@@ -18,7 +18,7 @@ export interface IOrganizationTokenRowProps {
 
 const Fact = ({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) => (
   <div className={wide ? 'col-span-2 grid gap-1 sm:col-span-3' : 'grid gap-0.5'}>
-    <dt className="text-caption text-tertiary">{label}</dt>
+    <dt className="text-body-sm text-tertiary">{label}</dt>
     <dd className="m-0 min-w-0 text-body-sm text-primary">{children}</dd>
   </div>
 );
@@ -34,7 +34,7 @@ export const OrganizationTokenRow = ({ token, onAskRevoke }: IOrganizationTokenR
         <Icon name="key" size={18} className="flex-none text-secondary" />
         <span className="grid min-w-0 flex-1 gap-px">
           <span className="truncate text-label">{token.Name}</span>
-          <small className="truncate text-caption text-tertiary">{t('orgTokens.owner', { name: token.Owner.Name })}</small>
+          <small className="truncate text-body-sm text-tertiary">{t('orgTokens.owner', { name: token.Owner.Name })}</small>
         </span>
         <span className="flex flex-none items-center gap-1.5">
           <Badge tone={TONES[token.Status]}>{t(`tokens.status.${token.Status}`)}</Badge>

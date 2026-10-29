@@ -63,7 +63,7 @@ export const MfaStep = (props: IMfaStepProps) => {
                 autoCapitalize={totp ? 'none' : 'characters'}
                 spellCheck={false}
                 maxLength={totp ? 8 : 24}
-                className="text-center font-mono text-title-sm tracking-[0.3em]"
+                className="text-center font-mono text-title-card tracking-[0.3em]"
               />
             </Field>
             <Button type="submit" variant="primary" className="w-full" disabled={step.Busy || locked}>

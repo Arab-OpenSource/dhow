@@ -50,7 +50,7 @@ export const StrengthMeter = ({ password }: IStrengthMeterProps) => {
           />
         ))}
       </div>
-      <p aria-live="polite" className="m-0 text-caption text-secondary">
+      <p aria-live="polite" className="m-0 text-body-sm text-secondary">
         {label}
       </p>
     </div>

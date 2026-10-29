@@ -54,7 +54,7 @@ export interface ISideMenuProps {
 }
 
 const ITEM =
-  'flex items-center gap-3 rounded-sm px-2.5 py-2 text-body-sm no-underline transition-colors duration-140 max-md:size-11 max-md:justify-center max-md:p-0';
+  'flex items-center gap-3 rounded-sm px-2.5 py-2 text-label no-underline transition-colors duration-140 max-md:size-11 max-md:justify-center max-md:p-0';
 
 const isPlainClick = (event: MouseEvent<HTMLAnchorElement>): boolean =>
   event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
@@ -125,7 +125,7 @@ const AccountRow = ({ account }: { account: IMenuAccount }) => (
           }
         }}
         className={cx(
-          'flex min-w-0 flex-1 items-center gap-2.5 rounded-sm px-1.5 py-2 text-body-sm no-underline transition-colors duration-140',
+          'flex min-w-0 flex-1 items-center gap-2.5 rounded-sm px-1.5 py-2 text-label no-underline transition-colors duration-140',
           'max-md:size-11 max-md:flex-none max-md:justify-center max-md:p-0',
           account.current ? 'bg-sel text-primary' : 'text-secondary hover:bg-hover hover:text-primary',
         )}

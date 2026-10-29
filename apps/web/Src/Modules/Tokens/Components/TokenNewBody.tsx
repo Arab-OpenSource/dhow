@@ -94,7 +94,7 @@ export const TokenNewBody = ({ onDone, organizationId: fixed }: ITokenNewBodyPro
             }}
           />
         </Field>
-        <small className="text-caption text-tertiary">{t('tokens.form.name.hint')}</small>
+        <small className="text-body-sm text-tertiary">{t('tokens.form.name.hint')}</small>
       </div>
       <TokenFields
         memberships={memberships}

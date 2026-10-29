@@ -82,7 +82,7 @@ export const JobOverview = ({ organizationId, job, role }: IJobOverviewProps) =>
       <Card padded>
         <div className="grid gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="m-0 min-w-0 text-title-sm break-words">
+            <h3 className="m-0 min-w-0 text-title-card break-words">
               <bdi>{job.Name}</bdi>
             </h3>
             <JobStateDot job={job} />

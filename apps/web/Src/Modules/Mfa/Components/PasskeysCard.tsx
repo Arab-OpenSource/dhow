@@ -33,7 +33,7 @@ export const PasskeysCard = ({ passkeys, methods }: IPasskeysCardProps) => {
       }}
     />
   ) : (
-    <div className="p-4 pt-2">
+    <div className="p-card pt-2">
       <Button
         className="w-full"
         iconStart="plus"
@@ -49,7 +49,7 @@ export const PasskeysCard = ({ passkeys, methods }: IPasskeysCardProps) => {
   return (
     <Card title={t('mfa.passkeys.title')} icon="key" end={passkeys.length > 0 ? String(passkeys.length) : undefined}>
       {card.Notice ? <InlineAlert accent="failed" title={card.Notice} className="mx-4 mb-2 w-auto" /> : null}
-      {passkeys.length === 0 ? <p className="m-0 px-4 pb-3 text-body-sm text-secondary">{t('mfa.passkeys.empty')}</p> : null}
+      {passkeys.length === 0 ? <p className="m-0 px-card pb-3 text-body-sm text-secondary">{t('mfa.passkeys.empty')}</p> : null}
       <Rows label={t('mfa.passkeys.title')}>
         {passkeys.map((passkey) => [
           <PasskeyRow
@@ -79,7 +79,7 @@ export const PasskeysCard = ({ passkeys, methods }: IPasskeysCardProps) => {
         ])}
       </Rows>
       {card.Codes !== null ? (
-        <div className="border-t border-line p-4">
+        <div className="border-t border-line p-card">
           <RecoveryCodes codes={card.Codes} onDone={card.DoneCodes} />
         </div>
       ) : null}

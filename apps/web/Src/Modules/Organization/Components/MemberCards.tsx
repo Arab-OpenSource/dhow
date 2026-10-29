@@ -74,7 +74,7 @@ const RoleForm = ({ organizationId, actor, member }: IMemberCardProps) => {
         choices={choices}
         disabled={plain.isPending || factor.Busy}
       />
-      <p className="m-0 text-caption text-tertiary">{t('member.role.hint', { name: member.Name })}</p>
+      <p className="m-0 text-body-sm text-tertiary">{t('member.role.hint', { name: member.Name })}</p>
       {Confirming && methods !== undefined ? (
         <ConfirmPanel
           question={t('member.role.ownerFactor')}
@@ -124,7 +124,7 @@ export const MemberRoleCard = ({ organizationId, actor, member }: IMemberCardPro
         </p>
       )}
       {member.EffectiveRole === member.Role ? null : (
-        <p className="m-0 mt-3 text-caption text-tertiary">{t('member.effective', { role: t(`role.${member.EffectiveRole}`) })}</p>
+        <p className="m-0 mt-3 text-body-sm text-tertiary">{t('member.effective', { role: t(`role.${member.EffectiveRole}`) })}</p>
       )}
     </Card>
   );

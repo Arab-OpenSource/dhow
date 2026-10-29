@@ -58,7 +58,7 @@ export const JobLog = ({ organizationId, jobId, attempt, stepNames, onEnded }: I
       ) : null}
       {log.Status?.Truncated ? <InlineAlert accent="awaiting" title={t('jobs.log.truncated')} /> : null}
       {log.Buffer.Dropped > 0 ? (
-        <p className="m-0 text-caption text-tertiary">{t('jobs.log.dropped', { count: MAX_LOG_LINES })}</p>
+        <p className="m-0 text-body-sm text-tertiary">{t('jobs.log.dropped', { count: MAX_LOG_LINES })}</p>
       ) : null}
       <div
         ref={scrollRef}
