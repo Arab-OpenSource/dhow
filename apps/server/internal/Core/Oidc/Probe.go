@@ -4,15 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
-	"syscall"
-	"time"
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
-	settingspec "github.com/Khaymah/dhow/apps/server/internal/Config/Settings"
 )
 
 type Check string
@@ -22,15 +18,9 @@ const (
 	CheckEndpoints Check = "endpoints"
 	CheckKeys      Check = "keys"
 	CheckAPI       Check = "api"
-
-	dialTimeout   = 10 * time.Second
-	dialKeepAlive = 30 * time.Second
 )
 
-var (
-	errBlockedAddress = errors.New("the address is link-local or a cloud metadata service")
-	errNoKeys         = errors.New("the key set has no keys")
-)
+var errNoKeys = errors.New("the key set has no keys")
 
 type CheckResult struct {
 	Check  Check
@@ -42,6 +32,20 @@ type ProbeResult struct {
 	Err    error
 }
 
+func (r ProbeResult) Reason() string {
+	if r.Err == nil {
+		return ""
+	}
+	failed := "unknown"
+	for _, c := range r.Checks {
+		if !c.Passed {
+			failed = string(c.Check)
+			break
+		}
+	}
+	return failed + ": " + reasonOf(r.Err)
+}
+
 func (r ProbeResult) Passed() bool {
 	for _, c := range r.Checks {
 		if !c.Passed {
@@ -49,27 +53,6 @@ func (r ProbeResult) Passed() bool {
 		}
 	}
 	return len(r.Checks) > 0
-}
-
-func refuseBlocked(_, address string, _ syscall.RawConn) error {
-	host, _, err := net.SplitHostPort(address)
-	if err != nil {
-		return err
-	}
-	if settingspec.BlockedHost(host) {
-		return errBlockedAddress
-	}
-	return nil
-}
-
-func guardedTransport() http.RoundTripper {
-	base, ok := http.DefaultTransport.(*http.Transport)
-	if !ok {
-		return http.DefaultTransport
-	}
-	t := base.Clone()
-	t.DialContext = (&net.Dialer{Timeout: dialTimeout, KeepAlive: dialKeepAlive, Control: refuseBlocked}).DialContext
-	return t
 }
 
 func (r *Registry) Probe(ctx context.Context, kind, issuer string) ProbeResult {

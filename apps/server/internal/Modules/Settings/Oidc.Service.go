@@ -136,7 +136,7 @@ func (s *Service) TestOidc(ctx context.Context, kind, issuer string) (oidcauth.P
 	}
 	res := s.providers.Probe(ctx, k, issuer)
 	if res.Err != nil {
-		s.log.WarnContext(ctx, "the sign-in provider test failed", "issuer", logging.UserValue(issuer), "error", logging.UserValue(res.Err.Error()))
+		s.log.WarnContext(ctx, "the sign-in provider test failed", "issuer", logging.UserValue(issuer), "reason", res.Reason())
 	}
 	return res, nil
 }
