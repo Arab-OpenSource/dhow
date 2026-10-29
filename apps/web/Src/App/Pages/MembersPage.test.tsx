@@ -130,7 +130,7 @@ describe('removing a member', () => {
     expect(router.state.location.search).toEqual({ slide: 'member-remove' });
     expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
 
-    await user.click(within(slide).getByRole('button', { name: Ar['member.cancel'] }));
+    await user.click(await within(slide).findByRole('button', { name: Ar['member.cancel'] }));
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
@@ -138,7 +138,7 @@ describe('removing a member', () => {
 
     await user.click(within(page).getByRole('button', { name: Ar['member.remove.action'].replace('{name}', 'Hana Samir') }));
     const again = await screen.findByRole('dialog', { name: Ar['member.remove.title'] });
-    await user.click(within(again).getByRole('button', { name: Ar['member.remove.confirm'] }));
+    await user.click(await within(again).findByRole('button', { name: Ar['member.remove.confirm'] }));
     await waitFor(() => {
       expect(calls.some((call) => call.method === 'DELETE' && call.url.endsWith(`/members/${HANA}`))).toBe(true);
     });

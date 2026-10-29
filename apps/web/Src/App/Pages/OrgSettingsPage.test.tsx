@@ -81,8 +81,8 @@ describe('the danger zone', () => {
     const danger = await dangerOf(page);
     await user.click(within(danger).getByRole('button', { name: leaveName }));
     const slide = await screen.findByRole('dialog', { name: Ar['organization.leave.title'] });
-    expect(within(slide).getByText(Ar['organization.leave.ownerNote'])).toBeInTheDocument();
-    await user.click(within(slide).getByRole('button', { name: Ar['organization.leave.cancel'] }));
+    expect(await within(slide).findByText(Ar['organization.leave.ownerNote'])).toBeInTheDocument();
+    await user.click(await within(slide).findByRole('button', { name: Ar['organization.leave.cancel'] }));
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
@@ -90,7 +90,7 @@ describe('the danger zone', () => {
 
     await user.click(within(danger).getByRole('button', { name: leaveName }));
     const again = await screen.findByRole('dialog', { name: Ar['organization.leave.title'] });
-    await user.click(within(again).getByRole('button', { name: Ar['organization.leave.confirm'] }));
+    await user.click(await within(again).findByRole('button', { name: Ar['organization.leave.confirm'] }));
     expect(await within(again).findByText(Ar['organization.leave.lastOwner'])).toBeInTheDocument();
   });
 });

@@ -202,7 +202,7 @@ describe('switching and leaving organizations', () => {
     await user.click(await within(dialog).findByRole('button', { name: Ar['organization.leave.action'].replace('{name}', 'Future Solution') }));
     const slide = await screen.findByRole('dialog', { name: Ar['organization.leave.title'] });
     expect(calls.some((call) => call.method === 'POST' && call.url.endsWith('/leave'))).toBe(false);
-    await user.click(within(slide).getByRole('button', { name: Ar['organization.leave.confirm'] }));
+    await user.click(await within(slide).findByRole('button', { name: Ar['organization.leave.confirm'] }));
     await waitFor(() => {
       expect(calls.some((call) => call.method === 'POST' && call.url.endsWith(`/organizations/${ORG_ID}/leave`))).toBe(true);
     });
