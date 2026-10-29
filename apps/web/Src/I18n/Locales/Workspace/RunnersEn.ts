@@ -93,6 +93,7 @@ export const RunnersEn: Record<keyof typeof RunnersAr, string> = {
   'runners.detail.missing': 'We could not find this runner in your organization.',
   'runners.detail.error': 'We could not load the runner',
   'runners.detail.readOnly': 'Only the owner and admins can change runners.',
+  'runners.detail.back': 'All runners',
   'runners.facts.title': 'Details',
   'runners.facts.lastSeen': 'Last seen',
   'runners.facts.labels': 'Labels',

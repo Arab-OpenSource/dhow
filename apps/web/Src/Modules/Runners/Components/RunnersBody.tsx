@@ -14,7 +14,7 @@ import { Skeleton } from '@/Core/Ui/Skeleton';
 import { useT } from '@/I18n/useT';
 import { RUNNERS_PAGE_SIZE } from '@/Modules/Runners/Api/RunnersApi';
 import { CopyBlock } from '@/Modules/Runners/Components/CopyBlock';
-import { RunnerRow } from '@/Modules/Runners/Components/RunnerRow';
+import { RunnerListRow } from '@/Modules/Runners/Components/RunnerListRow';
 import { useRunnerAccess } from '@/Modules/Runners/Hooks/useRunnerAccess';
 import { useRunners } from '@/Modules/Runners/Hooks/useRunners';
 import { registerCommandFor } from '@/Modules/Runners/Types/RunnerView';
@@ -22,6 +22,8 @@ import { registerCommandFor } from '@/Modules/Runners/Types/RunnerView';
 export interface IRunnersBodyProps {
   onOpenRunner: (runnerId: string) => void;
   onAddRunner: () => void;
+  hrefFor: (runnerId: string) => string;
+  selectedId?: string;
 }
 
 interface IContentProps extends IRunnersBodyProps {
@@ -74,7 +76,7 @@ const FirstRunner = ({ manager, onAddRunner }: { manager: boolean; onAddRunner: 
   );
 };
 
-const RunnersContent = ({ organizationId, manager, onOpenRunner, onAddRunner }: IContentProps) => {
+const RunnersContent = ({ organizationId, manager, onOpenRunner, onAddRunner, hrefFor, selectedId }: IContentProps) => {
   const t = useT();
   const errorText = useApiErrorText();
   const [Page, setPage] = useState(1);
@@ -109,9 +111,11 @@ const RunnersContent = ({ organizationId, manager, onOpenRunner, onAddRunner }: 
         <Card title={t('runners.list.title')} icon="server" end={t('runners.list.total', { count: Meta.Total })}>
           <Rows label={t('runners.list.title')}>
             {Items.map((runner) => (
-              <RunnerRow
+              <RunnerListRow
                 key={runner.Id}
                 runner={runner}
+                href={hrefFor(runner.Id)}
+                selected={runner.Id === selectedId}
                 onOpen={() => {
                   onOpenRunner(runner.Id);
                 }}

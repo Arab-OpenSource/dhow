@@ -91,6 +91,7 @@ export const RunnersAr = {
   'runners.detail.missing': 'لم نجد جهاز التشغيل هذا في مؤسستك.',
   'runners.detail.error': 'لم نتمكن من تحميل جهاز التشغيل',
   'runners.detail.readOnly': 'تعديل أجهزة التشغيل متاح لصاحب المؤسسة والمديرين فقط.',
+  'runners.detail.back': 'كل أجهزة التشغيل',
   'runners.facts.title': 'التفاصيل',
   'runners.facts.lastSeen': 'آخر ظهور',
   'runners.facts.labels': 'الوسوم',
