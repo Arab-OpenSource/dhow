@@ -200,11 +200,11 @@ func boundedInt(env, rule, v string, def, lowest, highest int) (int, *FieldError
 	if v == "" {
 		return def, nil
 	}
-	n, err := strconv.ParseInt(v, 10, 64)
-	if err != nil || n < int64(lowest) || n > int64(highest) {
+	n, err := strconv.Atoi(v)
+	if err != nil || n < lowest || n > highest {
 		return 0, &FieldError{Env: env, Rule: rule, Message: "must be a whole number from " + strconv.Itoa(lowest) + " to " + strconv.Itoa(highest)}
 	}
-	return int(n), nil
+	return n, nil
 }
 
 func parseOrgCreation(v string) (string, *FieldError) {
