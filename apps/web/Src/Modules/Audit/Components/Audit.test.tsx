@@ -10,6 +10,7 @@ import { usePaletteStore } from '@/Core/Store/usePaletteStore';
 import { auditFixture, backendFailure, membersFixture, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { envelope, USER_ID } from '@/Core/Testing/Fetch';
 import { findPage } from '@/Core/Testing/Pages';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const mount = async (options: IBackendOptions = {}, url = '/audit') => {
@@ -33,10 +34,10 @@ describe('the audit log page', () => {
     expect(first).toHaveTextContent(Ar['audit.action.auth.login']);
     expect(first).toHaveTextContent('Sabry Dawood');
     expect(first).toHaveTextContent('203.0.113.1');
-    expect(first).toHaveTextContent('منذ 10 دقيقة');
+    expect(first).toHaveTextContent('منذ 10 دقائق');
     expect(rows[2]).toHaveTextContent(Ar['audit.action.auth.login_failed']);
     expect(rows[2]).toHaveTextContent(Ar['audit.actor.visitor']);
-    expect(within(dialog).getByText(Ar['audit.list.total'].replace('{count}', '45'))).toBeInTheDocument();
+    expect(within(dialog).getByText(arText('audit.list.total', { count: 45 }))).toBeInTheDocument();
   });
 
   it('asks the API for one page at a time and moves between pages', async () => {
@@ -109,7 +110,7 @@ describe('verifying the chain', () => {
     expect(await screen.findByText(Ar['audit.verify.idle.title'])).toBeInTheDocument();
     await user.click(await verifyButton());
     expect(await screen.findByText(Ar['audit.verify.intact.title'])).toBeInTheDocument();
-    expect(screen.getByText(Ar['audit.verify.intact.sub'].replace('{count}', '45'))).toBeInTheDocument();
+    expect(screen.getByText(arText('audit.verify.intact.sub', { count: 45 }))).toBeInTheDocument();
     const verify = calls.find((call) => call.url.endsWith('/audit-events/verify'));
     expect(verify?.method).toBe('GET');
     expect(screen.queryByText(Ar['audit.verify.idle.title'])).not.toBeInTheDocument();

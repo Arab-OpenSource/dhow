@@ -22,10 +22,11 @@ describe('StuckBanner', () => {
   });
 
   it.each([
-    [1, Ar['home.stuck.title.one']],
-    [2, Ar['home.stuck.title.two']],
-    [3, Ar['home.stuck.title.few'].replace('{count}', '3')],
-    [12, Ar['home.stuck.title.many'].replace('{count}', '12')],
+    [1, 'تشغيل واحد ينتظر ولا يوجد جهاز تشغيل مناسب له'],
+    [2, 'تشغيلان ينتظران ولا يوجد جهاز تشغيل مناسب لهما'],
+    [3, '3 تشغيلات تنتظر ولا يوجد جهاز تشغيل مناسب لها'],
+    [12, '12 تشغيلًا تنتظر ولا يوجد جهاز تشغيل مناسب لها'],
+    [102, '102 تشغيل ينتظر ولا يوجد جهاز تشغيل مناسب له'],
   ])('says how many jobs wait (%i)', (count, title) => {
     mount(jobs(count));
     expect(screen.getByRole('status')).toHaveTextContent(title);

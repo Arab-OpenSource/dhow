@@ -10,6 +10,7 @@ import { startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { GOOD_CODE, GOOD_PASSWORD, NEW_CODES, passkeyFixture } from '@/Core/Testing/MfaBackend';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { findPage } from '@/Core/Testing/Pages';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const mount = async (options: IBackendOptions = {}, url = '/account/security') => {
@@ -68,7 +69,7 @@ describe('two-step verification in my account', () => {
     await waitFor(() => {
       expect(router.state.location.href).toBe('/account/security');
     });
-    expect(await screen.findByText(Ar['mfa.recovery.remaining'].replace('{count}', '10'))).toBeInTheDocument();
+    expect(await screen.findByText(arText('mfa.recovery.remaining', { count: 10 }))).toBeInTheDocument();
   });
 
   it('needs a current second factor to turn TOTP off', async () => {
@@ -89,7 +90,7 @@ describe('two-step verification in my account', () => {
 
   it('makes new recovery codes after a confirmation and offers copy and download', async () => {
     const { user } = await mount({ mfa: { TotpEnabled: true, RecoveryCodesRemaining: 2, Passkeys: [] } });
-    expect(screen.getByText(Ar['mfa.recovery.remaining'].replace('{count}', '2'))).toBeInTheDocument();
+    expect(screen.getByText(arText('mfa.recovery.remaining', { count: 2 }))).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: Ar['mfa.recovery.regenerate'] }));
     await user.type(screen.getByLabelText(Ar['factor.method.totp']), GOOD_CODE);
     await user.click(screen.getByRole('button', { name: Ar['mfa.recovery.regenerate.confirm'] }));

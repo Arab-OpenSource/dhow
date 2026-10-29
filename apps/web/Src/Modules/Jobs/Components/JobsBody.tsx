@@ -34,7 +34,7 @@ const StuckAlert = ({ organizationId, onShow }: { organizationId: string; onShow
   if (stuck === 0) return null;
   return (
     <div className="grid justify-items-start gap-2">
-      <InlineAlert accent="awaiting" title={stuck === 1 ? t('jobs.stuck.titleOne') : t('jobs.stuck.title', { count: stuck })}>
+      <InlineAlert accent="awaiting" title={t('jobs.stuck.title', { count: stuck })}>
         {t('jobs.stuck.about')}
       </InlineAlert>
       <Button size="sm" iconStart="queue" onClick={onShow}>

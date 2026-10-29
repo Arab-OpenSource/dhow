@@ -9,6 +9,7 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { backendFailure, startBackend, type IBackendOptions } from '@/Core/Testing/Backend';
 import { envelope } from '@/Core/Testing/Fetch';
 import { useToastStore } from '@/Core/Store/useToastStore';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const CURRENT = 'the old password 123';
@@ -60,7 +61,7 @@ describe('changing the password', () => {
     expect(await put?.clone().json()).toEqual({ CurrentPassword: CURRENT, NewPassword: NEXT });
     const toast = useToastStore.getState().Toasts.find((item) => item.Id === 'password-changed');
     expect(toast?.Title).toBe(Ar['password.change.done']);
-    expect(toast?.Detail).toBe(Ar['password.change.done.others'].replace('{count}', '2'));
+    expect(toast?.Detail).toBe(arText('password.change.done.others', { count: 2 }));
     expect(document.body.innerHTML).not.toContain(NEXT);
     expect(await screen.findByText(Ar['account.sessions.count.one'])).toBeInTheDocument();
   });

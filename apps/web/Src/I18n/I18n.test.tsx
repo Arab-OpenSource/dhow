@@ -9,7 +9,9 @@ import { STORAGE_KEY } from '@/I18n/Locale';
 import { translate } from '@/I18n/Translate';
 import { useI18n } from '@/I18n/useI18n';
 
-const placeholders = (text: string): string[] => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1] ?? '').sort();
+const placeholders = (text: string): string[] =>
+  [...new Set([...text.matchAll(/\{(\w+)(?:\}|,\s*plural,)/g)].map((match) => match[1] ?? ''))].sort();
+const PLURAL_SYNTAX = /\{\w+,\s*plural,|(?:zero|one|two|few|many|other|=\d+)\s*\{/g;
 
 describe('locale catalogs', () => {
   it('have exactly the same keys in Arabic and English', () => {
@@ -39,7 +41,7 @@ describe('the UI glossary (ADR-0034)', () => {
 
   it('keeps English words out of the Arabic copy, except the language name, one first-mention term and a technical value', () => {
     const stray = Object.entries(Ar).flatMap(([key, text]) =>
-      [...text.replaceAll(/\{\w+\}/g, '').matchAll(/[A-Za-z][A-Za-z0-9_]+/g)]
+      [...text.replaceAll(PLURAL_SYNTAX, '').replaceAll(/\{\w+\}/g, '').matchAll(/[A-Za-z][A-Za-z0-9_]+/g)]
         .map((match) => match[0])
         .filter((word) => !ALLOWED_LATIN.has(word))
         .map((word) => `${key}: ${word}`),

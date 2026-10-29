@@ -9,6 +9,7 @@ import { createQueryClient } from '@/Core/Api/QueryClient';
 import { backendFailure, startBackend } from '@/Core/Testing/Backend';
 import { jobFixture, jobsFixture, jobsRoute, type IJobsBackend } from '@/Core/Testing/JobsBackend';
 import { findPage } from '@/Core/Testing/Pages';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const mount = async (jobs: IJobsBackend, role = 'owner') => {
@@ -73,7 +74,7 @@ describe('the jobs page', () => {
     expect(rows[0]).toHaveTextContent(Ar['jobs.row.took'].replace('{duration}', Ar['jobs.duration.minutes'].replace('{m}', '1').replace('{s}', '0')));
     expect(rows[1]).toHaveTextContent(Ar['jobs.state.failed']);
     expect(rows[1]).toHaveTextContent(Ar['jobs.reason.STEP_FAILED']);
-    expect(rows[1]).toHaveTextContent(Ar['jobs.row.attempts'].replace('{count}', '1'));
+    expect(rows[1]).toHaveTextContent(arText('jobs.row.attempts', { count: 1 }));
   });
 
   it('makes queued jobs without a runner obvious and filters to them', async () => {
@@ -81,14 +82,14 @@ describe('the jobs page', () => {
       jobFixture({ Id: `0198a000-0000-7000-8000-00000000010${String(n)}`, Name: `stuck-${String(n)}`, QueuedReason: 'NO_MATCHING_RUNNER' }),
     );
     const { dialog, user, calls } = await mount({ jobs: [...stuck, ...jobsFixture(2)] });
-    expect(await within(dialog).findByText(Ar['jobs.stuck.title'].replace('{count}', '3'))).toBeInTheDocument();
+    expect(await within(dialog).findByText(arText('jobs.stuck.title', { count: 3 }))).toBeInTheDocument();
     const list = await within(dialog).findByRole('list', { name: Ar['jobs.list.title'] });
     expect(within(list).getAllByText(Ar['jobs.stuck.badge'])).toHaveLength(3);
 
     await user.click(within(dialog).getByRole('button', { name: Ar['jobs.stuck.show'] }));
     expect(within(dialog).getByRole('button', { name: Ar['jobs.state.queued'] })).toHaveAttribute('aria-pressed', 'true');
     await waitFor(() => {
-      expect(within(dialog).getByText(Ar['jobs.list.total'].replace('{count}', '3'))).toBeInTheDocument();
+      expect(within(dialog).getByText(arText('jobs.list.total', { count: 3 }))).toBeInTheDocument();
     });
     expect(listCalls(calls).some((url) => url.searchParams.get('State') === 'queued' && url.searchParams.get('Page') === '1')).toBe(true);
   });

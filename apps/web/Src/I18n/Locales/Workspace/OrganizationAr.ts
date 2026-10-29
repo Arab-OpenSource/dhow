@@ -80,7 +80,7 @@ export const OrganizationAr = {
   'team.members.remove': 'أزِل {name} من الفريق',
   'team.members.added': 'أُضيف {name} إلى الفريق.',
   'team.members.removed': 'أُزيل {name} من الفريق.',
-  'team.revoked': 'أنهينا {count} جلسة لأن الدور الفعلي تغيّر.',
+  'team.revoked': '{count, plural, one {أنهينا جلسة واحدة لأن الدور الفعلي تغيّر.} two {أنهينا جلستين لأن الدور الفعلي تغيّر.} few {أنهينا {count} جلسات لأن الدور الفعلي تغيّر.} many {أنهينا {count} جلسة لأن الدور الفعلي تغيّر.} other {أنهينا {count} جلسة لأن الدور الفعلي تغيّر.}}',
   'team.delete': 'احذف الفريق',
   'team.delete.about': 'يبقى الأعضاء في المؤسسة بأدوارهم.',
   'team.delete.confirm': 'نعم، احذف الفريق',

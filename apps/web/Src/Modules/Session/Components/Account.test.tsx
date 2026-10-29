@@ -10,6 +10,7 @@ import { backendFailure, startBackend, type IBackendOptions } from '@/Core/Testi
 import { useCsrfStore } from '@/Core/Store/useCsrfStore';
 import { useToastStore } from '@/Core/Store/useToastStore';
 import { findPage } from '@/Core/Testing/Pages';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const PROFILE = '/account/profile';
@@ -80,10 +81,10 @@ describe('my account pages', () => {
     expect(within(chrome).queryByRole('button')).not.toBeInTheDocument();
     expect(within(chrome).getByText('203.0.113.7')).toBeInTheDocument();
     const firefox = await rowOf('Firefox على Windows');
-    expect(within(firefox).getByText(/منذ 2 ساعة/)).toBeInTheDocument();
+    expect(within(firefox).getByText(/منذ ساعتين/)).toBeInTheDocument();
     expect(within(firefox).getByRole('button', { name: Ar['sessions.revoke.aria'].replace('{device}', 'Firefox على Windows') })).toBeInTheDocument();
     expect(await rowOf('Safari على iOS')).toBeInTheDocument();
-    expect(within(dialog).getByText(Ar['account.sessions.count'].replace('{count}', '3'))).toBeInTheDocument();
+    expect(within(dialog).getByText(arText('account.sessions.count', { count: 3 }))).toBeInTheDocument();
   });
 });
 
@@ -131,7 +132,7 @@ describe('signing out every other device', () => {
   it('names how many devices go, then revokes them all and keeps this one', async () => {
     const { user, calls, state } = await mount();
     await user.click(await screen.findByRole('button', { name: Ar['sessions.revokeOthers'] }));
-    expect(screen.getByText(Ar['sessions.revokeOthers.question'].replace('{count}', '2'))).toBeInTheDocument();
+    expect(screen.getByText(arText('sessions.revokeOthers.question', { count: 2 }))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: Ar['sessions.revokeOthers.confirm'] })).toHaveFocus();
     expect(methodCalls(calls, 'POST')).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: Ar['sessions.revokeOthers.confirm'] }));
@@ -144,7 +145,7 @@ describe('signing out every other device', () => {
     expect(state.sessions).toHaveLength(1);
     expect(await rowOf('Chrome على Linux')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: Ar['sessions.revokeOthers'] })).not.toBeInTheDocument();
-    expect(useToastStore.getState().Toasts.some((toast) => toast.Title === Ar['sessions.revokedOthers'].replace('{count}', '2'))).toBe(true);
+    expect(useToastStore.getState().Toasts.some((toast) => toast.Title === arText('sessions.revokedOthers', { count: 2 }))).toBe(true);
   });
 
   it('offers nothing to revoke when this is the only device', async () => {

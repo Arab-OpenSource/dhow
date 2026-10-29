@@ -101,7 +101,7 @@ export const RunnersEn: Record<keyof typeof RunnersAr, string> = {
   'runners.facts.platform': 'OS and architecture',
   'runners.facts.isolation': 'Isolation',
   'runners.facts.capacity': 'Capacity',
-  'runners.facts.capacity.value': '{count} jobs at a time',
+  'runners.facts.capacity.value': '{count, plural, one {{count} job at a time} other {{count} jobs at a time}}',
   'runners.facts.version': 'Version',
   'runners.facts.key': 'Identity key',
   'runners.facts.key.value': 'Version {version} · since {when}',

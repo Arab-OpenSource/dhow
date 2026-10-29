@@ -99,7 +99,7 @@ export const RunnersAr = {
   'runners.facts.platform': 'النظام والمعالج',
   'runners.facts.isolation': 'العزل',
   'runners.facts.capacity': 'السعة',
-  'runners.facts.capacity.value': '{count} تشغيل في نفس الوقت',
+  'runners.facts.capacity.value': '{count, plural, zero {لا يقبل أي تشغيل} one {تشغيل واحد في نفس الوقت} two {تشغيلان في نفس الوقت} few {{count} تشغيلات في نفس الوقت} many {{count} تشغيلًا في نفس الوقت} other {{count} تشغيل في نفس الوقت}}',
   'runners.facts.version': 'الإصدار',
   'runners.facts.key': 'مفتاح الهوية',
   'runners.facts.key.value': 'الإصدار {version} · منذ {when}',

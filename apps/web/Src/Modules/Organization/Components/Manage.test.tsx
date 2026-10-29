@@ -13,6 +13,7 @@ import { membersFixture, startBackend, type IBackendOptions } from '@/Core/Testi
 import { envelope, meBody, ORG_ID } from '@/Core/Testing/Fetch';
 import { INVITE_LINK, orgBackend, TEAM_ID } from '@/Core/Testing/OrgBackend';
 import { findPage } from '@/Core/Testing/Pages';
+import { arText } from '@/Core/Testing/Text';
 import { Ar } from '@/I18n/Locales/Ar';
 
 const HANA = '0198a000-0000-7000-8000-0000000000b3';
@@ -149,7 +150,7 @@ describe('teams', () => {
     await user.selectOptions(role, 'admin');
     await user.click(within(dialog).getByRole('button', { name: Ar['team.role.save'] }));
     await waitFor(() => {
-      expect(useToastStore.getState().Toasts.some((toast) => toast.Detail === Ar['team.revoked'].replace('{count}', '1'))).toBe(true);
+      expect(useToastStore.getState().Toasts.some((toast) => toast.Detail === arText('team.revoked', { count: 1 }))).toBe(true);
     });
     expect(await bodyOf(calls, 'PATCH', '/role-bindings/0198a000-0000-7000-8000-0000000000d2')).toEqual({ Role: 'admin' });
   });

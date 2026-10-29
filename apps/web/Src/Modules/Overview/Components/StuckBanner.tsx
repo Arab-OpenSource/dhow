@@ -2,7 +2,7 @@ import { Banner } from '@/Core/Ui/Banner';
 import { Button } from '@/Core/Ui/Button';
 import { useT } from '@/I18n/useT';
 import type { TOverviewJobs } from '@/Modules/Overview/Api/OverviewApi';
-import { countForm, type IOverviewLinks } from '@/Modules/Overview/Types/OverviewTargets';
+import type { IOverviewLinks } from '@/Modules/Overview/Types/OverviewTargets';
 
 export interface IStuckBannerProps {
   jobs: TOverviewJobs | null;
@@ -20,7 +20,7 @@ export const StuckBanner = ({ jobs, canAddRunner, links }: IStuckBannerProps) =>
     <Banner
       accent="awaiting"
       wrap
-      title={t(`home.stuck.title.${countForm(count)}`, { count })}
+      title={t('home.stuck.title', { count })}
       body={t(canAddRunner ? 'home.stuck.fix.manager' : 'home.stuck.fix.member')}
       action={
         <Button
