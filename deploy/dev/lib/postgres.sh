@@ -76,7 +76,7 @@ db_native() {
     debian) native_debian ;;
     fedora | rhel) native_rpm ;;
     macos) native_macos ;;
-    *) fail "install PostgreSQL 18 yourself (docs/development.md), then run this script again and choose url" ;;
+    *) fail "install PostgreSQL 18 yourself (docs/en/development.md), then run this script again and choose url" ;;
   esac
   require_pg18 "${pg_super[@]}"
   bootstrap_sql | "${pg_super[@]}" -q >/dev/null

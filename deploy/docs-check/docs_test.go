@@ -223,3 +223,46 @@ func TestSlugsFollowGitHub(t *testing.T) {
 	assert.Equal(t, 1, p.headings[2])
 	assert.Len(t, p.blocks, 1)
 }
+
+var (
+	codeLink       = regexp.MustCompile("https://github\\.com/Khaymah/dhow/blob/main/(docs/[^\\s'\"`#)]+)(?:#([^\\s'\"`)]+))?")
+	codeExtensions = map[string]bool{".go": true, ".ts": true, ".tsx": true, ".service": true, ".sh": true}
+	skippedDirs    = map[string]bool{"node_modules": true, "dist": true, "WebDist": true}
+)
+
+func TestCodeLinksToDocsResolve(t *testing.T) {
+	seen := 0
+	for _, dir := range []string{"apps", "deploy"} {
+		err := filepath.WalkDir(filepath.Join(root, dir), func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				if skippedDirs[d.Name()] {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !codeExtensions[filepath.Ext(p)] {
+				return nil
+			}
+			raw, readErr := os.ReadFile(p)
+			if readErr != nil {
+				return readErr
+			}
+			for _, m := range codeLink.FindAllStringSubmatch(string(raw), -1) {
+				seen++
+				if !exists(m[1]) {
+					t.Errorf("%s links to %s, which does not exist", p, m[1])
+					continue
+				}
+				if m[2] != "" && !read(t, m[1]).slugs[m[2]] {
+					t.Errorf("%s links to %s#%s, which is not a heading there", p, m[1], m[2])
+				}
+			}
+			return nil
+		})
+		require.NoError(t, err)
+	}
+	assert.Positive(t, seen, "no code links to the docs were found")
+}

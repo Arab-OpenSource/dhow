@@ -124,6 +124,7 @@ const (
 	KeyPurgeLocalDatabase    Key = "purge.local.database"
 	KeyPurgeType             Key = "purge.type"
 	KeyPurgeWarning          Key = "purge.warning"
+	KeyRequirementsURL       Key = "requirements.url"
 	KeyRerunHint             Key = "rerun.hint"
 	KeyResourceEnough        Key = "resource.enough"
 	KeyResourceLow           Key = "resource.low"
