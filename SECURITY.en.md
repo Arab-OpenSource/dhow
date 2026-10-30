@@ -17,6 +17,10 @@ When reporting:
 
 The scope is the Dhow control plane, runner, CLI, official plugins, install artifacts and the docs site.
 
+## Host kernel advisories
+
+Some kernel flaws reach Dhow through the host it runs on. [Kernel security advisories](docs/en/security/kernel-advisories.md) lists them, what Dhow changed, and how to check and protect the host. The first one is CVE-2026-98432 (multipath TCP).
+
 ## Supported versions
 
 There are no released versions yet; Dhow is in the design phase. A support table will be added at the first release.

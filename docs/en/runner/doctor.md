@@ -27,6 +27,7 @@ On a terminal it offers each proposed fix in turn. `--fix` applies them all with
 | File ownership and permissions | A file or directory has another owner or mode than `install` gives it, or a state file is a symlink or a special file. | `--fix` sets owner and mode back through a descriptor that never follows a link. A symlink or special file is never fixed: remove it by hand, and treat the runner keys as exposed. |
 | Identity storage | The identity is encrypted but its drop-in is missing, both a plain and an encrypted copy exist, or the runner has no identity. A plain `0600` identity is reported as information, with the reason. | `--fix` writes the drop-in again. |
 | No unfinished key rotation | `identity.pending` or `identity.pending.cred` is left from a rotation (a warning). | Stop the runner and run `sudo dhow-runner rotate-keys`. |
+| Multipath TCP in the kernel | `/proc/sys/net/mptcp/enabled` is on, so the host is exposed to [CVE-2026-98432](../security/kernel-advisories.md) until its kernel is fixed (a warning that does not change the exit status). The kernel release is shown, but the result never depends on it. | The kernel update from your distribution, or `net.mptcp.enabled=0` until then. `doctor` never changes it. |
 | The server answers | The server cannot be reached, or its certificate is not trusted. | The address, DNS, the firewall or `DHOW_RUNNER_CA_FILE`. |
 | The runner signs in | The server refuses the runner, or the service has not signed in since it started. | The message and the service log say why. |
 
@@ -52,4 +53,4 @@ A runner has one session at a time. If `doctor` signed in next to the running se
 Everything looks good.
 ```
 
-`doctor` exits with status 0 when everything is fine, and 1 when a warning or a failure is left, so scripts and monitoring can call it.
+`doctor` exits with status 0 when everything is fine, and 1 when a warning or a failure is left, so scripts and monitoring can call it. The MPTCP warning is the exception: it is shown, but alone it leaves the status at 0, and the last line becomes "Nothing blocks Dhow, but read the warnings above."
