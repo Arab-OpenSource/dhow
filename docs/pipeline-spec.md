@@ -1,18 +1,19 @@
 [English](en/pipeline-spec.md)
 
-# مواصفات خطوات النشر — `.dhow.yml` v1 (مسودة)
+# مواصفات خطوات النشر — `.dhow.yml` v1
 
-الحالة: **مسودة**. مخطط JSON Schema الذي تقرؤه البرامج سيكون في `packages/spec/`، ويشترك فيه السيرفر، وجهاز التشغيل، والـ CLI (`dhow lint`)، والمحرر المرئي.
+الحالة: **v1، وعليها مدقق.** مدقق Go في `internal/pipelinespec` هو المرجع، ويستخدمه السيرفر، وجهاز التشغيل، والـ CLI (`dhow lint`). مخطط JSON Schema في `packages/spec/dhow.schema.json` للمحررات (VS Code)، واختبار يتأكد أنه مطابق للمدقق. التشغيلات التي تنفّذ هذه الملفات تأتي مع M4.8.
 
 ## 1. المبادئ
 
 - **مصدر واحد للحقيقة.** خطوات النشر (pipeline) في المستودع، عند الـ commit الذي يُنشر (ADR-0008).
   - للأحداث ذات الصلاحيات (النشر، وPRs من الـ forks)، نقرأ التعريف من **الفرع الأساسي/الافتراضي**، فلا يستطيع PR أن يعيد كتابة صلاحياته.
-- **الخطوات معزولة.** الخطوة إما `run:` (أوامر لـ shell *داخل البيئة المعزولة للتشغيل*) أو `uses:` (إضافة في صورة حاوية).
+- **الخطوات معزولة.** الخطوة إما `run:` (سكربت لـ shell *داخل البيئة المعزولة للتشغيل*) أو `uses:` (إضافة في صورة حاوية).
 - **التعبيرات بلغة CEL** داخل `${{ … }}`. لها أنواع، وليست Turing-complete، ولها حدود تكلفة.
   - القيم القادمة من Git (رسالة الـ commit، والكاتب، والفرع) **بيانات**، ولا نعيد تحليلها كتعبيرات أبدًا.
 - **الأسرار بالإشارة، وليست مكتوبة.** `secrets.NAME` يُحل فقط داخل نطاق البيئة الخاصة بالتشغيل.
 - **قيم `env` العادية ليست سرية.** كل عضو يستطيع قراءة التشغيل يراها في الـ API والواجهة، ومنهم المشاهدون. لذلك لا تضع أبدًا رمزًا أو كلمة سر أو مفتاحًا في `env`، بل أشر إليه من `secrets`.
+- **نقرأ الملف كما هو مكتوب بالضبط.** نرفض الـ anchors، والـ aliases، ومفاتيح الدمج (`<<`)، والـ tags الخاصة، لكي يكون الملف الذي تراجعه في PR هو نفسه الملف الذي يعمل.
 
 ## 2. مثال كامل
 
@@ -26,13 +27,16 @@ on:
   tag:
     patterns: ["v*"]
   pull_request: {}            # fork PRs: no secrets, no deploy environments
-  artifact:                   # external CI hands over a built artifact
-    from: github-actions
+  manual:
+    inputs:
+      dry_run:
+        type: boolean
+        default: false
 
 defaults:
   runner:
     labels: [linux, amd64]
-    isolation: container        # container | gvisor | microvm
+    isolation: container        # the only level in the first release
   timeout: 20m
 
 concurrency:
@@ -41,24 +45,29 @@ concurrency:
 
 jobs:
   test:
-    image: node:22-bookworm@sha256:<digest>
+    image: node:22-bookworm@sha256:61bb7a95b0f3650f3039c0fcabe07674458cf0d13afa51aade6188bab8215b07
     strategy:
       matrix:
         node: ["20", "22"]
+    env:
+      NODE_MAJOR: ${{ matrix.node }}
     steps:
       - name: Install
-        run: npm ci
+        run: npm ci --cache .npm
       - name: Test
         run: npm test -- --ci
     cache:
-      key: ${{ "npm-" + hash_files("package-lock.json") }}
-      paths: [~/.npm]
+      key: ${{ "npm-" + matrix.node + "-" + hash_files("package-lock.json") }}
+      paths: [.npm]
 
   build:
     needs: [test]
-    image: node:22-bookworm@sha256:<digest>
+    image: node:22-bookworm@sha256:61bb7a95b0f3650f3039c0fcabe07674458cf0d13afa51aade6188bab8215b07
     network:
       egress: [registry.npmjs.org]      # default is deny-all
+    resources:
+      cpu: 2
+      memory: 4Gi
     steps:
       - run: npm ci && npm run build
     artifacts:
@@ -67,48 +76,41 @@ jobs:
 
   deploy-staging:
     needs: [build]
-    if: ${{ git.branch == "main" }}
+    if: ${{ git.branch == "main" && !inputs.dry_run }}
     environment: staging
     steps:
-      - uses: dhow/deploy-ssh@sha256:<digest>
+      - uses: ghcr.io/khaymah/dhow-deploy-ssh@sha256:03fddb3b486b758f338f8999afbf04ced985d74825963dd28b92e650645e6778
         with:
           artifact: web
           target: staging-vps          # defined on the environment, credentials are env secrets
           strategy: atomic-symlink
           keep_releases: 5
-          reload: systemctl reload web-app
-          health_check:
-            url: https://staging.example.com/healthz
-            expect_status: 200
-            timeout: 60s
+          health_check_url: https://staging.example.com/healthz
 
   deploy-production:
     needs: [deploy-staging]
     if: ${{ git.is_tag && git.tag.startsWith("v") }}
-    environment: production            # protection rules enforced server-side (see §4)
+    environment: production            # protection rules enforced server-side (see §9)
     steps:
-      - uses: dhow/deploy-ssh@sha256:<digest>
+      - uses: ghcr.io/khaymah/dhow-deploy-ssh@sha256:03fddb3b486b758f338f8999afbf04ced985d74825963dd28b92e650645e6778
         with:
           artifact: web
           target: prod-fleet
           strategy: atomic-symlink
-          rolling: { batch: 2, pause: 30s }
-          health_check:
-            url: https://example.com/healthz
-      - uses: dhow/notify@sha256:<digest>
+          health_check_url: https://example.com/healthz
+      - uses: ghcr.io/khaymah/dhow-notify@sha256:9b0fdebd63cc544675f3d2a9b00f975ebc573d95b42602523ea996b62c3b6a68
         with:
           channel: release-room
           message: ${{ "Released " + git.tag + " to production" }}
 
   migrate-db:
     needs: [deploy-production]
+    image: ghcr.io/example/migrate@sha256:a8cf72fa2a047a9d6be9b105fbece66e00460b8a9fa188c439d1559100330c4d
     environment: production
     steps:
       - run: ./bin/migrate up
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        id_token:
-          audience: sts.amazonaws.com    # workload OIDC token instead of static cloud keys
 ```
 
 ## 3. المرجع (v1)
@@ -116,32 +118,115 @@ jobs:
 | المفتاح | النوع | ملاحظات |
 |---|---|---|
 | `version` | int | يجب أن يكون `1` |
-| `on` | map | `push`، و`tag`، و`pull_request`، و`manual` (مع `inputs` لها أنواع)، و`schedule` (cron)، و`artifact`، و`api` |
-| `defaults.runner` | map | `labels`، و`isolation` (أقل مستوى عزل، وسياسة البيئة قد ترفعه) |
-| `concurrency` | map | `group` (CEL)، و`cancel_in_progress` |
-| `jobs.<id>.needs` | list | حواف الـ DAG. نرفض الدوائر عند التحقق |
-| `jobs.<id>.strategy.matrix` | map | الضرب الديكارتي. ندعم `include` و`exclude`، و`max_parallel` |
-| `jobs.<id>.image` | string | يجب تثبيتها بالـ digest في بيئات الإنتاج (تفرضه السياسة). الاسم بلا عنوان سجل صور يُكمَل كما يفعل Docker: `node:22-bookworm@sha256:…` يعمل كـ `docker.io/library/node:22-bookworm@sha256:…`. جهاز التشغيل لا يبحث في سجلات صور أخرى أبدًا. |
-| `jobs.<id>.environment` | string | يربط قواعد الحماية والأسرار والأهداف |
+| `name` | string | اختياري، و100 حرف بالأكثر |
+| `on` | map | `push` و`pull_request` (مع `branches` و`paths`)، و`tag` (مع `patterns`)، و`manual` (مع `inputs` لها أنواع: `string` أو `boolean` أو `choice` مع `options`، و20 بالأكثر)، و`api`. يلزم حدث واحد على الأقل. نرفض `schedule` و`artifact` حاليًا (القسم 8) |
+| فلاتر `on.*` | list | أنماط glob فيها `*` (داخل جزء واحد من المسار)، و`**` (جزء كامل، بأي عمق)، و`?` فقط، و50 نمطًا بالأكثر في كل قائمة |
+| `defaults.runner` | map | `labels` (32 بالأكثر)، و`isolation` (`container` فقط في أول نسخة، القسم 8) |
+| `defaults.timeout` | duration | مهلة التشغيل إذا لم يحدد التشغيل مهلة (وإلا فساعة واحدة) |
+| `concurrency` | map | `group` (نص أو CEL من نوع `string`)، و`cancel_in_progress` |
+| `jobs.<id>` | map | الـ id حرف صغير بعده حتى 62 من `a-z` و`0-9` و`_` و`-`. و64 تشغيلًا بالأكثر |
+| `jobs.<id>.needs` | list | حواف الـ DAG. نرفض التشغيلات غير الموجودة والدوائر عند التحقق. الاعتماد على تشغيل فيه matrix ينتظر كل نسخه |
+| `jobs.<id>.if` | CEL bool | نقيّمه قبل إدخال التشغيل في الطابور، وإذا كانت النتيجة `false` يصبح `skipped` |
+| `jobs.<id>.strategy.matrix` | map | الضرب الديكارتي مع `include` و`exclude` (القسم 6)، و`strategy.max_parallel` من 1 إلى 256 |
+| `jobs.<id>.image` | string | مطلوبة إذا كان في التشغيل خطوة `run:`. يجب تثبيتها بالـ digest: الصورة بالـ tag فقط تعطي تحذيرًا، ويرفضها جهاز التشغيل إلا إذا كان `DHOW_RUNNER_ALLOW_UNPINNED_IMAGES` مفعّلًا. الاسم بلا عنوان سجل صور يُكمَل كما يفعل Docker: `node:22-bookworm@sha256:…` يعمل كـ `docker.io/library/node:22-bookworm@sha256:…`. جهاز التشغيل لا يبحث في سجلات صور أخرى أبدًا. |
+| `jobs.<id>.runner` | map | نفس مفاتيح `defaults.runner`، و`labels` فيه تحل محل الافتراضية |
+| `jobs.<id>.timeout` | duration | من `1s` إلى `24h`، مثل `90s` أو `20m` أو `1h30m` (الوحدات `d` و`h` و`m` و`s`، والأكبر أولًا) |
+| `jobs.<id>.environment` | string | يربط قواعد الحماية والأسرار والأهداف. نقبله الآن مع تحذير، وحتى M5 نتخطى التشغيل |
 | `jobs.<id>.network.egress` | list | قائمة الأجهزة المسموحة. الفارغة تعني منع كل شيء، و64 عنصرًا بالأكثر. كل عنصر واحد من `host` أو `host:port` أو `*.domain`. (1) **الأجهزة:** حروف ASCII صغيرة، مع punycode (`xn--…`) للحروف الأخرى. نرفض عناوين IP، والأسماء المكوّنة من أرقام فقط، والأسماء من مقطع واحد (`localhost`، `*.com`). `*.domain` يطابق أي نطاق فرعي، لكن ليس `domain` نفسه. (2) **المنافذ:** بدون منفذ، يفتح العنصر 443 عبر `CONNECT` و80 لـ `http://` العادي. (3) **الوكيل:** تمر البيانات عبر وكيل جهاز التشغيل على `127.0.0.1:3128` (نضبط `HTTPS_PROXY` و`HTTP_PROXY` و`ALL_PROXY` لكل خطوة، وتغلب قيم التشغيل نفسه)، لذلك يجب أن تدعم البرامج الوكيل. يستطيع SSH وبرامج TCP الأخرى استخدام `ProxyCommand=/run/dhow/bin/connect %h %p`. (4) **غير مدعوم:** UDP، وQUIC، والبرامج التي تتجاهل الوكيل. (5) **ممنوع دائمًا:** العناوين الخاصة، وloopback، وlink-local، وعناوين metadata (ADR-0044، ADR-0057) |
-| `jobs.<id>.if` / `steps[].if` | CEL bool | — |
-| `steps[].run` | string | ينفّذه `/bin/sh -e` **داخل البيئة المعزولة** (أو `shell:`). نمرّر السكربت على stdin، ويجب أن توفّر الصورة الـ shell |
-| `steps[].uses` | image ref | إضافة. يجب تثبيتها بالـ digest. `with:` فيه مدخلات لها أنواع، يعلنها ملف الإضافة |
-| `steps[].env` | map | القيم يمكن أن تشير إلى `secrets.*` و`vars.*` |
-| `artifacts` | list | رفع بعنونة المحتوى (content-addressed). يمكن تقليل `retention` حتى الحد الأدنى في سياسة المؤسسة |
-| `cache` | map | `key` (CEL)، و`paths`. محدود لكل مشروع وفرع، وللقراءة فقط مع PRs من الـ forks |
-| `timeout` | duration | لكل تشغيل أو خطوة. يقتله جهاز التشغيل بالقوة |
+| `jobs.<id>.resources` | map | `cpu` (أنوية مثل `2` أو `1.5`، أو أجزاء من الألف مثل `1500m`، من 0.1 إلى 64)، و`memory` و`disk` (بـ `Ki` أو `Mi` أو `Gi` أو `Ti`، مثل `4Gi`. الذاكرة من 64Mi إلى 64Gi، والقرص من 64Mi إلى 100Gi)، و`pids` (من 32 إلى 32768). ما لا تحدده يأخذ القيمة الافتراضية من السيرفر (معالج واحد، و2Gi ذاكرة، و4Gi قرص، و1024 عملية) |
+| `jobs.<id>.env` | map | 100 متغير بالأكثر. الأسماء حروف وأرقام و`_`، والأسماء التي تبدأ بـ `DHOW_` محجوزة. كل قيمة نص أو تعبير CEL كامل من نوع `string` |
+| `steps[].id` | string | اختياري، ولا يتكرر في التشغيل، وله نفس قواعد id التشغيل |
+| `steps[].if` | CEL bool | نقيّمه قبل إدخال التشغيل في الطابور، وإذا كانت النتيجة `false` نحذف الخطوة |
+| `steps[].run` | string | ينفّذه `/bin/sh -e` **داخل البيئة المعزولة**. نمرّر السكربت على stdin، ويجب أن توفّر الصورة الـ shell. 64 KiB بالأكثر، ونرفض `${{ }}` داخله (القسم 5) |
+| `steps[].uses` | image ref | إضافة. يجب تثبيتها بالـ digest (`name@sha256:…`)، وإلا نرفض الملف |
+| `steps[].with` | map | مدخلات الإضافة، في خطوة `uses:` فقط: 32 بالأكثر، والأسماء من `a-z` و`0-9` و`_`، والقيمة حتى 32 KiB (نص أو CEL من نوع `string`). ملف الإضافة يعلن الأنواع، وجهاز التشغيل يتحقق منها |
+| `steps[].env` | map | نفس قواعد `jobs.<id>.env`. القيم يمكن أن تشير إلى `secrets.*` و`vars.*` |
+| `steps[].timeout` | duration | لا تزيد عن مهلة التشغيل |
+| `artifacts` | list | 16 بالأكثر لكل تشغيل. `name` (حروف وأرقام و`.` و`_` و`-`، حتى 64، ولا يتكرر في خطوات النشر كلها: في تشغيل فيه matrix، اجمع نصًا وقيم `matrix.*` بـ `+`، مثل `${{ "web-" + matrix.os }}`)، و`paths` (من 1 إلى 32، نسبة إلى مساحة العمل، بدون `..` أو `~` أو `/` في البداية)، و`retention` (من `1d` إلى `30d`، والافتراضي 30 يومًا) |
+| `cache` | map | `key` (نص أو CEL من نوع `string`، ويمكن أن يستدعي `hash_files()`)، و`paths` (نفس قواعد مسارات الملفات الناتجة). محدود لكل مشروع وفرع، وللقراءة فقط مع PRs من الـ forks |
 
 **سياق CEL.** هذه المتغيرات متاحة:
-- `git.{sha, ref, branch, tag, is_tag, message, author, pr}`
-- `project.*` و`env.*`
+- `git.{sha, ref, branch, tag, is_tag, message, author, event}` و`git.pr.{number, base_ref, head_ref, is_fork}`
+- `project.{id, name}` و`env.*` (قيم `env` الخاصة بالتشغيل، في حقول الخطوات ومفتاح الـ cache)
 - `vars.*` (غير سرية)
-- `secrets.*` (داخل `env`/`with` فقط، ولا يمكن أن تظهر في `if` أبدًا)
-- `matrix.*` و`needs.<job>.outputs.*`
+- `inputs.*` (مدخلات `manual` المعلنة، بأنواعها)
+- `secrets.*` (كقيمة كاملة في `env`/`with` فقط، ولا يمكن أن تظهر في `if` أبدًا)
+- `matrix.*` و`needs.<job>.outputs.*` (للتشغيلات المذكورة في `needs` فقط، وبشرط ألا يكون في id التشغيل `-`)
 
-وهذه الدوال متاحة: `hash_files()`، و`startsWith()`، و`matches()` (بصيغة RE2)، و`contains()`.
+وهذه الدوال متاحة: `hash_files()` (في مفتاح الـ cache فقط، ويقيّمها جهاز التشغيل داخل مساحة العمل)، و`startsWith()`، و`endsWith()`، و`contains()`، و`size()`، وباقي المكتبة الأساسية لـ CEL، ما عدا `matches()` (لأن التعبيرات النمطية لا يمكن إيقافها في منتصفها) ودوال الوقت (`timestamp()` و`duration()` ودوال `get…()`، لأنها قد تقرأ ملفات المناطق الزمنية).
 
-## 4. حماية البيئات (في السيرفر، وليست في YAML)
+للقيم في السياق حدود، والتقييم بقيمة أكبر يفشل: `git.message` حتى 64 KiB، وباقي قيم `git.*` و`project.*` حتى 1 KiB، و`vars.*` و`inputs.*` حتى 4 KiB (و256 متغيرًا)، و`env.*` حتى 32 KiB (و100 متغير)، وكل output من `needs` حتى 1 KiB (و64 output). واسم `env` الذي يحمل سرًا لا يظهر أبدًا في `env.*`.
+
+## 4. التعبيرات
+
+- **أين:** `if` (للتشغيل والخطوة)، و`concurrency.group`، و`cache.key`، وقيم `env` و`with`، و`name` للملف الناتج (وفيه نص وقيم `matrix.*` مجموعة بـ `+` فقط، لكي نعرف الأسماء بدون تشغيل أي شيء). كل حقل آخر نص عادي، و`${{` فيه خطأ.
+- **القيمة كاملة:** التعبير هو القيمة كلها: `${{ "v" + git.tag }}`، وليس `v${{ git.tag }}`. اجمع النصوص بـ `+` داخل CEL.
+- **`if`** يمكن كتابته مع `${{ }}` أو بدونه.
+- **نتحقق من الأنواع عند التحقق من الملف، وليس عند التشغيل.** يجب أن يكون `if` من نوع `bool`، وكل مكان آخر من نوع `string`، وأي اسم غير متاح في هذا المكان خطأ. لذلك نرفض `if: ${{ git.branch }}` قبل أن يعمل أي شيء.
+- **الأسرار:** `${{ secrets.NAME }}` مسموح فقط كقيمة كاملة في `env` أو `with`. القيمة لا تمر عبر CEL أبدًا: يستلمها جهاز التشغيل كإشارة إلى سر. استخدام `secrets` في `if`، أو في `concurrency`، أو في `cache`، أو داخل تعبير أكبر، خطأ.
+- **الحدود:** 2 KiB لكل تعبير، و1,024 تعبيرًا بالأكثر في خطوات النشر كلها. نحسب أعلى تكلفة ممكنة لكل تعبير من حدود القيم السابقة عند التحقق من الملف، ونرفض التعبير الذي قد تكون تكلفته كبيرة (`EXPRESSION_TOO_EXPENSIVE`)، وكذلك الملف الذي قد تكون تكلفة تعبيراته معًا كبيرة (`EXPRESSION_BUDGET_EXCEEDED`). وعند التشغيل، يتوقف التقييم أيضًا عند نفس حد التكلفة وبعد 10 ms. لا توجد دالة تقرأ ملفات أو تتصل بالشبكة على السيرفر.
+
+## 5. سكربت `run:`
+
+لا نسمح أبدًا بـ `${{ }}` داخل `run:`. لو سمحنا به، يمكن أن تصبح قيمة من Git، مثل اسم فرع أو رسالة commit، جزءًا من السكربت (وهذا هو حقن الأوامر المعروف في GitHub Actions). مرّر القيمة عبر `env` واقرأها كمتغير في الـ shell:
+
+```yaml
+version: 1
+on:
+  push: {}
+jobs:
+  greet:
+    image: alpine:3.22@sha256:61bb7a95b0f3650f3039c0fcabe07674458cf0d13afa51aade6188bab8215b07
+    steps:
+      - run: printf 'building %s\n' "$BRANCH"
+        env:
+          BRANCH: ${{ git.branch }}
+```
+
+- يعمل السكربت بـ `/bin/sh -e` ونمرّره على stdin، لذلك يتوقف عند أول أمر يفشل.
+- حجم السكربت 64 KiB بالأكثر، وبدون بايتات NUL.
+
+## 6. الـ matrix
+
+- كل مفتاح تحت `matrix` (ما عدا `include` و`exclude`) فيه قائمة قيمه: نصوص أو أرقام أو قيم منطقية، 128 حرفًا بالأكثر. المفتاح حرف أو `_` بعده حروف وأرقام و`_`، و16 مفتاحًا بالأكثر.
+- التشغيلات هي الضرب الديكارتي للمفاتيح، مرتبة حسب المفتاح. واسم كل تشغيل مثل `build (node=20, os=debian)`.
+- **`exclude`** يحذف كل تركيبة تطابق كل أزواج عنصر منه. العنصر يستخدم مفاتيح الـ matrix فقط.
+- **`include`** يضيف تركيبة جديدة لكل عنصر (وعلى عكس GitHub Actions، لا يعدّل التركيبات الموجودة أبدًا). العنصر يحدد كل مفاتيح الـ matrix، لكي يكون لكل تشغيل نفس قيم `matrix.*`. يمكن أن يكون في الـ matrix `include` فقط، وعندها تستخدم كل العناصر نفس المفاتيح.
+- **الحدود:** 256 تشغيلًا بالأكثر لكل matrix، و256 تشغيلًا في خطوات النشر كلها بعد التوسيع. الـ matrix التي لا تبقى فيها أي تركيبة خطأ، وكذلك تركيبتان لهما نفس الاسم.
+- التوسيع ثابت: نفس الملف يعطي دائمًا نفس التشغيلات بنفس الترتيب، ونفس الـ digest لمواصفات كل تشغيل.
+
+## 7. الحدود
+
+| الحد | القيمة |
+|---|---|
+| حجم الملف | 256 KiB |
+| القيمة الواحدة | 64 KiB |
+| المفتاح الواحد | 256 بايت |
+| عمق YAML | 32 مستوى |
+| عدد عُقد YAML | 50,000 |
+| التشغيلات قبل الـ matrix | 64 |
+| التشغيلات بعد الـ matrix | 256 |
+| الخطوات في التشغيل | 100 |
+| متغيرات `env` لكل تشغيل أو خطوة | 100 (و32 KiB لكل قيمة) |
+| مدخلات `with` لكل خطوة | 32 (و32 KiB لكل قيمة) |
+| مدخلات `manual` | 20 |
+| الأنماط في كل فلتر | 50 |
+| عناصر الـ egress | 64 |
+| الملفات الناتجة لكل تشغيل | 16 (و32 مسارًا لكل واحد) |
+| حجم التعبير | 2 KiB |
+| التعبيرات في خطوات النشر كلها | 1,024 |
+| وقت تقييم التعبير | 10 ms |
+| مهلة التشغيل | من 1s إلى 24h |
+| مواصفات التشغيل بعد التوسيع | أقل من 252 KiB |
+
+## 8. غير مدعوم بعد
+
+- **الحدث `schedule`** يأتي بعد أول نسخة، و**الحدث `artifact`** (بناء من CI خارجي) يأتي مع M6. نرفض الاثنين بـ `TRIGGER_NOT_SUPPORTED_YET`، ولا نتجاهلهما.
+- **`isolation: gvisor`** نرفضه بـ `ISOLATION_NOT_SUPPORTED_YET` حتى يعود gVisor بعد أول نسخة.
+- **البيئات والأسرار** تأتي مع M5. نقبل الملف مع تحذير (`ENVIRONMENTS_UNAVAILABLE` و`SECRETS_UNAVAILABLE`). وحتى ذلك الوقت نتخطى التشغيل الذي فيه `environment:`، ويفشل التشغيل الذي يطلب سرًا عند إدخاله في الطابور.
+- **`services:`** (حاويات تعمل طوال التشغيل) والمحرر المرئي يأتيان بعد أول نسخة.
+
+## 9. حماية البيئات (في السيرفر، وليست في YAML)
 
 تُضبط قواعد الحماية على البيئة من الواجهة أو الـ API، لذلك **لا يستطيع commit أن يضعفها**. القاعدة يمكن أن تحدد:
 - الفروع أو الوسوم المسموحة؛
@@ -150,13 +235,17 @@ jobs:
 - مستوى العزل المطلوب، واشتراط صور مثبّتة بالـ digest وإضافات موثّقة؛
 - تجاوز للمدير، يُسجَّل في سجل الأحداث.
 
-## 5. المحرر المرئي
+## 10. المحرر المرئي
 
-تقدّم الواجهة محررًا مرئيًا لخطوات النشر (رسم للتشغيلات مع نماذج للخطوات)، موجّهًا للمستخدمين الجدد. يعمل هكذا:
+بعد أول نسخة، تقدّم الواجهة محررًا مرئيًا لخطوات النشر (رسم للتشغيلات مع نماذج للخطوات)، موجّهًا للمستخدمين الجدد. يعمل هكذا:
 - يقرأ `.dhow.yml` الحالي في الفرع الافتراضي.
 - يعدّل نموذجًا له أنواع، ويتحقق منه مباشرة بمخطط JSON Schema نفسه.
 - **يكتب YAML ويفتح pull request** عبر التكامل مع مزوّد Git. نسخة داو لا تبتعد عن المستودع أبدًا بصمت.
 
-## 6. التحقق
+## 11. التحقق
 
-`dhow lint` (الـ CLI)، والمحرر، والسيرفر، كلها تستخدم مدقق Go نفسه. يفحص المخطط، والـ DAG، وأخطاء الأنواع في CEL، والإضافات غير المعروفة أو غير المثبّتة، ومخالفات السياسة.
+`dhow lint` (الـ CLI)، والمحرر، والسيرفر، كلها تستخدم مدقق Go نفسه. يفحص الـ YAML، والمخطط، والـ DAG، والـ matrix، وأخطاء الأنواع في CEL، والإضافات غير المثبّتة، ومخالفات السياسة.
+
+- لكل مشكلة كود ثابت (`UPPER_SNAKE`، مثل `DAG_CYCLE` أو `RUN_EXPRESSION_NOT_ALLOWED`)، ومسار (`jobs.build.steps[2].run`)، وسطر، وعمود. الرسالة لا تكرر القيمة نفسها أبدًا، لأن أحدًا قد يلصق سرًا بالخطأ.
+- `error` يمنع التشغيل، و`warning` (مثل صورة بالـ tag فقط) يظهر في نتيجة الـ lint وفي الواجهة.
+- المفاتيح غير المعروفة، والمفاتيح المكررة، والـ anchors، والـ aliases، ومفاتيح الدمج، والـ tags الخاصة، كلها أخطاء.
