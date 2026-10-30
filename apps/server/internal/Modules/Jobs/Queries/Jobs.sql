@@ -1,8 +1,9 @@
 -- name: InsertJob :one
 INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation",
-                    "Priority", "MaxInfraRetries", "QueueDeadline")
+                    "Priority", "MaxInfraRetries", "QueueDeadline", "OriginKind", "OriginId", "RequiredFeatures")
 VALUES (@organization_id, @created_by_user_id, @name, @spec, @spec_digest, @image, @labels::text[], @isolation, @priority,
-        @max_infra_retries, now() + make_interval(secs => @queue_timeout_seconds::float8))
+        @max_infra_retries, now() + make_interval(secs => @queue_timeout_seconds::float8), @origin_kind,
+        sqlc.narg('origin_id')::uuid, @required_features::text[])
 RETURNING *;
 
 -- name: NotifyJobsQueued :exec
@@ -30,7 +31,19 @@ SELECT pg_advisory_xact_lock(hashtextextended('dhow.organization-queue:' || @org
 -- name: CountQueuedJobs :one
 SELECT count(*)
 FROM "Jobs"
-WHERE "OrganizationId" = @organization_id AND "State" = 'queued' AND NOT "IsDeleted";
+WHERE "OrganizationId" = @organization_id AND "State" = 'queued' AND NOT "IsDeleted"
+  AND (cardinality("RequiredFeatures") > 0) = @needs_features::boolean;
+
+-- name: IsEnabledMemberOf :one
+SELECT EXISTS (SELECT 1
+               FROM "Memberships" m
+               JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
+               WHERE m."UserId" = @user_id AND m."OrganizationId" = @organization_id AND NOT m."IsDeleted")::boolean;
+
+-- name: OriginUsedElsewhere :one
+SELECT EXISTS (SELECT 1
+               FROM "Jobs"
+               WHERE "OriginId" = @origin_id AND "OrganizationId" <> @organization_id)::boolean;
 
 -- name: GetJob :one
 SELECT *
@@ -92,6 +105,7 @@ SELECT *
 FROM "Jobs" j
 WHERE j."OrganizationId" = @organization_id AND j."State" = 'queued' AND NOT j."IsDeleted"
   AND j."Labels" <@ @labels::text[] AND j."Isolation" = ANY (@isolation_levels::text[])
+  AND j."RequiredFeatures" <@ @features::text[]
   AND j."QueueDeadline" > now() AND j."CancelRequestedAt" IS NULL
   AND NOT EXISTS (SELECT 1
                   FROM "JobAttempts" a

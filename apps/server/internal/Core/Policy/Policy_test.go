@@ -17,22 +17,23 @@ func TestMatrix(t *testing.T) {
 			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.OrgTransfer: true, policy.OrgSecurity: true,
 			policy.MemberRead: true, policy.MemberManage: true, policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true,
 			policy.TokenCreate: true, policy.TokenManage: true, policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true,
-			policy.LogRead: true,
+			policy.LogRead: true, policy.ProjectRead: true, policy.ProjectManage: true,
 		},
 		policy.RoleAdmin: {
 			policy.OrgRead: true, policy.OrgUpdate: true, policy.OrgLeave: true, policy.MemberRead: true, policy.MemberManage: true,
 			policy.AuditRead: true, policy.RunnerRead: true, policy.RunnerManage: true, policy.TokenCreate: true, policy.TokenManage: true,
-			policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true, policy.LogRead: true,
+			policy.JobRead: true, policy.JobCreate: true, policy.JobCancel: true, policy.LogRead: true, policy.ProjectRead: true,
+			policy.ProjectManage: true,
 		},
 		policy.RoleMaintainer: {
 			policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true, policy.JobRead: true,
-			policy.JobCancel: true, policy.LogRead: true, policy.TokenCreate: true,
+			policy.JobCancel: true, policy.LogRead: true, policy.TokenCreate: true, policy.ProjectRead: true, policy.ProjectManage: true,
 		},
 		policy.RoleDeveloper: {
 			policy.OrgRead: true, policy.OrgLeave: true, policy.MemberRead: true, policy.RunnerRead: true, policy.JobRead: true,
-			policy.LogRead: true, policy.TokenCreate: true,
+			policy.LogRead: true, policy.TokenCreate: true, policy.ProjectRead: true,
 		},
-		policy.RoleViewer: {policy.OrgRead: true, policy.OrgLeave: true, policy.JobRead: true, policy.TokenCreate: true},
+		policy.RoleViewer: {policy.OrgRead: true, policy.OrgLeave: true, policy.JobRead: true, policy.TokenCreate: true, policy.ProjectRead: true},
 	}
 	for _, role := range policy.Roles() {
 		subject := policy.Subject{UserID: uuid.New(), Memberships: []policy.Membership{{OrganizationID: org, Role: role}}}

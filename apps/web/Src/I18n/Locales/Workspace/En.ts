@@ -253,6 +253,8 @@ export const WorkspaceEn: TWorkspaceMessages = {
   'scope.runner.manage': 'Manage runners and their registration tokens',
   'scope.job.read': 'Read jobs and their specs',
   'scope.job.cancel': 'Cancel jobs',
+  'scope.project.read': 'View projects',
+  'scope.project.manage': 'Create, change and archive projects',
 
   'sessions.current': 'This device',
   'sessions.device': '{browser} on {os}',

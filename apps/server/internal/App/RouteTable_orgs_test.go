@@ -87,6 +87,9 @@ func organizationPath(env *apptest.Env, fx fixture, rule policy.Rule) string {
 	if strings.Contains(path, "{eventId}") {
 		path = strings.ReplaceAll(path, "{eventId}", auditEventOf(env, fx.orgA))
 	}
+	if strings.Contains(path, "{projectId}") {
+		path = strings.ReplaceAll(path, "{projectId}", env.SeedProject(uuid.MustParse(fx.orgA), uuid.MustParse(fx.byRole[policy.RoleOwner])).String())
+	}
 	if strings.Contains(path, "{invitationId}") {
 		path = strings.ReplaceAll(path, "{invitationId}", seedInvitation(env, fx.orgA, fx.byRole[policy.RoleOwner], string(policy.RoleViewer)))
 	}
@@ -112,6 +115,8 @@ func organizationBody(env *apptest.Env, fx fixture, rule policy.Rule) any {
 		return map[string]string{"Scope": "org", "Role": string(policy.RoleViewer)}
 	case "PATCH /organizations/{id}/teams/{teamId}/role-bindings/{bindingId}":
 		return map[string]string{"Role": string(policy.RoleDeveloper)}
+	case "POST /organizations/{id}/projects":
+		return map[string]string{"Name": "Route table project", "Slug": "rt-" + randomSuffix(env.T)}
 	case "POST /organizations/{id}/invitations":
 		return map[string]string{"Email": randomEmail(env.T), "Role": string(policy.RoleViewer)}
 	case "POST /invitations/preview", "POST /me/invitations/accept":

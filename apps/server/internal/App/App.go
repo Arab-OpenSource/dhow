@@ -22,6 +22,7 @@ import (
 	jobs "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs"
 	overview "github.com/Khaymah/dhow/apps/server/internal/Modules/Overview"
 	preferences "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences"
+	projects "github.com/Khaymah/dhow/apps/server/internal/Modules/Projects"
 	runners "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Khaymah/dhow/apps/server/internal/Modules/Session"
 	settings "github.com/Khaymah/dhow/apps/server/internal/Modules/Settings"
@@ -38,6 +39,7 @@ type Options struct {
 	Audit     *audit.Service
 	Runners   *runners.Service
 	Jobs      *jobs.Service
+	Projects  *projects.Service
 	Overview  *overview.Service
 	Tokens    *tokens.Service
 	Prefs     *preferences.Service
@@ -59,6 +61,7 @@ func Policies() []policy.Rule {
 	rules = append(rules, audit.Policies()...)
 	rules = append(rules, runners.Policies()...)
 	rules = append(rules, jobs.Policies()...)
+	rules = append(rules, projects.Policies()...)
 	rules = append(rules, overview.Policies()...)
 	rules = append(rules, tokens.Policies()...)
 	rules = append(rules, preferences.Policies()...)
@@ -101,8 +104,12 @@ func (o Options) guard() *auth.Guard {
 	if o.Tokens != nil {
 		tokenResolver = o.Tokens
 	}
+	var projectResolver auth.ProjectResolver
+	if o.Projects != nil {
+		projectResolver = o.Projects
+	}
 	return auth.NewGuard(auth.GuardOptions{
-		Resolver: resolver, Members: members, Tokens: tokenResolver, APITokens: o.APITokens, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now,
+		Resolver: resolver, Members: members, Tokens: tokenResolver, Projects: projectResolver, APITokens: o.APITokens, CSRF: csrf, PublicURL: o.Config.PublicURL, Log: o.Log, Now: o.Now,
 		Instance: o.Instance,
 	})
 }
@@ -150,6 +157,9 @@ func publicRouter(o Options) chi.Router {
 			}
 			if o.Runners != nil {
 				runners.Routes(timed, runners.Deps{Service: o.Runners, Guard: guard, Log: o.Log})
+			}
+			if o.Projects != nil {
+				projects.Routes(timed, projects.Deps{Service: o.Projects, Guard: guard, Log: o.Log})
 			}
 			if o.Overview != nil {
 				overview.Routes(timed, overview.Deps{Service: o.Overview, Guard: guard, Log: o.Log})

@@ -56,7 +56,7 @@ func dropSeededFactors(env *apptest.Env, v secondFactorVariant) {
 }
 
 func withSecondFactor(base outcome, rule policy.Rule, p principal, v secondFactorVariant) outcome {
-	if v.blocks && base == allowed && p.kind == "member" && rule.Scope == policy.ScopeOrganization && policy.IsSensitive(rule.Action) {
+	if v.blocks && base == allowed && p.kind == "member" && scopedToAnOrganization(rule) && policy.IsSensitive(rule.Action) {
 		return secondFactorRequired
 	}
 	return base
@@ -117,4 +117,8 @@ func TestRouteTableWithAPITokensAndARequiredSecondFactor(t *testing.T) {
 			}
 		})
 	}
+}
+
+func scopedToAnOrganization(rule policy.Rule) bool {
+	return rule.Scope == policy.ScopeOrganization || rule.Scope == policy.ScopeProject
 }

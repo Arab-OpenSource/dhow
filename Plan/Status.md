@@ -66,6 +66,7 @@
 | الشغل | الـ branch | الـ PR | اللي فاضل |
 |---|---|---|---|
 | M4.2: `dhow lint` في `apps/cli`، والأرشيفات الموقّعة، و`get.sh --component cli` | `feat/dhow-lint` | — | الـ PR (المراجعة الأمنية عدّت وكل الـ findings اتصلّحت) |
+| M4.3: موديول `Projects` و`policy.Project` بالـ bindings على المشروع، و`Core/JobQueue` جوه transaction اللي بينادي، و`"Jobs"."OriginKind"` (ADR-0070) | `feat/projects-module` | — | الـ PR (المراجعة الأمنية اتعملت واتصلّحت) |
 | `runner.revoked` (إلغاء اللوحة وإلغاء الـ runner لنفسه) بيتنشر على الـ event bus بعد الـ commit، فلو الـ process وقع بينهم الـ audit بيضيع. الـ bus مافيهوش outbox | — | — | outbox للأحداث اللي بتتسجّل، أو نشرها جوه نفس الـ transaction |
 
 M2.6 وM3.6 والتطوير المحلي وإصلاحات مراجعة M3.6 وتغيير الاسم وM3.7 وتجهيز Windows وM3.9 اتدمجوا في 2026-10-28، ومن #35 لـ #59 اتدمجوا في 2026-10-28 و2026-10-29.

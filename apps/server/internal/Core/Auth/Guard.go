@@ -50,6 +50,7 @@ type ResolvedToken struct {
 	Scopes          []policy.Action
 	ExpiresAt       time.Time
 	SecondFactorDue time.Time
+	AdminDue        time.Time
 	Email           string
 	Name            string
 	Locale          string
@@ -67,6 +68,7 @@ type GuardOptions struct {
 	Resolver  Resolver
 	Members   MembershipToucher
 	Tokens    TokenResolver
+	Projects  ProjectResolver
 	APITokens *APITokens
 	CSRF      *CSRF
 	PublicURL *url.URL
@@ -79,6 +81,7 @@ type Guard struct {
 	resolver  Resolver
 	members   MembershipToucher
 	tokens    TokenResolver
+	projects  ProjectResolver
 	apiTokens *APITokens
 	csrf      *CSRF
 	origin    string
@@ -97,7 +100,7 @@ func NewGuard(o GuardOptions) *Guard {
 		instance = func() policy.InstanceSettings { return policy.InstanceSettings{} }
 	}
 	return &Guard{
-		resolver: o.Resolver, members: o.Members, tokens: o.Tokens, apiTokens: o.APITokens, csrf: o.CSRF, origin: OriginOf(o.PublicURL),
+		resolver: o.Resolver, members: o.Members, tokens: o.Tokens, projects: o.Projects, apiTokens: o.APITokens, csrf: o.CSRF, origin: OriginOf(o.PublicURL),
 		instance: instance, log: o.Log, now: now,
 	}
 }
@@ -192,7 +195,7 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 		return WithPrincipal(ctx, principal), nil
 	}
 	var resource policy.Resource
-	if rule.Scope == policy.ScopeOrganization {
+	if scopedToOrganization(rule) {
 		id, err := uuid.Parse(chi.URLParam(r, rule.OrgParam))
 		if err != nil {
 			return ctx, apperrors.NotFound()
@@ -202,13 +205,17 @@ func (g *Guard) authorize(ctx context.Context, r *http.Request, rule policy.Rule
 		}
 		resource.OrganizationID = id
 	}
+	resource, ae = g.projectOf(ctx, r, rule, resource, principal.UserID)
+	if ae != nil {
+		return ctx, ae
+	}
 	if ae := g.permit(principal.Subject, rule.Action, resource); ae != nil {
 		return ctx, ae
 	}
 	if resource.OrganizationID != uuid.Nil {
 		g.touchMembership(ctx, principal.Subject, resource.OrganizationID)
 	}
-	return WithPrincipal(ctx, principal), nil
+	return WithPrincipal(ctx, withProjectRole(principal, resource)), nil
 }
 
 func (g *Guard) touchMembership(ctx context.Context, s policy.Subject, org uuid.UUID) {
@@ -252,7 +259,7 @@ func (g *Guard) Reauthorize(ctx context.Context, action policy.Action, org uuid.
 }
 
 func (g *Guard) organizationOf(r *http.Request, rule policy.Rule) (policy.Resource, *apperrors.AppError) {
-	if rule.Scope != policy.ScopeOrganization {
+	if !scopedToOrganization(rule) {
 		return policy.Resource{}, nil
 	}
 	id, err := uuid.Parse(chi.URLParam(r, rule.OrgParam))
@@ -288,17 +295,23 @@ func (g *Guard) authorizeToken(ctx context.Context, r *http.Request, rule policy
 	if resource.OrganizationID != res.OrganizationID {
 		return ctx, apperrors.NotFound()
 	}
+	resource, ae = g.projectOf(ctx, r, rule, resource, res.UserID)
+	if ae != nil {
+		return ctx, ae
+	}
 	principal := Principal{
 		Subject: policy.Subject{
 			UserID: res.UserID, TokenID: res.TokenID, TokenScopes: res.Scopes,
-			Memberships: []policy.Membership{{OrganizationID: res.OrganizationID, Role: res.Role, SecondFactorDue: res.SecondFactorDue}},
+			Memberships: []policy.Membership{{
+				OrganizationID: res.OrganizationID, Role: res.Role, SecondFactorDue: res.SecondFactorDue, AdminSecondFactorDue: res.AdminDue,
+			}},
 		},
 		Email: res.Email, Name: res.Name, Locale: res.Locale, ExpiresAt: res.ExpiresAt,
 	}
 	if ae := g.permit(principal.Subject, rule.Action, resource); ae != nil {
 		return ctx, ae
 	}
-	return WithPrincipal(ctx, principal), nil
+	return WithPrincipal(ctx, withProjectRole(principal, resource)), nil
 }
 
 func (g *Guard) authenticate(ctx context.Context) (Principal, []byte, *apperrors.AppError) {

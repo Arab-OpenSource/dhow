@@ -325,6 +325,7 @@ func TestRouteTableCoversEveryRoleAndScope(t *testing.T) {
 	assert.Positive(t, scopes[policy.ScopeAuthenticated])
 	assert.Positive(t, scopes[policy.ScopeOrganization])
 	assert.Positive(t, scopes[policy.ScopeInstance])
+	assert.Positive(t, scopes[policy.ScopeProject])
 	for _, a := range policy.Actions() {
 		assert.True(t, actions[a], "no route uses %s", a)
 	}

@@ -33,6 +33,7 @@ const (
 	JobClaimRefill           = time.Second
 	JobClaimTrackedRunners   = 10_000
 	JobMaxQueuedPerOrg       = 1000
+	JobMaxQueuedWithFeatures = 100
 	JobRecentFailureWindow   = 24 * time.Hour
 	RunnerDefaultMaxPolls    = DatabaseMaxConns * 25
 	RunnerMaxPollsUpperBound = 10_000

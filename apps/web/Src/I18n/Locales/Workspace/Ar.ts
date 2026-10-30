@@ -252,6 +252,8 @@ export const WorkspaceAr = {
   'scope.runner.manage': 'يدير أجهزة التشغيل ورموز تسجيلها',
   'scope.job.read': 'يشاهد التشغيلات وتفاصيلها',
   'scope.job.cancel': 'يلغي التشغيلات',
+  'scope.project.read': 'يشاهد المشاريع',
+  'scope.project.manage': 'ينشئ المشاريع ويعدّلها ويؤرشفها',
 
   'sessions.current': 'هذا الجهاز',
   'sessions.device': '{browser} على {os}',

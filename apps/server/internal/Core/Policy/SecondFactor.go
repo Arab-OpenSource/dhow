@@ -51,7 +51,7 @@ func (r SecondFactorRule) Covers(role Role) bool {
 }
 
 func SensitiveActions() []Action {
-	return []Action{OrgUpdate, OrgTransfer, OrgSecurity, MemberManage, RunnerManage, JobCreate, TokenCreate}
+	return []Action{OrgUpdate, OrgTransfer, OrgSecurity, MemberManage, RunnerManage, JobCreate, TokenCreate, ProjectManage}
 }
 
 func IsSensitive(a Action) bool { return slices.Contains(SensitiveActions(), a) }
@@ -80,14 +80,26 @@ func SecondFactorDue(s SecondFactorState, grace time.Duration) time.Time {
 	return start.Add(grace)
 }
 
+func SecondFactorDueAsAdmin(s SecondFactorState, grace time.Duration) time.Time {
+	if !AtLeast(s.Role, RoleAdmin) {
+		s.Role = RoleAdmin
+	}
+	return SecondFactorDue(s, grace)
+}
+
 func SecondFactorBlocks(s Subject, action Action, r Resource, now time.Time) bool {
 	if !IsSensitive(action) || r.OrganizationID == uuid.Nil {
 		return false
 	}
 	for _, m := range s.Memberships {
-		if m.OrganizationID == r.OrganizationID {
-			return !m.SecondFactorDue.IsZero() && !now.Before(m.SecondFactorDue)
+		if m.OrganizationID != r.OrganizationID {
+			continue
 		}
+		due := m.SecondFactorDue
+		if r.ProjectID != uuid.Nil && !AtLeast(m.Role, RoleAdmin) && AtLeast(ProjectRole(m.Role, r.ProjectBindings), RoleAdmin) {
+			due = m.AdminSecondFactorDue
+		}
+		return !due.IsZero() && !now.Before(due)
 	}
 	return false
 }

@@ -14,6 +14,7 @@ import (
 	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	jobqueue "github.com/Khaymah/dhow/apps/server/internal/Core/JobQueue"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Khaymah/dhow/apps/server/internal/Database/Tx"
 	models "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs/Models"
@@ -92,36 +93,66 @@ func (s *Service) Create(ctx context.Context, org uuid.UUID, in models.CreateInp
 	return s.insert(ctx, p, org, in.Name, spec, priority, retries)
 }
 
+type newJob struct {
+	org      uuid.UUID
+	user     uuid.UUID
+	name     string
+	spec     *runnerv1.JobSpec
+	priority int
+	retries  int
+	origin   string
+	originID *uuid.UUID
+	features []string
+}
+
+func insertJob(ctx context.Context, q *sqlc.Queries, n newJob) (sqlc.Job, []byte, error) {
+	raw, err := encodeSpec(n.spec)
+	if err != nil {
+		return sqlc.Job{}, nil, err
+	}
+	digest, err := jobspec.Digest(n.spec)
+	if err != nil {
+		return sqlc.Job{}, nil, err
+	}
+	if err := q.LockOrganizationQueue(ctx, n.org.String()); err != nil {
+		return sqlc.Job{}, nil, err
+	}
+	needsFeatures := len(n.features) > 0
+	queued, err := q.CountQueuedJobs(ctx, sqlc.CountQueuedJobsParams{OrganizationID: n.org, NeedsFeatures: needsFeatures})
+	if err != nil {
+		return sqlc.Job{}, nil, err
+	}
+	limit := int64(config.JobMaxQueuedPerOrg)
+	if needsFeatures {
+		limit = config.JobMaxQueuedWithFeatures
+	}
+	if queued >= limit {
+		return sqlc.Job{}, nil, apperrors.JobQueueFull()
+	}
+	row, err := q.InsertJob(ctx, sqlc.InsertJobParams{
+		OrganizationID: n.org, CreatedByUserID: n.user, Name: n.name, Spec: raw, SpecDigest: digest, Image: n.spec.GetImage(),
+		Labels: n.spec.GetLabels(), Isolation: isolationOf(n.spec), Priority: int32(n.priority), //nolint:gosec // Bounded to 0..100 by the callers.
+		MaxInfraRetries: int32(n.retries), QueueTimeoutSeconds: config.JobQueueTimeout.Seconds(), //nolint:gosec // Bounded to 0..5 by the callers.
+		OriginKind: n.origin, OriginID: n.originID, RequiredFeatures: nonNil(n.features),
+	})
+	if err != nil {
+		return sqlc.Job{}, nil, err
+	}
+	if err := q.NotifyJobsQueued(ctx, n.org.String()); err != nil {
+		return sqlc.Job{}, nil, err
+	}
+	return row, digest, nil
+}
+
 func (s *Service) insert(ctx context.Context, p auth.Principal, org uuid.UUID, name string, spec *runnerv1.JobSpec, priority, retries int) (models.Detail, error) {
-	raw, err := encodeSpec(spec)
-	if err != nil {
-		return models.Detail{}, err
-	}
-	digest, err := jobspec.Digest(spec)
-	if err != nil {
-		return models.Detail{}, err
-	}
 	var row sqlc.Job
-	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-		if err := q.LockOrganizationQueue(ctx, org.String()); err != nil {
-			return err
-		}
-		queued, err := q.CountQueuedJobs(ctx, org)
-		if err != nil {
-			return err
-		}
-		if queued >= config.JobMaxQueuedPerOrg {
-			return apperrors.JobQueueFull()
-		}
-		row, err = q.InsertJob(ctx, sqlc.InsertJobParams{
-			OrganizationID: org, CreatedByUserID: p.UserID, Name: name, Spec: raw, SpecDigest: digest, Image: spec.GetImage(),
-			Labels: spec.GetLabels(), Isolation: isolationOf(spec), Priority: int32(priority), //nolint:gosec // Bounded to 0..100 above.
-			MaxInfraRetries: int32(retries), QueueTimeoutSeconds: config.JobQueueTimeout.Seconds(), //nolint:gosec // Bounded to 0..5 above.
+	var digest []byte
+	err := dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		var err error
+		row, digest, err = insertJob(ctx, q, newJob{
+			org: org, user: p.UserID, name: name, spec: spec, priority: priority, retries: retries, origin: jobqueue.OriginManual,
 		})
-		if err != nil {
-			return err
-		}
-		return q.NotifyJobsQueued(ctx, org.String())
+		return err
 	})
 	if err != nil {
 		return models.Detail{}, err
@@ -219,41 +250,50 @@ func (s *Service) Cancel(ctx context.Context, org, id uuid.UUID) (models.Job, er
 	if err != nil {
 		return models.Job{}, err
 	}
-	var row sqlc.Job
-	changed := false
+	var out canceled
 	err = dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
-		job, err := q.LockJob(ctx, sqlc.LockJobParams{ID: id, OrganizationID: org})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return apperrors.NotFound()
-		}
-		if err != nil {
-			return err
-		}
-		row = job
-		switch {
-		case job.State == models.JobQueued:
-			row, err = q.CancelQueuedJob(ctx, sqlc.CancelQueuedJobParams{ID: id, UserID: p.UserID})
-			changed = err == nil
-			return err
-		case !models.JobFinished(job.State) && job.CancelRequestedAt == nil:
-			row, err = q.RequestJobCancel(ctx, sqlc.RequestJobCancelParams{ID: id, UserID: p.UserID})
-			changed = err == nil
-			return err
-		case job.State == models.JobCanceled || !models.JobFinished(job.State):
-			return nil
-		default:
+		var err error
+		out, err = cancelJob(ctx, q, org, id, p.UserID)
+		if err == nil && out.finished && out.row.State != models.JobCanceled {
 			return apperrors.JobFinished()
 		}
+		return err
 	})
 	if err != nil {
 		return models.Job{}, err
 	}
-	if changed {
-		if err := s.publishByUser(ctx, eventbus.JobCancelRequested, p, org, id, map[string]string{"State": row.State}); err != nil {
+	if out.changed {
+		if err := s.publishByUser(ctx, eventbus.JobCancelRequested, p, org, id, map[string]string{"State": out.row.State}); err != nil {
 			return models.Job{}, err
 		}
 	}
-	return jobOf(row), nil
+	return jobOf(out.row), nil
+}
+
+type canceled struct {
+	row      sqlc.Job
+	changed  bool
+	finished bool
+}
+
+func cancelJob(ctx context.Context, q *sqlc.Queries, org, id, user uuid.UUID) (canceled, error) {
+	job, err := q.LockJob(ctx, sqlc.LockJobParams{ID: id, OrganizationID: org})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return canceled{}, apperrors.NotFound()
+	}
+	if err != nil {
+		return canceled{}, err
+	}
+	switch {
+	case job.State == models.JobQueued:
+		row, err := q.CancelQueuedJob(ctx, sqlc.CancelQueuedJobParams{ID: id, UserID: user})
+		return canceled{row: row, changed: err == nil}, err
+	case !models.JobFinished(job.State) && job.CancelRequestedAt == nil:
+		row, err := q.RequestJobCancel(ctx, sqlc.RequestJobCancelParams{ID: id, UserID: user})
+		return canceled{row: row, changed: err == nil}, err
+	default:
+		return canceled{row: job, finished: models.JobFinished(job.State)}, nil
+	}
 }
 
 func (s *Service) publishByUser(ctx context.Context, name string, p auth.Principal, org, id uuid.UUID, data map[string]string) error {

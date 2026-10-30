@@ -24,10 +24,13 @@ func membershipsOf(rows []sqlc.ListUserMembershipsRow, hasFactor bool) []resolve
 		if !known {
 			rule = policy.SecondFactorEveryone
 		}
-		due := policy.SecondFactorDue(policy.SecondFactorState{
+		state := policy.SecondFactorState{
 			Rule: rule, Since: r.RequireSecondFactorSince, AdminsSince: r.RequireSecondFactorAdminsSince, JoinedAt: r.JoinedAt, Role: role, HasFactor: hasFactor,
-		}, config.SecondFactorGrace)
-		m := policy.Membership{OrganizationID: r.OrganizationId, Role: role, SecondFactorDue: due}
+		}
+		m := policy.Membership{
+			OrganizationID: r.OrganizationId, Role: role, SecondFactorDue: policy.SecondFactorDue(state, config.SecondFactorGrace),
+			AdminSecondFactorDue: policy.SecondFactorDueAsAdmin(state, config.SecondFactorGrace),
+		}
 		if r.LastSeenAt != nil {
 			m.LastSeenAt = *r.LastSeenAt
 		}
