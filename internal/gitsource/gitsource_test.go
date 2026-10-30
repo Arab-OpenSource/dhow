@@ -71,6 +71,7 @@ func TestParseRefusesDangerousAddresses(t *testing.T) {
 		{"a password", "https://user:secret@git.example.com/app.git", ErrUser},
 		{"a user on https", "https://user@git.example.com/app.git", ErrUser},
 		{"a password on ssh", "ssh://git:secret@git.example.com/app.git", ErrUser},
+		{"a user with two dots", "0..@git.example.com:app.git", ErrUser},
 		{"a loopback address", "https://127.0.0.1/app.git", ErrHost},
 		{"a metadata address", "https://169.254.169.254/latest", ErrHost},
 		{"a decimal address", "https://2130706433/app.git", ErrHost},

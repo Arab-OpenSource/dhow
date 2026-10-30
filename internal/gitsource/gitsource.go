@@ -136,7 +136,7 @@ func cutLast(s, sep string) (before, after string, found bool) {
 }
 
 func checkUser(user string) error {
-	if user == "" || len(user) > maxUserBytes || user[0] == '-' || user[0] == '.' {
+	if user == "" || len(user) > maxUserBytes || user[0] == '-' || user[0] == '.' || strings.Contains(user, "..") {
 		return ErrUser
 	}
 	for i := 0; i < len(user); i++ {
