@@ -12,8 +12,27 @@ permissions:
   contents: read
 
 jobs:
-  analyze:
+  changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: Changed areas
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+      web: ${{ steps.scope.outputs.web }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Decide which areas the change touches
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+        run: deploy/ci/changed-areas.sh "$EVENT" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.web == 'true'
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-24.04
     permissions:
