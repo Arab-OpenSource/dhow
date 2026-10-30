@@ -269,7 +269,7 @@ func (a *analysis) allJobs() {
 
 func (a *analysis) needs(needs []string, path string) []string {
 	if len(needs) > MaxNeeds {
-		a.issues.add(CodeNeedUnknown, path)
+		a.issues.add(CodeNeedDuplicate, path)
 		return nil
 	}
 	seen := map[string]bool{}

@@ -84,7 +84,7 @@ func (l *issueList) pos(path string) Position {
 			return pos
 		}
 	}
-	return Position{}
+	return l.positions[""]
 }
 
 func (l *issueList) add(code, path string) {

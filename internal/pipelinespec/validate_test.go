@@ -138,6 +138,7 @@ func policyErrorCases() []errorCase {
 		{"two documents", runJob("") + "---\nversion: 1\n", CodeMultipleDocuments},
 		{"syntax", "version: 1\non: [push\n", CodeYAMLSyntax},
 		{"complex key", "? [a]\n: b\n", CodeKeyInvalid},
+		{"root list", "- a\n", CodeTypeMismatch},
 	}
 }
 
