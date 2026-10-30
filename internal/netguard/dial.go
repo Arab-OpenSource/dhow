@@ -28,13 +28,13 @@ var (
 
 type Lookup func(ctx context.Context, host string) ([]netip.Addr, error)
 
-type dialFunc func(ctx context.Context, network, address string) (net.Conn, error)
+type DialFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
 type Dialer struct {
 	Policy  Policy
 	Lookup  Lookup
 	Timeout time.Duration
-	dial    dialFunc
+	Dial    DialFunc
 }
 
 func systemLookup(ctx context.Context, host string) ([]netip.Addr, error) {
@@ -101,7 +101,7 @@ func (d Dialer) DialContext(ctx context.Context, network, address string) (net.C
 	if err != nil {
 		return nil, err
 	}
-	dial := d.dial
+	dial := d.Dial
 	if dial == nil {
 		dial = (&net.Dialer{Timeout: d.timeout(), Control: d.Control}).DialContext
 	}

@@ -54,6 +54,15 @@ func (p Policy) Denial(addr netip.Addr) string {
 		return ReasonPrivate
 	}
 	addr = addr.Unmap().WithZone("")
+	for _, inner := range EmbeddedIPv4(addr) {
+		if why := p.direct(inner); why != "" {
+			return why
+		}
+	}
+	return p.direct(addr)
+}
+
+func (p Policy) direct(addr netip.Addr) string {
 	for _, m := range MetadataAddrs() {
 		if addr == m {
 			return ReasonMetadata
@@ -90,6 +99,42 @@ func (p Policy) Check(addr netip.Addr) error {
 	return nil
 }
 
+func NeverAllowed() []netip.Prefix {
+	out := make([]netip.Prefix, 0, 9)
+	for _, p := range []string{
+		"0.0.0.0/8", "127.0.0.0/8", "169.254.0.0/16", "::1/128", "fe80::/10", "64:ff9b::/96", "64:ff9b:1::/48", "2002::/16", "2001::/32",
+	} {
+		out = append(out, netip.MustParsePrefix(p))
+	}
+	return out
+}
+
+var (
+	nat64     = netip.MustParsePrefix("64:ff9b::/96")
+	sixToFour = netip.MustParsePrefix("2002::/16")
+	teredo    = netip.MustParsePrefix("2001::/32")
+)
+
+func EmbeddedIPv4(addr netip.Addr) []netip.Addr {
+	if !addr.Is6() || addr.Is4In6() {
+		return nil
+	}
+	b := addr.As16()
+	switch {
+	case nat64.Contains(addr):
+		return []netip.Addr{netip.AddrFrom4([4]byte{b[12], b[13], b[14], b[15]})}
+	case sixToFour.Contains(addr):
+		return []netip.Addr{netip.AddrFrom4([4]byte{b[2], b[3], b[4], b[5]})}
+	case teredo.Contains(addr):
+		return []netip.Addr{
+			netip.AddrFrom4([4]byte{b[4], b[5], b[6], b[7]}),
+			netip.AddrFrom4([4]byte{^b[12], ^b[13], ^b[14], ^b[15]}),
+		}
+	default:
+		return nil
+	}
+}
+
 func ParseCIDRs(list string) ([]netip.Prefix, error) {
 	fields := strings.FieldsFunc(list, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' || r == '\n' })
 	if len(fields) > maxAllowed {
@@ -106,6 +151,11 @@ func ParseCIDRs(list string) ([]netip.Prefix, error) {
 		}
 		if (p.Addr().Is4() && p.Bits() < minBitsV4) || (p.Addr().Is6() && p.Bits() < minBitsV6) {
 			return nil, fmt.Errorf("%w no wider than /%d for IPv4 or /%d for IPv6, not %q", ErrCIDR, minBitsV4, minBitsV6, f)
+		}
+		for _, never := range NeverAllowed() {
+			if p.Overlaps(never) {
+				return nil, fmt.Errorf("%w outside loopback, link-local and the IPv6 forms of IPv4 (%s), not %q", ErrCIDR, never, f)
+			}
 		}
 		out = append(out, p)
 	}

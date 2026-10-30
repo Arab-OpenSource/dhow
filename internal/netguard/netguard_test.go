@@ -123,7 +123,7 @@ func TestDialConnectsToTheCheckedAddressSoRebindingDoesNotPass(t *testing.T) {
 		return addrs("127.0.0.1"), nil
 	}
 	var dialed []string
-	d := Dialer{Lookup: rebinding, dial: func(_ context.Context, _, address string) (net.Conn, error) {
+	d := Dialer{Lookup: rebinding, Dial: func(_ context.Context, _, address string) (net.Conn, error) {
 		dialed = append(dialed, address)
 		return nil, errors.New("refused in the test")
 	}}
@@ -227,4 +227,45 @@ func TestReadLimited(t *testing.T) {
 	require.ErrorIs(t, err, ErrTooLarge)
 	_, err = ReadLimited(strings.NewReader(strings.Repeat("x", MaxResponseBytes+1)), 0)
 	require.ErrorIs(t, err, ErrTooLarge)
+}
+
+func TestEmbeddedIPv4IsCheckedToo(t *testing.T) {
+	open := Policy{Allowed: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}}
+	tests := []struct {
+		addr string
+		why  string
+	}{
+		{"64:ff9b::a9fe:a9fe", ReasonMetadata},
+		{"64:ff9b::7f00:1", ReasonPrivate},
+		{"64:ff9b::a00:1", ReasonPrivate},
+		{"2002:a9fe:a9fe::1", ReasonMetadata},
+		{"2002:7f00:1::1", ReasonPrivate},
+		{"2001:0:a9fe:a9fe::1", ReasonMetadata},
+		{"2001:0:cb00:710a:0:0:5601:5601", ReasonMetadata},
+		{"2001:0:cb00:710a::1", ReasonPrivate},
+	}
+	for _, tt := range tests {
+		t.Run(tt.addr, func(t *testing.T) {
+			assert.Equal(t, tt.why, open.Denial(netip.MustParseAddr(tt.addr)))
+		})
+	}
+	assert.Equal(t, []netip.Addr{netip.MustParseAddr("169.254.169.254")}, EmbeddedIPv4(netip.MustParseAddr("64:ff9b::a9fe:a9fe")))
+	assert.Equal(t, []netip.Addr{netip.MustParseAddr("203.0.113.10"), netip.MustParseAddr("169.254.169.254")},
+		EmbeddedIPv4(netip.MustParseAddr("2001:0:cb00:710a::5601:5601")))
+	assert.Nil(t, EmbeddedIPv4(netip.MustParseAddr("2606:4700::1111")))
+	assert.Nil(t, EmbeddedIPv4(netip.MustParseAddr("10.0.0.1")))
+}
+
+func TestAllowedRangesNeverReopenLoopbackLinkLocalOrIPv4InIPv6(t *testing.T) {
+	for _, bad := range []string{
+		"127.0.0.0/8", "127.0.0.1/32", "0.0.0.0/8", "169.254.0.0/16", "169.254.169.254/32", "::1/128", "fe80::/10",
+		"64:ff9b::/96", "64:ff9b::a00:0/120", "64:ff9b:1::/48", "2002::/16", "2002:a00::/24", "2001::/32", "2001:0:a9fe::/48",
+		"64:ff9b::/16", "::/16",
+	} {
+		_, err := ParseCIDRs(bad)
+		require.ErrorIs(t, err, ErrCIDR, bad)
+	}
+	ok, err := ParseCIDRs("10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fd00::/16")
+	require.NoError(t, err)
+	assert.Len(t, ok, 5)
 }
