@@ -35,7 +35,7 @@ func sourcesFor(in Infra, bus *eventbus.Bus) (*sources.Service, error) {
 	}
 	return sources.NewService(sources.Options{
 		DB: in.Pool, Bus: bus, Log: in.Log, Now: in.Now, SecretKey: in.Config.SecretKey, PublicURL: in.Config.PublicURL.String(),
-		Triggers: sink, Dialer: netguard.Dialer{Policy: netguard.Policy{Allowed: in.Config.Sources.AllowPrivate}, Lookup: in.GitLookup},
+		Triggers: sink, Dialer: netguard.Dialer{Policy: netguard.Policy{Allowed: in.Config.Sources.AllowPrivate}, Lookup: in.GitLookup, Dial: in.GitDial},
 	})
 }
 

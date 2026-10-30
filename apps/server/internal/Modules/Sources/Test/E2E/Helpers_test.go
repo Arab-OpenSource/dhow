@@ -21,6 +21,7 @@ import (
 
 	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
+	"github.com/Khaymah/dhow/internal/netguard"
 )
 
 const sha = "0123456789abcdef0123456789abcdef01234567"
@@ -46,11 +47,11 @@ type linkedView struct {
 
 func lookup(_ context.Context, host string) ([]netip.Addr, error) {
 	answers := map[string][]string{
-		"git.example.test":     {"127.0.0.1"},
+		"git.example.test":     {"10.255.0.10"},
 		"meta.example.test":    {"169.254.169.254"},
 		"private.example.test": {"10.1.2.3"},
 		"mixed.example.test":   {"203.0.113.10", "127.0.0.1"},
-		"mapped.example.test":  {"::ffff:127.0.0.1"},
+		"mapped.example.test":  {"::ffff:10.255.0.10"},
 	}
 	var out []netip.Addr
 	for _, a := range answers[host] {
@@ -62,14 +63,25 @@ func lookup(_ context.Context, host string) ([]netip.Addr, error) {
 	return out, nil
 }
 
-func newWorld(t *testing.T, allowLoopback bool) world {
+func toLoopback(ctx context.Context, network, address string) (net.Conn, error) {
+	_, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	var d net.Dialer
+	return d.DialContext(ctx, network, net.JoinHostPort("127.0.0.1", port))
+}
+
+func newWorld(t *testing.T, allowLAN bool) world {
 	t.Helper()
 	fake := &apptest.FakeTriggers{}
 	env := apptest.NewWithOptions(t, apptest.Options{
-		Triggers: fake, GitLookup: lookup,
+		Triggers: fake, GitLookup: lookup, GitDial: toLoopback,
 		Profile: func(c *config.Config) {
-			if allowLoopback {
-				c.Sources.AllowPrivate = []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}
+			if allowLAN {
+				allowed, err := netguard.ParseCIDRs("10.255.0.0/16")
+				require.NoError(t, err)
+				c.Sources.AllowPrivate = allowed
 			}
 		},
 	})

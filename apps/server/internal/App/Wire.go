@@ -64,6 +64,7 @@ type Infra struct {
 	OidcTransport      http.RoundTripper
 	Triggers           triggers.Sink
 	GitLookup          netguard.Lookup
+	GitDial            netguard.DialFunc
 }
 
 type Wired struct {
