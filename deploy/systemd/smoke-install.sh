@@ -122,6 +122,18 @@ wait_online() {
   done
   return 1
 }
+wait_ready() {
+  local id
+  for _ in $(seq 90); do
+    id=$(systemctl show -p InvocationID --value dhow-runner)
+    if [[ -n $id ]] && journalctl --no-pager --output cat "_SYSTEMD_INVOCATION_ID=$id" | grep -q '"msg":"the runner is ready"'; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+online_after_start() { wait_ready && wait_online; }
 job_state() {
   api "$work/job" GET "/api/v1/organizations/$org_id/jobs/$1" '' "${session[@]}" >/dev/null
   json_field "$work/job.body" State
@@ -165,7 +177,7 @@ printf 'Installing from the answers file\n'
 "$runner_bin" install --answers "$work/answers.yaml" | tee "$work/install.log"
 runner_id=$(sed -n 's/^Registered runner \([0-9a-f-]*\) .*/\1/p' "$work/install.log")
 expect "install registered the runner" test -n "$runner_id"
-expect "the runner is online" wait_online
+expect "the runner is online" online_after_start
 expect "the unit is active and enabled" systemctl is-enabled --quiet dhow-runner
 expect "the runner runs as dhow-runner" test "$(ps -o user= -p "$(systemctl show -p MainPID --value dhow-runner)")" = dhow-runner
 expect "the token never reached the output" lacks "$token" "$work/install.log"
@@ -198,7 +210,7 @@ systemctl stop dhow-runner
 dhow-runner rotate-keys >"$work/rotate.log"
 expect "rotate-keys reports key version 2" grep -q 'key version 2' "$work/rotate.log"
 systemctl start dhow-runner
-expect "the runner is online with its new key" wait_online
+expect "the runner is online with its new key" online_after_start
 if [[ -e /var/lib/dhow-runner/identity.cred ]]; then
   expect "the rotated identity stays encrypted" absent /var/lib/dhow-runner/identity
   expect "the rotated keys are nowhere on disk" keys_off_disk
