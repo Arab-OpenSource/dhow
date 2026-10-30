@@ -117,11 +117,16 @@ func insertJob(ctx context.Context, q *sqlc.Queries, n newJob) (sqlc.Job, []byte
 	if err := q.LockOrganizationQueue(ctx, n.org.String()); err != nil {
 		return sqlc.Job{}, nil, err
 	}
-	queued, err := q.CountQueuedJobs(ctx, n.org)
+	needsFeatures := len(n.features) > 0
+	queued, err := q.CountQueuedJobs(ctx, sqlc.CountQueuedJobsParams{OrganizationID: n.org, NeedsFeatures: needsFeatures})
 	if err != nil {
 		return sqlc.Job{}, nil, err
 	}
-	if queued >= config.JobMaxQueuedPerOrg {
+	limit := int64(config.JobMaxQueuedPerOrg)
+	if needsFeatures {
+		limit = config.JobMaxQueuedWithFeatures
+	}
+	if queued >= limit {
 		return sqlc.Job{}, nil, apperrors.JobQueueFull()
 	}
 	row, err := q.InsertJob(ctx, sqlc.InsertJobParams{

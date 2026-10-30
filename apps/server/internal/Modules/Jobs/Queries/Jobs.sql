@@ -31,7 +31,19 @@ SELECT pg_advisory_xact_lock(hashtextextended('dhow.organization-queue:' || @org
 -- name: CountQueuedJobs :one
 SELECT count(*)
 FROM "Jobs"
-WHERE "OrganizationId" = @organization_id AND "State" = 'queued' AND NOT "IsDeleted";
+WHERE "OrganizationId" = @organization_id AND "State" = 'queued' AND NOT "IsDeleted"
+  AND (cardinality("RequiredFeatures") > 0) = @needs_features::boolean;
+
+-- name: IsEnabledMemberOf :one
+SELECT EXISTS (SELECT 1
+               FROM "Memberships" m
+               JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
+               WHERE m."UserId" = @user_id AND m."OrganizationId" = @organization_id AND NOT m."IsDeleted")::boolean;
+
+-- name: OriginUsedElsewhere :one
+SELECT EXISTS (SELECT 1
+               FROM "Jobs"
+               WHERE "OriginId" = @origin_id AND "OrganizationId" <> @organization_id)::boolean;
 
 -- name: GetJob :one
 SELECT *

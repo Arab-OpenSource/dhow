@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 	jobqueue "github.com/Khaymah/dhow/apps/server/internal/Core/JobQueue"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
@@ -93,6 +94,8 @@ func TestAJobThatNeedsAFeatureIsNeverLeasedToARunnerWithoutIt(t *testing.T) {
 
 func TestEnqueueRefusesWhatOnlyTheAPIMayQueue(t *testing.T) {
 	w := newWorld(t)
+	other := w.env.SeedOrganization("Other", "other")
+	outsider := w.env.SeedUser(other, "outsider@example.com", "a long password for the outsider", "owner")
 	tests := []struct {
 		name   string
 		mutate func(*jobqueue.Request)
@@ -104,6 +107,8 @@ func TestEnqueueRefusesWhatOnlyTheAPIMayQueue(t *testing.T) {
 		{"an unknown feature", func(r *jobqueue.Request) { r.RequiredFeatures = []string{"docker"} }, apperrors.CodeValidationFailed},
 		{"an empty name", func(r *jobqueue.Request) { r.Name = "" }, apperrors.CodeValidationFailed},
 		{"an unpinned image", func(r *jobqueue.Request) { r.Spec.Image = "alpine" }, apperrors.CodeValidationFailed},
+		{"an invalid label", func(r *jobqueue.Request) { r.Spec.Labels = []string{"no spaces allowed"} }, apperrors.CodeValidationFailed},
+		{"a creator of another organization", func(r *jobqueue.Request) { r.CreatedByUserID = outsider }, ""},
 		{"a secret", func(r *jobqueue.Request) {
 			r.Spec.Secrets = []*runnerv1.SecretRef{{Name: "TOKEN", Target: &runnerv1.SecretRef_AsEnv{AsEnv: "TOKEN"}}}
 		}, apperrors.CodeSecretsUnavailable},
@@ -162,4 +167,45 @@ func TestCancelThroughThePortFollowsTheCallerTransaction(t *testing.T) {
 	var ae *apperrors.AppError
 	require.ErrorAs(t, err, &ae)
 	assert.Equal(t, apperrors.CodeNotFound, ae.Code, "a job of another organization is not found")
+}
+
+func enqueue(t *testing.T, w world, r jobqueue.Request) error {
+	t.Helper()
+	return dbtx.Run(context.Background(), w.env.Pool, func(q *sqlc.Queries) error {
+		_, err := w.env.Wired.JobQueue.Enqueue(context.Background(), q, r)
+		return err
+	})
+}
+
+func TestAnOriginNeverCrossesOrganizations(t *testing.T) {
+	w := newWorld(t)
+	req := pipelineRequest(w)
+	require.NoError(t, enqueue(t, w, req))
+	require.NoError(t, enqueue(t, w, req), "a retry of the same origin stays in its organization")
+
+	other := w.env.SeedOrganization("Other", "other")
+	otherOwner := w.env.SeedUser(other, "other-owner@example.com", "a long password for the other owner", "owner")
+	foreign := req
+	foreign.OrganizationID, foreign.CreatedByUserID = other, otherOwner
+	assert.ErrorIs(t, enqueue(t, w, foreign), jobs.ErrInvalidEnqueue)
+	assert.Equal(t, 2, countJobs(t, w, req.OriginID))
+}
+
+func TestJobsThatNeedFeaturesHaveTheirOwnSmallCap(t *testing.T) {
+	w := newWorld(t)
+	seed := pipelineRequest(w, jobqueue.FeatureCheckout)
+	require.NoError(t, enqueue(t, w, seed))
+	_, err := w.env.Pool.Exec(context.Background(),
+		`INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Isolation", "QueueDeadline",
+		                     "OriginKind", "OriginId", "RequiredFeatures")
+		 SELECT "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Isolation", "QueueDeadline",
+		        "OriginKind", "OriginId", "RequiredFeatures"
+		 FROM "Jobs", generate_series(2, $2) WHERE "OriginId" = $1`, seed.OriginID, config.JobMaxQueuedWithFeatures)
+	require.NoError(t, err)
+
+	var ae *apperrors.AppError
+	require.ErrorAs(t, enqueue(t, w, pipelineRequest(w, jobqueue.FeatureCache)), &ae)
+	assert.Equal(t, apperrors.CodeJobQueueFull, ae.Code)
+	require.NoError(t, enqueue(t, w, pipelineRequest(w)), "jobs a runner can take today are not held back")
+	w.job(t, apptest.SimpleSpec(), nil)
 }

@@ -65,6 +65,24 @@ func checkRequest(r jobqueue.Request) (int, []string, error) {
 	return retries, wanted, nil
 }
 
+func checkOwnership(ctx context.Context, tx *sqlc.Queries, r jobqueue.Request) error {
+	member, err := tx.IsEnabledMemberOf(ctx, sqlc.IsEnabledMemberOfParams{UserID: r.CreatedByUserID, OrganizationID: r.OrganizationID})
+	if err != nil {
+		return err
+	}
+	if !member {
+		return fmt.Errorf("%w: the creator is not an active member of the organization", ErrInvalidEnqueue)
+	}
+	elsewhere, err := tx.OriginUsedElsewhere(ctx, sqlc.OriginUsedElsewhereParams{OriginID: &r.OriginID, OrganizationID: r.OrganizationID})
+	if err != nil {
+		return err
+	}
+	if elsewhere {
+		return fmt.Errorf("%w: the origin already belongs to another organization", ErrInvalidEnqueue)
+	}
+	return nil
+}
+
 func (qu queue) Enqueue(ctx context.Context, tx *sqlc.Queries, r jobqueue.Request) (jobqueue.Enqueued, error) {
 	retries, wanted, err := checkRequest(r)
 	if err != nil {
@@ -81,6 +99,9 @@ func (qu queue) Enqueue(ctx context.Context, tx *sqlc.Queries, r jobqueue.Reques
 			}
 			return jobqueue.Enqueued{}, err
 		}
+	}
+	if err := checkOwnership(ctx, tx, r); err != nil {
+		return jobqueue.Enqueued{}, err
 	}
 	origin := r.OriginID
 	row, digest, err := insertJob(ctx, tx, newJob{

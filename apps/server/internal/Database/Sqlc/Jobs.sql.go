@@ -169,10 +169,16 @@ const countQueuedJobs = `-- name: CountQueuedJobs :one
 SELECT count(*)
 FROM "Jobs"
 WHERE "OrganizationId" = $1 AND "State" = 'queued' AND NOT "IsDeleted"
+  AND (cardinality("RequiredFeatures") > 0) = $2::boolean
 `
 
-func (q *Queries) CountQueuedJobs(ctx context.Context, organizationID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countQueuedJobs, organizationID)
+type CountQueuedJobsParams struct {
+	OrganizationID uuid.UUID
+	NeedsFeatures  bool
+}
+
+func (q *Queries) CountQueuedJobs(ctx context.Context, arg CountQueuedJobsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countQueuedJobs, arg.OrganizationID, arg.NeedsFeatures)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -693,6 +699,25 @@ func (q *Queries) InterruptAttemptSteps(ctx context.Context, attemptID uuid.UUID
 	return err
 }
 
+const isEnabledMemberOf = `-- name: IsEnabledMemberOf :one
+SELECT EXISTS (SELECT 1
+               FROM "Memberships" m
+               JOIN "Users" u ON u."Id" = m."UserId" AND NOT u."IsDeleted" AND NOT u."Disabled"
+               WHERE m."UserId" = $1 AND m."OrganizationId" = $2 AND NOT m."IsDeleted")::boolean
+`
+
+type IsEnabledMemberOfParams struct {
+	UserID         uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) IsEnabledMemberOf(ctx context.Context, arg IsEnabledMemberOfParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isEnabledMemberOf, arg.UserID, arg.OrganizationID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const jobCancelRequestedAt = `-- name: JobCancelRequestedAt :one
 SELECT "CancelRequestedAt"
 FROM "Jobs"
@@ -1209,6 +1234,24 @@ SELECT pg_notify('dhow_jobs_queued', $1::text)
 func (q *Queries) NotifyJobsQueued(ctx context.Context, organizationID string) error {
 	_, err := q.db.Exec(ctx, notifyJobsQueued, organizationID)
 	return err
+}
+
+const originUsedElsewhere = `-- name: OriginUsedElsewhere :one
+SELECT EXISTS (SELECT 1
+               FROM "Jobs"
+               WHERE "OriginId" = $1 AND "OrganizationId" <> $2)::boolean
+`
+
+type OriginUsedElsewhereParams struct {
+	OriginID       *uuid.UUID
+	OrganizationID uuid.UUID
+}
+
+func (q *Queries) OriginUsedElsewhere(ctx context.Context, arg OriginUsedElsewhereParams) (bool, error) {
+	row := q.db.QueryRow(ctx, originUsedElsewhere, arg.OriginID, arg.OrganizationID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const pickCanceledUnstartedLease = `-- name: PickCanceledUnstartedLease :one

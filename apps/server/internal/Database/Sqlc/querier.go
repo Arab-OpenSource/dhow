@@ -34,7 +34,7 @@ type Querier interface {
 	CountOverviewJobs(ctx context.Context, arg CountOverviewJobsParams) (CountOverviewJobsRow, error)
 	CountOverviewRunners(ctx context.Context, arg CountOverviewRunnersParams) (CountOverviewRunnersRow, error)
 	CountProjects(ctx context.Context, arg CountProjectsParams) (int64, error)
-	CountQueuedJobs(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountQueuedJobs(ctx context.Context, arg CountQueuedJobsParams) (int64, error)
 	CountRegistrationTokens(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRunnerSessionSwitches(ctx context.Context, arg CountRunnerSessionSwitchesParams) (int64, error)
 	CountRunners(ctx context.Context, organizationID uuid.UUID) (int64, error)
@@ -128,6 +128,7 @@ type Querier interface {
 	InterruptAttemptSteps(ctx context.Context, attemptID uuid.UUID) error
 	InvalidateSetupTokens(ctx context.Context, now time.Time) error
 	IsActiveMember(ctx context.Context, arg IsActiveMemberParams) (bool, error)
+	IsEnabledMemberOf(ctx context.Context, arg IsEnabledMemberOfParams) (bool, error)
 	IsMemberByEmail(ctx context.Context, arg IsMemberByEmailParams) (bool, error)
 	JobCancelRequestedAt(ctx context.Context, id uuid.UUID) (*time.Time, error)
 	JobExists(ctx context.Context, arg JobExistsParams) (bool, error)
@@ -201,6 +202,7 @@ type Querier interface {
 	NotifyJobsQueued(ctx context.Context, organizationID string) error
 	NotifyLogAppended(ctx context.Context, payload string) error
 	NotifySettingsChanged(ctx context.Context, groupName string) error
+	OriginUsedElsewhere(ctx context.Context, arg OriginUsedElsewhereParams) (bool, error)
 	PeekPendingTotp(ctx context.Context, arg PeekPendingTotpParams) (PeekPendingTotpRow, error)
 	PickCanceledUnstartedLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)
 	PickExpiredLease(ctx context.Context, graceSeconds float64) (uuid.UUID, error)

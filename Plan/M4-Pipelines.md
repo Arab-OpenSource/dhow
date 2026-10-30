@@ -448,6 +448,7 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
 
 ### M4.4: موديول `Sources`: الطبقة المشتركة وGit عام
 - **الاعتماد:** M4.3.
+- **من مراجعة M4.3:** `PipelinePath` بيتحقق إنه مابيبدأش بـ `-` ولا `:`، بس أي أمر git بيستخدمه لازم يحط `--` قبل المسار برضه (`git show <sha> -- <path>` أو ما يعادله)، ومعاه اختبار بمسار بيبدأ بـ `-`.
 - **المحتوى:**
   - `internal/gitref` و`internal/gitsource` و`internal/netguard` (والـ runner بيستخدم `netguard` بدل `Egress.Ranges.go`).
   - الـ migrations لـ `"GitConnections"` و`"Repositories"` و`"GitSetupFlows"` و`"WebhookDeliveries"` و`"CommitStatusReports"`.
@@ -495,6 +496,7 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
 - **التحقق:** `go test -race -count=1 ./apps/server/internal/Modules/Sources/...` و`make check`، وjob `providers`.
 
 ### M4.7: الـ runner: أكتر من حاوية، والـ checkout، والإضافات
+- **من مراجعة M4.3:** الـ features بتاعة الـ runner بتيجي من تسجيله (وبتتخزن في `"Runners"` وبتتغيّر بإعادة التسجيل أو بتحديث موقّع)، مش من `LeaseRequest` لوحده. runner مسروق التوكن مايقدرش يعلن ميزة ماعندهوش عشان ياخد jobs فيها checkout.
 - **الاعتماد:** M3.13 (والـ proto ممكن يتعمل بالتوازي مع M4.1).
 - **المحتوى:**
   - **الـ spike (go/no-go):** workspace مشترك بين حاويات متتابعة بنفس الـ uid map، بطريقتين: pod بـ `--userns=auto` مشترك، أو uid map صريح من نطاق الـ runner مع tmpfs volume. شروط القبول: الـ escape والـ limits suites خضرا على الاتنين، وحد القرص بيتحسب صح، ومفيش volume فاضل بعد الهدم. والنتيجة في ADR.
@@ -517,6 +519,9 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
 
 ### M4.8: موديول `Pipelines`: الـ runs والـ DAG والـ triggers
 - **الاعتماد:** M4.1 وM4.4 وM4.7 (وM4.5 وM4.6 للمزوّدين دول).
+- **من مراجعة M4.3:**
+  - routes الـ jobs على مستوى المؤسسة (`/organizations/{id}/jobs/...`) لازم تحل الدور على مشروع الـ job لما الـ job يبقى مربوط بمشروع. غير كده Maintainer اتقلّل لـ Viewer على مشروع يقدر يلغي jobs المشروع ده من route المؤسسة. ومعاه اختبار في الـ route-table.
+  - كل نداء لـ `Core/JobQueue` بيكتب الـ audit بتاعه بعد الـ commit (ADR-0070)، ومعاه اختبار إن الـ run اللي اتعمل ليه حدث.
 - **المحتوى:**
   - الـ migrations لـ `"PipelineRuns"` و`"PipelineRunCounters"` و`"RunJobs"`، والـ triggers على الحالات.
   - تنفيذ `Core/Triggers` و`Core/RunEvents`، والتوسيع، والإدراج، والتقييم بعد كل job، والإلغاء، و«أعد تشغيل الفاشل».
