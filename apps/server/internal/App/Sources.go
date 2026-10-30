@@ -25,7 +25,7 @@ type pendingPipelines struct {
 
 func (p pendingPipelines) Deliver(ctx context.Context, _ *sqlc.Queries, t triggers.Trigger) (triggers.Accepted, error) {
 	p.log.InfoContext(ctx, "a webhook trigger was recorded; runs start from it once pipelines are in place",
-		"project_id", t.ProjectID, "event", t.Event, "delivery_id", t.DeliveryID)
+		"project_id", t.ProjectID)
 	return triggers.Accepted{}, nil
 }
 
