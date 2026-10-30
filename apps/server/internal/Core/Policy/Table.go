@@ -14,6 +14,7 @@ const (
 	ScopeInstance
 	ScopeRunner
 	ScopeProject
+	ScopeWebhook
 )
 
 type RunnerAccess uint8
@@ -79,6 +80,8 @@ func (r Rule) Valid() bool {
 		return r.Action != "" && r.Action != SessionManageSelf && !IsInstanceAction(r.Action) && r.OrgParam != "" && r.Runner == 0
 	case ScopeProject:
 		return r.validProject()
+	case ScopeWebhook:
+		return r.validWebhook()
 	case ScopeInstance:
 		return IsInstanceAction(r.Action) && r.OrgParam == "" && r.Runner == 0
 	case ScopeRunner:

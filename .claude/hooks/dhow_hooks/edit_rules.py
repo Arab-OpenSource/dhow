@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 
-from . import arabic_rules, cli_rules, go_comments, js_comments, port_rules, runner_rules, web_rules
+from . import arabic_rules, cli_rules, go_comments, js_comments, port_rules, runner_rules, web_rules, webhook_rules
 from .common import GENERATED_PATH, is_test, is_ts, new_lines
 
 CSS_EXT = (".css",)
@@ -27,7 +27,7 @@ ROUTES_FILE = re.compile(r"(^|/)Modules/[^/]+/[^/]+\.Routes\.go$")
 GO_RAW_ROUTE = re.compile(
     r"\b\w+\.(Get|Post|Put|Patch|Delete|Head|Options|Connect|Trace|Handle|HandleFunc|Method|MethodFunc|Mount)\(\s*[\"`]")
 GO_GENERATED_ROUTES = re.compile(r"\bgen\.(HandlerWithOptions|HandlerFromMux\w*|Handler)\(")
-GO_POLICY_RULE = re.compile(r"\bpolicy\.(Public|Authenticated|Organization|Project|Instance|Runner)\(")
+GO_POLICY_RULE = re.compile(r"\bpolicy\.(Public|Authenticated|Organization|Project|Instance|Runner|Webhook)\(")
 GO_RUNNER_RULE = re.compile(r"\bpolicy\.Runner\(")
 GO_CONNECT_HANDLER = re.compile(r"\b\w+connect\.New\w+Handler\(")
 GO_RUNNER_GATE = re.compile(r"\.RequestGate\(")
@@ -587,6 +587,8 @@ CHECKS = (
     port_rules.check_port_imports,
     port_rules.check_port_contents,
     check_route_policies,
+    webhook_rules.check_webhook_rule_location,
+    webhook_rules.check_webhook_routes,
     check_connect_mounts,
     runner_rules.check_runner_layout,
     runner_rules.check_runner_imports,
