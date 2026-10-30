@@ -211,7 +211,7 @@ func TestCloudCredentialEndpointsStayDeniedEvenInsideAnOperatorRange(t *testing.
 	}
 }
 
-func blockedOnly() ranges { return ranges{blocked: blockedPrefixes()} }
+func blockedOnly() ranges { return ranges{} }
 
 func TestNamesAreLookedUpRooted(t *testing.T) {
 	var asked []string
