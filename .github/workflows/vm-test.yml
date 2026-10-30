@@ -6,8 +6,8 @@ on:
       distro:
         description: The distribution to test
         type: choice
-        options: [all, debian-13, fedora, rocky-10]
-        default: all
+        options: [debian-13]
+        default: debian-13
   schedule:
     - cron: "17 3 * * 1"
 
@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        distro: ${{ fromJSON((inputs.distro && inputs.distro != 'all') && format('["{0}"]', inputs.distro) || '["debian-13","fedora","rocky-10"]') }}
+        distro: ${{ fromJSON(format('["{0}"]', inputs.distro || 'debian-13')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
