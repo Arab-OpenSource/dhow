@@ -16,6 +16,7 @@ TimeoutStopSec=60s
 StateDirectory=dhow-runner
 StateDirectoryMode=0700
 WorkingDirectory=/var/lib/dhow-runner
+SELinuxContext=-system_u:system_r:container_runtime_t:s0
 
 Delegate=yes
 KillMode=control-group
