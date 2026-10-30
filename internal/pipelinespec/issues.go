@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type Severity string
@@ -87,19 +88,32 @@ func (l *issueList) pos(path string) Position {
 	return l.positions[""]
 }
 
+func (l *issueList) full() bool {
+	return len(l.items) >= MaxIssues
+}
+
 func (l *issueList) add(code, path string) {
+	if l.full() {
+		return
+	}
 	l.items = append(l.items, Issue{
 		Code: code, Severity: SeverityError, Path: path, Position: l.pos(path), Message: message(code),
 	})
 }
 
 func (l *issueList) warn(code, path string) {
+	if l.full() {
+		return
+	}
 	l.items = append(l.items, Issue{
 		Code: code, Severity: SeverityWarning, Path: path, Position: l.pos(path), Message: message(code),
 	})
 }
 
 func (l *issueList) addAt(code, path string, pos Position) {
+	if l.full() {
+		return
+	}
 	l.items = append(l.items, Issue{Code: code, Severity: SeverityError, Path: path, Position: pos, Message: message(code)})
 }
 
@@ -128,13 +142,26 @@ func parentPath(p string) string {
 	return p[:i]
 }
 
+const pathEllipsis = "..."
+
+func capPath(p string) string {
+	if len(p) <= MaxPathBytes {
+		return p
+	}
+	cut := MaxPathBytes - len(pathEllipsis)
+	for cut > 0 && !utf8.RuneStart(p[cut]) {
+		cut--
+	}
+	return p[:cut] + pathEllipsis
+}
+
 func joinPath(parent, key string) string {
 	if parent == "" {
-		return key
+		return capPath(key)
 	}
-	return parent + "." + key
+	return capPath(parent + "." + key)
 }
 
 func indexPath(parent string, i int) string {
-	return parent + "[" + strconv.Itoa(i) + "]"
+	return capPath(parent + "[" + strconv.Itoa(i) + "]")
 }

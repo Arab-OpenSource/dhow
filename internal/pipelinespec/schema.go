@@ -36,6 +36,9 @@ func (w *schemaWalk) mark(path string, n *yaml.Node) {
 }
 
 func (w *schemaWalk) walk(n *yaml.Node, t reflect.Type, path string) {
+	if w.issues.full() {
+		return
+	}
 	w.mark(path, n)
 	pointer := t.Kind() == reflect.Pointer
 	for t.Kind() == reflect.Pointer {

@@ -110,6 +110,9 @@ func nodePos(n *yaml.Node) Position {
 }
 
 func (t *treeCheck) walk(n *yaml.Node, depth int, path string) {
+	if t.issues.full() {
+		return
+	}
 	t.nodes++
 	if t.nodes > MaxNodes {
 		if !t.tooMany {
@@ -177,6 +180,9 @@ func (t *treeCheck) mapping(n *yaml.Node, depth int, path string) {
 			t.issues.addAt(CodeMergeKeyNotAllowed, path, nodePos(key))
 		case key.Kind != yaml.ScalarNode:
 			t.issues.addAt(CodeKeyInvalid, path, nodePos(key))
+		case len(key.Value) > MaxKeyBytes:
+			t.issues.addAt(CodeKeyTooLong, path, nodePos(key))
+			continue
 		case seen[key.Value]:
 			t.issues.addAt(CodeDuplicateKey, child, nodePos(key))
 		}
