@@ -1,6 +1,6 @@
 # حالة داو: اللي اتعمل واللي لسه
 
-**آخر تحديث:** 2026-10-29 · **main:** `fcfb302` (#59)
+**آخر تحديث:** 2026-10-30 · **main:** PR التحديث ده
 
 الوثيقة دي نقطة البداية لأي جلسة جديدة. التفاصيل في [سجل التقدّم](Progress/README.md) والقرارات في [`ADR/`](ADR/README.md) والخطة الكاملة في [`docs/roadmap.md`](../docs/roadmap.md).
 
@@ -54,8 +54,9 @@
 | إعدادات السيرفر، الجزء 1 | البريد والمؤسسات وكلمات السر المسرّبة وحدود الطلبات والسجلات من «إعدادات السيرفر»، وenv بيكسب ويقفل، و`pg_notify` لكل instance (ADR-0063) | #54 |
 | إعدادات السيرفر، الجزء 2 | مزوّدي الدخول من اللوحة بجدول `"OidcProviders"`، و«جرّب الاتصال»، والشيل اللي مايقفلش حد برّه (ADR-0063) | #55 |
 | متابعات بعد خطة السهولة | فشل إعادة تحميل الإعدادات ظاهر في `/health/ready`، واسم العنصر في مسار الصفحة، وصيغ الجمع، وفلتر التشغيلات بأكتر من حالة، وفرق العضو في قايمة الأعضاء | #56 |
-| M3.10 الجزء أ | أرشيفات الـ runner، ووحدة systemd (5.2 MEDIUM)، و`rotate-keys`، و`get.sh --component runner` (ADR-0065) | #57 |
-| الوثائق بالعربي أولًا | `docs/` بالعربي المبسّط و`docs/en/` بالإنجليزي، وREADME وCONTRIBUTING وSECURITY بالعربي وجنبهم `.en.md`، و`make docs-check`، وhook الـ commit، وروابط الواجهة والمنصّب حسب اللغة (ADR-0064) | #58 |
+| M3.10 الجزء ب | الـ engine في `internal/installer`، و`dhow-runner install` و`doctor` و`uninstall`، والهوية مشفّرة بـ `systemd-creds`، و`AuthService.Revoke` (ADR-0066) | #60 |
+| بعد اختبار الـ VMs | حدود ذاكرة الـ job على مقاس الأجهزة الصغيرة قبل التنصيب، ورفض SELinux enforcing (ADR-0067)، وطباعة مخرجات الـ VM | #61 |
+| الـ README | الحالة الحقيقية وقصة Deploy Center | #62 |
 
 شرط خلاص M2 اتحقق: اختبارات الصلاحيات خضرا، ومفيش finding مفتوح Critical أو High. والمراجعة الخارجية اتنقلت لـ M9 (ADR-0040).
 
@@ -63,7 +64,6 @@
 
 | الشغل | الـ branch | الـ PR | اللي فاضل |
 |---|---|---|---|
-| M3.10 الجزء ب: الـ engine في `internal/installer`، و`dhow-runner install` و`doctor` و`uninstall`، والهوية مشفّرة بـ `systemd-creds`، و`AuthService.Revoke`، وsmoke في container بـ systemd، وjob `runner-install`، و`make vm-test` (ADR-0066) | `feat/runner-install` | لسه | الـ PR، والـ CI (`runner-install` بـ Podman حقيقي و`vm-test` على KVM ماتجرّبوش هنا)، والمراجعة الأمنية |
 | `runner.revoked` (إلغاء اللوحة وإلغاء الـ runner لنفسه) بيتنشر على الـ event bus بعد الـ commit، فلو الـ process وقع بينهم الـ audit بيضيع. الـ bus مافيهوش outbox | — | — | outbox للأحداث اللي بتتسجّل، أو نشرها جوه نفس الـ transaction |
 
 M2.6 وM3.6 والتطوير المحلي وإصلاحات مراجعة M3.6 وتغيير الاسم وM3.7 وتجهيز Windows وM3.9 اتدمجوا في 2026-10-28، ومن #35 لـ #59 اتدمجوا في 2026-10-28 و2026-10-29.
@@ -82,7 +82,7 @@ M3.12 (الشرائح خلصت)          M3.13 في الآخر
 | المرحلة | المحتوى |
 |---|---|
 | M3.8 | gVisor كـ spike بشروط go/no-go، ولو فشل يتأجّل على الـ host بـ ADR |
-| M3.10 | الجزء أ اتدمج (#57). الجزء ب على `feat/runner-install`: `install` و`doctor` و`uninstall` والـ engine المشترك والهوية المشفّرة و`make vm-test` |
+| M3.10 | خلص على Debian وUbuntu (#57، #60، #61). SELinux بعد أول نسخة (ADR-0067، ADR-0068) |
 | M3.11 | driver الـ Kubernetes والـ Helm chart، و`make helm-e2e` على kind |
 | M3.12 | خلص (#39، #44، #48، #50) |
 | M3.13 | fuzz إضافي، ومراجعة تهديدات الـ runner plane، و`deploy/m3-demo/run.sh` لشرط الخلاص |
@@ -100,13 +100,15 @@ M3.12 (الشرائح خلصت)          M3.13 في الآخر
 **فاضل:**
 - **الدعوات المقبولة في الواجهة:** الـ API بيرجّعها (`?Status=accepted`)، بس صفحة الأعضاء مافيهاش مكان ليها، فهي من الـ API بس لحد ما نقرر مكانها.
 
-## بعد M3
+## الطريق لأول نسخة production (ADR-0068)
 
-M4 الـ pipelines ومزوّدي Git، وM5 الأسرار والبيئات، وM6 أهداف النشر، وM7 الواجهة الكاملة والإشعارات، وM8 الإصدارات المدفوعة، وM9 التقوية والمراجعة الخارجية، وM10 البيتا، وM11 الـ GA. التفاصيل وشروط الخلاص في [`docs/roadmap.md`](../docs/roadmap.md).
+[ADR-0068](ADR/0068-first-production-release-scope.md) حدّد نطاق أول نسخة production: الـ runners على Debian وUbuntu بـ Podman rootless بس، والنشر على SSH/VPS وDocker Compose، وGitHub وGitLab وGit عام، ونسخة Community بس. الترتيب: M3.13 ← M4 ← M5 ← M6 ← M7 ← M9 ← M10 ← M11، واللي اتأجّل (SELinux وKubernetes وHelm وgVisor وBitbucket وStatic/CDN/SFTP والمحرر المرئي وTeams وWhatsApp وM8 ومكوّن GitLab CI) في قسم «بعد أول نسخة» في [`docs/roadmap.md`](../docs/roadmap.md).
+
+**الجاي M4** بعد M3.13، وخطته في [`M4-Pipelines.md`](M4-Pipelines.md) مستنية مراجعة Sabry وإجابة أسئلتها المفتوحة.
 
 ## بنود مفتوحة اتأجلت
 
-- **SELinux enforcing (ADR-0067):** الـ runner مش مدعوم على Fedora وRHEL وRocky وAlma بـ enforcing، لأن `container_t` ممنوع من `connectto` على الـ control socket. نختار قبل ما M3 يقفل: نقلب اتجاه قناة التحكم، أو policy module بـ domain للـ runner. وبعدها نرجّع fedora وrocky-10 لـ `vm-test.yml`.
+- **SELinux enforcing (ADR-0067):** الـ runner مش مدعوم على Fedora وRHEL وRocky وAlma بـ enforcing، لأن `container_t` ممنوع من `connectto` على الـ control socket. اتأجّل لبعد أول نسخة (ADR-0068)، ووقتها نختار: نقلب اتجاه قناة التحكم، أو policy module بـ domain للـ runner. وبعدها نرجّع fedora وrocky-10 لـ `vm-test.yml`.
 
 - **الـ runner:** حقل سقف الموارد في `RegisterRequest`، ورفض `RESOURCE_REQUEST_EXCEEDS_RUNNER` وقت الإنشاء.
 - **الحمل:** الـ token bucket لكل runner ورد «الـ pool مشغول» (ADR-0042). والإشعار بالـ labels لو الـ runners كتروا. وحدود الـ logs لكل instance مع HA.
