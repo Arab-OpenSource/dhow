@@ -16,7 +16,7 @@ const (
 
 var (
 	ErrDepth      = errors.New("the fetch depth must be from 1 to 65536")
-	ErrFilePath   = errors.New("the file path is empty, absolute, too long, or has a control character or ..")
+	ErrFilePath   = errors.New("the file path is empty, absolute, too long, or has a control character or a parent directory")
 	ErrObjectID   = errors.New("an object id is 40 or 64 lowercase hexadecimal characters")
 	ErrNotFetched = errors.New("only https and ssh repositories are fetched")
 )

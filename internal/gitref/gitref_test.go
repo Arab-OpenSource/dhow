@@ -67,9 +67,9 @@ func TestParseRefusesDangerousRefs(t *testing.T) {
 		{"a star", "refs/heads/*", ErrCharacter},
 		{"a bracket", "refs/heads/[a]", ErrCharacter},
 		{"a backslash", "refs/heads/a\\b", ErrCharacter},
-		{"a right-to-left override", "refs/heads/main‮exe.", ErrCharacter},
-		{"a zero width space", "refs/heads/ma​in", ErrCharacter},
-		{"a no-break space", "refs/heads/ma in", ErrCharacter},
+		{"a right-to-left override", "refs/heads/main\u202eexe.", ErrCharacter},
+		{"a zero width space", "refs/heads/ma\u200bin", ErrCharacter},
+		{"a no-break space", "refs/heads/ma\u00a0in", ErrCharacter},
 		{"invalid utf-8", "refs/heads/\xff", ErrCharacter},
 		{"ext transport", "ext::sh -c touch% /tmp/pwned", ErrCharacter},
 		{"a file url", "file:///etc/passwd", ErrCharacter},
@@ -129,7 +129,7 @@ func TestKindNames(t *testing.T) {
 func FuzzRef(f *testing.F) {
 	for _, seed := range []string{
 		"refs/heads/main", "refs/tags/v1", "refs/pull/1/head", "refs/merge-requests/2/head", "refs/heads/a..b",
-		"refs/heads/-x", "refs/heads/a@{1}", "--upload-pack=x", "ext::sh", "refs/heads/‮", "refs/heads/a/.b",
+		"refs/heads/-x", "refs/heads/a@{1}", "--upload-pack=x", "ext::sh", "refs/heads/\u202e", "refs/heads/a/.b",
 	} {
 		f.Add(seed)
 	}
