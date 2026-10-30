@@ -1431,7 +1431,7 @@ export interface paths {
         put?: never;
         /**
          * Create a project
-         * @description Needs `project.manage` in the organization itself: a binding on another project does not allow creating one. The slug is unique among the organization's projects, archived ones included, and never changes. A new project waits for approval on pull requests from forks; only an Admin or the Owner may choose `automatic`.
+         * @description Needs `project.manage` in the organization itself: a binding on another project does not allow creating one. The slug is unique among the organization's projects, archived ones included, and never changes. A new project waits for approval on pull requests from forks; only an Admin or the Owner may choose `automatic` (403 `FORK_POLICY_NOT_ALLOWED` otherwise).
          */
         post: operations["createProject"];
         delete?: never;
@@ -1459,7 +1459,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a project or change its pipeline path or fork policy
-         * @description Needs `project.manage` on the project, after its role bindings, so a Developer with a Maintainer binding may change that project and no other. Setting `ForkPolicy` to `automatic` needs Admin on the project and answers 403 `ROLE_NOT_ALLOWED` otherwise. An archived project answers 409 `PROJECT_ARCHIVED`.
+         * @description Needs `project.manage` on the project, after its role bindings, so a Developer with a Maintainer binding may change that project and no other. Setting `ForkPolicy` to `automatic` needs Admin on the project and answers 403 `FORK_POLICY_NOT_ALLOWED` otherwise. An archived project answers 409 `PROJECT_ARCHIVED`.
          */
         patch: operations["updateProject"];
         trace?: never;
@@ -1997,7 +1997,7 @@ export interface components {
         };
         ErrorDetail: {
             /**
-             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`, `SETTING_INVALID`, `MAIL_NOT_CONFIGURED`, `MAIL_TEST_FAILED`, `OIDC_PROVIDER_EXISTS`, `OIDC_PROVIDER_LIMIT`, `OIDC_PROVIDER_LINKED` or `OIDC_PROVIDER_ONLY_SIGN_IN`.
+             * @description Stable machine-readable UPPER_SNAKE code: `INTERNAL`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `BAD_REQUEST`, `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `SERVICE_UNAVAILABLE`, `UNAUTHENTICATED`, `FORBIDDEN`, `CSRF_FAILED`, `INVALID_CREDENTIALS`, `INVALID_CURRENT_PASSWORD`, `PASSWORD_BREACHED`, `SETUP_COMPLETED`, `SETUP_TOKEN_INVALID`, `CONFLICT`, `MFA_CHALLENGE_EXPIRED`, `INVALID_MFA_CODE`, `INVALID_CURRENT_FACTOR`, `ENROLLMENT_EXPIRED`, `PASSKEY_REJECTED`, `LAST_OWNER`, `ROLE_NOT_ALLOWED`, `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`, `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`, `SETTING_INVALID`, `MAIL_NOT_CONFIGURED`, `MAIL_TEST_FAILED`, `OIDC_PROVIDER_EXISTS`, `OIDC_PROVIDER_LIMIT`, `OIDC_PROVIDER_LINKED`, `OIDC_PROVIDER_ONLY_SIGN_IN`, `PROJECT_ARCHIVED` or `FORK_POLICY_NOT_ALLOWED`.
              * @example INTERNAL
              */
             Code: string;

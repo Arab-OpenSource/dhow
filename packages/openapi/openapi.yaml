@@ -2175,7 +2175,8 @@ paths:
       description: >-
         Needs `project.manage` in the organization itself: a binding on another project does not allow creating one.
         The slug is unique among the organization's projects, archived ones included, and never changes. A new project
-        waits for approval on pull requests from forks; only an Admin or the Owner may choose `automatic`.
+        waits for approval on pull requests from forks; only an Admin or the Owner may choose `automatic` (403
+        `FORK_POLICY_NOT_ALLOWED` otherwise).
       security:
         - SessionCookie: []
           CsrfToken: []
@@ -2226,7 +2227,7 @@ paths:
       description: >-
         Needs `project.manage` on the project, after its role bindings, so a Developer with a Maintainer binding may
         change that project and no other. Setting `ForkPolicy` to `automatic` needs Admin on the project and answers
-        403 `ROLE_NOT_ALLOWED` otherwise. An archived project answers 409 `PROJECT_ARCHIVED`.
+        403 `FORK_POLICY_NOT_ALLOWED` otherwise. An archived project answers 409 `PROJECT_ARCHIVED`.
       security:
         - SessionCookie: []
           CsrfToken: []
@@ -3393,7 +3394,7 @@ components:
             `ALREADY_MEMBER`, `INVITATION_PENDING`, `INVITATION_INVALID`, `INVITATION_EMAIL_MISMATCH`,
             `INVITATION_ACCOUNT_EXISTS`, `SECOND_FACTOR_REQUIRED`, `SETTING_LOCKED_BY_ENV`, `SETTING_CHANGED`,
             `SETTING_INVALID`, `MAIL_NOT_CONFIGURED`, `MAIL_TEST_FAILED`, `OIDC_PROVIDER_EXISTS`, `OIDC_PROVIDER_LIMIT`,
-            `OIDC_PROVIDER_LINKED` or `OIDC_PROVIDER_ONLY_SIGN_IN`.
+            `OIDC_PROVIDER_LINKED`, `OIDC_PROVIDER_ONLY_SIGN_IN`, `PROJECT_ARCHIVED` or `FORK_POLICY_NOT_ALLOWED`.
           example: INTERNAL
         Message:
           type: string
