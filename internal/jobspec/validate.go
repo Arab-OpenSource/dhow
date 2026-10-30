@@ -67,16 +67,23 @@ func Validate(spec *runnerv1.JobSpec) error {
 }
 
 func (c *checker) image(v string) {
+	if r := ImageReason(v); r != "" {
+		c.add("Image", r)
+	}
+}
+
+func ImageReason(v string) string {
 	switch {
 	case v == "":
-		c.add("Image", ReasonRequired)
+		return ReasonRequired
 	case len(v) > MaxImageLength:
-		c.add("Image", ReasonTooLong)
+		return ReasonTooLong
 	case imagePattern.MatchString(v):
+		return ""
 	case imageAnyRef.MatchString(v):
-		c.add("Image", ReasonNotPinned)
+		return ReasonNotPinned
 	default:
-		c.add("Image", ReasonInvalid)
+		return ReasonInvalid
 	}
 }
 
@@ -255,8 +262,12 @@ func (c *checker) labels(labels []string) {
 		return
 	}
 	for i, l := range labels {
-		if len(l) > MaxLabelLength || !labelPattern.MatchString(l) {
+		if !ValidLabel(l) {
 			c.add(at("Labels", i), ReasonInvalid)
 		}
 	}
+}
+
+func ValidLabel(l string) bool {
+	return len(l) <= MaxLabelLength && labelPattern.MatchString(l)
 }
