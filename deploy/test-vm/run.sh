@@ -43,8 +43,11 @@ cleanup() {
   local status=$?
   if [[ -n $qemu_pid ]]; then kill "$qemu_pid" 2>/dev/null || true; fi
   if ((status != 0)) && [[ -s $work/console.log ]]; then
+    printf '\n--- the guest test output ---\n' >&2
+    tr -d '\r' <"$work/console.log" | sed -n '/^Guest: /,/DHOW-VM-TEST:/p' |
+      grep -av -e '  OK  ' -e '^\[ *[0-9]*\.[0-9]*\] ' -e '^ *\(Stopping\|Starting\|Unmounting\) ' >&2 || true
     printf '\n--- last lines of the guest console ---\n' >&2
-    tail -n 80 "$work/console.log" >&2 || true
+    tail -n 40 "$work/console.log" >&2 || true
   fi
   rm -rf -- "$work"
   exit "$status"
