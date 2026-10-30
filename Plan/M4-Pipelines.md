@@ -140,7 +140,7 @@
 - **المكتبة:** `github.com/google/cel-go` v0.30.0، وenv فيه المتغيرات المعلنة بس (`git` و`project` و`vars` و`inputs` و`matrix` و`needs` و`env`)، وأي متغير تاني خطأ وقت الـ compile.
 - **الحدود:** طول التعبير 2 KiB، و`cel.CostLimit`، وعمق الـ parser، وcontext بمهلة 10 ms لكل تقييم. ومفيش أي دالة بتعمل I/O على السيرفر.
 - **الأنواع:** `if` لازم `bool`، و`concurrency.group` و`cache.key` وقيم `env` و`with` لازم `string`. والفحص وقت الـ validation مش وقت التشغيل.
-- **الدوال:** `startsWith` و`contains` و`matches` (RE2) من CEL نفسه، و`hash_files()` بتاعتنا وبتتقيّم في الـ runner بس (بعد الـ checkout، جوه الـ workspace، ومن غير ما تخرج منه).
+- **الدوال:** `startsWith` و`contains` من CEL نفسه (`matches` ودوال الوقت اتشالوا بعد المراجعة الأمنية لـ M4.1، [ADR-0069](ADR/0069-pipeline-spec-parser-and-validator.md))، و`hash_files()` بتاعتنا وبتتقيّم في الـ runner بس (بعد الـ checkout، جوه الـ workspace، ومن غير ما تخرج منه).
 - **القيم من Git بيانات:** رسالة الـ commit واسم الفرع واسم الكاتب متغيرات `string`، والنتيجة عمرها ما بتتعمل parse تاني كتعبير أو كـ YAML أو كـ shell.
 - **مفيش مفسّر عام:** CEL بس، زي القاعدة في `CLAUDE.md`. ومفيش `text/template` ولا JavaScript ولا shell expansion في السيرفر.
 
@@ -503,6 +503,7 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
   - **الـ checkout** بكل الإعدادات اللي فوق، والـ helpers `askpass` و`ssh`.
   - **الإضافات:** قراية الـ manifest، والتحقق من `with:`، والتشغيل بـ argv، والـ outputs.
   - **`internal/jobspec`** بيتحقق من الحقول الجديدة.
+  - **القيم بعد التقييم:** الـ `JobSpec` النهائي بعد ما `EvalValue` يملا قيم `env` و`with` المتقيّمة لازم يعدّي على `jobspec.Validate` تاني قبل الإدراج، لأن M4.1 بيتحقق من القالب بس (ملاحظة L1 في مراجعة M4.1).
   - ADR للقرارات 3 و4 و5.
 - **قبول:**
   - **الـ escape suite** بيشتغل كخطوة `run` وكـ plugin، وبيتوسّع:

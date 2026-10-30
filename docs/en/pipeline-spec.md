@@ -142,7 +142,7 @@ jobs:
 | `steps[].with` | map | Plugin inputs, only on a `uses:` step: at most 32, names in lowercase `a-z`, `0-9` and `_`, values up to 32 KiB (text or CEL `string`). The plugin manifest declares the types and the runner checks them |
 | `steps[].env` | map | Same rules as `jobs.<id>.env`; values may reference `secrets.*` and `vars.*` |
 | `steps[].timeout` | duration | Not longer than the job timeout |
-| `artifacts` | list | At most 16 per job. `name` (letters, digits, `.`, `_`, `-`, up to 64, unique in the pipeline: in a matrix job, build it with CEL from `matrix.*`), `paths` (1 to 32, relative to the workspace, without `..`, `~` or a leading `/`) and `retention` (`1d` to `30d`, default 30 days) |
+| `artifacts` | list | At most 16 per job. `name` (letters, digits, `.`, `_`, `-`, up to 64, unique in the pipeline: in a matrix job, join text and `matrix.*` values with `+`, like `${{ "web-" + matrix.os }}`), `paths` (1 to 32, relative to the workspace, without `..`, `~` or a leading `/`) and `retention` (`1d` to `30d`, default 30 days) |
 | `cache` | map | `key` (text or CEL `string`, may call `hash_files()`), `paths` (same rules as artifact paths); scoped per project and branch, read-only for fork PRs |
 
 **CEL context.** These variables are available:
@@ -153,16 +153,18 @@ jobs:
 - `secrets.*` (only as a whole `env`/`with` value; it can never appear in an `if`)
 - `matrix.*` and `needs.<job>.outputs.*` (only for jobs listed in `needs`, and only when the job id has no `-`)
 
-These functions are available: `hash_files()` (cache key only, evaluated by the runner inside the workspace), `startsWith()`, `matches()` (RE2 syntax), `contains()`, and the rest of the CEL standard library.
+These functions are available: `hash_files()` (cache key only, evaluated by the runner inside the workspace), `startsWith()`, `endsWith()`, `contains()`, `size()`, and the rest of the CEL standard library, except `matches()` (regular expressions cannot be stopped in the middle) and the time functions (`timestamp()`, `duration()` and the `get…()` functions, which can read time zone files).
+
+The values in the context have limits, and an evaluation with a larger value fails: `git.message` up to 64 KiB, the other `git.*` and `project.*` values up to 1 KiB, `vars.*` and `inputs.*` up to 4 KiB (256 variables), `env.*` up to 32 KiB (100 variables), and each `needs` output up to 1 KiB (64 outputs). An `env` name that holds a secret is never visible in `env.*`.
 
 ## 4. Expressions
 
-- **Where:** `if` (job and step), `concurrency.group`, `cache.key`, `env` and `with` values, and an artifact `name` (only `matrix.*` there). Every other field is plain text, and `${{` in it is an error.
+- **Where:** `if` (job and step), `concurrency.group`, `cache.key`, `env` and `with` values, and an artifact `name` (only text and `matrix.*` joined with `+` there, so the names are known without running anything). Every other field is plain text, and `${{` in it is an error.
 - **Whole value:** an expression is the whole value: `${{ "v" + git.tag }}`, not `v${{ git.tag }}`. Build text with `+` inside CEL.
 - **`if`** may be written with or without `${{ }}`.
 - **Types are checked when the file is validated, not when it runs.** `if` must be `bool`, every other place must be `string`, and a name that is not available in that place is an error. So `if: ${{ git.branch }}` is refused before anything runs.
 - **Secrets:** `${{ secrets.NAME }}` is allowed only as the whole value of `env` or `with`. The value never passes through CEL: the runner gets it as a secret reference. `secrets` in an `if`, in `concurrency`, in `cache` or inside a larger expression is an error.
-- **Limits:** 2 KiB per expression, a cost limit, and 10 ms per evaluation. No function reads files or the network on the server.
+- **Limits:** 2 KiB per expression and at most 1,024 expressions per pipeline. The highest possible cost of each expression is computed from these value limits when the file is validated, and an expression that could cost too much is refused (`EXPRESSION_TOO_EXPENSIVE`), as is a pipeline whose expressions together could cost too much (`EXPRESSION_BUDGET_EXCEEDED`). When it runs, an evaluation also stops at the same cost limit and after 10 ms. No function reads files or the network on the server.
 
 ## 5. The `run:` script
 
@@ -199,6 +201,7 @@ jobs:
 |---|---|
 | File size | 256 KiB |
 | One value | 64 KiB |
+| One mapping key | 256 bytes |
 | YAML depth | 32 levels |
 | YAML nodes | 50,000 |
 | Jobs before the matrix | 64 |
@@ -211,6 +214,7 @@ jobs:
 | Egress entries | 64 |
 | Artifacts per job | 16 (32 paths each) |
 | Expression size | 2 KiB |
+| Expressions per pipeline | 1,024 |
 | Time per expression | 10 ms |
 | Job timeout | 1s to 24h |
 | Expanded job spec | under 252 KiB |

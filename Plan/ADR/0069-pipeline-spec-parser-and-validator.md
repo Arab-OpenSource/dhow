@@ -37,12 +37,12 @@
 - ونفس الفكرة لـ `isolation: gvisor` (`ISOLATION_NOT_SUPPORTED_YET`). أما `environment:` والأسرار فبيتقبلوا بـ warning (`ENVIRONMENTS_UNAVAILABLE` و`SECRETS_UNAVAILABLE`) زي الخطة، لأن الملف صح والميزة بس هي اللي جاية في M5.
 
 ### CEL
-- **المكتبة:** `github.com/google/cel-go` v0.30.0 (2026-07-25). فيه v0.31.0، وv0.32.0 غيّرت الـ module path لـ `cel.dev/cel-go`، فقعدنا على النسخة اللي في الخطة. v0.30.0 فيها إصلاح GO-2026-6094 (مش بنستخدم `NativeTypes` أصلًا). بتجيب `cel.dev/expr` v0.25.1 و`antlr4-go/antlr/v4` v4.13.1 و`genproto`.
+- **المكتبة:** `github.com/google/cel-go` v0.30.0 (2026-07-25). فيه v0.31.0، وv0.32.0 غيّرت الـ module path لـ `cel.dev/cel-go`، فقعدنا على النسخة اللي في الخطة. v0.30.0 فيها إصلاح GO-2026-6094 (مش بنستخدم `NativeTypes` أصلًا). الاعتماديات اللي بتجيبها: `cel.dev/expr` v0.25.1، و`github.com/antlr4-go/antlr/v4` v4.13.1، و`golang.org/x/exp` v0.0.0-20261011100332-faecfb24eb49 (pseudo-version، الـ parser بتاع antlr بيستخدم `x/exp/slices` بس)، و`google.golang.org/genproto/googleapis/{api,rpc}` v0.0.0-20261005182115-fad411399dd8. كلهم أقدم من أسبوعين، و`make vuln` نضيف عليهم: الـ finding الوحيد في الـ modules هو GO-2026-5932 في `golang.org/x/crypto` اللي كان موجود قبل كده ومتابَع في `Status.md`، والكود مابينادهوش.
 - **المتغيرات بأسماء فيها نقط** (`git.sha` و`git.pr.number` و`inputs.<name>` و`matrix.<key>` و`needs.<id>.outputs`)، مش maps من `dyn`. كده `git.branch == 1` و`inputs.x` اللي مش معلن و`needs.a` اللي مش في `needs` بيترفضوا وقت الـ check. و`vars` و`env` maps من string لـ string.
 - **كل مكان ليه نطاق:** `if` بتاع الـ job مافيهوش `env`، و`concurrency.group` مافيهوش `matrix` ولا `needs`، واسم الـ artifact فيه `matrix` بس، و`hash_files()` في `cache.key` بس ومن غير implementation في السيرفر (الـ runner بيقيّمها).
 - **التعبير هو القيمة كلها:** `${{ "v" + git.tag }}` مش `v${{ git.tag }}`. ده بيشيل محرّك templates كامل، وبيخلّي النوع واضح. `if` بيتكتب بـ `${{ }}` أو من غيره.
 - **الأسرار مابتعدّيش على CEL:** `${{ secrets.NAME }}` مسموح بس كقيمة كاملة في `env` أو `with`، وبيتحوّل لـ `SecretRef` في الـ `JobSpec`. أي `secrets` في `if` بيطلّع `SECRETS_IN_IF`، وفي تعبير أكبر `SECRET_NOT_WHOLE_VALUE`، وفي `concurrency` أو `cache` `SECRETS_NOT_ALLOWED`. الفحص على الـ AST قبل الـ check، فحتى متغيّر comprehension اسمه `secrets` مرفوض.
-- **الحدود:** 2 KiB لكل تعبير، وعمق الـ parser 32، و512 node، و`CostLimit` 10,000، والمقاطعة كل 64 لفّة، ومهلة 10 ms. اتجرّب: 100,000 كان بيوصل للمهلة قبل حد التكلفة. والتعبير المكلف بيقف في أقل من 50 ms حتى مع `-race`.
+- **الحدود:** 2 KiB لكل تعبير، وعمق الـ parser 32، و512 node، و`CostLimit` 10,000، والمقاطعة كل 64 لفّة، ومهلة 10 ms. اتجرّب: 100,000 كان بيوصل للمهلة قبل حد التكلفة. والحدود دي اتقوّت بعد المراجعة الأمنية (القسم اللي تحت).
 - **أخطاء التقييم** ليها أنواع ثابتة (`ErrExpressionCost` و`ErrExpressionTimeout` و`ErrExpressionEval`...) ومن غير نص `cel-go`.
 
 ### الـ DAG والـ matrix
@@ -61,9 +61,21 @@
 ### الـ compile («الخطة»)
 - `Compile(spec)` بيرجّع `Plan` فيه `RunJob` لكل نسخة matrix بالترتيب الطوبولوجي، ولكل واحد `*runnerv1.JobSpec` متعمله `jobspec.Normalize` وبيعدّي `jobspec.Validate`.
 - الحاجات اللي لسه مالهاش مكان في الـ proto بتفضل جنب الـ `JobSpec` في الـ `RunJob`: `Steps[i].Plugin` (الصورة والـ inputs)، و`Artifacts`، و`Cache`، و`Expressions` (التعبيرات اللي بتتقيّم وقت الإدراج بالـ `git` والـ `needs`). خطوة `uses:` في الـ `JobSpec` اسمها بس ومن غير `run`، والـ job اللي كله plugins من غير `image`، والفرقين دول بس اللي بيتسامح فيهم من `jobspec.Validate` لحد M4.7.
-- **الحتمية:** `Digest` لكل `RunJob` هو sha256 لـ JSON (الـ maps مرتّبة) فيه الـ `JobSpec` بـ `proto.MarshalOptions{Deterministic: true}` وكل الحاجات اللي جنبه. اختبار بيعمل compile 20 مرة ويقارن، وfuzz بيتأكد.
+- **الحتمية:** `Digest` لكل `RunJob` هو sha256 لـ JSON (الـ maps مرتّبة) فيه الـ `JobSpec` بـ `proto.MarshalOptions{Deterministic: true}` وكل الحاجات اللي جنبه. اختبار بيعمل compile 20 مرة ويقارن، وfuzz بيتأكد. الـ digest ثابت جوه نفس النسخة من داو بس: ترقية `protobuf` أو تغيير في الـ structs ممكن يغيّره، فماينفعش يتخزّن ويتقارن بعد ترقية.
 - **التقييم** (`EvalIf` و`EvalStepIf` و`EvalValue` و`EvalGroup`) موجود ومختبَر، بس اللي بيستخدمه M4.8.
 - `internal/jobspec` طلّع `ImageReason` و`ValidLabel` عشان الـ validator يستخدم نفس القواعد بالظبط ويدّي مكان الخطأ.
+
+### بعد المراجعة الأمنية المستقلة
+المراجعة لقت إن ملف 32 KB بياخد 60 ثانية في `Check()`، وملف بمفاتيح طويلة بيحجز 1.5 GB. الإصلاحات:
+- **مفيش regex:** `matches()` اتشالت من بيئة CEL، لأن الـ regex بيتعمله compile في كل تقييم ومابيتقاطعش (المقاطعة في الـ comprehensions بس). ودوال الوقت (`timestamp()` و`duration()` و`get…()`) اتشالت كمان، لأن المنطقة الزمنية ممكن تقرا ملفات zoneinfo من القرص. الباقي من المكتبة الأساسية خطّي في حجم المدخل ومحسوب في التكلفة.
+- **حد تكلفة ثابت وقت الـ check:** `env.EstimateCost` بـ estimator بيدّي كل متغيّر أقصى حجم (`git.message` 64 KiB، وباقي `git.*` و`project.*` 1 KiB، و`vars.*` و`inputs.*` 4 KiB و256 متغيّر، و`env.*` 32 KiB و100 متغيّر، وoutputs الـ `needs` 1 KiB و64 output). أي تعبير أقصى تكلفة ليه أكتر من 10,000 بيترفض بـ `EXPRESSION_TOO_EXPENSIVE`. الرقم ده نفسه `CostLimit` وقت التشغيل، فأي تعبير عدّى الـ check مابيوصلش لحد التكلفة. أمثلة الوثيقة أعلى واحد فيها 310.
+- **القيم دي بتتفرض وقت التقييم:** أي قيمة في الـ `Context` أكبر من حدها بتطلّع `ErrContextInvalid` بدل ما تتقيّم، فالحساب الثابت بيفضل صح.
+- **ميزانية لكل `Check()` و`Compile()`:** 1,024 تعبير بالكتير، ومجموع أقصى التكاليف 1,000,000، وبعدها `EXPRESSION_BUDGET_EXCEEDED` والـ checker بيبطّل. الميزانية بالعدد والتكلفة المحسوبة، مش بالوقت، عشان نفس الملف يطلّع نفس النتيجة على السيرفر وفي `dhow lint`. و`Compile()` بيعمل التحليل مرة واحدة بنفس الميزانية.
+- **أسماء الـ artifacts بقت قوالب ثابتة:** نص و`matrix.*` مجموعين بـ `+` بس، وبيتفحصوا على الـ AST، والأسماء بتتبني بـ Go من غير أي تقييم CEL وقت الـ validation. اخترنا ده بدل تأجيل فحص التكرار لوقت التشغيل، لأن الاسم المكرر لازم يبان في `dhow lint` قبل أي run، والقالب بيغطي الاستخدام الحقيقي (`"web-" + matrix.os`).
+- **الذاكرة:** الأخطاء بتقف عند 200 والـ walk بيقف معاها، والمفتاح أطول من 256 بايت بيطلّع `KEY_TOO_LONG` ومن غير ما ندخل جوه قيمته، والمسار بيتقص عند 512 بايت. ملف المراجعة بقى بيحجز نفس اللي parser الـ YAML بيحجزه (حوالي 22 MB لملف 256 KiB) وزيادة أقل من 4 MB علينا، واختبار بيتأكد.
+- **`env.*` مابيشوفش الأسرار:** الـ activation بيشيل من `env` أي اسم ليه `SecretRef` في الـ `JobSpec`، وأي اسم في `Context.SecretEnv`، مهما M4.7 حط في `Context.Env`.
+- **القيم الناتجة محدودة:** `EvalValue` لحد 32 KiB و`EvalGroup` لحد 1 KiB، وإلا `ErrExpressionResult`. والتحقق الكامل من الـ `JobSpec` بعد التقييم مكتوب في M4.7.
+- **اسم الـ `RunJob`:** `\` و`,` و`=` و`(` و`)` في قيم الـ matrix بيتعملهم escape بـ `\`، فتركيبتين مختلفتين مايطلعوش نفس الاسم.
 
 ## البدائل اللي اتدرست
 - **template في الـ strings** (`v${{ x }}`): أقرب لـ GitHub، بس محتاج parser للـ templates وقواعد escape، وكل جزء نوعه لازم يتحوّل لـ string. القيمة الكاملة كفاية مع `+`.
@@ -79,4 +91,4 @@
 - `include` بتاعنا مش بيوسّع التركيبات زي GitHub، ومكتوب ده في `docs/pipeline-spec.md`.
 - تقرا outputs الـ job بس لو الـ id بتاعه مافيهوش `-`، لأن `-` مش جزء من اسم في CEL. مكتوب في الوثيقة.
 - الـ `if` بتاع الخطوة بيتقيّم قبل الإدراج، فمفيش لسه `failure()` ولا شروط على نتيجة خطوة قبلها.
-- أسوأ ملف (25,000 تعبير تقريبًا) بياخد حوالي ثانية في الـ validation، واتقاس.
+- الـ validation مابيقيّمش أي تعبير، وأقصى عدد تعبيرات 1,024، فأسوأ ملف بياخد أقل من 200 ms حتى مع `-race`، واتقاس.
