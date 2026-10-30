@@ -13,6 +13,7 @@ const (
 	ScopeOrganization
 	ScopeInstance
 	ScopeRunner
+	ScopeProject
 )
 
 type RunnerAccess uint8
@@ -25,13 +26,14 @@ const (
 )
 
 type Rule struct {
-	Method   string
-	Path     string
-	Scope    Scope
-	Action   Action
-	OrgParam string
-	Runner   RunnerAccess
-	Tokens   bool
+	Method       string
+	Path         string
+	Scope        Scope
+	Action       Action
+	OrgParam     string
+	ProjectParam string
+	Runner       RunnerAccess
+	Tokens       bool
 }
 
 func Public(method, path string) Rule {
@@ -62,7 +64,10 @@ func (r Rule) AllowTokens() Rule {
 func (r Rule) Key() string { return r.Method + " " + r.Path }
 
 func (r Rule) Valid() bool {
-	if r.Tokens && (r.Scope != ScopeOrganization || !IsTokenAction(r.Action)) {
+	if r.Tokens && ((r.Scope != ScopeOrganization && r.Scope != ScopeProject) || !IsTokenAction(r.Action)) {
+		return false
+	}
+	if r.Scope != ScopeProject && r.ProjectParam != "" {
 		return false
 	}
 	switch r.Scope {
@@ -72,6 +77,8 @@ func (r Rule) Valid() bool {
 		return r.Action == SessionManageSelf && r.Runner == 0
 	case ScopeOrganization:
 		return r.Action != "" && r.Action != SessionManageSelf && !IsInstanceAction(r.Action) && r.OrgParam != "" && r.Runner == 0
+	case ScopeProject:
+		return r.validProject()
 	case ScopeInstance:
 		return IsInstanceAction(r.Action) && r.OrgParam == "" && r.Runner == 0
 	case ScopeRunner:

@@ -51,6 +51,8 @@ const (
 	JobCreate         Action = "job.create"
 	JobCancel         Action = "job.cancel"
 	LogRead           Action = "log.read"
+	ProjectRead       Action = "project.read"
+	ProjectManage     Action = "project.manage"
 
 	InstanceSettingsManage Action = "instance.settings.manage"
 )
@@ -59,11 +61,14 @@ func Actions() []Action {
 	return []Action{
 		OrgRead, OrgUpdate, OrgLeave, OrgTransfer, OrgSecurity, MemberRead, MemberManage, AuditRead, SessionManageSelf, OrgCreate,
 		RunnerRead, RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead, InstanceSettingsManage,
+		ProjectRead, ProjectManage,
 	}
 }
 
 func TokenActions() []Action {
-	return []Action{OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, RunnerRead, RunnerManage, JobRead, JobCancel}
+	return []Action{
+		OrgRead, OrgUpdate, MemberRead, MemberManage, AuditRead, RunnerRead, RunnerManage, JobRead, JobCancel, ProjectRead, ProjectManage,
+	}
 }
 
 func IsTokenAction(a Action) bool { return slices.Contains(TokenActions(), a) }
@@ -84,19 +89,21 @@ func Grants(role Role) []Action {
 	case RoleOwner:
 		return []Action{
 			OrgRead, OrgUpdate, OrgLeave, OrgTransfer, OrgSecurity, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead,
-			RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
+			RunnerManage, TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead, ProjectRead, ProjectManage,
 		}
 	case RoleAdmin:
 		return []Action{
 			OrgRead, OrgUpdate, OrgLeave, MemberRead, MemberManage, AuditRead, SessionManageSelf, RunnerRead, RunnerManage,
-			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead,
+			TokenCreate, TokenManage, JobRead, JobCreate, JobCancel, LogRead, ProjectRead, ProjectManage,
 		}
 	case RoleMaintainer:
-		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, JobCancel, LogRead, TokenCreate}
+		return []Action{
+			OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, JobCancel, LogRead, TokenCreate, ProjectRead, ProjectManage,
+		}
 	case RoleDeveloper:
-		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, LogRead, TokenCreate}
+		return []Action{OrgRead, OrgLeave, MemberRead, SessionManageSelf, RunnerRead, JobRead, LogRead, TokenCreate, ProjectRead}
 	case RoleViewer:
-		return []Action{OrgRead, OrgLeave, SessionManageSelf, JobRead, TokenCreate}
+		return []Action{OrgRead, OrgLeave, SessionManageSelf, JobRead, TokenCreate, ProjectRead}
 	default:
 		return nil
 	}
@@ -139,7 +146,9 @@ func (s Subject) RoleIn(organizationID uuid.UUID) (Role, bool) {
 }
 
 type Resource struct {
-	OrganizationID uuid.UUID
+	OrganizationID  uuid.UUID
+	ProjectID       uuid.UUID
+	ProjectBindings []Role
 }
 
 func Can(s Subject, action Action, r Resource) bool {
@@ -156,7 +165,16 @@ func Can(s Subject, action Action, r Resource) bool {
 		return false
 	}
 	role, ok := s.RoleIn(r.OrganizationID)
-	return ok && Allows(role, action)
+	if !ok {
+		return false
+	}
+	if r.ProjectID != uuid.Nil {
+		if !IsProjectAction(action) {
+			return false
+		}
+		role = ProjectRole(role, r.ProjectBindings)
+	}
+	return Allows(role, action)
 }
 
 type InstanceSettings struct {

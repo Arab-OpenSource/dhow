@@ -5,16 +5,20 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/google/uuid"
+
 	policy "github.com/Khaymah/dhow/apps/server/internal/Core/Policy"
 )
 
 type Principal struct {
 	policy.Subject
-	Email     string
-	Name      string
-	Locale    string
-	CSRFToken string
-	ExpiresAt time.Time
+	Email       string
+	Name        string
+	Locale      string
+	CSRFToken   string
+	ExpiresAt   time.Time
+	ProjectID   uuid.UUID
+	ProjectRole policy.Role
 }
 
 type RequestMeta struct {
