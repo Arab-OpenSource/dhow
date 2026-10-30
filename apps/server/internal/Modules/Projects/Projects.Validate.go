@@ -37,18 +37,23 @@ func ValidPipelinePath(v string) bool {
 	if v == "" || len(v) > maxPipelinePathLen || !utf8.ValidString(v) {
 		return false
 	}
-	if strings.ContainsFunc(v, func(r rune) bool { return unicode.IsControl(r) || r == '\\' || unicode.IsSpace(r) }) {
+	if strings.ContainsFunc(v, unsafePathRune) || strings.HasPrefix(v, ":") {
 		return false
 	}
 	if !strings.HasSuffix(v, ".yml") && !strings.HasSuffix(v, ".yaml") {
 		return false
 	}
 	for segment := range strings.SplitSeq(v, "/") {
-		if segment == "" || segment == "." || segment == ".." {
+		if segment == "" || segment == "." || segment == ".." || strings.HasPrefix(segment, "-") {
 			return false
 		}
 	}
 	return true
+}
+
+func unsafePathRune(r rune) bool {
+	return r == '\\' || unicode.IsControl(r) || unicode.IsSpace(r) || unicode.In(r, unicode.Cf, unicode.Co, unicode.Cs, unicode.Zl, unicode.Zp) ||
+		r == utf8.RuneError
 }
 
 func ValidForkPolicy(v string) bool {

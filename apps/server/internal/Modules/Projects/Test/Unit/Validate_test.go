@@ -31,6 +31,16 @@ func TestPipelinePaths(t *testing.T) {
 		{strings.Repeat("a", 252) + ".yml", false},
 		{strings.Repeat("a", 251) + ".yml", true},
 		{"\xff.yml", false},
+		{"-c.yml", false},
+		{"ci/--upload-pack.yml", false},
+		{":(top).dhow.yml", false},
+		{"ci/a:b.yml", true},
+		{"ci/a-b.yml", true},
+		{"ci/\u202edhow.yml", false},
+		{"ci/\u200bdhow.yml", false},
+		{"ci/\ufeffdhow.yml", false},
+		{"ci/\ue000dhow.yml", false},
+		{"ci/\u2028dhow.yml", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
