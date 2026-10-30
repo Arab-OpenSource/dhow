@@ -54,6 +54,10 @@ func (app App) Doctor(ctx context.Context, opts DoctorOptions) error {
 		}
 		return fmt.Errorf("%w: %d", ErrUnhealthy, remaining)
 	}
+	if engine.HasAdvisory(findings) {
+		app.say("\n%s\n", m.T(engine.KeyDoctorAdvisories))
+		return nil
+	}
 	app.say("\n%s\n", m.T(KeyDoctorClean))
 	return nil
 }
@@ -80,6 +84,7 @@ func (d doctor) run(ctx context.Context) []engine.Finding {
 		out = append(out, d.podman(), d.kernel(), d.selinux(), d.subIDs())
 	}
 	out = append(out, d.memory(), d.unit(), d.service(ctx), d.exposure(ctx), d.permissions(), d.identity(), d.pending())
+	out = append(out, engine.KernelMPTCP(d.app.Sys, d.m))
 	return append(out, d.server(ctx)...)
 }
 

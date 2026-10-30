@@ -24,6 +24,7 @@ type Finding struct {
 	Detail   string
 	Advice   string
 	Fix      *Step
+	Advisory bool
 }
 
 func OK(title string) Finding { return Finding{Severity: SeverityOK, Title: title} }
@@ -66,7 +67,7 @@ type FixOptions struct {
 func ApplyFixes(ctx context.Context, findings []Finding, o FixOptions) (int, error) {
 	remaining := 0
 	for _, f := range findings {
-		if f.Severity < SeverityWarn {
+		if f.Severity < SeverityWarn || f.Advisory {
 			continue
 		}
 		if f.Fix == nil {
@@ -91,6 +92,15 @@ func ApplyFixes(ctx context.Context, findings []Finding, o FixOptions) (int, err
 		}
 	}
 	return remaining, nil
+}
+
+func HasAdvisory(findings []Finding) bool {
+	for _, f := range findings {
+		if f.Advisory && f.Severity >= SeverityWarn {
+			return true
+		}
+	}
+	return false
 }
 
 func Worst(findings []Finding) Severity {
