@@ -34,7 +34,7 @@ func TestBillionLaughsIsRefusedQuickly(t *testing.T) {
 	}
 	start := time.Now()
 	codes := parseCodes(b.String())
-	assert.Less(t, time.Since(start), 2*time.Second)
+	assert.Less(t, time.Since(start), slowBackstop)
 	assert.Contains(t, codes, CodeAliasNotAllowed)
 	assert.Contains(t, codes, CodeAnchorNotAllowed)
 }
