@@ -116,7 +116,7 @@ jobs:
           if-no-files-found: error
 
   binaries:
-    name: Build the Linux binaries
+    name: Build the binaries
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -166,17 +166,24 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           (cd dist && sha256sum --check --strict SHA256SUMS)
-          for component in server runner; do
-            for arch in amd64 arm64; do
+          for arch in amd64 arm64; do
+            for component in server runner; do
               grep -Eq "^[0-9a-f]{64}  dhow-${component}_${VERSION}_linux_${arch}\.tar\.gz$" dist/SHA256SUMS
             done
+            for os in linux darwin windows; do
+              grep -Eq "^[0-9a-f]{64}  dhow_${VERSION}_${os}_${arch}\.tar\.gz$" dist/SHA256SUMS
+            done
           done
+          tar -tzf "dist/dhow_${VERSION}_windows_amd64.tar.gz" | grep -qx dhow.exe
           tar -xzf "dist/dhow-server_${VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" dhow-server
           go version -m "$RUNNER_TEMP/dhow-server" | grep -q 'CGO_ENABLED=0'
           "$RUNNER_TEMP/dhow-server" install --help
           tar -xzf "dist/dhow-runner_${VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" dhow-runner dhow-runner.service
           go version -m "$RUNNER_TEMP/dhow-runner" | grep -q 'CGO_ENABLED=0'
           "$RUNNER_TEMP/dhow-runner" version | grep -qF "dhow-runner $VERSION "
+          tar -xzf "dist/dhow_${VERSION}_linux_amd64.tar.gz" -C "$RUNNER_TEMP" dhow
+          go version -m "$RUNNER_TEMP/dhow" | grep -q 'CGO_ENABLED=0'
+          "$RUNNER_TEMP/dhow" version | grep -qF "dhow $VERSION "
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dhow-binaries
@@ -240,7 +247,7 @@ jobs:
           retention-days: 7
 
   verify-install:
-    name: Install the signed runner archive with get.sh
+    name: Install the signed runner and CLI archives with get.sh
     needs: [binaries, sign-binaries]
     runs-on: ubuntu-24.04
     permissions:
@@ -262,7 +269,8 @@ jobs:
         run: |
           site="$RUNNER_TEMP/site"
           mkdir -p "$site/good/v$VERSION" "$site/forged/v$VERSION"
-          cp dist/dhow-runner_"${VERSION}"_linux_amd64.tar.gz dist/SHA256SUMS dist/SHA256SUMS.sigstore.json "$site/good/v$VERSION/"
+          cp dist/dhow-runner_"${VERSION}"_linux_amd64.tar.gz dist/dhow_"${VERSION}"_linux_amd64.tar.gz \
+            dist/SHA256SUMS dist/SHA256SUMS.sigstore.json "$site/good/v$VERSION/"
           cp "$site/good/v$VERSION/"* "$site/forged/v$VERSION/"
           printf '%064d  dhow-extra.tar.gz\n' 0 >>"$site/forged/v$VERSION/SHA256SUMS"
           openssl req -x509 -newkey ed25519 -nodes -days 1 -subj /CN=127.0.0.1 -addext subjectAltName=IP:127.0.0.1 \
@@ -279,6 +287,15 @@ jobs:
             exit 1
           fi
           grep -q 'the signature on SHA256SUMS does not verify' "$RUNNER_TEMP/forged.log"
+          DHOW_DOWNLOAD_URL=https://127.0.0.1:18444/good bash deploy/install/get.sh --component cli --version "$VERSION" 2>&1 | tee "$RUNNER_TEMP/get-cli.log"
+          grep -q 'SHA256SUMS is signed by the dhow release workflow' "$RUNNER_TEMP/get-cli.log"
+          /usr/local/bin/dhow version | grep -qF "dhow $VERSION "
+          test "$(stat -c '%a %U' /usr/local/bin/dhow)" = "755 root"
+          if DHOW_DOWNLOAD_URL=https://127.0.0.1:18444/forged bash deploy/install/get.sh --component cli --version "$VERSION" >"$RUNNER_TEMP/forged-cli.log" 2>&1; then
+            echo "::error::get.sh accepted a SHA256SUMS the release workflow did not sign for the CLI"
+            exit 1
+          fi
+          grep -q 'the signature on SHA256SUMS does not verify' "$RUNNER_TEMP/forged-cli.log"
 
   publish-binaries:
     name: Publish the binaries

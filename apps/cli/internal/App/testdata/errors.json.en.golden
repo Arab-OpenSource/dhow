@@ -1,0 +1,58 @@
+{
+  "SchemaVersion": 1,
+  "File": "testdata/errors.dhow.yml",
+  "Lang": "en",
+  "Valid": false,
+  "Errors": 5,
+  "Warnings": 1,
+  "Issues": [
+    {
+      "Code": "DAG_CYCLE",
+      "Severity": "error",
+      "Path": "jobs.build.needs",
+      "Line": 6,
+      "Column": 5,
+      "Message": "the needs of this job form a cycle"
+    },
+    {
+      "Code": "IMAGE_NOT_PINNED",
+      "Severity": "warning",
+      "Path": "jobs.build.image",
+      "Line": 7,
+      "Column": 5,
+      "Message": "the image is not pinned by digest: the runner refuses it unless unpinned images are allowed"
+    },
+    {
+      "Code": "RUN_EXPRESSION_NOT_ALLOWED",
+      "Severity": "error",
+      "Path": "jobs.build.steps[0].run",
+      "Line": 9,
+      "Column": 9,
+      "Message": "${{ }} is not allowed inside run: pass the value through env and read it as a variable"
+    },
+    {
+      "Code": "DAG_CYCLE",
+      "Severity": "error",
+      "Path": "jobs.deploy.needs",
+      "Line": 11,
+      "Column": 5,
+      "Message": "the needs of this job form a cycle"
+    },
+    {
+      "Code": "SECRETS_IN_IF",
+      "Severity": "error",
+      "Path": "jobs.deploy.if",
+      "Line": 13,
+      "Column": 5,
+      "Message": "secrets can never be used in a condition"
+    },
+    {
+      "Code": "USES_NOT_PINNED",
+      "Severity": "error",
+      "Path": "jobs.deploy.steps[0].uses",
+      "Line": 15,
+      "Column": 9,
+      "Message": "a plugin in uses must be pinned by digest (name@sha256:...)"
+    }
+  ]
+}

@@ -35,7 +35,8 @@ done
 case $component in
   server) ;;
   runner) ((${#args[@]} == 0)) || fail "--component runner takes no installer options yet: ${args[*]}" ;;
-  *) fail "--component must be server or runner, got: $component" ;;
+  cli) ((${#args[@]} == 0)) || fail "--component cli takes no other options: ${args[*]}" ;;
+  *) fail "--component must be server, runner or cli, got: $component" ;;
 esac
 [[ $downloads == https://* ]] || fail "DHOW_DOWNLOAD_URL must be an https:// address"
 [[ $(uname -s) == Linux ]] || fail "only Linux is supported"
@@ -69,6 +70,9 @@ cleanup() {
 }
 trap cleanup EXIT
 archive="dhow-${component}_${version}_linux_${arch}.tar.gz"
+if [[ $component == cli ]]; then
+  archive="dhow_${version}_linux_${arch}.tar.gz"
+fi
 for file in "$archive" SHA256SUMS SHA256SUMS.sigstore.json; do
   curl --proto '=https' --tlsv1.2 -fsSL -o "$tmp/$file" "$downloads/v$version/$file"
 done
@@ -102,6 +106,22 @@ printf '%s  %s\n' "${line%% *}" "$stage/$archive" | "${as_root[@]}" sha256sum --
 if [[ $component == server ]]; then
   "${as_root[@]}" tar -xzf "$stage/$archive" -C "$stage" dhow-server
   "${as_root[@]}" "$stage/dhow-server" install "${args[@]}"
+  exit 0
+fi
+
+if [[ $component == cli ]]; then
+  "${as_root[@]}" tar -xzf "$stage/$archive" -C "$stage" dhow
+  "${as_root[@]}" install -D -m 0755 -- "$stage/dhow" /usr/local/bin/dhow
+  cat <<EOF
+get.sh: installed dhow $version:
+  /usr/local/bin/dhow
+
+Check a pipeline file, without a network connection:
+
+  dhow lint .dhow.yml
+
+See https://github.com/$repo/blob/main/docs/en/cli.md
+EOF
   exit 0
 fi
 

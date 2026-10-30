@@ -1,0 +1,11 @@
+version: 1
+on:
+  push: {}
+jobs:
+  deploy:
+    image: alpine:3
+    environment: production
+    env:
+      TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+    steps:
+      - run: ./deploy.sh

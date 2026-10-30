@@ -1,0 +1,3 @@
+testdata/hostile-key.dhow.yml:7:5: error UNKNOWN_KEY at jobs.build.a\u202eb\u009b31m: this key is not part of the pipeline spec
+testdata/hostile-key.dhow.yml:8:5: error UNKNOWN_KEY at jobs.build.C:\\work: this key is not part of the pipeline spec
+testdata/hostile-key.dhow.yml: errors: 2, warnings: 0. The server refuses this pipeline.

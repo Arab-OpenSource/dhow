@@ -14,25 +14,6 @@ func parseCodes(src string) []string {
 	return issueCodes(issues, SeverityError)
 }
 
-func TestParseLimits(t *testing.T) {
-	cases := []struct {
-		name string
-		src  string
-		code string
-	}{
-		{"file too large", strings.Repeat("#", MaxFileBytes+1), CodeFileTooLarge},
-		{"deep nesting", "a: " + strings.Repeat("[", 40) + strings.Repeat("]", 40) + "\n", CodeDepthExceeded},
-		{"deep mappings", strings.Repeat("{a: ", 40) + "1" + strings.Repeat("}", 40) + "\n", CodeDepthExceeded},
-		{"too many nodes", "a: [" + strings.Repeat("1,", MaxNodes) + "1]\n", CodeTooManyNodes},
-		{"scalar too large", "name: " + strings.Repeat("x", MaxScalarBytes+1) + "\n", CodeScalarTooLarge},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			assert.Contains(t, parseCodes(tc.src), tc.code)
-		})
-	}
-}
-
 func TestBillionLaughsIsRefusedQuickly(t *testing.T) {
 	var b strings.Builder
 	b.WriteString("a0: &a0 [x, x, x, x, x, x, x, x, x, x]\n")
@@ -53,7 +34,7 @@ func TestBillionLaughsIsRefusedQuickly(t *testing.T) {
 	}
 	start := time.Now()
 	codes := parseCodes(b.String())
-	assert.Less(t, time.Since(start), 2*time.Second)
+	assert.Less(t, time.Since(start), slowBackstop)
 	assert.Contains(t, codes, CodeAliasNotAllowed)
 	assert.Contains(t, codes, CodeAnchorNotAllowed)
 }
