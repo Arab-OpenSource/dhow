@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -24,6 +26,10 @@ const (
 	dialProbeEnv    = "DHOW_CLI_TEST_DIAL_PROBE"
 	requireNetnsEnv = "DHOW_CLI_REQUIRE_NETNS"
 )
+
+var updateDeps = flag.Bool("update-deps", false, "rewrite testdata/deps.linux-amd64.txt after reviewing the new packages")
+
+var execCalls = regexp.MustCompile(`(?m)^\d+\s+execve(at)?\(`)
 
 var networkCalls = regexp.MustCompile(`(?m)^\d+\s+(socket|socketpair|connect|bind|listen|accept4?|sendto|recvfrom|sendm?msg|recvm?msg|getsockopt|setsockopt|getsockname|getpeername|shutdown)\(`)
 
@@ -67,21 +73,50 @@ func binary(t *testing.T) string {
 	return buildBin
 }
 
-func TestTheCommandLinksNoNetworkCode(t *testing.T) {
-	out, err := exec.Command("go", "list", "-deps", "-f", "{{.ImportPath}}", ".").Output()
+func TestTheCommandLinksOnlyTheAllowedPackages(t *testing.T) {
+	cmd := exec.Command("go", "list", "-deps", "-f", "{{.ImportPath}}", ".")
+	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
+	out, err := cmd.Output()
 	require.NoError(t, err)
-	deps := strings.Fields(string(out))
-	require.Contains(t, deps, "github.com/Khaymah/dhow/internal/pipelinespec")
-	forbidden := []string{"net", "net/http", "net/rpc", "net/smtp", "crypto/tls", "os/exec", "plugin"}
-	for _, d := range deps {
-		assert.NotContains(t, forbidden, d, "the CLI must not link %s", d)
-		for _, prefix := range []string{"net/http/", "golang.org/x/net/", "google.golang.org/grpc", "connectrpc.com/"} {
+	got := strings.Fields(string(out))
+	slices.Sort(got)
+	allowed := filepath.Join("testdata", "deps.linux-amd64.txt")
+	if *updateDeps {
+		require.NoError(t, os.WriteFile(allowed, []byte(strings.Join(got, "\n")+"\n"), 0o600))
+	}
+	raw, err := os.ReadFile(allowed)
+	require.NoError(t, err)
+	want := strings.Fields(string(raw))
+	extra, missing := difference(got, want), difference(want, got)
+	assert.Empty(t, extra, "the CLI links packages that are not in %s. Check that none of them can reach the network "+
+		"or start a process, then run go test ./apps/cli/cmd/dhow -run Allowed -update-deps", allowed)
+	assert.Empty(t, missing, "%s lists packages the CLI no longer links: run go test ./apps/cli/cmd/dhow -run Allowed -update-deps", allowed)
+	for _, d := range got {
+		assert.NotContains(t, []string{"net", "net/http", "net/rpc", "net/smtp", "crypto/tls", "os/exec", "plugin", "runtime/cgo"}, d)
+		for _, prefix := range []string{"net/http/", "golang.org/x/net/", "golang.org/x/sys/", "google.golang.org/grpc", "connectrpc.com/"} {
 			assert.False(t, strings.HasPrefix(d, prefix), "the CLI must not link %s", d)
 		}
 	}
+}
+
+func difference(a, b []string) []string {
+	out := []string{}
+	for _, x := range a {
+		if !slices.Contains(b, x) {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
+func TestTheBinaryHoldsNoNetworkOrProcessSymbols(t *testing.T) {
 	symbols, err := exec.Command("go", "tool", "nm", binary(t)).Output()
 	require.NoError(t, err)
 	require.Contains(t, string(symbols), " main.main")
+	prefixes := []string{
+		"net.", "crypto/tls.", "os/exec.", "os.StartProcess", "os.startProcess", "syscall.ForkExec", "syscall.forkExec",
+		"syscall.Exec", "syscall.StartProcess", "syscall.Bind", "syscall.Sendto", "syscall.Socket", "syscall.Connect",
+	}
 	for _, line := range strings.Split(string(symbols), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
@@ -89,10 +124,11 @@ func TestTheCommandLinksNoNetworkCode(t *testing.T) {
 		}
 		name := fields[len(fields)-1]
 		lower := strings.ToLower(name)
-		assert.False(t, strings.HasPrefix(name, "net.") || strings.HasPrefix(name, "crypto/tls.") ||
-			strings.HasPrefix(name, "os/exec.") || strings.Contains(lower, "socket") || strings.Contains(lower, "connect") ||
-			strings.Contains(lower, "getaddrinfo") || strings.HasPrefix(name, "syscall.Bind") || strings.HasPrefix(name, "syscall.Sendto"),
-			"the binary holds the network symbol %s", name)
+		bad := strings.Contains(lower, "socket") || strings.Contains(lower, "connect") || strings.Contains(lower, "getaddrinfo")
+		for _, p := range prefixes {
+			bad = bad || strings.HasPrefix(name, p)
+		}
+		assert.False(t, bad, "the binary holds the network or process symbol %s", name)
 	}
 }
 
@@ -126,7 +162,7 @@ func tracer(t *testing.T, traceFile string) []string {
 		}
 		return nil
 	}
-	return []string{"strace", "-f", "-qq", "-e", "trace=%network", "-e", "signal=none", "-o", traceFile}
+	return []string{"strace", "-f", "-qq", "-e", "trace=%network,execve,execveat", "-e", "signal=none", "-o", traceFile}
 }
 
 func runIsolated(t *testing.T, prefix []string, env []string, args ...string) (string, int) {
@@ -198,6 +234,9 @@ func TestLintInANetworkNamespaceMakesNoNetworkCall(t *testing.T) {
 				got, err := os.ReadFile(trace)
 				require.NoError(t, err)
 				assert.Empty(t, networkCalls.FindAllString(string(got), -1), "dhow lint made network system calls")
+				execs := execCalls.FindAllString(string(got), -1)
+				assert.Len(t, execs, 1, "dhow lint started another program: %s", got)
+				assert.Contains(t, string(got), "execve(\""+bin+"\"")
 			}
 		})
 	}
