@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Khaymah/dhow/blob/main/packages/spec/dhow.schema.json",
+  "title": "Dhow pipeline (.dhow.yml) v1",
+  "description": "Editor schema for .dhow.yml. The Go validator in internal/pipelinespec is the source of truth and also checks CEL types, the DAG, the matrix and every limit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "on", "jobs"],
+  "properties": {
+    "version": { "const": 1 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "on": { "$ref": "#/$defs/triggers" },
+    "defaults": { "$ref": "#/$defs/defaults" },
+    "concurrency": { "$ref": "#/$defs/concurrency" },
+    "jobs": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 64,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_-]{0,62}$" },
+      "additionalProperties": { "$ref": "#/$defs/job" }
+    }
+  },
+  "$defs": {
+    "expression": {
+      "type": "string",
+      "description": "Plain text, or one whole CEL expression written as ${{ ... }} (at most 2 KiB)."
+    },
+    "condition": {
+      "type": ["string", "boolean"],
+      "description": "A CEL bool expression, with or without ${{ }}. secrets is never allowed here."
+    },
+    "duration": {
+      "type": "string",
+      "pattern": "^([0-9]{1,6}d)?([0-9]{1,6}h)?([0-9]{1,6}m)?([0-9]{1,6}s)?$",
+      "description": "Like 90s, 20m or 1h30m."
+    },
+    "scalar": { "type": ["string", "number", "boolean", "null"] },
+    "patterns": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\[\\]{}\\\\]+$" }
+    },
+    "paths": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^/~\\\\]" }
+    },
+    "branchFilter": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "branches": { "$ref": "#/$defs/patterns" },
+        "paths": { "$ref": "#/$defs/patterns" }
+      }
+    },
+    "tagFilter": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "patterns": { "$ref": "#/$defs/patterns" }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["string", "boolean", "choice"] },
+        "description": { "type": "string", "maxLength": 500 },
+        "required": { "type": "boolean" },
+        "default": { "type": ["string", "number", "boolean"] },
+        "options": { "type": "array", "minItems": 1, "maxItems": 50, "items": { "type": "string" } }
+      }
+    },
+    "manual": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "inputs": {
+          "type": "object",
+          "maxProperties": 20,
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$" },
+          "additionalProperties": { "$ref": "#/$defs/input" }
+        }
+      }
+    },
+    "api": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "triggers": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "schedule (after the first release) and artifact (M6) are refused with TRIGGER_NOT_SUPPORTED_YET.",
+      "properties": {
+        "push": { "$ref": "#/$defs/branchFilter" },
+        "tag": { "$ref": "#/$defs/tagFilter" },
+        "pull_request": { "$ref": "#/$defs/branchFilter" },
+        "manual": { "$ref": "#/$defs/manual" },
+        "api": { "$ref": "#/$defs/api" }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "labels": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "type": "string", "maxLength": 128 }
+        },
+        "isolation": { "enum": ["container"] }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "runner": { "$ref": "#/$defs/runner" },
+        "timeout": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "concurrency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group"],
+      "properties": {
+        "group": { "$ref": "#/$defs/expression" },
+        "cancel_in_progress": { "type": "boolean" }
+      }
+    },
+    "env": {
+      "type": "object",
+      "maxProperties": 100,
+      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$", "not": { "pattern": "^[Dd][Hh][Oo][Ww]_" } },
+      "additionalProperties": { "type": ["string", "number", "boolean", "null"] }
+    },
+    "matrixEntries": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": { "type": ["string", "number", "boolean"] }
+      }
+    },
+    "matrix": {
+      "type": "object",
+      "maxProperties": 18,
+      "properties": {
+        "include": { "$ref": "#/$defs/matrixEntries" },
+        "exclude": { "$ref": "#/$defs/matrixEntries" }
+      },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 256,
+        "items": { "type": ["string", "number", "boolean"] }
+      }
+    },
+    "strategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "matrix": { "$ref": "#/$defs/matrix" },
+        "max_parallel": { "type": "integer", "minimum": 1, "maximum": 256 }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "egress": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "type": "string", "minLength": 1, "maxLength": 260 }
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpu": {
+          "type": ["string", "number"],
+          "description": "Cores like 2 or 1.5, or millicores like 1500m (0.1 to 64)."
+        },
+        "memory": { "type": "string", "pattern": "^[0-9]{1,7}(Ki|Mi|Gi|Ti)$" },
+        "pids": { "type": "integer", "minimum": 32, "maximum": 32768 },
+        "disk": { "type": "string", "pattern": "^[0-9]{1,7}(Ki|Mi|Gi|Ti)$" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,62}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "if": { "$ref": "#/$defs/condition" },
+        "run": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 65536,
+          "not": { "pattern": "\\$\\{\\{" },
+          "description": "A /bin/sh -e script on stdin. ${{ }} is never allowed here: pass values through env."
+        },
+        "uses": {
+          "type": "string",
+          "pattern": "@sha256:[a-f0-9]{64}$",
+          "description": "A plugin image pinned by digest."
+        },
+        "with": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+          "additionalProperties": { "type": ["string", "number", "boolean", "null"] }
+        },
+        "env": { "$ref": "#/$defs/env" },
+        "timeout": { "$ref": "#/$defs/duration" }
+      },
+      "oneOf": [
+        { "required": ["run"], "not": { "required": ["uses"] } },
+        { "required": ["uses"], "not": { "required": ["run"] } }
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "paths"],
+      "properties": {
+        "name": { "$ref": "#/$defs/expression" },
+        "paths": { "$ref": "#/$defs/paths" },
+        "retention": { "$ref": "#/$defs/duration" }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "paths"],
+      "properties": {
+        "key": { "$ref": "#/$defs/expression" },
+        "paths": { "$ref": "#/$defs/paths" }
+      }
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "needs": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "if": { "$ref": "#/$defs/condition" },
+        "image": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "runner": { "$ref": "#/$defs/runner" },
+        "timeout": { "$ref": "#/$defs/duration" },
+        "environment": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+        "strategy": { "$ref": "#/$defs/strategy" },
+        "network": { "$ref": "#/$defs/network" },
+        "resources": { "$ref": "#/$defs/resources" },
+        "env": { "$ref": "#/$defs/env" },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/artifact" }
+        },
+        "cache": { "$ref": "#/$defs/cache" }
+      }
+    }
+  }
+}
