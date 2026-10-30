@@ -180,6 +180,13 @@
 
 ## مزوّدي Git
 
+### طريقة الربط (قرار Sabry يوم 2026-10-30، [ADR-0073](ADR/0073-git-connection-oauth-for-setup-deploy-keys-for-access.md))
+- **الـ OAuth للتجهيز بس، والـ deploy keys للوصول.** أي صلاحية واسعة بتتستخدم وقت الربط وبس، والوصول الدايم بمفتاح محصور في مستودع واحد.
+- **GitHub (M4.5):** الـ GitHub App زي ما هو، بتوكنات installation قصيرة.
+- **GitLab (M4.6):** flow «اربط GitLab» بـ OAuth2. المستخدم بيختار المشروع، وداو بيعمل بالـ API deploy key للمشروع ده والـ webhook، و**مابيخزّنش توكن المستخدم الواسع**: بيترمي بعد التجهيز على طول، أو بيتستخدم في نداء التجهيز بس.
+- **Git عام (M4.4):** deploy key وwebhook موقّع، وواجهة للنسخ واللصق في M4.10.
+- **صاحب النسخة بيسجّل تطبيق GitLab OAuth مرة واحدة** من «إعدادات السيرفر».
+
 ### الطبقة المشتركة
 - **`internal/gitref`:** التحقق من الـ refs بقواعد `git check-ref-format` (مفيش `..` ولا حروف تحكم ولا `-` في الأول ولا `@{` ولا `.lock` في الآخر، و255 byte بالكتير)، والأشكال المسموحة بس: `refs/heads/*` و`refs/tags/*` و`refs/pull/<n>/head` و`refs/merge-requests/<n>/head`. والـ sha 40 أو 64 حرف hex صغير.
 - **`internal/gitsource`:** التحقق من عنوان المستودع:
@@ -221,6 +228,7 @@
 - **الـ check runs:** check واحد لكل run باسم الـ pipeline، و`details_url` للـ run في داو. والملخص فيه أسماء الـ jobs وحالاتها بس، عمره ما بيبقى فيه logs. و`check_run.rerequested` بيعيد الفاشل (بسياسة الـ forks).
 
 ### GitLab
+- **اتغيّر بقرار Sabry (2026-10-30، [ADR-0073](ADR/0073-git-connection-oauth-for-setup-deploy-keys-for-access.md)):** الاتصال بقى OAuth2 للتجهيز بس، وتوكن المستخدم مابيتخزّنش. اللي تحت عن التوكن الدايم بيتراجع في أول M4.6، والنقط المفتوحة (قراية التعريف، والتأكد من الـ sha، والـ statuses من غير توكن دايم) مكتوبة في الـ ADR.
 - **الاتصال** (لكل مؤسسة، بصلاحية `git.connect`):
   - `BaseUrl` (افتراضيًا `https://gitlab.com`، أو self-managed بقواعد `netguard`) وتوكن API بـ scopes `api` و`read_repository`، للكتابة بس ومتشفّر.
   - عند الحفظ: `GET /api/v4/personal_access_tokens/self` بيقرا النوع والـ scopes وتاريخ الانتهاء. والـ scopes الناقصة بترفض الحفظ، والانتهاء القريب بيبان في الواجهة وفي الـ audit.
@@ -457,7 +465,7 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
   - الـ dedupe، والـ `Trigger` الموحّد، والتسليم بـ `Core/Triggers`.
   - صيانة partitions الـ deliveries.
   - الـ worker بتاع `"CommitStatusReports"` (فاضي لحد M4.5).
-  - ADR للقرارات 11 و12 و15.
+  - ADR للقرارات 11 و12 و15: [ADR-0072](ADR/0072-webhooks-and-git-credentials.md)، وقرار طريقة الربط في [ADR-0073](ADR/0073-git-connection-oauth-for-setup-deploy-keys-for-access.md).
 - **قبول:**
   - **التوقيع:** HMAC غلط، وسر مستودع تاني، وbody اتعدّل، و`t` أقدم من 5 دقايق: `401` بنفس الرد ومن غير صف delivery.
   - **التكرار:** نفس الـ delivery مرتين: trigger واحد.
@@ -487,7 +495,8 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
 
 ### M4.6: GitLab
 - **الاعتماد:** M4.4.
-- **المحتوى:** الاتصال بالتوكن والتحقق منه، وربط المشروع (webhook وdeploy key بالـ API أو يدوي)، والـ webhook بالتوكن والتأكد بالـ API، وقراية التعريف، والـ commit statuses.
+- **قرار Sabry (2026-10-30، [ADR-0073](ADR/0073-git-connection-oauth-for-setup-deploy-keys-for-access.md)):** «اربط GitLab» بـ OAuth2: المستخدم بيختار المشروع، وداو بيعمل deploy key للمشروع والـ webhook بالـ API، ومابيحتفظش بتوكن المستخدم الواسع (بيترمي بعد التجهيز على طول، أو بيتستخدم في نداء التجهيز بس). وصاحب النسخة بيسجّل تطبيق GitLab OAuth مرة واحدة من «إعدادات السيرفر» (لكل `BaseUrl`). والـ flow في `"GitSetupFlows"` بـ `"Kind" = 'gitlab_oauth'`. **لازم يتحسم في أول المرحلة مع Sabry:** قراية التعريف والتأكد من الـ sha والـ commit statuses من غير توكن دايم (التوصية في الـ ADR).
+- **المحتوى:** الاتصال بالـ OAuth2 للتجهيز، وربط المشروع (webhook وdeploy key بالـ API أو يدوي)، والـ webhook بالتوكن، وقراية التعريف، والـ commit statuses (بالطريقة اللي هتتحسم).
 - **قبول:**
   - توكن ناقص scope: الحفظ مرفوض برسالة واضحة.
   - `X-Gitlab-Token` غلط: `401`. وتوكن صح بـ sha مش رأس الـ ref: `superseded`.
@@ -691,7 +700,7 @@ M3.13 ─┬─► M4.1 ─┬─► M4.2
 5. GitHub.com وGitLab.com وGitLab self-managed. وGHES بعد أول نسخة.
 6. Git عام: webhook وتشغيل يدوي بس، ومن غير polling.
 7. Sabry هيجهّز حسابات الاختبار قبل M4.5، وهنبعتله الخطوات بالظبط ساعتها.
-8. GitLab: أي توكن بالـ scopes الصح، والواجهة بتحذّر من الـ personal token.
+8. GitLab: أي توكن بالـ scopes الصح، والواجهة بتحذّر من الـ personal token. **اتعدّلت يوم 2026-10-30:** GitLab بقى OAuth2 للتجهيز بس ومن غير توكن دايم ([ADR-0073](ADR/0073-git-connection-oauth-for-setup-deploy-keys-for-access.md)).
 
 ### 1. سياسة PRs من الـ forks
 الكود من حد بره المؤسسة بيشتغل على أجهزة العميل، حتى من غير أسرار.
