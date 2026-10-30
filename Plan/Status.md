@@ -57,6 +57,7 @@
 | M3.10 الجزء ب | الـ engine في `internal/installer`، و`dhow-runner install` و`doctor` و`uninstall`، والهوية مشفّرة بـ `systemd-creds`، و`AuthService.Revoke` (ADR-0066) | #60 |
 | بعد اختبار الـ VMs | حدود ذاكرة الـ job على مقاس الأجهزة الصغيرة قبل التنصيب، ورفض SELinux enforcing (ADR-0067)، وطباعة مخرجات الـ VM | #61 |
 | الـ README | الحالة الحقيقية وقصة Deploy Center | #62 |
+| M4.1 | `internal/pipelinespec`: الـ parser والـ validator وCEL والـ DAG والـ matrix والـ JSON Schema (ADR-0069) | #65 |
 
 شرط خلاص M2 اتحقق: اختبارات الصلاحيات خضرا، ومفيش finding مفتوح Critical أو High. والمراجعة الخارجية اتنقلت لـ M9 (ADR-0040).
 
@@ -64,7 +65,7 @@
 
 | الشغل | الـ branch | الـ PR | اللي فاضل |
 |---|---|---|---|
-| M4.1: `internal/pipelinespec` والـ JSON Schema وcel-go v0.30.0 (ADR-0069) | `feat/pipelinespec` | — | المراجعة الأمنية المستقلة، والـ PR |
+| M4.2: `dhow lint` في `apps/cli`، والأرشيفات الموقّعة، و`get.sh --component cli` | `feat/dhow-lint` | — | المراجعة الأمنية المستقلة، والـ PR، وقرار `image:` بالـ tag بين `Check` و`Compile` |
 | `runner.revoked` (إلغاء اللوحة وإلغاء الـ runner لنفسه) بيتنشر على الـ event bus بعد الـ commit، فلو الـ process وقع بينهم الـ audit بيضيع. الـ bus مافيهوش outbox | — | — | outbox للأحداث اللي بتتسجّل، أو نشرها جوه نفس الـ transaction |
 
 M2.6 وM3.6 والتطوير المحلي وإصلاحات مراجعة M3.6 وتغيير الاسم وM3.7 وتجهيز Windows وM3.9 اتدمجوا في 2026-10-28، ومن #35 لـ #59 اتدمجوا في 2026-10-28 و2026-10-29.
@@ -105,7 +106,7 @@ M3.12 (الشرائح خلصت)          M3.13 في الآخر
 
 [ADR-0068](ADR/0068-first-production-release-scope.md) حدّد نطاق أول نسخة production: الـ runners على Debian وUbuntu بـ Podman rootless بس، والنشر على SSH/VPS وDocker Compose، وGitHub وGitLab وGit عام، ونسخة Community بس. الترتيب: M3.13 ← M4 ← M5 ← M6 ← M7 ← M9 ← M10 ← M11، واللي اتأجّل (SELinux وKubernetes وHelm وgVisor وBitbucket وStatic/CDN/SFTP والمحرر المرئي وTeams وWhatsApp وM8 ومكوّن GitLab CI) في قسم «بعد أول نسخة» في [`docs/roadmap.md`](../docs/roadmap.md).
 
-**M4 شغّال:** خطته في [`M4-Pipelines.md`](M4-Pipelines.md) اتقبلت، وSabry جاوب أسئلتها كلها بالتوصية يوم 2026-10-30. **M4.1** (`internal/pipelinespec`: الـ parser والـ validator وCEL والـ DAG والـ matrix، [ADR-0069](ADR/0069-pipeline-spec-parser-and-validator.md)) شغّال على `feat/pipelinespec`.
+**M4 شغّال:** خطته في [`M4-Pipelines.md`](M4-Pipelines.md) اتقبلت، وSabry جاوب أسئلتها كلها بالتوصية يوم 2026-10-30. **M4.1** (`internal/pipelinespec`: الـ parser والـ validator وCEL والـ DAG والـ matrix، [ADR-0069](ADR/0069-pipeline-spec-parser-and-validator.md)) اتدمج في #65. **M4.2** (`dhow lint`) شغّال على `feat/dhow-lint`.
 
 ## بنود مفتوحة اتأجلت
 
