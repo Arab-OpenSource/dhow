@@ -505,6 +505,12 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
 - **التحقق:** `go test -race -count=1 ./apps/server/internal/Modules/Sources/...` و`make check`، وjob `providers`.
 
 ### M4.7: الـ runner: أكتر من حاوية، والـ checkout، والإضافات
+- **من المراجعة الأمنية لـ M4.4 (ملزم، لأوامر git اللي في `internal/gitsource` ولسه محدش بيشغّلها):**
+  - `cmd.Env` صريح لكل process (`GIT_CONFIG_NOSYSTEM=1` و`GIT_TERMINAL_PROMPT=0` و`HOME` فاضي و`PATH` ثابت وبس)، ومن غير أي `GIT_*` أو `SSH_*` موروث من البيئة.
+  - `-c core.sshCommand=` و`-c core.fsmonitor=false` في `SafeConfig()` جنب الإعدادات الموجودة، و`--literal-pathspecs` قبل الأمر الفرعي، فمسار زي `:(glob)*` ماينفعش pathspec سحري.
+  - helper الـ ssh بيشغّل `ssh -F /dev/null -o StrictHostKeyChecking=yes -o UserKnownHostsFile=<ملف السطر المتثبّت بس>` (ومعاهم `IdentitiesOnly=yes` والمفتاح من ملف السر)، فمفيش `~/.ssh/config` ولا `known_hosts` تاني يدخل.
+  - ومعاهم اختبارات بتشغّل git حقيقي ببيئة فيها `GIT_SSH_COMMAND` و`GIT_DIR` متزرعين وتتأكد إنهم مااتقروش.
+  - `sources.Credential` عليه `LogValue()` و`Format` و`MarshalJSON` بيخفوا السر (اتعمل في M4.4)، وأي نوع جديد بيشيل credential لازم يعمل كده.
 - **من مراجعة M4.3:** الـ features بتاعة الـ runner بتيجي من تسجيله (وبتتخزن في `"Runners"` وبتتغيّر بإعادة التسجيل أو بتحديث موقّع)، مش من `LeaseRequest` لوحده. runner مسروق التوكن مايقدرش يعلن ميزة ماعندهوش عشان ياخد jobs فيها checkout.
 - **الاعتماد:** M3.13 (والـ proto ممكن يتعمل بالتوازي مع M4.1).
 - **المحتوى:**

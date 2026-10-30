@@ -2,7 +2,11 @@ package sources
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -33,6 +37,24 @@ type Credential struct {
 	Kind      string
 	Secret    []byte
 	KnownHost string
+}
+
+const redacted = "[redacted]"
+
+func (c Credential) LogValue() slog.Value {
+	return slog.GroupValue(slog.String("Kind", c.Kind), slog.String("KnownHost", c.KnownHost), slog.String("Secret", redacted))
+}
+
+func (c Credential) String() string {
+	return "Credential{Kind: " + c.Kind + ", KnownHost: " + c.KnownHost + ", Secret: " + redacted + "}"
+}
+
+func (c Credential) Format(f fmt.State, _ rune) {
+	_, _ = io.WriteString(f, c.String())
+}
+
+func (c Credential) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]string{"Kind": c.Kind, "KnownHost": c.KnownHost, "Secret": redacted})
 }
 
 type StatusReport struct {
