@@ -227,6 +227,12 @@ func TestAPITokensRespectTheProjectScopes(t *testing.T) {
 	decode(t, w.env.Bearer(reader.Value, get), http.StatusOK)
 	requireError(t, w.env.Bearer(reader.Value, patch), http.StatusForbidden, "FORBIDDEN")
 	decode(t, w.env.Bearer(writer.Value, patch), http.StatusOK)
+	var via, viaID string
+	require.NoError(t, w.env.Pool.QueryRow(context.Background(),
+		`SELECT "Data"->>'Via', "Data"->>'ViaId' FROM "AuditEvents" WHERE "Action" = 'project.updated' AND "TargetId" = $1`, project.String()).Scan(&via, &viaID))
+	assert.Equal(t, "api_token", via, "the audit log tells a token from a session")
+	assert.Equal(t, writer.ID.String(), viaID)
+	assert.NotContains(t, viaID, writer.Value)
 	decode(t, w.env.Bearer(writer.Value, apptest.Request{
 		Method: http.MethodPost, Path: w.path(""),
 		Body: map[string]any{"Name": "From CI", "Slug": "from-ci"},
