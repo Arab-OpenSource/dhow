@@ -5,9 +5,11 @@
 > **Ship to your own servers — safely.**
 > A secure, self-hosted continuous deployment platform. Arabic-first.
 
-**Status:** 🧱 Foundations (milestone M1 of the [roadmap](docs/en/roadmap.md)). `docker compose up` boots an empty,
-hardened instance with the web shell and health endpoints. Sign-in, projects, runners and deployments come in the next
-milestones, so Dhow is not usable for real work yet. Feedback is welcome through issues and discussions.
+**Status:** 🚧 Under construction, not ready for production yet. Foundations (M1), identity and organizations (M2) and most
+of runners and isolation (M3) are done: password, TOTP, passkey and OIDC sign-in, organizations, teams and roles, the audit
+log, and runners that run every job in a throwaway rootless container with the network closed except to allowed hosts,
+live logs, and `dhow-runner install`. Pipelines, secrets, approvals and deploy targets come in M4 to M6
+([roadmap](docs/en/roadmap.md)). Feedback is welcome through issues and discussions.
 
 ---
 
@@ -70,8 +72,11 @@ A host needs at least 1 CPU core, 2 GiB of memory and 5 GiB of free disk (2 core
 
 ## Relationship to Deploy Center
 
-Dhow is the from-scratch successor to **Deploy Center v3**. Deploy Center receives security fixes only,
-and a migration tool will import its projects into Dhow. See [ADR-0002](Plan/ADR/0002-rewrite-with-v3-hotfix.md).
+Dhow is the from-scratch successor to **Deploy Center v3**. We built Deploy Center after an attack on our servers, to
+deploy without SSH keys spread everywhere. A later review found problems in its foundations that patching cannot fix:
+pipelines run on the control plane host with its privileges, commands are built as shell strings, and sessions cannot be
+revoked. So Deploy Center receives security fixes only, and a migration tool will import its projects into Dhow. See
+[ADR-0002](Plan/ADR/0002-rewrite-with-v3-hotfix.md).
 
 ## License
 
