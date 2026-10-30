@@ -12,10 +12,11 @@ const (
 	mib             = int64(1) << 20
 	gib             = int64(1) << 30
 	fitStep         = 64 * mib
-	MinHeadroom     = gib
+	MinHeadroom     = 768 * mib
 	HeadroomPercent = 25
 	MinFitMemory    = 512 * mib
-	MinFitDisk      = 512 * mib
+	MinFitDisk      = 384 * mib
+	memoryShare     = 3
 	MinFitHost      = MinFitMemory + MinFitDisk + MinHeadroom
 )
 
@@ -32,11 +33,9 @@ type MemoryCheck struct {
 func Headroom(machine int64) int64 { return max(MinHeadroom, machine/100*HeadroomPercent) }
 
 func FitJobMemory(machine int64) (config.JobMemory, bool) {
-	def := config.DefaultJobMemory()
-	budget := machine - Headroom(machine)
-	share := def.MemoryBytes / mib * (max(budget, 0) / mib) / (def.Total() / mib) * mib
-	memory := roundDown(max(share, MinFitMemory))
-	fit := config.JobMemory{MemoryBytes: memory, DiskBytes: roundDown(budget - memory), Tmpfs: def.Tmpfs}
+	usable := max(machine-Headroom(machine), 0)
+	memory := roundDown(max(MinFitMemory, usable/memoryShare))
+	fit := config.JobMemory{MemoryBytes: memory, DiskBytes: roundDown(usable - memory), Tmpfs: config.DefaultJobMemory().Tmpfs}
 	if fit.DiskBytes < MinFitDisk {
 		return fit, false
 	}

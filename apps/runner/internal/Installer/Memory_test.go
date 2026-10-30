@@ -58,7 +58,7 @@ func TestASmallHostGetsLowerJobLimitsAndThePlanSaysSo(t *testing.T) {
 	assert.Contains(t, env, fittedMem+"\n")
 	assert.Contains(t, env, fittedDisk+"\n")
 	assert.Contains(t, out, "writes lower limits to /etc/dhow-runner/runner.env: "+fittedMem+" and "+fittedDisk)
-	assert.Contains(t, out, "keeps 1GiB for the runner and the system")
+	assert.Contains(t, out, "keeps 980MiB for the runner and the system")
 	assert.Less(t, strings.Index(out, "writes lower limits"), strings.Index(out, "Create the system user"))
 	require.Len(t, p.targets, 1)
 	assert.Equal(t, 960*mib, p.targets[0].Config.Limits.MemoryBytes)
@@ -68,6 +68,15 @@ func TestASmallHostGetsLowerJobLimitsAndThePlanSaysSo(t *testing.T) {
 	again, _, err := installOn(t, f, smallVPS, basicAnswers, "")
 	require.NoError(t, err, again)
 	assert.Equal(t, env, f.Content(installer.EnvFilePath))
+}
+
+func TestANominalTwoGiBVPSPassesTheFit(t *testing.T) {
+	f := hostWithMemory(1945 * mib)
+	out, p, err := installOn(t, f, 1945*mib, basicAnswers, "")
+	require.NoError(t, err, out)
+	assert.Contains(t, f.Content(installer.EnvFilePath), "DHOW_RUNNER_MAX_DISK=640MiB\nDHOW_RUNNER_MAX_MEMORY=512MiB\n")
+	require.Len(t, p.targets, 1)
+	assert.Equal(t, 640*mib, p.targets[0].Config.Limits.DiskBytes)
 }
 
 func TestTheLowerLimitsNoteIsInArabicToo(t *testing.T) {
@@ -104,7 +113,7 @@ func TestAHostBelowTheMinimumsIsRefused(t *testing.T) {
 	out, p, err := installOn(t, f, 1536*mib, basicAnswers, "")
 	require.ErrorIs(t, err, installer.ErrBlocked)
 	assert.Contains(t, out, "This host has 1536MiB of memory")
-	assert.Contains(t, out, "so 2GiB in total. Use a host with more memory")
+	assert.Contains(t, out, "so 1664MiB in total. Use a host with more memory")
 	assertNothingChanged(t, f, p)
 }
 
@@ -153,7 +162,8 @@ func TestFitJobMemory(t *testing.T) {
 		memory, disk int64
 		fits         bool
 	}{
-		{"2 GiB host", 2 * gib, 512 * mib, 512 * mib, true},
+		{"2 GiB VPS", 1945 * mib, 512 * mib, 640 * mib, true},
+		{"2 GiB host", 2 * gib, 512 * mib, 768 * mib, true},
 		{"4 GiB VPS", smallVPS, 960 * mib, 1920 * mib, true},
 		{"6 GiB host", 6 * gib, 1536 * mib, 3072 * mib, true},
 		{"1.5 GiB host", 1536 * mib, 512 * mib, 0, false},
