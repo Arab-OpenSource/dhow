@@ -12,3 +12,5 @@ func loadFake(_ func(string) string, driver string) (string, error) {
 	}
 	return "", nil
 }
+
+func buildEnv() []string { return nil }

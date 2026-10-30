@@ -67,11 +67,11 @@ func runRegister(ctx context.Context, args []string, env Env) error {
 	if cfg.URL == nil {
 		return fmt.Errorf("--url or %s: %w", config.EnvURL, config.ErrNeedsURL)
 	}
-	token, err := readToken(*tokenFile, env.Stdio.In)
+	token, err := ReadToken(*tokenFile, env.Stdio.In)
 	if err != nil {
 		return err
 	}
-	id, err := register(ctx, cfg, token, runnerName(*name))
+	id, err := register(ctx, cfg, token, RunnerName(*name))
 	if err != nil {
 		return err
 	}
@@ -84,8 +84,14 @@ func register(ctx context.Context, cfg config.Config, token, name string) (*iden
 	if err := config.EnsurePrivateDir(cfg.StateDir); err != nil {
 		return nil, err
 	}
-	path := cfg.IdentityPath()
-	if exists, err := identity.Exists(path); err != nil || exists {
+	if exists, err := identity.Exists(cfg.SealedIdentityPath()); err != nil || exists {
+		return nil, errors.Join(identity.ErrExists, err)
+	}
+	return RegisterWith(ctx, cfg, token, name, identity.NewFileStore(cfg.StateDir))
+}
+
+func RegisterWith(ctx context.Context, cfg config.Config, token, name string, store identity.Store) (*identity.Identity, error) {
+	if exists, err := store.Exists(); err != nil || exists {
 		return nil, errors.Join(identity.ErrExists, err)
 	}
 	keys, err := identity.GenerateKeys()
@@ -116,14 +122,14 @@ func register(ctx context.Context, cfg config.Config, token, name string) (*iden
 		ServerOrigin: cfg.Origin, ServerSigningKey: res.GetServerSigningPublicKey(), ServerKeyVersion: res.GetServerKeyVersion(),
 		KeyVersion: identity.FirstKeyVersion, Labels: res.GetLabels(),
 	}
-	if err := identity.Save(path, id); err != nil {
+	if err := store.Save(id); err != nil {
 		return nil, fmt.Errorf("the server registered runner %s but its identity could not be saved, so revoke it and register again: %w",
 			id.RunnerID, err)
 	}
 	return id, nil
 }
 
-func readToken(path string, stdin io.Reader) (string, error) {
+func ReadToken(path string, stdin io.Reader) (string, error) {
 	r := stdin
 	if path != stdinMarker {
 		f, err := os.Open(path) //nolint:gosec // The operator names the token file.
@@ -144,7 +150,7 @@ func readToken(path string, stdin io.Reader) (string, error) {
 	return token, nil
 }
 
-func runnerName(flagName string) string {
+func RunnerName(flagName string) string {
 	name := strings.TrimSpace(flagName)
 	if name == "" {
 		host, err := os.Hostname()

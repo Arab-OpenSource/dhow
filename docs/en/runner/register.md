@@ -21,7 +21,7 @@ curl -X POST https://dhow.example.com/api/v1/organizations/<org-id>/runner-regis
 
 ## 2. Register on the runner host
 
-The token is read from a file or from stdin, never from the command line, where shell history and `ps` would keep it:
+`sudo dhow-runner install` does this step for you ([Install a runner](install.md#install-with-dhow-runner-install)) and keeps the identity encrypted. To register by hand instead: the token is read from a file or from stdin, never from the command line, where shell history and `ps` would keep it:
 
 ```sh
 sudo -u dhow-runner dhow-runner register --url https://dhow.example.com --token-file -

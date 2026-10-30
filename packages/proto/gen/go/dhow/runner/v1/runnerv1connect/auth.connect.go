@@ -40,6 +40,8 @@ const (
 	AuthServiceAuthenticateProcedure = "/dhow.runner.v1.AuthService/Authenticate"
 	// AuthServiceRotateKeysProcedure is the fully-qualified name of the AuthService's RotateKeys RPC.
 	AuthServiceRotateKeysProcedure = "/dhow.runner.v1.AuthService/RotateKeys"
+	// AuthServiceRevokeProcedure is the fully-qualified name of the AuthService's Revoke RPC.
+	AuthServiceRevokeProcedure = "/dhow.runner.v1.AuthService/Revoke"
 )
 
 // AuthServiceClient is a client for the dhow.runner.v1.AuthService service.
@@ -47,6 +49,7 @@ type AuthServiceClient interface {
 	Challenge(context.Context, *connect.Request[v1.ChallengeRequest]) (*connect.Response[v1.ChallengeResponse], error)
 	Authenticate(context.Context, *connect.Request[v1.AuthenticateRequest]) (*connect.Response[v1.AuthenticateResponse], error)
 	RotateKeys(context.Context, *connect.Request[v1.RotateKeysRequest]) (*connect.Response[v1.RotateKeysResponse], error)
+	Revoke(context.Context, *connect.Request[v1.RevokeRequest]) (*connect.Response[v1.RevokeResponse], error)
 }
 
 // NewAuthServiceClient constructs a client for the dhow.runner.v1.AuthService service. By default,
@@ -78,6 +81,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("RotateKeys")),
 			connect.WithClientOptions(opts...),
 		),
+		revoke: connect.NewClient[v1.RevokeRequest, v1.RevokeResponse](
+			httpClient,
+			baseURL+AuthServiceRevokeProcedure,
+			connect.WithSchema(authServiceMethods.ByName("Revoke")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -86,6 +95,7 @@ type authServiceClient struct {
 	challenge    *connect.Client[v1.ChallengeRequest, v1.ChallengeResponse]
 	authenticate *connect.Client[v1.AuthenticateRequest, v1.AuthenticateResponse]
 	rotateKeys   *connect.Client[v1.RotateKeysRequest, v1.RotateKeysResponse]
+	revoke       *connect.Client[v1.RevokeRequest, v1.RevokeResponse]
 }
 
 // Challenge calls dhow.runner.v1.AuthService.Challenge.
@@ -103,11 +113,17 @@ func (c *authServiceClient) RotateKeys(ctx context.Context, req *connect.Request
 	return c.rotateKeys.CallUnary(ctx, req)
 }
 
+// Revoke calls dhow.runner.v1.AuthService.Revoke.
+func (c *authServiceClient) Revoke(ctx context.Context, req *connect.Request[v1.RevokeRequest]) (*connect.Response[v1.RevokeResponse], error) {
+	return c.revoke.CallUnary(ctx, req)
+}
+
 // AuthServiceHandler is an implementation of the dhow.runner.v1.AuthService service.
 type AuthServiceHandler interface {
 	Challenge(context.Context, *connect.Request[v1.ChallengeRequest]) (*connect.Response[v1.ChallengeResponse], error)
 	Authenticate(context.Context, *connect.Request[v1.AuthenticateRequest]) (*connect.Response[v1.AuthenticateResponse], error)
 	RotateKeys(context.Context, *connect.Request[v1.RotateKeysRequest]) (*connect.Response[v1.RotateKeysResponse], error)
+	Revoke(context.Context, *connect.Request[v1.RevokeRequest]) (*connect.Response[v1.RevokeResponse], error)
 }
 
 // NewAuthServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -135,6 +151,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("RotateKeys")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceRevokeHandler := connect.NewUnaryHandler(
+		AuthServiceRevokeProcedure,
+		svc.Revoke,
+		connect.WithSchema(authServiceMethods.ByName("Revoke")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/dhow.runner.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthServiceChallengeProcedure:
@@ -143,6 +165,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceAuthenticateHandler.ServeHTTP(w, r)
 		case AuthServiceRotateKeysProcedure:
 			authServiceRotateKeysHandler.ServeHTTP(w, r)
+		case AuthServiceRevokeProcedure:
+			authServiceRevokeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -162,4 +186,8 @@ func (UnimplementedAuthServiceHandler) Authenticate(context.Context, *connect.Re
 
 func (UnimplementedAuthServiceHandler) RotateKeys(context.Context, *connect.Request[v1.RotateKeysRequest]) (*connect.Response[v1.RotateKeysResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dhow.runner.v1.AuthService.RotateKeys is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) Revoke(context.Context, *connect.Request[v1.RevokeRequest]) (*connect.Response[v1.RevokeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("dhow.runner.v1.AuthService.Revoke is not implemented"))
 }

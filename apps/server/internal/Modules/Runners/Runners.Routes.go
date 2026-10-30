@@ -41,6 +41,7 @@ func Procedures() []policy.Rule {
 		policy.Runner(runnerv1connect.AuthServiceChallengeProcedure, policy.RunnerChallenge),
 		policy.Runner(runnerv1connect.AuthServiceAuthenticateProcedure, policy.RunnerSigned),
 		policy.Runner(runnerv1connect.AuthServiceRotateKeysProcedure, policy.RunnerSession),
+		policy.Runner(runnerv1connect.AuthServiceRevokeProcedure, policy.RunnerSession),
 	}
 }
 

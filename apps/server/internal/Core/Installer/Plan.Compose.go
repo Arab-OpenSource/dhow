@@ -163,5 +163,5 @@ func setEnv(entries []EnvEntry, key, value string) []EnvEntry {
 			return entries
 		}
 	}
-	return append(entries, EnvEntry{key, value})
+	return append(entries, EnvEntry{Key: key, Value: value})
 }

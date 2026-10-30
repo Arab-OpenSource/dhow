@@ -3,6 +3,8 @@ package installer
 import (
 	"context"
 	"errors"
+
+	engine "github.com/Khaymah/dhow/internal/installer"
 )
 
 const PurgePhrase = "delete dhow data"
@@ -82,25 +84,7 @@ type uninstaller struct {
 }
 
 func (u uninstaller) removeStep(title string, paths ...string) Step {
-	return Step{
-		Title: title,
-		Files: paths,
-		Done: func(context.Context) (bool, error) {
-			for _, p := range paths {
-				if exists(u.sys, p) {
-					return false, nil
-				}
-			}
-			return true, nil
-		},
-		Apply: func(context.Context) error {
-			var errs []error
-			for _, p := range paths {
-				errs = append(errs, u.sys.RemoveAll(p))
-			}
-			return errors.Join(errs...)
-		},
-	}
+	return engine.RemoveStep(u.sys, title, paths...)
 }
 
 func (u uninstaller) steps(purge bool) []Step {

@@ -106,13 +106,13 @@ func Exists(path string) (bool, error) {
 	}
 }
 
-func Save(path string, id *Identity) error {
+func Marshal(id *Identity) ([]byte, error) {
 	if err := id.validate(); err != nil {
-		return err
+		return nil, err
 	}
 	encryption, err := id.Encryption.Bytes()
 	if err != nil {
-		return fmt.Errorf("encode the encryption key: %w", err)
+		return nil, fmt.Errorf("encode the encryption key: %w", err)
 	}
 	raw, err := json.Marshal(fileFormat{
 		Version: fileVersion, RunnerID: id.RunnerID, OrganizationID: id.OrganizationID, ServerURL: id.ServerURL,
@@ -120,9 +120,19 @@ func Save(path string, id *Identity) error {
 		KeyVersion: id.KeyVersion, SigningSeed: id.Signing.Seed(), EncryptionKey: encryption, Labels: id.Labels,
 	})
 	if err != nil {
-		return fmt.Errorf("encode the identity: %w", err)
+		return nil, fmt.Errorf("encode the identity: %w", err)
 	}
-	return config.WriteFileAtomic(path, raw)
+	return raw, nil
+}
+
+func Save(path string, id *Identity) error { return SaveAs(path, id, config.NoOwner) }
+
+func SaveAs(path string, id *Identity, owner config.Owner) error {
+	raw, err := Marshal(id)
+	if err != nil {
+		return err
+	}
+	return config.WriteFileAtomicAs(path, raw, owner)
 }
 
 func Load(path string) (*Identity, error) {

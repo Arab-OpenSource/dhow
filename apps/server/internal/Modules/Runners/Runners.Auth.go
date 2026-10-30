@@ -3,6 +3,7 @@ package runners
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -242,4 +243,39 @@ func (s *Service) RotateKeys(ctx context.Context, in models.RotateInput) (int32,
 		return 0, err
 	}
 	return version, nil
+}
+
+func (s *Service) RevokeSelf(ctx context.Context, signature []byte) error {
+	p, ok := runnerauth.PrincipalFrom(ctx)
+	if !ok {
+		return runnerauth.Unauthenticated()
+	}
+	if len(signature) != ed25519.SignatureSize {
+		return runnerauth.ValidationFailed("Signature")
+	}
+	if !runnersig.Verify(p.SigningPublicKey, runnersig.RevokeMessage(s.origin, p.RunnerID.String(), p.KeyVersion), signature) {
+		return runnerauth.InvalidRunnerCredentials(0)
+	}
+	now := s.now()
+	var row sqlc.Runner
+	revoked := false
+	err := dbtx.Run(ctx, s.db, func(q *sqlc.Queries) error {
+		r, err := q.RevokeRunner(ctx, sqlc.RevokeRunnerParams{ID: p.RunnerID, OrganizationID: p.OrganizationID, Now: now})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		row, revoked = r, true
+		_, err = q.RevokeRunnerSessions(ctx, sqlc.RevokeRunnerSessionsParams{RunnerID: p.RunnerID, Now: now})
+		return err
+	})
+	if err != nil || !revoked {
+		return err
+	}
+	return s.bus.Publish(ctx, eventbus.Event{Name: eventbus.RunnerRevoked, Payload: eventbus.Audited{
+		OrganizationIDs: []uuid.UUID{p.OrganizationID}, TargetType: "runner", TargetID: p.RunnerID.String(),
+		IP: runnerauth.RequestMetaFrom(ctx).IPString(), Data: map[string]string{"Name": row.Name, "Reason": "revoked_by_runner"},
+	}})
 }

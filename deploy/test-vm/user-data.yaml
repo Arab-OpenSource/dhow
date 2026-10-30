@@ -1,0 +1,8 @@
+#cloud-config
+package_update: true
+packages:
+  - podman
+runcmd:
+  - [mkdir, -p, /run/dhow-vm]
+  - [mount, -o, ro, /dev/disk/by-label/cidata, /run/dhow-vm]
+  - [bash, /run/dhow-vm/guest.sh]

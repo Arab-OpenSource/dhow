@@ -91,8 +91,8 @@ expect "the opt-out prints a loud warning" grep -q 'WARNING: --insecure-skip-sig
 expect "it installs the binary 0755 root" grep -q '^755 root /usr/local/bin/dhow-runner$' "$work/good.log"
 expect "it installs the unit 0644 root" grep -q '^644 root /etc/systemd/system/dhow-runner.service$' "$work/good.log"
 expect "the installed runner runs" grep -q "^dhow-runner $version " "$work/good.log"
-expect "it says it does not run dhow-runner install yet" grep -q "does not run 'dhow-runner install' yet" "$work/good.log"
-expect "it prints the register step" grep -q 'dhow-runner register --url' "$work/good.log"
+expect "it points to dhow-runner install" grep -q '^  sudo dhow-runner install$' "$work/good.log"
+expect "it no longer lists the manual steps" lacks 'useradd' "$work/good.log"
 
 expect "a user with sudo installs from a root-owned copy" run_get user good "$work/user.log" --component runner --version "$version" "$skip"
 expect "the user install puts root-owned files in place" grep -q '^755 root /usr/local/bin/dhow-runner$' "$work/user.log"

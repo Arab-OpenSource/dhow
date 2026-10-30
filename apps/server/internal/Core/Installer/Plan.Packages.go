@@ -4,9 +4,9 @@ import (
 	"context"
 	"slices"
 	"strings"
-)
 
-const aptEnv = "DEBIAN_FRONTEND=noninteractive"
+	engine "github.com/Khaymah/dhow/internal/installer"
+)
 
 func (b *Builder) packageSteps() []Step {
 	missing := MissingPackages(b.Det, b.A)
@@ -21,31 +21,7 @@ func (b *Builder) packageSteps() []Step {
 }
 
 func (b *Builder) aptInstall(title string, pkgs []string) Step {
-	install := Command{Name: "apt-get", Args: append([]string{"install", "-y", "--no-install-recommends"}, pkgs...), Env: []string{aptEnv}}
-	update := Command{Name: "apt-get", Args: []string{"update"}, Env: []string{aptEnv}}
-	return Step{
-		Title:    title,
-		Packages: pkgs,
-		Commands: []string{update.String(), install.String()},
-		Done:     func(ctx context.Context) (bool, error) { return b.aptInstalled(ctx, pkgs), nil },
-		Apply: func(ctx context.Context) error {
-			if _, err := run(ctx, b.Sys, update); err != nil {
-				return err
-			}
-			_, err := run(ctx, b.Sys, install)
-			return err
-		},
-	}
-}
-
-func (b *Builder) aptInstalled(ctx context.Context, pkgs []string) bool {
-	for _, p := range pkgs {
-		out, err := b.Sys.Run(ctx, Cmd("dpkg-query", "-W", "-f=${Status}", p))
-		if err != nil || !strings.Contains(string(out.Stdout), "install ok installed") {
-			return false
-		}
-	}
-	return true
+	return engine.AptInstallStep(b.Sys, title, pkgs)
 }
 
 func (b *Builder) aptSteps(missing []string, needPGDG bool) []Step {
@@ -82,22 +58,8 @@ func dnfRepo(d Distro) []byte {
 		"gpgkey=file://" + DnfKeyPath + "\n")
 }
 
-func (b *Builder) rpmInstalled(ctx context.Context, pkgs []string) bool {
-	return succeeds(ctx, b.Sys, Cmd("rpm", append([]string{"-q"}, pkgs...)...))
-}
-
 func (b *Builder) dnfInstall(title string, pkgs []string) Step {
-	install := Cmd("dnf", append([]string{"install", "-y"}, pkgs...)...)
-	return Step{
-		Title:    title,
-		Packages: pkgs,
-		Commands: []string{install.String()},
-		Done:     func(ctx context.Context) (bool, error) { return b.rpmInstalled(ctx, pkgs), nil },
-		Apply: func(ctx context.Context) error {
-			_, err := run(ctx, b.Sys, install)
-			return err
-		},
-	}
+	return engine.DnfInstallStep(b.Sys, title, pkgs)
 }
 
 func (b *Builder) dnfSteps(missing []string, needPGDG bool) []Step {

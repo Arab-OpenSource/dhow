@@ -70,7 +70,7 @@ func Discard(pendingPath string) error {
 }
 
 func RemoveStaleTemps(dir string) error {
-	for _, name := range []string{config.IdentityFileName, config.PendingFileName} {
+	for _, name := range []string{config.IdentityFileName, config.PendingFileName, config.SealedIdentityFileName, config.SealedPendingFileName} {
 		matches, err := filepath.Glob(filepath.Join(dir, "."+name+".tmp-*"))
 		if err != nil {
 			return err

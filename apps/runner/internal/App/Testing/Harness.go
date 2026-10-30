@@ -35,6 +35,7 @@ type Runner struct {
 	Server   *Server
 	StateDir string
 	Env      Env
+	Sealer   *Sealer
 }
 
 func FastBackoff() client.Backoff {
@@ -84,7 +85,7 @@ func (r *Runner) Config() config.Config {
 
 func (r *Runner) Identity() *identity.Identity {
 	r.T.Helper()
-	id, err := identity.Load(filepath.Join(r.StateDir, config.IdentityFileName))
+	id, err := r.Store().Load()
 	if err != nil {
 		r.T.Fatal(err)
 	}

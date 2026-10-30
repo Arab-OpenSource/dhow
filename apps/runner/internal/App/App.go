@@ -6,10 +6,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
+	"os"
 	"strings"
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
+	identity "github.com/Khaymah/dhow/apps/runner/internal/Identity"
+	installer "github.com/Khaymah/dhow/apps/runner/internal/Installer"
 	"github.com/Khaymah/dhow/internal/buildinfo"
 	"github.com/Khaymah/dhow/internal/logging"
 )
@@ -21,7 +25,7 @@ const (
 )
 
 var (
-	ErrUsage        = errors.New("usage: dhow-runner register --url <server> --token-file <path|-> [--name <name>] [--dev] | dhow-runner run [--dev] | dhow-runner rotate-keys [--dev] | dhow-runner version")
+	ErrUsage        = errors.New("usage: dhow-runner install [--answers <file>] [--dry-run] [--yes] | dhow-runner doctor [--fix] | dhow-runner uninstall [--remove-user] [--yes] | dhow-runner register --url <server> --token-file <path|-> [--name <name>] [--dev] | dhow-runner run [--dev] | dhow-runner rotate-keys [--dev] | dhow-runner version")
 	ErrTokenOnFlags = errors.New("the registration token is never passed on the command line, where shell history and ps would keep it; use --token-file <path> or --token-file - to read it from stdin")
 )
 
@@ -36,6 +40,8 @@ type Env struct {
 	Stdio   Stdio
 	Machine func() (config.Machine, error)
 	Harden  func() error
+	Root    func() bool
+	Sealer  identity.Sealer
 }
 
 func Main(ctx context.Context, args []string, env Env) error {
@@ -48,6 +54,12 @@ func Main(ctx context.Context, args []string, env Env) error {
 	if env.Harden == nil {
 		env.Harden = hardenProcess
 	}
+	if env.Root == nil {
+		env.Root = func() bool { return os.Geteuid() == 0 }
+	}
+	if env.Sealer == nil && env.Root() {
+		env.Sealer = identity.SystemdCreds{}
+	}
 	switch args[0] {
 	case CommandAgent:
 		return runAgent(ctx, env)
@@ -59,6 +71,8 @@ func Main(ctx context.Context, args []string, env Env) error {
 		return runRun(ctx, args[1:], env)
 	case CommandRotateKeys:
 		return runRotateKeys(ctx, args[1:], env)
+	case installer.CommandInstall, installer.CommandDoctor, installer.CommandUninstall:
+		return runInstaller(ctx, args, env)
 	case CommandVersion:
 		info := buildinfo.Get()
 		_, err := fmt.Fprintf(env.Stdio.Out, "dhow-runner %s (%s, %s)\n", info.Version, info.Commit, info.GoVersion)
@@ -90,4 +104,18 @@ func newFlags(name string, errOut io.Writer) *flag.FlagSet {
 
 func newLogger(w io.Writer, level slog.Level) *slog.Logger {
 	return logging.New(w, level).With("component", "dhow-runner")
+}
+
+func openStore(cfg config.Config, env Env) (identity.Store, error) {
+	owner := config.NoOwner
+	if env.Root() {
+		o, err := config.OwnerOf(cfg.StateDir)
+		switch {
+		case err == nil:
+			owner = o
+		case !errors.Is(err, fs.ErrNotExist):
+			return nil, err
+		}
+	}
+	return identity.Open(cfg, env.Sealer, owner)
 }

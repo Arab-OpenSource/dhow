@@ -86,3 +86,10 @@ func (h connectHandler) RotateKeys(ctx context.Context, req *connect.Request[run
 	}
 	return connect.NewResponse(&runnerv1.RotateKeysResponse{KeyVersion: version}), nil
 }
+
+func (h connectHandler) Revoke(ctx context.Context, req *connect.Request[runnerv1.RevokeRequest]) (*connect.Response[runnerv1.RevokeResponse], error) {
+	if err := h.service.RevokeSelf(ctx, req.Msg.GetSignature()); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&runnerv1.RevokeResponse{}), nil
+}

@@ -111,3 +111,22 @@ func (c *Client) Append(ctx context.Context, ref *runnerv1.LeaseRef, chunks []*r
 func (c *Client) RotateKeys(ctx context.Context, req *runnerv1.RotateKeysRequest) (*runnerv1.RotateKeysResponse, error) {
 	return call(ctx, c, config.RPCTimeout, c.auth.RotateKeys, req)
 }
+
+func (c *Client) Revoke(ctx context.Context, signature []byte) error {
+	_, err := call(ctx, c, config.RPCTimeout, c.auth.Revoke, &runnerv1.RevokeRequest{Signature: signature})
+	return err
+}
+
+func (c *Client) Reach(ctx context.Context) error {
+	if c.tokens == nil {
+		return ErrNoIdentity
+	}
+	ctx, cancel := context.WithTimeout(ctx, config.RPCTimeout)
+	defer cancel()
+	ref := &runnerv1.RunnerRef{RunnerId: c.tokens.id.RunnerID}
+	_, err := c.auth.Challenge(ctx, connect.NewRequest(&runnerv1.ChallengeRequest{Runner: ref}))
+	if err != nil {
+		return mapAuthError(err)
+	}
+	return nil
+}

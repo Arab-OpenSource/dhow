@@ -24,6 +24,10 @@ func TestMessagesAreDomainSeparatedAndUnambiguous(t *testing.T) {
 		runnersig.RotateMessage("https://a.example", "r1", 1, sk, ek),
 		runnersig.RotateMessage("https://a.example", "r1", 2, sk, ek),
 		runnersig.RotateMessage("https://a.example", "r2", 1, sk, ek),
+		runnersig.RevokeMessage("https://a.example", "r1", 1),
+		runnersig.RevokeMessage("https://a.example", "r1", 2),
+		runnersig.RevokeMessage("https://a.example", "r2", 1),
+		runnersig.RevokeMessage("https://b.example", "r1", 1),
 	}
 	for i := range msgs {
 		for j := range msgs {
@@ -33,6 +37,7 @@ func TestMessagesAreDomainSeparatedAndUnambiguous(t *testing.T) {
 		}
 	}
 	assert.True(t, bytes.HasPrefix(msgs[0][4:], []byte(runnersig.RegisterLabel)))
+	assert.True(t, bytes.HasPrefix(msgs[len(msgs)-1][4:], []byte(runnersig.RevokeLabel)))
 }
 
 func TestVerify(t *testing.T) {

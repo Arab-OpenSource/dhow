@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const maxAttempts = 5
+const MaxAttempts = 5
 
 var (
 	ErrNoInput      = errors.New("no answer on standard input; use --answers for unattended installs")
@@ -48,7 +48,7 @@ func (p *Prompter) say(format string, args ...any) {
 }
 
 func (p *Prompter) Ask(label, def string, validate func(string) error) (string, error) {
-	for range maxAttempts {
+	for range MaxAttempts {
 		if def != "" {
 			p.say("%s [%s]: ", label, def)
 		} else {
@@ -107,7 +107,7 @@ func (p *Prompter) Confirm(label string, def bool) (bool, error) {
 	if def {
 		hint = p.m.T(KeyYesNoDefaultYes)
 	}
-	for range maxAttempts {
+	for range MaxAttempts {
 		p.say("%s %s: ", label, hint)
 		v, err := p.line()
 		if err != nil {
@@ -127,9 +127,9 @@ func (p *Prompter) Confirm(label string, def bool) (bool, error) {
 }
 
 func (p *Prompter) Secret(label string, validate func(string) error) (string, error) {
-	for range maxAttempts {
+	for range MaxAttempts {
 		p.say("%s: ", label)
-		restore, err := disableEcho(p.fd)
+		restore, err := DisableEcho(p.fd)
 		v, lerr := p.line()
 		if err == nil {
 			restore()

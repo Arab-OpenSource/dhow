@@ -91,7 +91,7 @@ func TestEveryMountedRunnerProcedureDeclaresAPolicy(t *testing.T) {
 	for p := range declared {
 		assert.True(t, mounted[p], "%s has a policy but is not mounted", p)
 	}
-	assert.Len(t, mounted, 11, "RegistrationService, AuthService, LeaseService and LogService are mounted")
+	assert.Len(t, mounted, 12, "RegistrationService, AuthService, LeaseService and LogService are mounted")
 }
 
 type runnerCaller struct {

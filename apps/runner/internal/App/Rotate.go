@@ -27,6 +27,7 @@ var (
 type Rotation struct {
 	Config      config.Config
 	Log         *slog.Logger
+	Store       identity.Store
 	Generate    func() (identity.Keys, error)
 	SavePending func(path string, id *identity.Identity) error
 	Promote     func(pendingPath, path string, next *identity.Identity) error
@@ -54,11 +55,21 @@ func runRotateKeys(ctx context.Context, args []string, env Env) error {
 	if err != nil {
 		return err
 	}
-	cfg, err := config.Load(env.Getenv, config.Options{Dev: *dev, Machine: machine})
+	getenv := env.Getenv
+	if env.Root() {
+		if getenv, err = config.WithEnvFile(env.Getenv, config.EnvFilePath); err != nil {
+			return err
+		}
+	}
+	cfg, err := config.Load(getenv, config.Options{Dev: *dev, Machine: machine, Privileged: env.Root()})
 	if err != nil {
 		return err
 	}
-	res, err := Rotation{Config: cfg, Log: newLogger(env.Stdio.Err, cfg.LogLevel)}.Run(ctx)
+	store, err := openStore(cfg, env)
+	if err != nil {
+		return err
+	}
+	res, err := Rotation{Config: cfg, Log: newLogger(env.Stdio.Err, cfg.LogLevel), Store: store}.Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -78,18 +89,22 @@ func (r Rotation) defaults() Rotation {
 	if r.Generate == nil {
 		r.Generate = identity.GenerateKeys
 	}
+	if r.Store == nil {
+		r.Store = identity.NewFileStore(r.Config.StateDir)
+	}
+	store := r.Store
 	if r.SavePending == nil {
-		r.SavePending = identity.Save
+		r.SavePending = func(_ string, id *identity.Identity) error { return store.SavePending(id) }
 	}
 	if r.Promote == nil {
-		r.Promote = identity.Promote
+		r.Promote = func(_, _ string, next *identity.Identity) error { return store.Promote(next) }
 	}
 	return r
 }
 
 func (r Rotation) Run(ctx context.Context) (Rotated, error) {
 	r = r.defaults()
-	if _, err := identity.Load(r.Config.IdentityPath()); err != nil {
+	if _, err := r.Store.Load(); err != nil {
 		return Rotated{}, err
 	}
 	lock, err := config.LockState(r.Config.LockPath())
@@ -100,11 +115,11 @@ func (r Rotation) Run(ctx context.Context) (Rotated, error) {
 		return Rotated{}, err
 	}
 	defer func() { _ = lock.Release() }()
-	current, err := identity.Load(r.Config.IdentityPath())
+	current, err := r.Store.Load()
 	if err != nil {
 		return Rotated{}, err
 	}
-	if err := identity.RemoveStaleTemps(r.Config.StateDir); err != nil {
+	if err := r.Store.RemoveStaleTemps(); err != nil {
 		return Rotated{}, err
 	}
 	j, err := journal.Open(r.Config.JournalPath())
@@ -125,7 +140,7 @@ func (r Rotation) Run(ctx context.Context) (Rotated, error) {
 }
 
 func (r Rotation) prepare(ctx context.Context, current *identity.Identity) (*identity.Identity, bool, error) {
-	pending, err := loadPending(r.Config, current)
+	pending, err := loadPending(r.Store, current)
 	if err != nil {
 		return nil, false, err
 	}
@@ -143,7 +158,7 @@ func (r Rotation) prepare(ctx context.Context, current *identity.Identity) (*ide
 	if err != nil {
 		return nil, false, err
 	}
-	if err := r.SavePending(r.Config.PendingIdentityPath(), next); err != nil {
+	if err := r.SavePending(r.Store.PendingPath(), next); err != nil {
 		return nil, false, fmt.Errorf("save the new keys before asking the server to take them: %w", err)
 	}
 	return next, false, nil
@@ -164,9 +179,9 @@ func (r Rotation) settle(ctx context.Context, current, pending *identity.Identit
 	switch v {
 	case keepCurrent:
 		r.Log.Info("the server never took the keys of the unfinished rotation; they are discarded and fresh keys are made")
-		return nil, false, identity.Discard(r.Config.PendingIdentityPath())
+		return nil, false, r.Store.Discard()
 	case takePending:
-		if err := r.Promote(r.Config.PendingIdentityPath(), r.Config.IdentityPath(), next); err != nil {
+		if err := r.Promote(r.Store.PendingPath(), r.Store.Path(), next); err != nil {
 			return nil, false, errors.Join(ErrNotSwitched, err)
 		}
 		return next, true, nil
@@ -196,7 +211,7 @@ func (r Rotation) confirm(ctx context.Context, current, next *identity.Identity)
 		r.Log.Warn("the server numbered the new key differently than expected", "expected", next.KeyVersion, "server", v)
 		next.KeyVersion = v
 	}
-	if err := r.Promote(r.Config.PendingIdentityPath(), r.Config.IdentityPath(), next); err != nil {
+	if err := r.Promote(r.Store.PendingPath(), r.Store.Path(), next); err != nil {
 		return errors.Join(ErrNotSwitched, err)
 	}
 	return nil

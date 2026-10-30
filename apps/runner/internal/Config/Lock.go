@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"golang.org/x/sys/unix"
 )
@@ -17,6 +18,10 @@ func LockState(path string) (*StateLock, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open %s: %w", path, openErr(err))
 	}
+	if err := matchDirOwner(f, path); err != nil {
+		_ = f.Close()
+		return nil, err
+	}
 	if err := unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
 		_ = f.Close()
 		if errors.Is(err, unix.EWOULDBLOCK) {
@@ -25,6 +30,27 @@ func LockState(path string) (*StateLock, error) {
 		return nil, fmt.Errorf("lock %s: %w", path, err)
 	}
 	return &StateLock{f: f}, nil
+}
+
+func matchDirOwner(f *os.File, path string) error {
+	if os.Geteuid() != 0 {
+		return nil
+	}
+	dir, err := OwnerOf(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	var st unix.Stat_t
+	if err := unix.Fstat(int(f.Fd()), &st); err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+	if int(st.Uid) == dir.UID && int(st.Gid) == dir.GID {
+		return nil
+	}
+	if err := f.Chown(dir.UID, dir.GID); err != nil {
+		return fmt.Errorf("chown %s: %w", path, err)
+	}
+	return nil
 }
 
 func (l *StateLock) Release() error {

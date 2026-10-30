@@ -13,15 +13,19 @@ const (
 )
 
 const (
-	DefaultStateDir  = "/var/lib/dhow-runner"
-	IdentityFileName = "identity"
-	PendingFileName  = "identity.pending"
-	LockFileName     = "lock"
-	JournalFileName  = "journal"
-	AttemptsDirName  = "attempts"
-	SpillFileName    = "logs.spill"
-	PrivateFileMode  = 0o600
-	PrivateDirMode   = 0o700
+	DefaultStateDir        = "/var/lib/dhow-runner"
+	IdentityFileName       = "identity"
+	PendingFileName        = "identity.pending"
+	SealedIdentityFileName = "identity.cred"
+	SealedPendingFileName  = "identity.pending.cred"
+	IdentityCredential     = "identity"
+	EnvFilePath            = "/etc/dhow-runner/runner.env"
+	LockFileName           = "lock"
+	JournalFileName        = "journal"
+	AttemptsDirName        = "attempts"
+	SpillFileName          = "logs.spill"
+	PrivateFileMode        = 0o600
+	PrivateDirMode         = 0o700
 )
 
 const (

@@ -2,7 +2,7 @@
 
 # Runner configuration
 
-The runner reads its settings from the environment, usually `/etc/dhow-runner/runner.env` through systemd's `EnvironmentFile=`. Every value is checked when the runner starts, and any problem stops it with a message that names the variable (fail closed). Nothing here is a secret: the runner's keys live in its state directory, not in the environment.
+The runner reads its settings from the environment, usually `/etc/dhow-runner/runner.env` through systemd's `EnvironmentFile=`. Every value is checked when the runner starts, and any problem stops it with a message that names the variable (fail closed). Nothing here is a secret: the runner's keys live in its state directory (encrypted with `systemd-creds` when `dhow-runner install` set it up, see [the encrypted identity](keys.md#the-encrypted-identity)), not in the environment. `dhow-runner install` writes this file from its answers and keeps the lines you add by hand.
 
 | Variable | Default | Example | Meaning |
 |---|---|---|---|

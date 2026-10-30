@@ -116,17 +116,14 @@ get.sh: installed dhow-runner $version:
   /usr/local/bin/dhow-runner
   /etc/systemd/system/dhow-runner.service (not enabled yet)
 
-This script does not run 'dhow-runner install' yet; that comes in a later release.
-Finish the setup as in https://github.com/$repo/blob/main/docs/en/runner/install.md:
+Next, install and register it. Have a registration token from the Runners page of your
+Dhow server ready, then run:
 
-  1. Create the user, its sub-ids and directories:
-       sudo useradd --system --home-dir /var/lib/dhow-runner --shell /usr/sbin/nologin dhow-runner
-       sudo usermod --add-subuids 1000000-2048575 --add-subgids 1000000-2048575 dhow-runner
-       sudo install -d -m 0700 -o dhow-runner -g dhow-runner /var/lib/dhow-runner
-       sudo install -d -m 0750 -o root -g dhow-runner /etc/dhow-runner
-       sudo install -m 0640 -o root -g dhow-runner /dev/null /etc/dhow-runner/runner.env
-  2. Register it with a token from the Runners page of your Dhow server:
-       sudo -u dhow-runner dhow-runner register --url https://dhow.example.com --token-file -
-  3. Start it:
-       sudo systemctl enable --now dhow-runner
+  sudo dhow-runner install
+
+It asks for the server address and the token (hidden while you type), checks Podman,
+cgroup v2 and user namespaces, creates the dhow-runner user, its sub-ids and directories,
+keeps the identity encrypted with systemd-creds when the host can, and starts the runner.
+For an unattended install, use: sudo dhow-runner install --answers <file>
+See https://github.com/$repo/blob/main/docs/en/runner/install.md
 EOF

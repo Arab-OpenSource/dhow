@@ -11,6 +11,7 @@ const (
 	RegisterLabel = "dhow/runner-register/v1"
 	AuthLabel     = "dhow/runner-auth/v1"
 	RotateLabel   = "dhow/runner-rotate-keys/v1"
+	RevokeLabel   = "dhow/runner-revoke/v1"
 
 	SigningKeySize    = ed25519.PublicKeySize
 	EncryptionKeySize = 1216
@@ -62,6 +63,14 @@ func RotateMessage(origin, runnerID string, keyVersion int32, newSigningKey, new
 	b.int32(keyVersion)
 	b.bytes(newSigningKey)
 	b.bytes(newEncryptionKey)
+	return b.buf
+}
+
+func RevokeMessage(origin, runnerID string, keyVersion int32) []byte {
+	b := newBuilder(RevokeLabel)
+	b.bytes([]byte(origin))
+	b.bytes([]byte(runnerID))
+	b.int32(keyVersion)
 	return b.buf
 }
 

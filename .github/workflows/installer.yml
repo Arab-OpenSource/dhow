@@ -7,7 +7,10 @@ on:
       - apps/server/internal/Core/Installer/**
       - apps/server/internal/Config/**
       - apps/server/cmd/dhow-server/**
-      - apps/runner/cmd/dhow-runner/**
+      - apps/runner/**
+      - internal/installer/**
+      - internal/runnersig/**
+      - packages/proto/**
       - deploy/**
       - apps/web/vite.config.ts
       - apps/web/package.json
@@ -37,8 +40,8 @@ jobs:
           persist-credentials: false
       - name: Check the shell scripts
         run: |
-          bash -n deploy/install/get.sh deploy/install/e2e/run.sh deploy/install/e2e/get-runner.sh deploy/install/e2e/get-runner-box.sh deploy/release/dist.sh deploy/systemd/*.sh deploy/dev/setup.sh deploy/dev/lib/*.sh deploy/dev/stack/*.sh
-          shellcheck deploy/install/get.sh deploy/install/e2e/run.sh deploy/install/e2e/get-runner.sh deploy/install/e2e/get-runner-box.sh deploy/release/dist.sh deploy/systemd/*.sh
+          bash -n deploy/install/get.sh deploy/install/e2e/*.sh deploy/release/dist.sh deploy/systemd/*.sh deploy/test-vm/*.sh deploy/dev/setup.sh deploy/dev/lib/*.sh deploy/dev/stack/*.sh
+          shellcheck deploy/install/get.sh deploy/install/e2e/*.sh deploy/release/dist.sh deploy/systemd/*.sh deploy/test-vm/*.sh
           shellcheck -x deploy/dev/setup.sh
           shellcheck deploy/dev/test/fresh.sh
           shellcheck -x deploy/dev/test/settings.sh
@@ -77,6 +80,75 @@ jobs:
         run: DIST_DIR="$RUNNER_TEMP/dist" DIST_COMPONENTS=runner DIST_ARCHES=amd64 deploy/release/dist.sh 0.0.0-ci "$GITHUB_SHA"
       - name: Install it with get.sh in a fresh container, and refuse tampered releases
         run: deploy/install/e2e/get-runner.sh "$RUNNER_TEMP/dist"
+
+  runner-install:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: dhow-runner install, doctor, a job and uninstall with rootless Podman
+    # ubuntu-24.04 ships Podman 4.9.3, below the 5.4 floor of ADR-0043, so the real-Podman run needs ubuntu-26.04
+    # (the isolation job uses it for the same reason). runner-install-container covers ubuntu-24.04 hosts.
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: dhow
+          POSTGRES_PASSWORD: dhow-ci-only
+          POSTGRES_DB: dhow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dhow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Install Podman from the distribution and allow user namespaces
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q podman crun uidmap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          podman --version
+      - name: Install from an answers file, run doctor and a job, rotate the keys, install again and uninstall
+        run: |
+          make build build-runner
+          sudo deploy/systemd/smoke-install.sh bin/dhow-server bin/dhow-runner \
+            "postgres://dhow:dhow-ci-only@127.0.0.1:5432/dhow?sslmode=disable"
+
+  runner-install-container:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: dhow-runner install in a Debian 13 systemd container (fake driver)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: dhow
+          POSTGRES_PASSWORD: dhow-ci-only
+          POSTGRES_DB: dhow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dhow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Install, encrypt the identity with systemd-creds, run a job and uninstall
+        run: make runner-install-e2e RUNNER_E2E_DATABASE_URL="postgres://dhow:dhow-ci-only@127.0.0.1:5432/dhow?sslmode=disable"
 
   dev-setup-fresh:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
