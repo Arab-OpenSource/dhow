@@ -27,7 +27,7 @@ bash get.sh --component cli
 
 ### يدويًا (macOS وWindows وLinux)
 
-في كل إصدار أرشيف لكل نظام: `dhow_<version>_<os>_<arch>.tar.gz`، والقيمة `<os>` هي `linux` أو `darwin` أو `windows`. أرشيف Windows فيه `dhow.exe`، ويفك الأمر `tar` الأرشيف في Windows 10 وما بعده. نزّل الأرشيف و`SHA256SUMS` و`SHA256SUMS.sigstore.json` من صفحة الإصدار، ثم:
+في كل إصدار أرشيف لكل نظام: `dhow_<version>_<os>_<arch>.tar.gz`، والقيمة `<os>` هي `linux` أو `darwin` أو `windows`. أرشيف Windows فيه `dhow.exe`، ويفك الأمر `tar` الأرشيف في Windows 10 وما بعده. نزّل الأرشيف و`SHA256SUMS` و`SHA256SUMS.sigstore.json` من صفحة الإصدار، ثم شغّل هذه الأوامر بالإصدار والنظام الدقيقين لأرشيفك (هنا 1.2.3 على جهاز Mac بمعالج Apple):
 
 ```sh
 cosign verify-blob --bundle SHA256SUMS.sigstore.json \
@@ -35,12 +35,12 @@ cosign verify-blob --bundle SHA256SUMS.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/Khaymah/dhow/\.github/workflows/release\.yml@refs/tags/v' \
   SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
-tar -xzf dhow_*_darwin_arm64.tar.gz
+tar -xzf dhow_1.2.3_darwin_arm64.tar.gz
 sudo install -m 0755 dhow /usr/local/bin/dhow
 dhow version
 ```
 
-على جهاز Mac ليس فيه `sha256sum`، افحص سطر أرشيفك بالأمر `shasum`: `grep darwin_arm64 SHA256SUMS | shasum -a 256 -c`. ولكل أرشيف أيضًا SPDX SBOM (`<archive>.spdx.json`) وإثبات بناء SLSA على صفحة الإصدار.
+على جهاز Mac ليس فيه `sha256sum`، افحص سطر أرشيفك بالأمر `shasum`: `grep dhow_1.2.3_darwin_arm64 SHA256SUMS | shasum -a 256 -c`. ملفات macOS غير موقّعة من Apple بعد (لا codesign ولا notarization). إذا رفض Gatekeeper فتح `dhow`، فافحص التوقيع والـ checksum كما سبق أولًا، ثم احذف علامة الحجر: `xattr -d com.apple.quarantine /usr/local/bin/dhow`. ولكل أرشيف أيضًا SPDX SBOM (`<archive>.spdx.json`) وإثبات بناء SLSA على صفحة الإصدار.
 
 ### من الكود المصدري
 
@@ -58,7 +58,7 @@ dhow lint path/to/repo
 dhow lint --format json --lang en .dhow.yml
 ```
 
-دون مسار، يفحص `.dhow.yml` في المجلد الحالي. وإذا كان المسار مجلدًا، فيفحص `.dhow.yml` الذي فيه. يقرأ 256 KiB بالأكثر، وهو حد المدقق، ويرفض أي شيء ليس ملفًا عاديًا (مثل FIFO أو جهاز) دون أن يقرأه.
+دون مسار، يفحص `.dhow.yml` في المجلد الحالي. وإذا كان المسار مجلدًا، فيفحص `.dhow.yml` الذي فيه. يقرأ 256 KiB بالأكثر، وهو حد المدقق، ويرفض أي شيء ليس ملفًا عاديًا (مثل FIFO أو جهاز) دون أن يقرأه. ولا يتبع أي رابط رمزي (symlink) أبدًا: إذا كان `.dhow.yml` رابطًا، يتوقف بكود الخروج 2، فلا يستطيع pull request أن يوجّهه إلى ملف آخر على الجهاز (مثل `~/.docker/config.json`) ليظهر أسماء مفاتيحه في سجل CI عام.
 
 | الخيار | المعنى |
 |---|---|
@@ -75,7 +75,7 @@ dhow lint --format json --lang en .dhow.yml
 |---|---|
 | `0` | الملف صحيح. وقد تكون فيه تحذيرات، مثل صورة مثبّتة بالـ tag فقط. |
 | `1` | في الملف خطأ واحد على الأقل، والسيرفر يرفضه. |
-| `2` | الملف غير موجود، أو ليس ملفًا عاديًا، أو لا يمكن قراءته، أو الأمر غير صحيح (خيار غير معروف، أو قيمة خاطئة، أو أكثر من مسار). لا يطبع شيئًا على stdout. |
+| `2` | الملف غير موجود، أو رابط رمزي، أو ليس ملفًا عاديًا، أو لا يمكن قراءته، أو الأمر غير صحيح (خيار غير معروف، أو قيمة خاطئة، أو أكثر من مسار). لا يطبع شيئًا على stdout. |
 
 ## المخرجات
 
@@ -87,7 +87,7 @@ dhow lint --format json --lang en .dhow.yml
 .dhow.yml: errors: 1, warnings: 1. The server refuses this pipeline.
 ```
 
-حروف التحكم وحروف الاتجاه غير المرئية في اسم الملف أو في مفتاح تظهر كرموز مكتوبة (`\u001b` و`‮`)، فلا يستطيع ملف من مستودع أن يحرّك المؤشر أو يغيّر ترتيب السطر في الـ terminal.
+حروف التحكم (C0 وC1) وحروف الاتجاه غير المرئية في اسم الملف أو في مفتاح تظهر كرموز مكتوبة (`\u001b` و`\u009b` و`\u202e`)، والشرطة المائلة العكسية تظهر `\\`، في المخرجات النصية وفي JSON، فلا يستطيع ملف من مستودع أن يحرّك المؤشر أو يغيّر ترتيب السطر في الـ terminal.
 
 الخيار `--format json` يطبع مستندًا واحدًا. شكله ثابت في `SchemaVersion` رقم 1: قد نضيف حقولًا جديدة، ولا نغيّر اسم أي حقل ولا نحذفه:
 
@@ -126,9 +126,9 @@ dhow lint --format json --lang en .dhow.yml
 
 لا يستخدم `dhow lint` الشبكة أبدًا. لا يفحص ملفات manifest للإضافات، ولا ينزّل الصور، فيفحص `uses:` و`image:` بشكلهما فقط (والـ digest مطلوب في `uses:`). ثلاثة اختبارات تضمن ذلك:
 
-- الأمر لا يربط أي package للشبكة (`net` و`net/http` و`crypto/tls`) ولا `os/exec`، ولا يوجد في الملف التنفيذي أي رمز للـ sockets؛
-- يشغّل الاختبار الملف التنفيذي على كل ملف خاطئ من اختبارات المدقق، داخل network namespace بلا أي شبكة، وتحت `strace`، فلا يظهر في السجل أي system call للشبكة، والنتيجة هي نفسها خارج الـ namespace. وبرنامج صغير يفتح socket في الإعداد نفسه يثبت أن `strace` سيراه؛
-- يرفض hook في المشروع أي استيراد لهذه الـ packages داخل `apps/cli`.
+- الأمر يربط فقط الـ packages المكتوبة في `apps/cli/cmd/dhow/testdata/deps.linux-amd64.txt`، فأي package جديد يُفشل الاختبار حتى يراجعه أحد. ولا يوجد بينها `net` أو `net/http` أو `crypto/tls` أو `os/exec`، ولا يوجد في الملف التنفيذي أي رمز للـ sockets، ولا `os.StartProcess` ولا `syscall.ForkExec` ولا `syscall.Exec`؛
+- يشغّل الاختبار الملف التنفيذي على كل ملف خاطئ من اختبارات المدقق، داخل network namespace بلا أي شبكة، وتحت `strace`، فلا يظهر في السجل أي system call للشبكة، ولا أي `execve` بعد الأول، والنتيجة هي نفسها خارج الـ namespace. وبرنامج صغير يفتح socket في الإعداد نفسه يثبت أن `strace` سيراه؛
+- يرفض hook في المشروع داخل `apps/cli` أي استيراد لهذه الـ packages، أو لـ `syscall` و`golang.org/x/sys` و`unsafe` وcgo، وأي استدعاء لـ `os.StartProcess` أو `syscall.Exec` أو `syscall.ForkExec`.
 
 ## الأوامر الأخرى
 

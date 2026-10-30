@@ -27,7 +27,7 @@ Install `cosign` first to get the signature check: without it, the checksum only
 
 ### By hand (macOS, Windows and Linux)
 
-Every release has one archive per system: `dhow_<version>_<os>_<arch>.tar.gz`, where `<os>` is `linux`, `darwin` or `windows`. The Windows archive holds `dhow.exe`, and `tar` on Windows 10 and later unpacks it. Download the archive, `SHA256SUMS` and `SHA256SUMS.sigstore.json` from the release page, then:
+Every release has one archive per system: `dhow_<version>_<os>_<arch>.tar.gz`, where `<os>` is `linux`, `darwin` or `windows`. The Windows archive holds `dhow.exe`, and `tar` on Windows 10 and later unpacks it. Download the archive, `SHA256SUMS` and `SHA256SUMS.sigstore.json` from the release page, then run these commands with the exact version and system of your archive (here 1.2.3 on an Apple silicon Mac):
 
 ```sh
 cosign verify-blob --bundle SHA256SUMS.sigstore.json \
@@ -35,12 +35,12 @@ cosign verify-blob --bundle SHA256SUMS.sigstore.json \
   --certificate-identity-regexp '^https://github\.com/Khaymah/dhow/\.github/workflows/release\.yml@refs/tags/v' \
   SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
-tar -xzf dhow_*_darwin_arm64.tar.gz
+tar -xzf dhow_1.2.3_darwin_arm64.tar.gz
 sudo install -m 0755 dhow /usr/local/bin/dhow
 dhow version
 ```
 
-On a Mac without `sha256sum`, check the line of your archive with `shasum`: `grep darwin_arm64 SHA256SUMS | shasum -a 256 -c`. Each archive also has an SPDX SBOM (`<archive>.spdx.json`) and a SLSA build provenance attestation on the release page.
+On a Mac without `sha256sum`, check the line of your archive with `shasum`: `grep dhow_1.2.3_darwin_arm64 SHA256SUMS | shasum -a 256 -c`. The macOS binaries are not codesigned or notarized by Apple yet. If Gatekeeper refuses to open `dhow`, check the signature and the checksum as above first, then remove the quarantine flag: `xattr -d com.apple.quarantine /usr/local/bin/dhow`. Each archive also has an SPDX SBOM (`<archive>.spdx.json`) and a SLSA build provenance attestation on the release page.
 
 ### From source
 
@@ -58,7 +58,7 @@ dhow lint path/to/repo
 dhow lint --format json --lang en .dhow.yml
 ```
 
-Without a path, it checks `.dhow.yml` in the current folder. A folder means the `.dhow.yml` in it. It reads at most 256 KiB, the limit of the validator, and refuses anything that is not a regular file (a FIFO or a device, for example) without reading it.
+Without a path, it checks `.dhow.yml` in the current folder. A folder means the `.dhow.yml` in it. It reads at most 256 KiB, the limit of the validator, and refuses anything that is not a regular file (a FIFO or a device, for example) without reading it. It never follows a symbolic link: if `.dhow.yml` is a link, it stops with exit code 2, so a pull request cannot point it at another file on the machine (such as `~/.docker/config.json`) and get its key names into a public CI log.
 
 | Option | Meaning |
 |---|---|
@@ -75,7 +75,7 @@ Options may come before or after the path. Write `--` before a path that starts 
 |---|---|
 | `0` | The file is valid. It may have warnings, such as an image pinned by tag only. |
 | `1` | The file has at least one error, and the server refuses it. |
-| `2` | The file does not exist, is not a regular file or cannot be read, or the command is wrong (an unknown option, a bad value, more than one path). Nothing is printed on stdout. |
+| `2` | The file does not exist, is a symbolic link, is not a regular file or cannot be read, or the command is wrong (an unknown option, a bad value, more than one path). Nothing is printed on stdout. |
 
 ## Output
 
@@ -87,7 +87,7 @@ The text output has one line per problem: the file, the line and the column, the
 .dhow.yml: errors: 1, warnings: 1. The server refuses this pipeline.
 ```
 
-Control characters and invisible direction characters in a file name or a key are printed as escapes (`\u001b`, `‮`), so a file from a repository cannot move the cursor or reorder the line in your terminal.
+Control characters (C0 and C1) and invisible direction characters in a file name or a key are printed as escapes (`\u001b`, `\u009b`, `\u202e`), and a backslash as `\\`, in the text and in the JSON output, so a file from a repository cannot move the cursor or reorder the line in your terminal.
 
 `--format json` prints one document. Its shape is stable within `SchemaVersion` 1: new fields may be added, and none is renamed or removed:
 
@@ -126,9 +126,9 @@ Control characters and invisible direction characters in a file name or a key ar
 
 `dhow lint` never uses the network. It does not check plugin manifests and does not fetch images, so `uses:` and `image:` are checked by their form only (a digest is required for `uses:`). Three tests keep it that way:
 
-- the command links no network package (`net`, `net/http`, `crypto/tls`) and no `os/exec`, and the binary has no socket symbol;
-- the binary runs every invalid file of the validator tests in a network namespace without any network, under `strace`, and the trace has no network system call, while the result is the same as outside. A probe that opens a socket in the same setup shows that `strace` would see one;
-- a project hook refuses any import of these packages under `apps/cli`.
+- the command links only the packages listed in `apps/cli/cmd/dhow/testdata/deps.linux-amd64.txt`, so any new package fails the test until someone reviews it. None of them is `net`, `net/http`, `crypto/tls` or `os/exec`, and the binary has no socket symbol and no `os.StartProcess`, `syscall.ForkExec` or `syscall.Exec`;
+- the binary runs every invalid file of the validator tests in a network namespace without any network, under `strace`, and the trace has no network system call and no `execve` after the first, while the result is the same as outside. A probe that opens a socket in the same setup shows that `strace` would see one;
+- a project hook refuses any import of these packages, of `syscall`, `golang.org/x/sys`, `unsafe` and cgo, and any call to `os.StartProcess`, `syscall.Exec` or `syscall.ForkExec` under `apps/cli`.
 
 ## Other commands
 
