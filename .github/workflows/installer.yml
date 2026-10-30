@@ -8,6 +8,7 @@ on:
       - apps/server/internal/Config/**
       - apps/server/cmd/dhow-server/**
       - apps/runner/**
+      - apps/cli/**
       - internal/installer/**
       - internal/runnersig/**
       - packages/proto/**
@@ -66,7 +67,7 @@ jobs:
 
   get-runner:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    name: get.sh --component runner against a local release
+    name: get.sh --component runner and cli against a local release
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -76,8 +77,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - name: Build a runner-only release with dist.sh
-        run: DIST_DIR="$RUNNER_TEMP/dist" DIST_COMPONENTS=runner DIST_ARCHES=amd64 deploy/release/dist.sh 0.0.0-ci "$GITHUB_SHA"
+      - name: Build a runner and CLI release with dist.sh
+        run: DIST_DIR="$RUNNER_TEMP/dist" DIST_COMPONENTS="runner cli" DIST_CLI_OSES=linux DIST_ARCHES=amd64 deploy/release/dist.sh 0.0.0-ci "$GITHUB_SHA"
       - name: Install it with get.sh in a fresh container, and refuse tampered releases
         run: deploy/install/e2e/get-runner.sh "$RUNNER_TEMP/dist"
 

@@ -95,7 +95,14 @@ jobs:
           install-mode: goinstall
       - name: Lint the runner with the fake driver build tag
         run: make lint-runner
+      - name: Let the offline CLI test create a network namespace and trace system calls
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo apt-get update -q
+          sudo apt-get install -y -q strace
       - name: Test
+        env:
+          DHOW_CLI_REQUIRE_NETNS: "1"
         run: make test
       - name: Test the runner with the fake sandbox driver
         run: make test-runner
@@ -111,6 +118,8 @@ jobs:
         run: make build
       - name: Build the runner
         run: make build-runner
+      - name: Build the CLI
+        run: make build-cli
 
   timing:
     needs: changes

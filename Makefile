@@ -37,6 +37,10 @@ build: ## Build bin/dhow-server
 build-runner: ## Build bin/dhow-runner (Linux only)
 	CGO_ENABLED=0 GOOS=linux $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o bin/dhow-runner ./apps/runner/cmd/dhow-runner
 
+.PHONY: build-cli
+build-cli: ## Build bin/dhow, the dhow CLI (dhow lint), for this machine
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags '$(LDFLAGS)' -o bin/dhow ./apps/cli/cmd/dhow
+
 .PHONY: web
 web: ## Build the web app and copy it into the server embed directory
 	pnpm -C apps/web install --frozen-lockfile
