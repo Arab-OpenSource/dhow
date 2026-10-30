@@ -122,6 +122,7 @@
   - كل `curl` بـ https بس حتى في الـ redirects.
   - `CHECKSUM` بتاع Fedora و`CHECKSUM.asc` بتاع Rocky متحققين بـ gpg على بصمة مفتاح Fedora 43 وRocky 10 المثبّتة.
   - Debian مابينشرش توقيع للـ checksums بتاعة الـ cloud images، فـ Debian https بس.
+- **مجلد الحالة `0700` أو `0711`:** أول تشغيل بـ Podman حقيقي في الـ CI لقى المجلد `0711`. السبب مش containers/storage، ده الـ driver بتاعنا نفسه (`writeConfig` في `Sandbox/Podman`، من ADR-0056): بيفتح المجلد لـ `0711` في كل بدء عشان الـ user namespace بتاع الـ job يعدّي منه لنقط الربط وقناة التحكم. فـ `install` و`doctor` والـ smoke بيقبلوا الاتنين، بشرط المالك `dhow-runner` ومفيش قراية أو كتابة للمجموعة أو الباقيين. و`doctor --fix` مابيرجّعهوش `0700`، عشان مايتقلبش كل مرة. واللي جوّه فاضل زي ما هو بالظبط.
 - **الـ audit بتاع الإلغاء بيتنشر بعد الـ commit:** الـ event bus مافيهوش outbox، وإلغاء اللوحة بنفس الطريقة. فاتساب زي ما هو، ومتسجّل في `Status.md`.
 
 ## البدائل اللي اتدرست

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io/fs"
 
 	engine "github.com/Khaymah/dhow/internal/installer"
 )
@@ -225,4 +226,21 @@ func (b *Builder) startStep() engine.Step {
 			return waitOnline(ctx, b.Sys, b.M, b.sleep)
 		},
 	}
+}
+
+func StateDirModeOK(perm fs.FileMode) bool { return perm == modeStateDir.Perm || perm == stateDirOpen }
+
+func (b *Builder) stateDirStep() engine.Step {
+	s := engine.DirStep(b.Sys, b.M.T(KeyStepStateDir, StateDir), StateDir, modeStateDir)
+	s.Done = func(context.Context) (bool, error) {
+		info, err := b.Sys.Stat(StateDir)
+		if errors.Is(err, fs.ErrNotExist) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		return info.IsDir && StateDirModeOK(info.Mode.Perm()), nil
+	}
+	return s
 }

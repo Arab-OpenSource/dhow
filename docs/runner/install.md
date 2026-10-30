@@ -76,7 +76,7 @@ sudo dhow-runner install
 1. **يفحص** Podman 5.4+، و`crun`، و`newuidmap`، وcgroup v2، وuser namespaces، وإعداد AppArmor، ويتوقف بسبب واضح إذا نقص شيء. ومع `install_packages: true` يثبّت `podman` و`crun` و`uidmap` (أو `shadow-utils`) من التوزيعة أولًا، ثم يفحص إصدار Podman مرة أخرى.
 2. **ينشئ مستخدم النظام** `dhow-runner`، دون shell للدخول، ومجلده المنزلي `/var/lib/dhow-runner`.
 3. **يعطيه 1048576 من الـ sub-ids** (16 تشغيلًا في الوقت نفسه، 65536 لكل تشغيل) في `/etc/subuid` و`/etc/subgid`، من أول نطاق فارغ يبدأ من 1048576 أو بعده.
-4. **ينشئ** `/var/lib/dhow-runner` (`0700 dhow-runner`) و`/etc/dhow-runner` (`0750 root:dhow-runner`).
+4. **ينشئ** `/var/lib/dhow-runner` (`0700 dhow-runner`، ومشغّل Podman يجعلها `0711` عندما يبدأ) و`/etc/dhow-runner` (`0750 root:dhow-runner`).
 5. **يكتب** `/etc/dhow-runner/runner.env` (`0640 root:dhow-runner`) بعنوان السيرفر، والـ origin، وملف CA، والمشغّل، والسعة، وأي [إعدادات](configuration.md) أخرى. الأسطر التي أضفتها بنفسك ولا تديرها الإجابات تبقى كما هي.
 6. **يثبّت** الملف التنفيذي في `/usr/local/bin/dhow-runner` والخدمة في `/etc/systemd/system/dhow-runner.service`.
 7. **يسجّل** جهاز التشغيل برمز التسجيل. يقرأ الرمز من الملف، أو من الإدخال القياسي، أو من السؤال المخفي، ويحفظه في الذاكرة فقط: لا يضعه أبدًا في سطر أوامر، ولا في متغيرات البيئة، ولا في سجل، ولا على القرص.

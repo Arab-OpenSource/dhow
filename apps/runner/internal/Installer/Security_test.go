@@ -2,6 +2,7 @@ package installer_test
 
 import (
 	"context"
+	"io/fs"
 	"strings"
 	"testing"
 
@@ -139,4 +140,21 @@ func TestRemoveUserKeepsAnAccountTheInstallerDidNotCreate(t *testing.T) {
 	assert.Contains(t, out, "Keep the user dhow-runner: it existed before dhow-runner install")
 	assert.False(t, f.Ran("userdel"))
 	assert.Contains(t, f.Content(installer.SubUIDPath), "dhow-runner:")
+}
+
+func TestTheStateDirectoryMayBeTraversableOnceThePodmanDriverRan(t *testing.T) {
+	f, p := installed(t, debian13)
+	_ = f.Chmod(installer.StateDir, engine.FileMode{Perm: 0o711, Owner: installer.ServiceUser, Group: installer.ServiceUser})
+	out, err := doctor(f, p, installer.DoctorOptions{Fix: true})
+	require.NoError(t, err, out)
+	assert.Equal(t, fs.FileMode(0o711), f.ModeOf(installer.StateDir).Perm, "doctor --fix leaves the driver's 0711 alone")
+	out, err = install(t, f, p, basicAnswers)
+	require.NoError(t, err)
+	assert.Contains(t, out, "Create /var/lib/dhow-runner: already done")
+
+	_ = f.Chmod(installer.StateDir, engine.FileMode{Perm: 0o755, Owner: installer.ServiceUser, Group: installer.ServiceUser})
+	out, err = doctor(f, p, installer.DoctorOptions{})
+	require.ErrorIs(t, err, installer.ErrUnhealthy)
+	assert.Contains(t, out, "/var/lib/dhow-runner 0755")
+	assert.False(t, installer.StateDirModeOK(0o750))
 }

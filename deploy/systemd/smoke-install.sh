@@ -168,7 +168,8 @@ expect "the runner is online" wait_online
 expect "the unit is active and enabled" systemctl is-enabled --quiet dhow-runner
 expect "the runner runs as dhow-runner" test "$(ps -o user= -p "$(systemctl show -p MainPID --value dhow-runner)")" = dhow-runner
 expect "the token never reached the output" lacks "$token" "$work/install.log"
-expect "the state directory is 700 dhow-runner" test "$(stat -c '%a %U' /var/lib/dhow-runner)" = "700 dhow-runner"
+state_dir_private() { [[ $(stat -c '%a %U' /var/lib/dhow-runner) =~ ^7(00|11)\ dhow-runner$ ]]; }
+expect "the state directory is 700 or 711 dhow-runner" state_dir_private
 expect "runner.env is 640 root:dhow-runner" test "$(stat -c '%a %U:%G' /etc/dhow-runner/runner.env)" = "640 root:dhow-runner"
 expect "the runner user has its sub-ids" grep -q '^dhow-runner:[0-9]*:1048576$' /etc/subuid
 if [[ $identity != file ]] && systemd-creds encrypt --name=probe - - </dev/null >/dev/null 2>&1; then

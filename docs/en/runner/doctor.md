@@ -28,6 +28,8 @@ On a terminal it offers each proposed fix in turn. `--fix` applies them all with
 | The server answers | The server cannot be reached, or its certificate is not trusted. | The address, DNS, the firewall or `DHOW_RUNNER_CA_FILE`. |
 | The runner signs in | The server refuses the runner, or the service has not signed in since it started. | The message and the service log say why. |
 
+The state directory may be `0700` or `0711`. The Podman driver opens it to `0711` on every start (ADR-0056), so the job's user namespace can pass through it to reach its mounts and control socket; others can enter it but not list or read it. `doctor` accepts both, `--fix` never turns `0711` back into `0700`, and everything inside keeps its strict mode. The owner must still be `dhow-runner`, with no read or write bit for group or others.
+
 ## How it checks the sign-in
 
 A runner has one session at a time. If `doctor` signed in next to the running service, it would replace the service's session, and three replacements in ten minutes pause the runner as a suspected copy ([Copying a runner](register.md#copying-a-runner)). So while the service runs, `doctor` asks the server for a sign-in challenge only, which proves the server answers without opening a session, and reads the sign-in from the service log since its last start. When the service is stopped, `doctor` signs in itself.

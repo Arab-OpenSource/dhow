@@ -2,6 +2,7 @@ package installer
 
 import (
 	_ "embed"
+	"io/fs"
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
 	engine "github.com/Khaymah/dhow/internal/installer"
@@ -52,6 +53,7 @@ var (
 	modeConfigDir   = engine.FileMode{Perm: 0o750, Owner: "root", Group: ServiceUser}
 	modeEnvFile     = engine.FileMode{Perm: 0o640, Owner: "root", Group: ServiceUser}
 	modeStateDir    = engine.FileMode{Perm: 0o700, Owner: ServiceUser, Group: ServiceUser}
+	stateDirOpen    = fs.FileMode(0o711)
 )
 
 func CredDropIn() []byte {

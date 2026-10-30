@@ -45,7 +45,8 @@ func (d doctor) permissions() engine.Finding {
 			unsafe = append(unsafe, c.Path+" "+engine.ErrNotRegular.Error())
 			continue
 		}
-		if info.Mode.Perm() != c.Mode.Perm || info.UID != c.UID || info.GID != c.GID {
+		modeOK := info.Mode.Perm() == c.Mode.Perm || (c.Path == StateDir && StateDirModeOK(info.Mode.Perm()))
+		if !modeOK || info.UID != c.UID || info.GID != c.GID {
 			wrong = append(wrong, c)
 			details = append(details, fmt.Sprintf("%s %04o uid=%d gid=%d (%s %04o uid=%d gid=%d)",
 				c.Path, info.Mode.Perm(), info.UID, info.GID, d.m.T(engine.KeyWant), c.Mode.Perm, c.UID, c.GID))

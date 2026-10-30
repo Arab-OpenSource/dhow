@@ -76,7 +76,7 @@ Every step checks first whether it is already done, so running `install` again c
 1. **Checks** Podman 5.4+, `crun`, `newuidmap`, cgroup v2, user namespaces and the AppArmor switch, and stops with a clear reason if one is missing. With `install_packages: true` it installs `podman`, `crun` and `uidmap` (or `shadow-utils`) from the distribution first, then checks the Podman version again.
 2. **Creates the system user** `dhow-runner`, without a login shell, with `/var/lib/dhow-runner` as its home.
 3. **Gives it 1048576 sub-ids** (16 jobs at once, 65536 each) in `/etc/subuid` and `/etc/subgid`, from the first free range at or above 1048576.
-4. **Creates** `/var/lib/dhow-runner` (`0700 dhow-runner`) and `/etc/dhow-runner` (`0750 root:dhow-runner`).
+4. **Creates** `/var/lib/dhow-runner` (`0700 dhow-runner`; the Podman driver opens it to `0711` when it starts) and `/etc/dhow-runner` (`0750 root:dhow-runner`).
 5. **Writes** `/etc/dhow-runner/runner.env` (`0640 root:dhow-runner`) with the server address, origin, CA file, driver, capacity and any extra [settings](configuration.md). Lines you added by hand that the answers do not manage are kept.
 6. **Installs** the binary in `/usr/local/bin/dhow-runner` and the unit in `/etc/systemd/system/dhow-runner.service`.
 7. **Registers** the runner with the token. The token is read from the file, standard input or the hidden prompt, and only ever kept in memory: it is never put on a command line, in the environment, in a log or on disk.

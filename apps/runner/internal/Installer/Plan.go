@@ -80,7 +80,7 @@ func (b *Builder) Build() engine.Plan {
 	p.Steps = append(p.Steps,
 		b.userStep(),
 		b.subIDStep(),
-		engine.DirStep(b.Sys, b.M.T(KeyStepStateDir, StateDir), StateDir, modeStateDir),
+		b.stateDirStep(),
 		engine.DirStep(b.Sys, b.M.T(KeyStepConfigDir, ConfigDir), ConfigDir, modeConfigDir),
 		b.track(engine.FileStep(b.Sys, b.M.T(KeyStepEnvFile), EnvFilePath, RenderEnv(b.A, b.existing(EnvFilePath)), modeEnvFile)),
 		b.track(b.binaryStep()),
