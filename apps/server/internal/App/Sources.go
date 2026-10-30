@@ -12,6 +12,7 @@ import (
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
 	middleware "github.com/Khaymah/dhow/apps/server/internal/Core/Middleware"
+	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
 	triggers "github.com/Khaymah/dhow/apps/server/internal/Core/Triggers"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 	sources "github.com/Khaymah/dhow/apps/server/internal/Modules/Sources"
@@ -28,14 +29,14 @@ func (p pendingPipelines) Deliver(ctx context.Context, _ *sqlc.Queries, t trigge
 	return triggers.Accepted{}, nil
 }
 
-func sourcesFor(in Infra, bus *eventbus.Bus) (*sources.Service, error) {
+func sourcesFor(in Infra, bus *eventbus.Bus, limiter ratelimit.Limiter) (*sources.Service, error) {
 	sink := in.Triggers
 	if sink == nil {
 		sink = pendingPipelines{log: in.Log}
 	}
 	return sources.NewService(sources.Options{
 		DB: in.Pool, Bus: bus, Log: in.Log, Now: in.Now, SecretKey: in.Config.SecretKey, PublicURL: in.Config.PublicURL.String(),
-		Triggers: sink, Dialer: netguard.Dialer{Policy: netguard.Policy{Allowed: in.Config.Sources.AllowPrivate}, Lookup: in.GitLookup, Dial: in.GitDial},
+		Triggers: sink, Limiter: limiter, Dialer: netguard.Dialer{Policy: netguard.Policy{Allowed: in.Config.Sources.AllowPrivate}, Lookup: in.GitLookup, Dial: in.GitDial},
 	})
 }
 

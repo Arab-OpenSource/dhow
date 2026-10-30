@@ -15,6 +15,7 @@ import (
 	appcrypto "github.com/Khaymah/dhow/apps/server/internal/Core/Crypto"
 	apperrors "github.com/Khaymah/dhow/apps/server/internal/Core/Errors"
 	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
 	triggers "github.com/Khaymah/dhow/apps/server/internal/Core/Triggers"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 	dbtx "github.com/Khaymah/dhow/apps/server/internal/Database/Tx"
@@ -46,6 +47,7 @@ type Options struct {
 	PublicURL string
 	Triggers  triggers.Sink
 	Dialer    netguard.Dialer
+	Limiter   ratelimit.Limiter
 	Providers map[string]Provider
 }
 
@@ -57,6 +59,7 @@ type Service struct {
 	publicURL  string
 	triggers   triggers.Sink
 	dialer     netguard.Dialer
+	limiter    ratelimit.Limiter
 	deployKeys *appcrypto.Sealer
 	webhooks   *appcrypto.Sealer
 	providers  map[string]Provider
@@ -77,7 +80,7 @@ func NewService(o Options) (*Service, error) {
 	}
 	s := &Service{
 		db: o.DB, bus: o.Bus, log: o.Log, now: now, publicURL: strings.TrimSuffix(o.PublicURL, "/"), triggers: o.Triggers,
-		dialer: o.Dialer, deployKeys: deployKeys, webhooks: webhooks, providers: map[string]Provider{},
+		dialer: o.Dialer, limiter: o.Limiter, deployKeys: deployKeys, webhooks: webhooks, providers: map[string]Provider{},
 	}
 	s.providers[models.ProviderGeneric] = genericProvider{keys: s}
 	for name, p := range o.Providers {

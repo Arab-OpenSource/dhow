@@ -16,7 +16,7 @@ PUT /api/v1/organizations/{id}/projects/{projectId}/repository
 
 - Dhow accepts `ssh://user@host[:port]/path`, `user@host:path` (turned into `ssh://`), and `https://host[:port]/path` for a public repository without a password.
 - Dhow refuses an IP address, a password in the address, `..`, a path or name that starts with `-`, and any other address such as `file://` and `ext::`.
-- Linking needs `project.manage` on the project.
+- Linking needs `project.manage` on the project. With SSH, Dhow connects to the server on every `PUT`, so it accepts 30 such requests an hour per user and 120 per organization, then answers `429`.
 - The first link answers `201` with the webhook secret (`WebhookSecret`). **Copy it now: it is never shown again.** Any later `PUT` answers `200` without a secret, and keeps the deploy key and the webhook address.
 
 ## The deploy key

@@ -92,6 +92,12 @@ func (s *Service) Link(ctx context.Context, org, project uuid.UUID, in models.Li
 	}
 	plan := linkPlan{org: org, project: project, url: u, branch: branch, actor: p.UserID}
 	if u.Transport == gitsource.TransportSSH {
+		if err := activeProject(ctx, s.queries(), org, project); err != nil {
+			return models.Linked{}, err
+		}
+		if err := s.chargeDial(ctx, org, p.UserID); err != nil {
+			return models.Linked{}, err
+		}
 		key, err := s.fetchHostKey(ctx, u)
 		if err != nil {
 			return models.Linked{}, err

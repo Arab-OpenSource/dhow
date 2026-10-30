@@ -39,6 +39,9 @@ const (
 	DeployKeyComment         = "dhow-deploy-key"
 	DeployKeyRotationGrace   = 24 * time.Hour
 	HostKeyFetchTimeout      = 10 * time.Second
+	GitDialPerUser           = 30
+	GitDialPerOrg            = 120
+	GitDialWindow            = time.Hour
 	CommitStatusInterval     = 5 * time.Second
 	CommitStatusBatch        = 20
 	CommitStatusClaim        = 2 * time.Minute

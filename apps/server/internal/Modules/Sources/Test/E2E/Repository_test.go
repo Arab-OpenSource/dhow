@@ -2,8 +2,10 @@ package e2e_test
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apptest "github.com/Khaymah/dhow/apps/server/internal/App/Testing"
+	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 )
 
 var webhookURL = regexp.MustCompile(`^` + regexp.QuoteMeta(apptest.PublicOrigin) + `/webhooks/git/[0-9a-f]{32}$`)
@@ -217,4 +220,76 @@ func TestRepositoryRoutesFollowTheProjectRole(t *testing.T) {
 	requireError(t, w.link(t, w.owner, "https://git.example.com/c.git"), http.StatusConflict, "PROJECT_ARCHIVED")
 	requireError(t, w.post(w.owner, "rotate-webhook-secret", nil), http.StatusConflict, "PROJECT_ARCHIVED")
 	repo(t, w.owner.Get(w.path("")))
+}
+
+func closedPort(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	_, port, err := net.SplitHostPort(ln.Addr().String())
+	require.NoError(t, err)
+	require.NoError(t, ln.Close())
+	return port
+}
+
+func notSSH(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			_, _ = c.Write([]byte("HTTP/1.0 400 Bad Request\r\n\r\n"))
+			_ = c.Close()
+		}
+	}()
+	_, port, err := net.SplitHostPort(ln.Addr().String())
+	require.NoError(t, err)
+	return port
+}
+
+func TestAnUnreachableHostAnswersTheSameWhateverFailed(t *testing.T) {
+	w := newWorld(t, true)
+	refused := w.link(t, w.owner, "ssh://git@git.example.test:"+closedPort(t)+"/app.git")
+	handshake := w.link(t, w.owner, "ssh://git@git.example.test:"+notSSH(t)+"/app.git")
+	requireError(t, refused, http.StatusBadGateway, "GIT_HOST_UNREACHABLE")
+	requireError(t, handshake, http.StatusBadGateway, "GIT_HOST_UNREACHABLE")
+	assert.Equal(t, string(refused.Raw), string(handshake.Raw))
+}
+
+func TestDialsAreRateLimitedPerUserAndPerOrganization(t *testing.T) {
+	w := newWorld(t, true)
+	address := "ssh://git@git.example.test:" + closedPort(t) + "/app.git"
+	for range config.GitDialPerUser {
+		requireError(t, w.link(t, w.owner, address), http.StatusBadGateway, "GIT_HOST_UNREACHABLE")
+	}
+	before := dials.Load()
+	limited := w.link(t, w.owner, address)
+	requireError(t, limited, http.StatusTooManyRequests, "RATE_LIMITED")
+	assert.NotEmpty(t, limited.Header.Get("Retry-After"))
+	assert.Equal(t, before, dials.Load(), "a limited request never dials")
+
+	for i := range config.GitDialPerOrg/config.GitDialPerUser - 1 {
+		admin := w.env.SeedSession(w.env.SeedUser(w.org, "admin"+strconv.Itoa(i)+"@example.com", "a long password for an admin", "admin"))
+		for range config.GitDialPerUser {
+			requireError(t, w.link(t, admin, address), http.StatusBadGateway, "GIT_HOST_UNREACHABLE")
+		}
+	}
+	fresh := w.env.SeedSession(w.env.SeedUser(w.org, "late@example.com", "a long password for an admin", "admin"))
+	requireError(t, w.link(t, fresh, address), http.StatusTooManyRequests, "RATE_LIMITED")
+	linked(t, w.link(t, fresh, "https://git.example.com/a.git"), http.StatusCreated)
+}
+
+func TestAnArchivedProjectIsRefusedBeforeAnyDial(t *testing.T) {
+	w := newWorld(t, true)
+	srv := startSSH(t)
+	_, err := w.env.Pool.Exec(context.Background(), `UPDATE "Projects" SET "State" = 'archived', "ArchivedAt" = now() WHERE "Id" = $1`, w.project)
+	require.NoError(t, err)
+	before := dials.Load()
+	requireError(t, w.link(t, w.owner, "ssh://git@git.example.test:"+srv.port+"/app.git"), http.StatusConflict, "PROJECT_ARCHIVED")
+	assert.Equal(t, before, dials.Load())
 }

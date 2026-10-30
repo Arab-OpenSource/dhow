@@ -146,7 +146,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	if err != nil {
 		return nil, err
 	}
-	sourcesService, err := sourcesFor(in, bus)
+	sourcesService, err := sourcesFor(in, bus, limiter)
 	if err != nil {
 		return nil, err
 	}

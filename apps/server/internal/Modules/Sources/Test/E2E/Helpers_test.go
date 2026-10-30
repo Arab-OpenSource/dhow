@@ -12,6 +12,7 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/uuid"
@@ -63,7 +64,10 @@ func lookup(_ context.Context, host string) ([]netip.Addr, error) {
 	return out, nil
 }
 
+var dials atomic.Int64
+
 func toLoopback(ctx context.Context, network, address string) (net.Conn, error) {
+	dials.Add(1)
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, err
