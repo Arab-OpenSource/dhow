@@ -61,6 +61,13 @@ const (
 )
 
 const (
+	CodeProjectArchived      = "PROJECT_ARCHIVED"
+	CodeForkPolicyNotAllowed = "FORK_POLICY_NOT_ALLOWED"
+	KeyProjectArchived       = "errors.projectArchived"
+	KeyForkPolicyNotAllowed  = "errors.forkPolicyNotAllowed"
+)
+
+const (
 	KeyInternal           = "errors.internal"
 	KeyNotFound           = "errors.notFound"
 	KeyMethodNotAllowed   = "errors.methodNotAllowed"

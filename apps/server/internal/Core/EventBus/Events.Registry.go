@@ -62,6 +62,10 @@ const (
 
 	JobCreated         = "job.created"
 	JobCancelRequested = "job.cancel_requested"
+
+	ProjectCreated  = "project.created"
+	ProjectUpdated  = "project.updated"
+	ProjectArchived = "project.archived"
 )
 
 func AuditedEvents() []string {
@@ -118,6 +122,9 @@ func AuditedEvents() []string {
 		RunnerRegistrationTokenRevoked,
 		JobCreated,
 		JobCancelRequested,
+		ProjectCreated,
+		ProjectUpdated,
+		ProjectArchived,
 	}
 }
 

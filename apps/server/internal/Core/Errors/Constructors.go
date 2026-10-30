@@ -216,3 +216,11 @@ func RateLimited(retryAfter time.Duration) *AppError {
 func InvitationSendLimit() *AppError {
 	return New(http.StatusConflict, CodeInvitationSendLimit, KeyInvitationSendLimit)
 }
+
+func ProjectArchived() *AppError {
+	return New(http.StatusConflict, CodeProjectArchived, KeyProjectArchived)
+}
+
+func ForkPolicyNotAllowed() *AppError {
+	return New(http.StatusForbidden, CodeForkPolicyNotAllowed, KeyForkPolicyNotAllowed)
+}

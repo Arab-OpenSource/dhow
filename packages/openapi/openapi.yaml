@@ -48,6 +48,11 @@ tags:
     description: >-
       Jobs, their attempts and steps. Served by the Jobs module. In M3 a job is created directly from a job spec; runners
       lease jobs over Connect on /runner-api/.
+  - name: projects
+    description: >-
+      Projects of an organization: the unit that a repository, its pipeline and its runs belong to. Served by the
+      Projects module. A role binding on a project raises or lowers the caller's organization role inside that project
+      only (Owner and Admin are never lowered).
   - name: overview
     description: >-
       Counts for the home page and the sidebar, in one request. Served by the Overview module, which reads the jobs,
@@ -2134,6 +2139,140 @@ paths:
                 type: string
         default:
           $ref: "#/components/responses/Error"
+  /organizations/{id}/projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List the projects of an organization
+      description: >-
+        Needs `project.read` in the organization. By name, optionally filtered by state. A caller who is not a member
+        gets 404.
+      security:
+        - SessionCookie: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: State
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ProjectState"
+      responses:
+        "200":
+          description: A page of projects.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectListResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a project
+      description: >-
+        Needs `project.manage` in the organization itself: a binding on another project does not allow creating one.
+        The slug is unique among the organization's projects, archived ones included, and never changes. A new project
+        waits for approval on pull requests from forks; only an Admin or the Owner may choose `automatic`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+      responses:
+        "201":
+          description: The new project.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Read a project
+      description: >-
+        Needs `project.read` on the project, after its role bindings. A project of another organization is 404.
+      security:
+        - SessionCookie: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The project.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Rename a project or change its pipeline path or fork policy
+      description: >-
+        Needs `project.manage` on the project, after its role bindings, so a Developer with a Maintainer binding may
+        change that project and no other. Setting `ForkPolicy` to `automatic` needs Admin on the project and answers
+        403 `ROLE_NOT_ALLOWED` otherwise. An archived project answers 409 `PROJECT_ARCHIVED`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectRequest"
+      responses:
+        "200":
+          description: The updated project.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/projects/{projectId}/archive:
+    post:
+      operationId: archiveProject
+      tags: [projects]
+      summary: Archive a project
+      description: >-
+        Needs `project.manage` on the project. Idempotent. An archived project keeps its history and its slug, and
+        starts no new runs.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The archived project.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+        default:
+          $ref: "#/components/responses/Error"
   /organizations/{id}/overview:
     get:
       operationId: getOrganizationOverview
@@ -2652,6 +2791,13 @@ components:
         format: uuid
     BindingId:
       name: bindingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProjectId:
+      name: projectId
       in: path
       required: true
       schema:
@@ -4714,7 +4860,7 @@ components:
               $ref: "#/components/schemas/LinkedIdentityChange"
     ApiTokenScope:
       type: string
-      enum: [org.read, org.update, member.read, member.manage, audit.read, runner.read, runner.manage, job.read, job.cancel]
+      enum: [org.read, org.update, member.read, member.manage, audit.read, runner.read, runner.manage, job.read, job.cancel, project.read, project.manage]
     ApiTokenStatus:
       type: string
       enum: [active, expired, revoked, inactive]
@@ -5292,6 +5438,100 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/Job"
+    ProjectState:
+      type: string
+      enum: [active, archived]
+    ForkPolicy:
+      type: string
+      enum: [approval, automatic]
+      description: >-
+        `approval`: a pull request from a fork waits until a Maintainer or above approves it. `automatic`: it runs at
+        once, still without secrets or environments.
+    Project:
+      type: object
+      additionalProperties: false
+      required: [Id, OrganizationId, Slug, Name, PipelinePath, ForkPolicy, State, CreatedAt, UpdatedAt]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        OrganizationId:
+          type: string
+          format: uuid
+        Slug:
+          type: string
+        Name:
+          type: string
+        PipelinePath:
+          type: string
+          description: Where the pipeline file lives in the repository, relative to its root.
+        ForkPolicy:
+          $ref: "#/components/schemas/ForkPolicy"
+        State:
+          $ref: "#/components/schemas/ProjectState"
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+        ArchivedAt:
+          type: string
+          format: date-time
+    ProjectResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Project"
+    ProjectListResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Project"
+    CreateProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [Name, Slug]
+      properties:
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        Slug:
+          type: string
+          minLength: 1
+          maxLength: 63
+          description: Lowercase letters, digits and single hyphens.
+        PipelinePath:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: >-
+            Defaults to `.dhow.yml`. A relative path that ends in `.yml` or `.yaml`, without `..`, a leading slash or a
+            backslash.
+        ForkPolicy:
+          $ref: "#/components/schemas/ForkPolicy"
+    UpdateProjectRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        Name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        PipelinePath:
+          type: string
+          minLength: 1
+          maxLength: 255
+        ForkPolicy:
+          $ref: "#/components/schemas/ForkPolicy"
     OverviewJobs:
       type: object
       nullable: true

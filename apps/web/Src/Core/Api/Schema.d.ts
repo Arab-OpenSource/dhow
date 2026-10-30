@@ -1416,6 +1416,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the projects of an organization
+         * @description Needs `project.read` in the organization. By name, optionally filtered by state. A caller who is not a member gets 404.
+         */
+        get: operations["listProjects"];
+        put?: never;
+        /**
+         * Create a project
+         * @description Needs `project.manage` in the organization itself: a binding on another project does not allow creating one. The slug is unique among the organization's projects, archived ones included, and never changes. A new project waits for approval on pull requests from forks; only an Admin or the Owner may choose `automatic`.
+         */
+        post: operations["createProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/projects/{projectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read a project
+         * @description Needs `project.read` on the project, after its role bindings. A project of another organization is 404.
+         */
+        get: operations["getProject"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a project or change its pipeline path or fork policy
+         * @description Needs `project.manage` on the project, after its role bindings, so a Developer with a Maintainer binding may change that project and no other. Setting `ForkPolicy` to `automatic` needs Admin on the project and answers 403 `ROLE_NOT_ALLOWED` otherwise. An archived project answers 409 `PROJECT_ARCHIVED`.
+         */
+        patch: operations["updateProject"];
+        trace?: never;
+    };
+    "/organizations/{id}/projects/{projectId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive a project
+         * @description Needs `project.manage` on the project. Idempotent. An archived project keeps its history and its slug, and starts no new runs.
+         */
+        post: operations["archiveProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/overview": {
         parameters: {
             query?: never;
@@ -2645,7 +2713,7 @@ export interface components {
             Data?: components["schemas"]["LinkedIdentityChange"];
         };
         /** @enum {string} */
-        ApiTokenScope: "org.read" | "org.update" | "member.read" | "member.manage" | "audit.read" | "runner.read" | "runner.manage" | "job.read" | "job.cancel";
+        ApiTokenScope: "org.read" | "org.update" | "member.read" | "member.manage" | "audit.read" | "runner.read" | "runner.manage" | "job.read" | "job.cancel" | "project.read" | "project.manage";
         /**
          * @description `inactive` means the creator is no longer a member of the organization, so the token does nothing until it expires or is revoked.
          * @enum {string}
@@ -2936,6 +3004,50 @@ export interface components {
         JobListResponse: components["schemas"]["Envelope"] & {
             Data?: components["schemas"]["Job"][];
         };
+        /** @enum {string} */
+        ProjectState: "active" | "archived";
+        /**
+         * @description `approval`: a pull request from a fork waits until a Maintainer or above approves it. `automatic`: it runs at once, still without secrets or environments.
+         * @enum {string}
+         */
+        ForkPolicy: "approval" | "automatic";
+        Project: {
+            /** Format: uuid */
+            Id: string;
+            /** Format: uuid */
+            OrganizationId: string;
+            Slug: string;
+            Name: string;
+            /** @description Where the pipeline file lives in the repository, relative to its root. */
+            PipelinePath: string;
+            ForkPolicy: components["schemas"]["ForkPolicy"];
+            State: components["schemas"]["ProjectState"];
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            UpdatedAt: string;
+            /** Format: date-time */
+            ArchivedAt?: string;
+        };
+        ProjectResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Project"];
+        };
+        ProjectListResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Project"][];
+        };
+        CreateProjectRequest: {
+            Name: string;
+            /** @description Lowercase letters, digits and single hyphens. */
+            Slug: string;
+            /** @description Defaults to `.dhow.yml`. A relative path that ends in `.yml` or `.yaml`, without `..`, a leading slash or a backslash. */
+            PipelinePath?: string;
+            ForkPolicy?: components["schemas"]["ForkPolicy"];
+        };
+        UpdateProjectRequest: {
+            Name?: string;
+            PipelinePath?: string;
+            ForkPolicy?: components["schemas"]["ForkPolicy"];
+        };
         OverviewJobs: {
             /** @description Jobs in the `leased` or `running` state. */
             Running: number;
@@ -3008,6 +3120,7 @@ export interface components {
         TeamId: string;
         InvitationId: string;
         BindingId: string;
+        ProjectId: string;
         Page: number;
         Limit: number;
     };
@@ -5110,6 +5223,136 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listProjects: {
+        parameters: {
+            query?: {
+                Page?: components["parameters"]["Page"];
+                Limit?: components["parameters"]["Limit"];
+                State?: components["schemas"]["ProjectState"];
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of projects. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description The new project. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The project. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated project. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    archiveProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The archived project. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
                 };
             };
             default: components["responses"]["Error"];

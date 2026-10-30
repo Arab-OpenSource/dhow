@@ -17,6 +17,7 @@ import (
 	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 	appcrypto "github.com/Khaymah/dhow/apps/server/internal/Core/Crypto"
 	eventbus "github.com/Khaymah/dhow/apps/server/internal/Core/EventBus"
+	jobqueue "github.com/Khaymah/dhow/apps/server/internal/Core/JobQueue"
 	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
 	oidcauth "github.com/Khaymah/dhow/apps/server/internal/Core/Oidc"
 	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
@@ -30,6 +31,7 @@ import (
 	jobs "github.com/Khaymah/dhow/apps/server/internal/Modules/Jobs"
 	overview "github.com/Khaymah/dhow/apps/server/internal/Modules/Overview"
 	preferences "github.com/Khaymah/dhow/apps/server/internal/Modules/Preferences"
+	projects "github.com/Khaymah/dhow/apps/server/internal/Modules/Projects"
 	runners "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Khaymah/dhow/apps/server/internal/Modules/Session"
 	settings "github.com/Khaymah/dhow/apps/server/internal/Modules/Settings"
@@ -64,6 +66,8 @@ type Wired struct {
 	RunnerHandler http.Handler
 	Identity      *identity.Service
 	Jobs          *jobs.Service
+	JobQueue      jobqueue.Queue
+	Projects      *projects.Service
 	LogPool       *pgxpool.Pool
 	Retention     *retention.Runner
 	Alerts        *alerts.Service
@@ -158,6 +162,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Audit:     auditService,
 		Runners:   runnersService,
 		Jobs:      jobsService,
+		Projects:  projects.NewService(projects.Options{DB: in.Pool, Bus: bus, Log: in.Log, Now: in.Now}),
 		Overview:  overview.NewService(overview.Options{Counter: sqlc.New(in.Pool), Log: in.Log, Now: in.Now}),
 		Tokens:    tokensService,
 		Prefs:     preferences.NewService(in.Pool, in.Log, in.Now),
@@ -171,9 +176,9 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Web:       in.Web,
 	}
 	wired := &Wired{
-		Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, LogPool: logPool, Settings: store,
+		Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, JobQueue: jobsService.Queue(),
+		Projects: opts.Projects, LogPool: logPool, Settings: store, Alerts: alertsService,
 		Retention: retention.New(retention.Options{Pool: in.Pool, Log: in.Log, Now: in.Now}),
-		Alerts:    alertsService,
 	}
 	if in.Config.RunnerPlaneSeparate() {
 		wired.RunnerHandler = RunnerPlaneServer(opts)

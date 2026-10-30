@@ -18,15 +18,17 @@ import (
 
 // Defines values for ApiTokenScope.
 const (
-	AuditRead    ApiTokenScope = "audit.read"
-	JobCancel    ApiTokenScope = "job.cancel"
-	JobRead      ApiTokenScope = "job.read"
-	MemberManage ApiTokenScope = "member.manage"
-	MemberRead   ApiTokenScope = "member.read"
-	OrgRead      ApiTokenScope = "org.read"
-	OrgUpdate    ApiTokenScope = "org.update"
-	RunnerManage ApiTokenScope = "runner.manage"
-	RunnerRead   ApiTokenScope = "runner.read"
+	AuditRead     ApiTokenScope = "audit.read"
+	JobCancel     ApiTokenScope = "job.cancel"
+	JobRead       ApiTokenScope = "job.read"
+	MemberManage  ApiTokenScope = "member.manage"
+	MemberRead    ApiTokenScope = "member.read"
+	OrgRead       ApiTokenScope = "org.read"
+	OrgUpdate     ApiTokenScope = "org.update"
+	ProjectManage ApiTokenScope = "project.manage"
+	ProjectRead   ApiTokenScope = "project.read"
+	RunnerManage  ApiTokenScope = "runner.manage"
+	RunnerRead    ApiTokenScope = "runner.read"
 )
 
 // Valid indicates whether the value is a known member of the ApiTokenScope enum.
@@ -45,6 +47,10 @@ func (e ApiTokenScope) Valid() bool {
 	case OrgRead:
 		return true
 	case OrgUpdate:
+		return true
+	case ProjectManage:
+		return true
+	case ProjectRead:
 		return true
 	case RunnerManage:
 		return true

@@ -58,11 +58,14 @@ export const AUDIT_ACTIONS: Readonly<Record<string, IAuditAction>> = {
   'runner.registration_token_revoked': { Icon: 'key', Bad: false },
   'job.created': { Icon: 'queue', Bad: false },
   'job.cancel_requested': { Icon: 'queue', Bad: false },
+  'project.created': { Icon: 'layers', Bad: false },
+  'project.updated': { Icon: 'layers', Bad: false },
+  'project.archived': { Icon: 'layers', Bad: true },
   'system.instance.setupCompleted': { Icon: 'shield', Bad: false },
   'system.settings.changed': { Icon: 'settings', Bad: false },
 };
 
-const GROUPS = ['auth', 'identity', 'runner', 'job', 'system'] as const;
+const GROUPS = ['auth', 'identity', 'runner', 'job', 'project', 'system'] as const;
 
 export type TAuditGroup = (typeof GROUPS)[number] | 'other';
 
@@ -71,6 +74,7 @@ const GROUP_ICONS: Record<TAuditGroup, TIconName> = {
   identity: 'building',
   runner: 'server',
   job: 'queue',
+  project: 'layers',
   system: 'settings',
   other: 'file',
 };
