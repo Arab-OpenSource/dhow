@@ -4,6 +4,8 @@ go 1.27.0
 
 toolchain go1.27.3
 
+godebug multipathtcp=0
+
 require (
 	connectrpc.com/connect v1.21.0
 	github.com/coreos/go-oidc/v3 v3.21.0
