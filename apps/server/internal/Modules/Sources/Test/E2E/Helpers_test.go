@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 
 	"github.com/google/uuid"
@@ -71,6 +72,9 @@ func toLoopback(ctx context.Context, network, address string) (net.Conn, error) 
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return nil, err
+	}
+	if port == "22" {
+		return nil, &net.OpError{Op: "dial", Net: network, Err: syscall.ECONNREFUSED}
 	}
 	var d net.Dialer
 	return d.DialContext(ctx, network, net.JoinHostPort("127.0.0.1", port))
