@@ -62,7 +62,10 @@ func mountWebhooks(root chi.Router, o Options) {
 	}
 	root.Group(func(r chi.Router) {
 		r.Use(webhookStack(o)...)
-		sources.WebhookRoutes(r, sources.WebhookDeps{Service: o.Sources, Limiter: o.Webhooks, Log: o.Log})
+		sources.WebhookRoutes(r, sources.WebhookDeps{
+			Service: o.Sources, Limiter: o.Webhooks, Log: o.Log, MaxBytes: o.Config.Sources.WebhookMaxBytes,
+			InflightBytes: o.Config.Sources.WebhookInflightBytes,
+		})
 	})
 }
 

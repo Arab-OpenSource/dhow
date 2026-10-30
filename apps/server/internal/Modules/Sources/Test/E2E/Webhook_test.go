@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -184,13 +185,91 @@ func TestWebhookRequestLimits(t *testing.T) {
 	assert.Zero(t, w.deliveries(t))
 }
 
-func TestUnknownHooksAreRateLimited(t *testing.T) {
+func TestFailedSignaturesAreLimitedPerHookWithoutStarvingRealDeliveries(t *testing.T) {
 	w := newWorld(t, false)
-	path := config.WebhookPrefix + "/git/not-a-hook"
+	r, secret := linkHTTPS(t, w)
 	var last apptest.Response
-	for range config.WebhookPerHookMax + 1 {
-		last = w.send(path, map[string]string{"X-Gitea-Signature": "00"}, []byte("{}"))
+	for i := range config.WebhookFailuresPerHook + 1 {
+		last = w.env.WebhookFrom(apptest.WebhookRequest{
+			Method: http.MethodPost, Path: hookPath(r), Headers: map[string]string{"X-Gitea-Signature": "00", "X-Gitea-Delivery": "x"},
+			Body: []byte("{}"), RemoteAddr: "203.0.113." + strconv.Itoa(1+i%200) + ":5000",
+		})
 	}
 	requireError(t, last, http.StatusTooManyRequests, "RATE_LIMITED")
 	assert.NotEmpty(t, last.Header.Get("Retry-After"))
+
+	body := giteaPush("refs/heads/main", sha)
+	good := w.env.WebhookFrom(apptest.WebhookRequest{
+		Method: http.MethodPost, Path: hookPath(r), Headers: giteaHeaders(secret, "real-1", body), Body: body, RemoteAddr: "192.0.2.50:443",
+	})
+	require.Equal(t, http.StatusAccepted, good.Status, "a viewer who knows the hook id cannot starve real deliveries: %s", good.Raw)
+}
+
+func TestTheBucketBeforeAuthenticationIsPerHookAndClient(t *testing.T) {
+	w := newWorld(t, false)
+	r, secret := linkHTTPS(t, w)
+	body := giteaPush("refs/heads/main", sha)
+	for i := range config.WebhookPerHookMax {
+		b := giteaPush("refs/heads/b"+strconv.Itoa(i), sha)
+		res := w.env.WebhookFrom(apptest.WebhookRequest{
+			Method: http.MethodPost, Path: hookPath(r), Headers: giteaHeaders(secret, "flood-"+strconv.Itoa(i), b), Body: b,
+			RemoteAddr: "[2001:db8:1:1::" + strconv.FormatInt(int64(i%60+1), 16) + "]:5000",
+		})
+		require.Less(t, res.Status, 300, string(res.Raw))
+	}
+	same := w.env.WebhookFrom(apptest.WebhookRequest{
+		Method: http.MethodPost, Path: hookPath(r), Headers: giteaHeaders(secret, "flood-x", body), Body: body,
+		RemoteAddr: "[2001:db8:1:1::ffff]:5000",
+	})
+	requireError(t, same, http.StatusTooManyRequests, "RATE_LIMITED")
+	other := w.env.WebhookFrom(apptest.WebhookRequest{
+		Method: http.MethodPost, Path: hookPath(r), Headers: giteaHeaders(secret, "other-1", body), Body: body, RemoteAddr: "192.0.2.50:443",
+	})
+	assert.Equal(t, http.StatusAccepted, other.Status, string(other.Raw))
+}
+
+func TestUnknownHooksUseOnlyThePerAddressBucket(t *testing.T) {
+	w := newWorld(t, false)
+	for i := range 20 {
+		res := w.send(config.WebhookPrefix+"/git/"+strings.Repeat(strconv.Itoa(i%10), 32), map[string]string{"X-Gitea-Signature": "00"}, []byte("{}"))
+		requireError(t, res, http.StatusUnauthorized, "WEBHOOK_REJECTED")
+	}
+	assert.Zero(t, w.env.CountRows(`SELECT count(*) FROM "RateLimits" WHERE "Key" LIKE 'webhook-hook%'`))
+	assert.Equal(t, 1, w.env.CountRows(`SELECT count(*) FROM "RateLimits" WHERE "Key" LIKE 'webhook-ip:%'`))
+}
+
+func TestBodiesAreReadOnlyForKnownHooksAndWithinTheBudget(t *testing.T) {
+	fake := &apptest.FakeTriggers{}
+	env := apptest.NewWithOptions(t, apptest.Options{Triggers: fake, GitLookup: lookup, Profile: func(c *config.Config) {
+		c.Sources.WebhookInflightBytes = 1024
+	}})
+	owner, d := env.SetupAndLogin()
+	org := env.OrganizationID(d.OrgSlug)
+	w := world{env: env, owner: owner, org: org, project: env.SeedProject(org, uuid.MustParse(owner.UserID)), triggers: fake}
+	r, secret := linkHTTPS(t, w)
+
+	big := []byte(`{"ref":"refs/heads/main","after":"` + sha + `","pad":"` + strings.Repeat("x", 2048) + `"}`)
+	busy := w.send(hookPath(r), giteaHeaders(secret, "big-1", big), big)
+	requireError(t, busy, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE")
+	assert.NotEmpty(t, busy.Header.Get("Retry-After"))
+
+	unknown := w.send(config.WebhookPrefix+"/git/"+strings.Repeat("b", 32), giteaHeaders(secret, "big-2", big), big)
+	requireError(t, unknown, http.StatusUnauthorized, "WEBHOOK_REJECTED")
+
+	small := giteaPush("refs/heads/main", sha)
+	chunked := w.env.WebhookFrom(apptest.WebhookRequest{
+		Method: http.MethodPost, Path: hookPath(r), Headers: giteaHeaders(secret, "chunked-1", small), Body: small, Chunked: true,
+	})
+	requireError(t, chunked, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE")
+	assert.Equal(t, http.StatusAccepted, w.send(hookPath(r), giteaHeaders(secret, "small-1", small), small).Status)
+}
+
+func TestChunkedBodiesStopAtTheLimit(t *testing.T) {
+	w := newWorld(t, false)
+	r, secret := linkHTTPS(t, w)
+	huge := make([]byte, config.WebhookMaxBytesDefault+1)
+	res := w.env.WebhookFrom(apptest.WebhookRequest{
+		Method: http.MethodPost, Path: hookPath(r), Headers: giteaHeaders(secret, "chunked-big", huge), Body: huge, Chunked: true,
+	})
+	requireError(t, res, http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE")
 }

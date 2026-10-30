@@ -27,6 +27,10 @@ const (
 	WebhookTimeout           = 15 * time.Second
 	WebhookPerIPMax          = 1200
 	WebhookPerHookMax        = 300
+	WebhookFailuresPerHook   = 100
+	WebhookInflightDefault   = 64 << 20
+	WebhookDrainBytes        = 16 << 10
+	WebhookBusyRetry         = 2 * time.Second
 	WebhookRateWindow        = time.Minute
 	WebhookSecretBytes       = 32
 	WebhookHookIDBytes       = 16
@@ -45,12 +49,13 @@ const (
 )
 
 type Sources struct {
-	WebhookMaxBytes int64
-	AllowPrivate    []netip.Prefix
+	WebhookMaxBytes      int64
+	WebhookInflightBytes int64
+	AllowPrivate         []netip.Prefix
 }
 
 func DefaultSources() Sources {
-	return Sources{WebhookMaxBytes: WebhookMaxBytesDefault}
+	return Sources{WebhookMaxBytes: WebhookMaxBytesDefault, WebhookInflightBytes: WebhookInflightDefault}
 }
 
 func loadSources(getenv func(string) string) (Sources, []error) {

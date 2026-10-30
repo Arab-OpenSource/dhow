@@ -26,18 +26,26 @@ type Incoming struct {
 	Body     []byte
 }
 
-type hooked struct {
-	repo   sqlc.Repository
-	found  bool
-	secret []byte
+type Hook struct {
+	provider string
+	repo     sqlc.Repository
+	found    bool
+	secret   []byte
 }
 
-func (s *Service) hook(ctx context.Context, provider, hookID string) (hooked, error) {
+func (h Hook) Known() bool { return h.found }
+
+func (h Hook) ID() string { return h.repo.HookId.String }
+
+func (s *Service) OpenHook(ctx context.Context, provider, hookID string) (Hook, error) {
+	if _, ok := s.providers[provider]; !ok {
+		return Hook{}, apperrors.WebhookRejected()
+	}
 	dummy, err := randomBytes(config.WebhookSecretBytes)
 	if err != nil {
-		return hooked{}, err
+		return Hook{}, err
 	}
-	out := hooked{secret: dummy}
+	out := Hook{provider: provider, secret: dummy}
 	if !hookIDPattern.MatchString(hookID) {
 		return out, nil
 	}
@@ -54,18 +62,23 @@ func (s *Service) hook(ctx context.Context, provider, hookID string) (hooked, er
 			"repository_id", row.Repository.Id)
 		return out, nil
 	}
-	return hooked{repo: row.Repository, found: true, secret: secret}, nil
+	return Hook{provider: provider, repo: row.Repository, found: true, secret: secret}, nil
 }
 
 func (s *Service) Receive(ctx context.Context, in Incoming) (models.Received, error) {
-	provider, ok := s.providers[in.Provider]
-	if !ok {
-		return models.Received{}, apperrors.WebhookRejected()
-	}
-	h, err := s.hook(ctx, in.Provider, in.HookID)
+	h, err := s.OpenHook(ctx, in.Provider, in.HookID)
 	if err != nil {
 		return models.Received{}, err
 	}
+	return s.ReceiveFor(ctx, h, in.Header, in.Body)
+}
+
+func (s *Service) ReceiveFor(ctx context.Context, h Hook, header http.Header, body []byte) (models.Received, error) {
+	provider, ok := s.providers[h.provider]
+	if !ok {
+		return models.Received{}, apperrors.WebhookRejected()
+	}
+	in := Incoming{Provider: h.provider, HookID: h.ID(), Header: header, Body: body}
 	req := WebhookRequest{Header: in.Header, Body: in.Body, Secret: h.secret, Now: s.now()}
 	proof, err := provider.VerifyWebhook(req)
 	switch {

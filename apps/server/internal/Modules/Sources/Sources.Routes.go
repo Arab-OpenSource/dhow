@@ -53,9 +53,11 @@ func Routes(r chi.Router, d Deps) {
 }
 
 type WebhookDeps struct {
-	Service *Service
-	Limiter ratelimit.Limiter
-	Log     *slog.Logger
+	Service       *Service
+	Limiter       ratelimit.Limiter
+	Log           *slog.Logger
+	MaxBytes      int64
+	InflightBytes int64
 }
 
 type webhookRoute struct {
@@ -93,7 +95,15 @@ func webhookGate(table *policy.Table, log *slog.Logger) func(http.Handler) http.
 
 func WebhookRoutes(r chi.Router, d WebhookDeps) {
 	table := policy.NewTable(WebhookPolicies()...)
-	h := &webhookHandler{service: d.Service, limiter: d.Limiter, log: d.Log}
+	maxBytes := d.MaxBytes
+	if maxBytes <= 0 {
+		maxBytes = config.WebhookMaxBytesDefault
+	}
+	inflight := d.InflightBytes
+	if inflight <= 0 {
+		inflight = config.WebhookInflightDefault
+	}
+	h := &webhookHandler{service: d.Service, limiter: d.Limiter, log: d.Log, maxBytes: maxBytes, budget: NewByteBudget(inflight)}
 	gate := webhookGate(table, d.Log)
 	for _, route := range webhookRoutes(h) {
 		r.With(gate).Method(route.Rule.Method, route.Rule.Path, route.Handler)

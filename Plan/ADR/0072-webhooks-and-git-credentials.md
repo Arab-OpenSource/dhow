@@ -30,11 +30,15 @@
 - **`policy.Webhook(method, path)`:** نوع جديد `ScopeWebhook`، `POST` بس وتحت `/webhooks/` بس ومن غير إجراء ولا مؤسسة ولا توكنات. الـ rule مابيعدّيش على `auth.Guard` أصلًا (ولو حد حطّه هناك بيترفض لأن مفيش إجراء)، وبيتحقق منه gate صغير في `Sources.Routes.go` من الـ route pattern.
 - **الـ routes بتتسجّل من الـ rules نفسها:** `WebhookRoutes` بتلف على `WebhookPolicies()` وبتسجّل كل واحد بـ `r.Method(route.Rule.Method, route.Rule.Path, ...)`، فمفيش route من غير rule.
 - **الـ hook (`webhook_rules.py`):** `policy.Webhook` مسموح في `Modules/Sources/Sources.Routes.go` و`Core/Policy` والاختبارات بس، وأي route في الملف ده لازم يتسجّل من الـ rule، ولازم يبقى فيه `policy.Webhook` و`policy.NewTable`. ومعاه `test_webhook_hooks.py`.
-- **حد الطلبات:** `Core/RateLimit` بالـ Postgres limiter، 1200 في الدقيقة لكل شبكة (IP، أو /64 لـ IPv6) و300 في الدقيقة لكل `HookId`، قبل أي قراية من قاعدة البيانات. والـ `HookId` الغلط بيتحسب كلّه تحت اسم واحد (`unknown`)، فمابيملاش `"RateLimits"`.
+- **حد الطلبات (اتعدّل بعد المراجعة الأمنية):** `Core/RateLimit` بالـ Postgres limiter على تلات مراحل:
+  - **قبل أي حاجة:** 1200 في الدقيقة لكل شبكة (عنوان IPv4، أو /64 لـ IPv6). ده الحد الوحيد اللي بيلمس `HookId` مش موجود، فالـ `HookId` اللي شكله صح ومش موجود مابيعملش صفوف في `"RateLimits"`.
+  - **بعد ما المستودع يتلاقى وقبل قراية الـ body:** 300 في الدقيقة لكل (`HookId`، شبكة العميل)، مش لكل `HookId` لوحده. Viewer يعرف الـ `HookId` (بيشوفه في `GET`) مايقدرش يخلّص حد المزوّد الحقيقي من عنوانه.
+  - **بعد ما التوقيع يفشل بس:** 100 في الدقيقة لكل `HookId`، والزيادة بتاخد `429` بدل `401`. الطلبات الصح مابتعدّش عليه أصلًا، فمحاولات التخمين مابتوقّفش الـ deliveries الحقيقية.
 
 ### 4. التحقق من الـ webhook (Git عام)
-- **الترتيب:** الحجم، وبعده الحد، وبعده البحث عن المستودع بالـ `HookId` (128 bit عشوائي، مش الـ `"Id"`)، وبعده التوقيع على الـ body الخام بـ `hmac.Equal`، وبعدها بس الـ JSON.
-- **المستودع مش موجود:** بنحسب HMAC بسر عشوائي برضه، والرد هو نفس `401 WEBHOOK_REJECTED` بالظبط لأي توقيع غلط أو سر مستودع تاني أو body متعدّل أو `t` قديم أو `HookId` مش موجود. ومن غير صف delivery.
+- **الترتيب (اتعدّل بعد المراجعة الأمنية):** حد الشبكة، وبعده البحث عن المستودع بالـ `HookId` (128 bit عشوائي، مش الـ `"Id"`) **قبل قراية الـ body**، وبعده حد (`HookId`، العميل)، وبعده قراية الـ body بـ `http.MaxBytesReader` (افتراضيًا 5 MiB، لأن الـ push الكبير طبيعي)، وبعده التوقيع على الـ body الخام بـ `hmac.Equal`، وبعدها بس الـ JSON.
+- **ميزانية الذاكرة:** كل الـ bodies اللي بتتقري في نفس الوقت ليها سقف واحد للـ process (64 MiB افتراضيًا، semaphore بالوزن): الطلب بيحجز `Content-Length` أو الحد الأقصى لو مش معروف، ولو مفيش مكان `503` مع `Retry-After`.
+- **المستودع مش موجود:** مابنقراش الـ body غير drain صغير (16 KiB)، وبنعدّي على نفس مسار التحقق بسر عشوائي وbody فاضي، والرد هو نفس `401 WEBHOOK_REJECTED` بالظبط لأي توقيع غلط أو سر مستودع تاني أو body متعدّل أو `t` قديم أو `HookId` مش موجود. ومن غير صف delivery.
 - **التوقيعات الأربعة:** `X-Dhow-Signature: t=<unix>,v1=<hex>` على `t + "." + body` بمهلة ±5 دقايق (لحد 4 قيم `v1` عشان التجديد)، و`X-Forgejo-Signature` و`X-Gitea-Signature` (hex)، و`X-Hub-Signature-256` (`sha256=` + hex). بنتحقق من أول header موجود بالترتيب ده بس، وheader متكرر بيترفض.
 - **الـ delivery id:** `X-Dhow-Delivery` مع صيغتنا، و`X-Forgejo-Delivery` أو `X-Gitea-Delivery` أو `X-GitHub-Delivery` (Gitea بيبعته) مع التانيين. لازم `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`. لو التوقيع صح والـ id ناقص: `422`، لأن ده مش هيكشف حاجة لحد معهوش السر.
 - **الـ payload:** صيغتنا `{"Ref","Sha"}` بـ `DisallowUnknownFields`، أو push بتاع Gitea/Forgejo (`ref` و`after` و`pusher`). الـ ref بـ `internal/gitref` (فروع وtags بس) والـ sha 40 أو 64 hex صغير، وإلا `422`. وأي حدث غير `push` بيتسجّل `ignored` (`event_not_supported`).

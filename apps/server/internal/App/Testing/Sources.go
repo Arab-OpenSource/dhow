@@ -44,10 +44,30 @@ func (f *FakeTriggers) Received() []triggers.Trigger {
 
 func (e *Env) Webhook(method, path string, headers map[string]string, body []byte) Response {
 	e.T.Helper()
-	r := httptest.NewRequestWithContext(context.Background(), method, path, bytes.NewReader(body))
+	return e.WebhookFrom(WebhookRequest{Method: method, Path: path, Headers: headers, Body: body})
+}
+
+type WebhookRequest struct {
+	Method     string
+	Path       string
+	Headers    map[string]string
+	Body       []byte
+	RemoteAddr string
+	Chunked    bool
+}
+
+func (e *Env) WebhookFrom(req WebhookRequest) Response {
+	e.T.Helper()
+	r := httptest.NewRequestWithContext(context.Background(), req.Method, req.Path, bytes.NewReader(req.Body))
 	r.RemoteAddr = "198.51.100.20:4444"
+	if req.RemoteAddr != "" {
+		r.RemoteAddr = req.RemoteAddr
+	}
+	if req.Chunked {
+		r.ContentLength = -1
+	}
 	r.Header.Set("Content-Type", "application/json")
-	for k, v := range headers {
+	for k, v := range req.Headers {
 		r.Header.Set(k, v)
 	}
 	rec := httptest.NewRecorder()

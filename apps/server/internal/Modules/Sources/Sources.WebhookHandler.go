@@ -20,77 +20,108 @@ const (
 	messageWebhookAccepted  = "sources.webhook.accepted"
 	messageWebhookDuplicate = "sources.webhook.duplicate"
 	limitPerIP              = "webhook-ip"
-	limitPerHook            = "webhook-hook"
-	unknownHook             = "unknown"
+	limitPerHookClient      = "webhook-hook-client"
+	limitHookFailures       = "webhook-hook-fail"
 )
 
 type webhookHandler struct {
-	service *Service
-	limiter ratelimit.Limiter
-	log     *slog.Logger
+	service  *Service
+	limiter  ratelimit.Limiter
+	log      *slog.Logger
+	maxBytes int64
+	budget   *ByteBudget
 }
 
 func (h *webhookHandler) provider(name string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) { h.receive(w, r, name) }
 }
 
-func hookSubject(hookID string) string {
-	if hookIDPattern.MatchString(hookID) {
-		return hookID
-	}
-	return unknownHook
-}
-
-func (h *webhookHandler) limit(ctx context.Context, hookID string) *apperrors.AppError {
+func (h *webhookHandler) take(ctx context.Context, name string, most int, subject string) *apperrors.AppError {
 	if h.limiter == nil {
 		return nil
 	}
-	checks := []struct {
-		limit   ratelimit.Limit
-		subject string
-	}{
-		{ratelimit.Limit{Name: limitPerIP, Max: config.WebhookPerIPMax, Window: config.WebhookRateWindow}, ratelimit.Network(middleware.ClientIPFrom(ctx))},
-		{ratelimit.Limit{Name: limitPerHook, Max: config.WebhookPerHookMax, Window: config.WebhookRateWindow}, hookSubject(hookID)},
+	d, err := h.limiter.Take(ctx, ratelimit.Limit{Name: name, Max: most, Window: config.WebhookRateWindow}, subject)
+	if err != nil {
+		return apperrors.Internal(err)
 	}
-	for _, c := range checks {
-		d, err := h.limiter.Take(ctx, c.limit, c.subject)
-		if err != nil {
-			return apperrors.Internal(err)
-		}
-		if !d.Allowed {
-			return apperrors.RateLimited(d.RetryAfter)
-		}
+	if !d.Allowed {
+		return apperrors.RateLimited(d.RetryAfter)
 	}
 	return nil
 }
 
 func (h *webhookHandler) fail(w http.ResponseWriter, r *http.Request, ae *apperrors.AppError) {
-	if ae.Status >= http.StatusInternalServerError {
+	if ae.Status >= http.StatusInternalServerError && ae.Status != http.StatusServiceUnavailable {
 		h.log.ErrorContext(r.Context(), "webhook failed", "request_id", middleware.RequestIDFrom(r.Context()), "error", ae)
 	}
 	response.Error(w, r, ae)
 }
 
-func (h *webhookHandler) receive(w http.ResponseWriter, r *http.Request, provider string) {
-	ctx := r.Context()
-	hookID := chi.URLParam(r, "hookId")
-	if ae := h.limit(ctx, hookID); ae != nil {
-		h.fail(w, r, ae)
-		return
+func busy() *apperrors.AppError {
+	e := apperrors.ServiceUnavailable()
+	e.RetryAfter = config.WebhookBusyRetry
+	return e
+}
+
+func (h *webhookHandler) read(w http.ResponseWriter, r *http.Request, known bool) ([]byte, *apperrors.AppError) {
+	if !known {
+		_, _ = io.CopyN(io.Discard, r.Body, config.WebhookDrainBytes)
+		return nil, nil
 	}
-	body, err := io.ReadAll(r.Body)
+	if r.ContentLength > h.maxBytes {
+		return nil, apperrors.PayloadTooLarge()
+	}
+	weight := h.maxBytes
+	if r.ContentLength >= 0 {
+		weight = r.ContentLength
+	}
+	if !h.budget.TryAcquire(weight) {
+		return nil, busy()
+	}
+	defer h.budget.Release(weight)
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, weight))
 	if err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
-			h.fail(w, r, apperrors.PayloadTooLarge())
-			return
+			return nil, apperrors.PayloadTooLarge()
 		}
-		h.fail(w, r, apperrors.BadRequest())
+		return nil, apperrors.BadRequest()
+	}
+	return body, nil
+}
+
+func (h *webhookHandler) receive(w http.ResponseWriter, r *http.Request, provider string) {
+	ctx := r.Context()
+	network := ratelimit.Network(middleware.ClientIPFrom(ctx))
+	if ae := h.take(ctx, limitPerIP, config.WebhookPerIPMax, network); ae != nil {
+		h.fail(w, r, ae)
 		return
 	}
-	res, err := h.service.Receive(ctx, Incoming{Provider: provider, HookID: hookID, Header: r.Header, Body: body})
+	hook, err := h.service.OpenHook(ctx, provider, chi.URLParam(r, "hookId"))
 	if err != nil {
 		h.fail(w, r, apperrors.From(err))
+		return
+	}
+	if hook.Known() {
+		if ae := h.take(ctx, limitPerHookClient, config.WebhookPerHookMax, hook.ID()+"/"+network); ae != nil {
+			h.fail(w, r, ae)
+			return
+		}
+	}
+	body, ae := h.read(w, r, hook.Known())
+	if ae != nil {
+		h.fail(w, r, ae)
+		return
+	}
+	res, err := h.service.ReceiveFor(ctx, hook, r.Header, body)
+	if err != nil {
+		ae := apperrors.From(err)
+		if hook.Known() && ae.Code == apperrors.CodeWebhookRejected {
+			if limited := h.take(ctx, limitHookFailures, config.WebhookFailuresPerHook, hook.ID()); limited != nil {
+				ae = limited
+			}
+		}
+		h.fail(w, r, ae)
 		return
 	}
 	if res.Duplicate {
