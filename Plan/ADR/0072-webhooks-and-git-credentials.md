@@ -2,7 +2,7 @@
 
 - **الحالة:** مقبول. القرارات 11 و12 و15 مفوَّضة في [`M4-Pipelines.md`](../M4-Pipelines.md)، والباقي تفاصيل تنفيذ مفوَّضة ومكتوبة هنا.
 - **التاريخ:** 2026-10-30
-- **بيكمّل:** [ADR-0070](0070-ports-in-core-and-project-permissions.md) (الـ ports جوه transaction اللي بينادي) و[ADR-0057](0057-egress-proxy-implementation.md) (نطاقات الـ egress). وطريقة ربط Git نفسها في [ADR-0073](0073-git-connection-oauth-for-setup-deploy-keys-for-access.md).
+- **بيكمّل:** [ADR-0070](0070-ports-in-core-and-project-permissions.md) (الـ ports جوه transaction اللي بينادي) و[ADR-0057](0057-egress-proxy-implementation.md) (نطاقات الـ egress). وطريقة ربط Git نفسها في [ADR-0074](0074-git-connection-oauth-for-setup-deploy-keys-for-access.md).
 
 ## السياق
 - M4.4 أول مرحلة بيدخل فيها كلام من بره على السيرفر من غير جلسة: Gitea وForgejo وأي سكربت بيبعتوا webhooks على `/webhooks/...`.
@@ -15,7 +15,7 @@
 ### 1. القرار 11: الـ webhook تلميح، والحقيقة من المزوّد
 - الـ webhook بيقول «فيه push على الـ ref ده بالـ sha ده»، ومش أكتر. سر متسرّب ممكن يبعت sha قديم على `main`، فمحدش بيثق فيه لوحده.
 - **Git عام:** الـ checkout (M4.7) بيتأكد إن الـ sha موجود في تاريخ الـ ref اللي اتعمله fetch، وإلا `CHECKOUT_REF_MOVED`. والـ run واحد لكل (مشروع، حدث، ref، sha) في M4.8.
-- **GitHub وGitLab:** التأكد بالـ API إن الـ sha رأس الـ ref (و`superseded` لو اتحرك) في M4.5 وM4.6. بالنسبة لـ GitLab ده مربوط بـ [ADR-0073](0073-git-connection-oauth-for-setup-deploy-keys-for-access.md): من غير توكن دايم، التأكد بيبقى من الـ checkout زي Git عام لحد ما M4.6 يقرر.
+- **GitHub وGitLab:** التأكد بالـ API إن الـ sha رأس الـ ref (و`superseded` لو اتحرك) في M4.5 وM4.6. بالنسبة لـ GitLab ده مربوط بـ [ADR-0074](0074-git-connection-oauth-for-setup-deploy-keys-for-access.md): من غير توكن دايم، التأكد بيبقى من الـ checkout زي Git عام لحد ما M4.6 يقرر.
 - **من غير ما نستنى M4.8:** `Sources` بيسجّل الـ delivery ويسلّم الـ `Trigger` بس، ومابيعملش أي حاجة تانية بالـ sha.
 
 ### 2. القرار 12: credentials المزوّدين متشفّرة بـ `Core/Crypto.Sealer`
@@ -85,7 +85,7 @@
 - **من مراجعة M4.3 (`--` قبل المسار):** `gitsource.ListFileArgs(sha, path)` بيطلّع `git ls-tree -z --full-tree <sha> -- <path>`، و`ReadBlobArgs` بيقرا الـ blob بالـ id اللي اتحقق منه. و`FetchArgs` بيحط `--` قبل العنوان والـ ref. ومعاهم اختبار بيشغّل `git` حقيقي على ملف اسمه `-x.yml` ويثبت إن من غير `--` الأمر بيفشل ومعاه بيقرا الملف. اللي هيشغّلهم هو الـ discovery job والـ checkout (M4.7 وM4.8).
 
 ### 11. الجداول
-- `"GitConnections"` و`"GitSetupFlows"` اتعملوا بالأعمدة اللي في الخطة، و`"GitSetupFlows"."Kind"` فيه `gitlab_oauth` كمان (ADR-0073). مالهمش queries لحد M4.5 وM4.6، وتنضيف `"GitSetupFlows"` بالـ retention بييجي مع أول صف.
+- `"GitConnections"` و`"GitSetupFlows"` اتعملوا بالأعمدة اللي في الخطة، و`"GitSetupFlows"."Kind"` فيه `gitlab_oauth` كمان (ADR-0074). مالهمش queries لحد M4.5 وM4.6، وتنضيف `"GitSetupFlows"` بالـ retention بييجي مع أول صف.
 - `"Repositories"."ConnectionId"` بيبقى `NULL` لـ Git عام بس (CHECK)، لأن الـ credential بتاعه لكل مستودع مش لكل مؤسسة.
 - `"Repositories"` عليه FK مركّب (`"ProjectId"`, `"OrganizationId"`) على `"Projects"`، زي `"JobAttempts"` على `"Runners"`: كده مستودع مايقدرش يبقى في مؤسسة غير مؤسسة مشروعه. وده مختلف عن `"RoleBindings"."ProjectId"` اللي اتعمل قبل الجدول.
 - `"CommitStatusReports"` عليه FK مركّب على `"Repositories"`، و`"RunId"` من غير FK لحد ما `"PipelineRuns"` ييجي.
