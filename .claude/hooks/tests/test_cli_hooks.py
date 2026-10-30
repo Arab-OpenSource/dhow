@@ -83,9 +83,32 @@ class CliImportRules(unittest.TestCase):
         self.assertIsNone(edit(CLI + "Lint/Lint.go", src))
 
     def test_the_cli_stays_offline(self):
-        for path in ("net", "net/http", "net/http/httptrace", "net/rpc", "net/smtp", "crypto/tls", "os/exec", "plugin"):
+        for path in ("net", "net/http", "net/http/httptrace", "net/rpc", "net/smtp", "net/mail", "crypto/tls", "os/exec",
+                     "plugin", "syscall", "golang.org/x/sys/unix", "golang.org/x/sys/windows", "golang.org/x/net/proxy",
+                     "unsafe", "C"):
             for rel in (CLI + "Lint/Lint.go", CLI + "App/App.go", "apps/cli/cmd/dhow/main.go"):
                 self.assertIn("works offline", edit(rel, std(path)), rel + " -> " + path)
+
+    def test_backquoted_imports_are_caught(self):
+        for path in ("net", "os/exec", "syscall", "golang.org/x/sys/unix"):
+            self.assertIn("works offline", edit(CLI + "Lint/Lint.go", "package x\n\nimport `" + path + "`\n"), path)
+        src = "package x\n\nimport (\n\tx `net/http`\n)\n"
+        self.assertIn("works offline", edit("apps/cli/cmd/dhow/main.go", src))
+        self.assertIn("forbidden import", edit(CLI + "Lint/Lint.go", imp("Output").replace('"', "`")))
+        src = "package x\n\nimport `github.com/Khaymah/dhow/apps/server/internal/Config`\n"
+        self.assertIn("never imports server", edit(CLI + "Lint/Lint.go", src))
+
+    def test_process_and_raw_system_calls_are_refused_everywhere(self):
+        calls = ("os.StartProcess(name, argv, attr)", "syscall.Exec(p, a, e)", "syscall.ForkExec(p, a, at)",
+                 "syscall.Syscall(n, a, b, c)", "syscall.RawSyscall6(n, a, b, c, d, e, f)", "syscall.Socket(1, 2, 3)",
+                 "syscall.Connect(fd, sa)", "syscall.StartProcess (p, a, at)")
+        for call in calls:
+            for rel in (CLI + "App/App.go", "apps/cli/cmd/dhow/main.go", CLI + "App/app_test.go", "apps/cli/cmd/dhow/main_test.go"):
+                self.assertIn("never starts a process", edit(rel, "package x\n\nfunc f() { _ = " + call + " }\n"), rel + " " + call)
+
+    def test_process_calls_outside_the_cli_are_untouched(self):
+        self.assertIsNone(edit("internal/safefile/x.go", "package x\n\nfunc f() { _, _ = os.StartProcess(a, b, c) }\n"))
+        self.assertIsNone(edit(CLI + "App/App.go", "package x\n\nfunc f() { _ = myos.StartProcessName }\n"))
 
     def test_parsing_packages_are_not_network(self):
         for path in ("net/url", "net/netip", "os", "io/fs", "encoding/json"):

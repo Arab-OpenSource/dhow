@@ -13,9 +13,12 @@ CLI_ALLOWED_IMPORTS = {
 }
 PASCAL_DIR = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 PASCAL_GO_FILE = re.compile(r"^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*\.go$")
-GO_IMPORT_PATH = re.compile(r'"' + re.escape(CLI_IMPORT_PREFIX) + r'([^"]+)"')
-OTHER_APP_IMPORT = re.compile(r'"github\.com/Khaymah/dhow/apps/(server|runner|web)/')
-NETWORK_IMPORT = re.compile(r'"(net|net/http(/[^"]*)?|net/rpc(/[^"]*)?|net/smtp|crypto/tls|os/exec|plugin)"')
+GO_IMPORT_PATH = re.compile(r'["`]' + re.escape(CLI_IMPORT_PREFIX) + r'([^"`]+)["`]')
+OTHER_APP_IMPORT = re.compile(r'["`]github\.com/Khaymah/dhow/apps/(server|runner|web)/')
+NETWORK_IMPORT = re.compile(
+    r'["`](net|net/http(/[^"`]*)?|net/rpc(/[^"`]*)?|net/smtp|net/mail|crypto/tls|os/exec|plugin|syscall|'
+    r'golang\.org/x/sys(/[^"`]*)?|golang\.org/x/net(/[^"`]*)?|unsafe|C)["`]')
+PROCESS_CALL = re.compile(r"\b(os\.StartProcess|syscall\.(Exec|ForkExec|StartProcess|Syscall6?|RawSyscall6?|Socket|Connect))\s*\(")
 
 
 def is_cli_go(rel):
@@ -50,6 +53,17 @@ def cli_import_violation(src, dst):
     return None
 
 
+def check_cli_process_calls(rel, added, old, **_):
+    if not is_cli_go(rel):
+        return None
+    for line in new_lines(added, old):
+        found = PROCESS_CALL.search(line)
+        if found:
+            return (f"{rel}: dhow lint never starts a process or makes a raw system call ({found.group(1)}). "
+                    "Shared helpers in internal/ (safefile) do the few system calls the CLI needs.")
+    return None
+
+
 def check_cli_imports(rel, added, old, **_):
     if not is_cli_go(rel) or is_test(rel):
         return None
@@ -60,8 +74,9 @@ def check_cli_imports(rel, added, old, **_):
             return (f"{rel}: the CLI never imports server, runner or web code. Shared code lives in internal/ "
                     "(pipelinespec, buildinfo).")
         if NETWORK_IMPORT.search(line):
-            return (f"{rel}: dhow lint works offline, so the CLI never imports network or process packages "
-                    "(net, net/http, crypto/tls, os/exec). The no-network test in apps/cli/cmd/dhow proves it.")
+            return (f"{rel}: dhow lint works offline, so the CLI never imports network, process or raw system "
+                    "packages (net, net/http, crypto/tls, os/exec, syscall, golang.org/x/sys, unsafe, cgo). "
+                    "The no-network test in apps/cli/cmd/dhow proves it.")
         for m in GO_IMPORT_PATH.finditer(line):
             target = m.group(1).split("/")[0]
             if target not in CLI_LAYERS:

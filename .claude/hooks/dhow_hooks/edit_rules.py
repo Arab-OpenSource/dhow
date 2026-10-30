@@ -591,6 +591,7 @@ CHECKS = (
     runner_rules.check_shared_imports,
     cli_rules.check_cli_layout,
     cli_rules.check_cli_imports,
+    cli_rules.check_cli_process_calls,
     check_ts,
     web_rules.check_web_imports,
     web_rules.check_web_text,
