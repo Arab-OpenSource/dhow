@@ -27,6 +27,9 @@ func TestTheSameBadFilesGiveTheSameCodes(t *testing.T) {
 			var report output.Report
 			require.NoError(t, json.Unmarshal([]byte(out), &report))
 			_, want := pipelinespec.Check([]byte(tc.Source))
+			for i := range want {
+				want[i].Path = output.Printable(want[i].Path)
+			}
 			got := make([]pipelinespec.Issue, 0, len(report.Issues))
 			codes := []string{}
 			for _, i := range report.Issues {
@@ -143,15 +146,20 @@ func TestErrorsAreTranslated(t *testing.T) {
 
 func TestHostileNamesCannotDriveTheTerminal(t *testing.T) {
 	dir := t.TempDir()
-	src := pipelinespectest.Job("    \"x\\e]0;owned\\a\\u202e\": 1\n    steps: [{run: x}]\n")
-	path := filepath.Join(dir, "evil\x1b[2J.yml")
+	src := pipelinespectest.Job("    \"x\\e]0;owned\\a\\u202e\\u009b31m\": 1\n    steps: [{run: x}]\n")
+	path := filepath.Join(dir, "evil\x1b[2J\u202e\u009b.yml")
 	require.NoError(t, os.WriteFile(path, []byte(src), 0o600))
-	out, _, code := run([]string{"lint", path}, nil)
-	assert.Equal(t, ExitInvalid, code)
-	assert.Contains(t, out, "UNKNOWN_KEY")
-	assert.NotContains(t, out, "\x1b")
-	assert.NotContains(t, out, "\x07")
-	assert.NotContains(t, out, "\u202e")
-	assert.Contains(t, out, `\u001b`)
-	assert.Contains(t, out, `\u202e`)
+	for _, format := range []string{FormatText, FormatJSON} {
+		out, _, code := run([]string{"lint", "--format", format, path}, nil)
+		assert.Equal(t, ExitInvalid, code)
+		assert.Contains(t, out, "UNKNOWN_KEY")
+		for _, raw := range []string{"\x1b", "\x07", "\u202e", "\u009b"} {
+			assert.NotContains(t, out, raw, "%s output holds %q", format, raw)
+		}
+		escaped := `\u202e`
+		if format == FormatJSON {
+			escaped = `\\u202e`
+		}
+		assert.Contains(t, out, escaped, format)
+	}
 }

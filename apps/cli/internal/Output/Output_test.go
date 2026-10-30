@@ -128,7 +128,9 @@ func TestPrintable(t *testing.T) {
 		"x\u202ey":                `x\u202ey`,
 		"bad\xffbyte":             `bad\xffbyte`,
 		"\U000e0001":              `\U000e0001`,
-		`C:\work\.dhow.yml`:       `C:\work\.dhow.yml`,
+		`C:\work\.dhow.yml`:       `C:\\work\\.dhow.yml`,
+		"a\u202eb\u009b31m":       `a\u202eb\u009b31m`,
+		`\u001b`:                  `\\u001b`,
 	}
 	for in, want := range cases {
 		assert.Equal(t, want, Printable(in), strconv.Quote(in))

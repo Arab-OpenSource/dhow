@@ -21,7 +21,7 @@ func run(args []string, env map[string]string) (string, string, int) {
 }
 
 func TestGoldenOutput(t *testing.T) {
-	fixtures := map[string]int{"valid": ExitValid, "warnings": ExitValid, "errors": ExitInvalid, "unknown-key": ExitInvalid}
+	fixtures := map[string]int{"valid": ExitValid, "warnings": ExitValid, "errors": ExitInvalid, "unknown-key": ExitInvalid, "hostile-key": ExitInvalid}
 	for name, want := range fixtures {
 		for _, format := range []string{FormatText, FormatJSON} {
 			for _, lang := range []string{"en", "ar"} {

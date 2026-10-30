@@ -30,12 +30,12 @@ type ReportIssue struct {
 
 func NewReport(c Catalog, r lint.Result) Report {
 	rep := Report{
-		SchemaVersion: SchemaVersion, File: r.Path, Lang: c.Lang, Valid: r.Errors() == 0,
+		SchemaVersion: SchemaVersion, File: Printable(r.Path), Lang: c.Lang, Valid: r.Errors() == 0,
 		Errors: r.Errors(), Warnings: r.Warnings(), Issues: make([]ReportIssue, 0, len(r.Issues)),
 	}
 	for _, i := range r.Issues {
 		rep.Issues = append(rep.Issues, ReportIssue{
-			Code: i.Code, Severity: string(i.Severity), Path: i.Path,
+			Code: i.Code, Severity: string(i.Severity), Path: Printable(i.Path),
 			Line: i.Position.Line, Column: i.Position.Column, Message: c.Issue(i),
 		})
 	}

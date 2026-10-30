@@ -89,6 +89,8 @@ func Printable(s string) string {
 		switch {
 		case r == utf8.RuneError && size == 1:
 			fmt.Fprintf(&b, `\x%02x`, s[i])
+		case r == '\\':
+			b.WriteString(`\\`)
 		case unicode.IsPrint(r):
 			b.WriteRune(r)
 		case r <= 0xFFFF:

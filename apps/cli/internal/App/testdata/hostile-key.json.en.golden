@@ -1,0 +1,26 @@
+{
+  "SchemaVersion": 1,
+  "File": "testdata/hostile-key.dhow.yml",
+  "Lang": "en",
+  "Valid": false,
+  "Errors": 2,
+  "Warnings": 0,
+  "Issues": [
+    {
+      "Code": "UNKNOWN_KEY",
+      "Severity": "error",
+      "Path": "jobs.build.a\\u202eb\\u009b31m",
+      "Line": 7,
+      "Column": 5,
+      "Message": "this key is not part of the pipeline spec"
+    },
+    {
+      "Code": "UNKNOWN_KEY",
+      "Severity": "error",
+      "Path": "jobs.build.C:\\\\work",
+      "Line": 8,
+      "Column": 5,
+      "Message": "this key is not part of the pipeline spec"
+    }
+  ]
+}
