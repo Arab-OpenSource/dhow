@@ -1,0 +1,7 @@
+testdata/errors.dhow.yml:6:5: خطأ DAG_CYCLE في jobs.build.needs: قائمة needs لهذا التشغيل تكوّن دائرة
+testdata/errors.dhow.yml:7:5: تحذير IMAGE_NOT_PINNED في jobs.build.image: الصورة غير مثبّتة بالـ digest: يرفضها جهاز التشغيل إلا إذا سُمح بالصور غير المثبّتة
+testdata/errors.dhow.yml:9:9: خطأ RUN_EXPRESSION_NOT_ALLOWED في jobs.build.steps[0].run: ${{ }} غير مسموح داخل run: مرّر القيمة عبر env واقرأها كمتغيّر
+testdata/errors.dhow.yml:11:5: خطأ DAG_CYCLE في jobs.deploy.needs: قائمة needs لهذا التشغيل تكوّن دائرة
+testdata/errors.dhow.yml:13:5: خطأ SECRETS_IN_IF في jobs.deploy.if: لا يمكن استخدام الأسرار في شرط أبدًا
+testdata/errors.dhow.yml:15:9: خطأ USES_NOT_PINNED في jobs.deploy.steps[0].uses: الإضافة في uses يجب تثبيتها بالـ digest (name@sha256:...)
+testdata/errors.dhow.yml: الأخطاء 5، والتحذيرات 1. يرفض السيرفر خطوات النشر هذه.

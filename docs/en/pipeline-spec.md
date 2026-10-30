@@ -244,7 +244,7 @@ The UI will offer a visual pipeline editor (a jobs graph plus step forms), inten
 
 ## 11. Validation
 
-`dhow lint` (CLI), the editor and the server all use the same Go validator. They check the YAML, the schema, the DAG, the matrix, CEL type errors, unpinned plugins and policy violations.
+`dhow lint` (CLI), the editor and the server all use the same Go validator. They check the YAML, the schema, the DAG, the matrix, CEL type errors, unpinned plugins and policy violations. To install and use `dhow lint`, see [The `dhow` CLI](cli.md).
 
 - Every problem has a stable code (`UPPER_SNAKE`, for example `DAG_CYCLE` or `RUN_EXPRESSION_NOT_ALLOWED`), a path (`jobs.build.steps[2].run`), a line and a column. A message never repeats the value itself, in case a secret was pasted by mistake.
 - `error` stops the run, and `warning` (such as a tag-only image) shows in the lint output and the UI.

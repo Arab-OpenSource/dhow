@@ -400,7 +400,7 @@ class ServerImportRules(unittest.TestCase):
         self.assertIsNone(edit(SERVER + "Modules/System/Test/Support/Fakes.go", imp("App")))
 
     def test_other_module_imports_are_not_flagged_outside_the_server(self):
-        self.assertIsNone(edit("apps/cli/x.go", imp("Modules/System")))
+        self.assertIsNone(edit("deploy/bench/x.go", imp("Modules/System")))
 
 
 class DatabaseRules(unittest.TestCase):

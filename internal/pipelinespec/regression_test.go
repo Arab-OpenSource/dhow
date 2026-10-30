@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -31,14 +32,35 @@ func regexArtifactFlood(jobs int) string {
 	return b.String()
 }
 
+const slowBackstop = 5 * time.Second
+
 func TestRegexArtifactFloodFailsFast(t *testing.T) {
-	src := regexArtifactFlood(8)
-	start := time.Now()
-	_, issues := Check([]byte(src))
-	elapsed := time.Since(start)
-	t.Logf("regex flood: %v", elapsed)
-	assert.True(t, HasErrors(issues))
-	assert.Less(t, elapsed, 200*time.Millisecond)
+	cases := []struct {
+		jobs        int
+		code        string
+		count       int
+		expressions int
+	}{
+		{jobs: 1, code: CodeExpressionUnknownName, count: 16, expressions: 16},
+		{jobs: 8, code: CodeTooManyRunJobs, count: 1, expressions: 0},
+	}
+	for _, tc := range cases {
+		src := []byte(regexArtifactFlood(tc.jobs))
+		start := time.Now()
+		_, issues := Check(src)
+		elapsed := time.Since(start)
+		t.Logf("regex flood with %d jobs: %v", tc.jobs, elapsed)
+		want := slices.Repeat([]string{tc.code}, tc.count)
+		assert.Equal(t, want, issueCodes(issues, SeverityError), "the flood with %d jobs", tc.jobs)
+		spec, parseIssues := Parse(src)
+		require.NotNil(t, spec, "%v", parseIssues)
+		a := analyze(spec)
+		assert.Equal(t, issues, a.issues.sorted())
+		assert.Equal(t, tc.expressions, a.budget.count, "expressions checked for %d jobs", tc.jobs)
+		assert.Zero(t, a.budget.cost, "no flood expression may reach the cost estimate")
+		assert.False(t, a.budget.exhausted)
+		assert.Less(t, elapsed, slowBackstop, "the flood must not go back to the 60 s of the review")
+	}
 }
 
 func TestArtifactNamesAreStaticTemplates(t *testing.T) {

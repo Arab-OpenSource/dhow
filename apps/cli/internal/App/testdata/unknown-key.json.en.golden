@@ -1,0 +1,26 @@
+{
+  "SchemaVersion": 1,
+  "File": "testdata/unknown-key.dhow.yml",
+  "Lang": "en",
+  "Valid": false,
+  "Errors": 2,
+  "Warnings": 0,
+  "Issues": [
+    {
+      "Code": "TRIGGER_NOT_SUPPORTED_YET",
+      "Severity": "error",
+      "Path": "on.schedule",
+      "Line": 4,
+      "Column": 3,
+      "Message": "this trigger is not supported yet (schedule comes after the first release, artifact with M6)"
+    },
+    {
+      "Code": "UNKNOWN_KEY",
+      "Severity": "error",
+      "Path": "jobs.build.stepz",
+      "Line": 8,
+      "Column": 5,
+      "Message": "this key is not part of the pipeline spec"
+    }
+  ]
+}

@@ -19,3 +19,11 @@ if [[ -e /usr/local/bin/dhow-runner ]]; then
   /usr/local/bin/dhow-runner version
   stat -c '%a %U %n' /usr/local/bin/dhow-runner /etc/systemd/system/dhow-runner.service
 fi
+if [[ -e /usr/local/bin/dhow ]]; then
+  /usr/local/bin/dhow version
+  stat -c '%a %U %n' /usr/local/bin/dhow
+  printf 'version: 2\n' >/tmp/bad.dhow.yml
+  code=0
+  /usr/local/bin/dhow lint /tmp/bad.dhow.yml || code=$?
+  printf 'dhow lint exit %s\n' "$code"
+fi

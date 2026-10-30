@@ -35,13 +35,15 @@ func TestExpensiveExpressionIsRefusedAtValidation(t *testing.T) {
 func TestRuntimeLimitsStillStopAnExpensiveExpression(t *testing.T) {
 	p, err := prepare(scopeJobIf, &declarations{}, expensiveCondition())
 	require.NoError(t, err)
+	_, issues := Check([]byte(job("    if: ${{ " + expensiveCondition() + " }}\n    steps: [{run: x}]\n")))
+	require.Contains(t, issueCodes(issues, SeverityError), CodeExpressionTooExpensive)
 	for range 3 {
 		start := time.Now()
 		_, err = p.run(context.Background(), map[string]any{}, ExpressionTimeout)
 		elapsed := time.Since(start)
 		require.Error(t, err)
 		assert.True(t, errors.Is(err, ErrExpressionCost) || errors.Is(err, ErrExpressionTimeout), "%v", err)
-		assert.Less(t, elapsed, 50*time.Millisecond)
+		assert.Less(t, elapsed, slowBackstop)
 	}
 }
 
