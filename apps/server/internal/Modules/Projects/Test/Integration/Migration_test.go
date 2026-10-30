@@ -70,6 +70,13 @@ func TestTheProjectsMigrationRollsBackCompletely(t *testing.T) {
 		return n
 	}
 	assert.Equal(t, 4, objects())
+	var unvalidated int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
+		WHERE n.nspname = current_schema() AND NOT c.convalidated`).Scan(&unvalidated))
+	assert.Zero(t, unvalidated, "00042 validates every constraint 00041 adds as NOT VALID")
+	var indexes int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT count(*) FROM pg_indexes WHERE schemaname = current_schema() AND indexname = 'IX_Jobs_Origin'`).Scan(&indexes))
+	assert.Equal(t, 1, indexes)
 	require.NoError(t, m.DownTo(ctx, 40))
 	assert.Zero(t, objects())
 	_, err = m.Up(ctx)

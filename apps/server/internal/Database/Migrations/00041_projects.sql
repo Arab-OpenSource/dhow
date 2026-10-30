@@ -21,22 +21,22 @@ CREATE INDEX "IX_Projects_Organization_Name" ON "Projects" ("OrganizationId", lo
 CREATE INDEX "IX_RoleBindings_Project" ON "RoleBindings" ("ProjectId") WHERE "ProjectId" IS NOT NULL AND NOT "IsDeleted";
 
 ALTER TABLE "Jobs"
-    ADD COLUMN "OriginKind" TEXT NOT NULL DEFAULT 'manual' CHECK ("OriginKind" IN ('manual', 'pipeline')),
+    ADD COLUMN "OriginKind" TEXT NOT NULL DEFAULT 'manual',
     ADD COLUMN "OriginId" uuid,
-    ADD COLUMN "RequiredFeatures" TEXT[] NOT NULL DEFAULT '{}' CHECK (
-        cardinality("RequiredFeatures") <= 8
-        AND "RequiredFeatures" <@ ARRAY['checkout', 'plugins', 'artifacts', 'cache']::text[]
-    ),
-    ADD CONSTRAINT "CK_Jobs_Origin" CHECK (("OriginKind" = 'manual') = ("OriginId" IS NULL));
-
-CREATE INDEX "IX_Jobs_Origin" ON "Jobs" ("OriginId", "CreatedAt" DESC) WHERE "OriginId" IS NOT NULL AND NOT "IsDeleted";
+    ADD COLUMN "RequiredFeatures" TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE "Jobs" ADD CONSTRAINT "CK_Jobs_OriginKind" CHECK ("OriginKind" IN ('manual', 'pipeline')) NOT VALID;
+ALTER TABLE "Jobs" ADD CONSTRAINT "CK_Jobs_RequiredFeatures" CHECK (
+    cardinality("RequiredFeatures") <= 8
+    AND "RequiredFeatures" <@ ARRAY['checkout', 'plugins', 'artifacts', 'cache']::text[]
+) NOT VALID;
+ALTER TABLE "Jobs" ADD CONSTRAINT "CK_Jobs_Origin" CHECK (("OriginKind" = 'manual') = ("OriginId" IS NULL)) NOT VALID;
 
 ALTER TABLE "ApiTokens" DROP CONSTRAINT "ApiTokens_Scopes_check";
 ALTER TABLE "ApiTokens" ADD CONSTRAINT "ApiTokens_Scopes_check" CHECK (
     cardinality("Scopes") BETWEEN 1 AND 16
     AND "Scopes" <@ ARRAY['org.read', 'org.update', 'member.read', 'member.manage', 'audit.read', 'runner.read', 'runner.manage',
                           'job.read', 'job.cancel', 'project.read', 'project.manage']::text[]
-);
+) NOT VALID;
 
 -- +goose Down
 UPDATE "ApiTokens" SET "Scopes" = array_remove(array_remove("Scopes", 'project.read'), 'project.manage');
@@ -46,8 +46,9 @@ ALTER TABLE "ApiTokens" ADD CONSTRAINT "ApiTokens_Scopes_check" CHECK (
     cardinality("Scopes") BETWEEN 1 AND 16
     AND "Scopes" <@ ARRAY['org.read', 'org.update', 'member.read', 'member.manage', 'audit.read', 'runner.read', 'runner.manage', 'job.read', 'job.cancel']::text[]
 );
-DROP INDEX "IX_Jobs_Origin";
 ALTER TABLE "Jobs" DROP CONSTRAINT "CK_Jobs_Origin";
+ALTER TABLE "Jobs" DROP CONSTRAINT "CK_Jobs_RequiredFeatures";
+ALTER TABLE "Jobs" DROP CONSTRAINT "CK_Jobs_OriginKind";
 ALTER TABLE "Jobs" DROP COLUMN "RequiredFeatures";
 ALTER TABLE "Jobs" DROP COLUMN "OriginId";
 ALTER TABLE "Jobs" DROP COLUMN "OriginKind";

@@ -37,6 +37,7 @@
 - `jobs.Service` فيه method اسمها `Cancel` للـ API، فالتنفيذ type صغير (`jobs.queue`) بيرجع من `Service.Queue()`، و`App` بيحطه في `Wired.JobQueue`.
 
 ### 4. أعمدة `"Jobs"` الجديدة (migration `00041`)
+- الأعمدة بتتضاف من غير CHECK (metadata بس، من غير ما الجدول يتقري)، والـ CHECKs بتتضاف `NOT VALID` في `00041`، وبعدين `00042` (`NO TRANSACTION`) بيعمل `VALIDATE CONSTRAINT` بقفل `SHARE UPDATE EXCLUSIVE` اللي مابيوقفش القراية ولا الكتابة، وبيعمل `IX_Jobs_Origin` بـ `CONCURRENTLY`. كده جدول `"Jobs"` الكبير مابيتقفلش طول ما الـ migration شغّال. ونفس الكلام لـ CHECK الـ scopes على `"ApiTokens"`.
 - `"OriginKind"` (`manual` أو `pipeline`، والافتراضي `manual` للـ jobs القديمة)، و`"OriginId"`، وCHECK إن الـ `manual` مالوش origin والـ `pipeline` لازم ليه.
 - `"OriginId"` **من غير FK**، لأن الـ `RunJob` في جدول موديول تاني (زي `"RoleBindings"."ProjectId"`). والـ index عليه للتاريخ («كل محاولات الـ RunJob ده»).
 - `"RequiredFeatures"` (`TEXT[]` بـ CHECK على القايمة المعروفة). الـ lease بيدّي الـ job بس لو `"RequiredFeatures" <@ features`، والـ runner لسه مابيعلنش features (ده M4.7)، فالسيرفر بيبعت قايمة فاضية. يعني job محتاج ميزة **بيستنى ومابيروحش لـ runner قديم** (fail closed). عرض `NO_MATCHING_RUNNER` للحالة دي بييجي مع M4.7.
