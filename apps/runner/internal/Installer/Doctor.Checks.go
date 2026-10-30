@@ -170,3 +170,11 @@ func (d doctor) memory() engine.Finding {
 	}
 	return withDetail(engine.OK(title), d.m.T(KeyMemoryFits, FormatSize(c.Current.Total()), hostSize(c.Machine)))
 }
+
+func (d doctor) selinux() engine.Finding {
+	title := d.m.T(KeyCheckSELinux)
+	if d.det.SELinux {
+		return d.fail(title, d.m.T(KeyBlockSELinux, d.m.T(KeySupportedHostsURL)), "", nil)
+	}
+	return engine.OK(title)
+}

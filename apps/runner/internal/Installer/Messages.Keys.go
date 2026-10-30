@@ -32,6 +32,7 @@ const (
 	KeyBlockMemorySmall    engine.Key = "block.memory.small"
 	KeyBlockNoCreds        engine.Key = "block.no.creds" //nolint:gosec // A message key, not a credential.
 	KeyBlockPodmanOld      engine.Key = "block.podman.old"
+	KeyBlockSELinux        engine.Key = "block.selinux"
 	KeyBlockSystemd        engine.Key = "block.systemd"
 	KeyBlockUserNS         engine.Key = "block.userns"
 	KeyCapacityInvalid     engine.Key = "capacity.invalid"
@@ -44,6 +45,7 @@ const (
 	KeyCheckPermissions    engine.Key = "check.permissions"
 	KeyCheckPodman         engine.Key = "check.podman"
 	KeyCheckReach          engine.Key = "check.reach"
+	KeyCheckSELinux        engine.Key = "check.selinux"
 	KeyCheckService        engine.Key = "check.service"
 	KeyCheckSignIn         engine.Key = "check.sign.in"
 	KeyCheckSubIDs         engine.Key = "check.subids"
@@ -128,6 +130,7 @@ const (
 	KeyStepUnit            engine.Key = "step.unit"
 	KeyStepUser            engine.Key = "step.user"
 	KeySubIDsShort         engine.Key = "subids.short"
+	KeySupportedHostsURL   engine.Key = "supported.hosts.url"
 	KeyUninstallKeepsUser  engine.Key = "uninstall.keeps.user"
 	KeyUninstallPlan       engine.Key = "uninstall.plan"
 	KeyUninstalled         engine.Key = "uninstalled"

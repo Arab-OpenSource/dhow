@@ -130,6 +130,9 @@ func (b *Builder) blockers() []string {
 	if det.AppArmorNS {
 		out = append(out, m.T(KeyBlockAppArmor))
 	}
+	if det.SELinux {
+		out = append(out, m.T(KeyBlockSELinux, m.T(KeySupportedHostsURL)))
+	}
 	return out
 }
 

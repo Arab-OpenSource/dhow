@@ -179,6 +179,7 @@ func (app App) printDetection(det Detection, m engine.Messages) {
 		{"cgroup v2", m.YesNo(det.CgroupV2)},
 		{m.T(KeyRowMemory), memoryLabel(det.MemoryBytes)},
 		{m.T(KeyRowUserNS), m.YesNo(det.UserNS && !det.AppArmorNS)},
+		{"SELinux enforcing", m.YesNo(det.SELinux)},
 		{"systemd-creds", credsLabel(det.Creds, m)},
 		{m.T(KeyRowRegistered), m.YesNo(det.Registered())},
 	}

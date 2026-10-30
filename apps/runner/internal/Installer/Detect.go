@@ -41,6 +41,7 @@ type Detection struct {
 	Installed    bool
 	AnalyzeTools bool
 	MemoryBytes  int64
+	SELinux      bool
 }
 
 func (d Detection) Registered() bool { return d.PlainID || d.SealedID }
@@ -58,6 +59,7 @@ func Detect(ctx context.Context, sys engine.System) Detection {
 	d.CgroupV2 = engine.Exists(sys, CgroupControllers)
 	d.UserNS = readInt(sys, MaxUserNamespaces) > 0
 	d.AppArmorNS = readInt(sys, AppArmorUserns) == 1
+	d.SELinux = readInt(sys, SELinuxEnforce) == 1
 	d.Creds = detectCreds(ctx, sys)
 	d.UID, d.GID, d.UserCreated, d.User = lookupUser(ctx, sys, ServiceUser)
 	d.SubUIDs = subIDCount(sys, SubUIDPath)
