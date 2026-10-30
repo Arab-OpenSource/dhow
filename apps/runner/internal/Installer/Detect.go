@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"math"
 	"strconv"
 	"strings"
 
@@ -39,6 +40,7 @@ type Detection struct {
 	SealedID     bool
 	Installed    bool
 	AnalyzeTools bool
+	MemoryBytes  int64
 }
 
 func (d Detection) Registered() bool { return d.PlainID || d.SealedID }
@@ -64,6 +66,7 @@ func Detect(ctx context.Context, sys engine.System) Detection {
 	d.SealedID = engine.Exists(sys, SealedPath)
 	d.Installed = engine.Exists(sys, UnitPath) || engine.Exists(sys, EnvFilePath) || engine.Exists(sys, AnswersPath)
 	d.AnalyzeTools = sys.LookPath("systemd-analyze")
+	d.MemoryBytes = int64(min(engine.ReadMemTotal(sys), math.MaxInt64))
 	return d
 }
 

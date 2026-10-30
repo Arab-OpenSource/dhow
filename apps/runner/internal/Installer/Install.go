@@ -41,7 +41,7 @@ func (app App) Install(ctx context.Context, opts InstallOptions) error {
 	prompter := engine.NewPrompter(app.In, app.Out, app.InFD, m)
 	token := ""
 	if opts.Answers == "" {
-		iv := Interview{P: prompter, M: m, Det: det, Out: app.Out}
+		iv := Interview{P: prompter, M: m, Det: det, Out: app.Out, Env: app.existingEnv()}
 		if a, token, err = iv.Run(a); err != nil {
 			return err
 		}
@@ -94,6 +94,14 @@ func (app App) initialAnswers(opts InstallOptions, lang string) (Answers, error)
 	}
 	a, _ := app.installedAnswers()
 	return a, nil
+}
+
+func (app App) existingEnv() []byte {
+	data, err := app.Sys.ReadFile(EnvFilePath)
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 func (app App) readAnswersFile(path string, m engine.Messages) ([]byte, error) {
@@ -169,6 +177,7 @@ func (app App) printDetection(det Detection, m engine.Messages) {
 		{"Podman", podman},
 		{"crun / newuidmap", m.YesNo(det.Crun) + " / " + m.YesNo(det.Newuidmap)},
 		{"cgroup v2", m.YesNo(det.CgroupV2)},
+		{m.T(KeyRowMemory), memoryLabel(det.MemoryBytes)},
 		{m.T(KeyRowUserNS), m.YesNo(det.UserNS && !det.AppArmorNS)},
 		{"systemd-creds", credsLabel(det.Creds, m)},
 		{m.T(KeyRowRegistered), m.YesNo(det.Registered())},
@@ -176,6 +185,13 @@ func (app App) printDetection(det Detection, m engine.Messages) {
 	for _, r := range rows {
 		app.say("  %-26s %s\n", r[0], r[1])
 	}
+}
+
+func memoryLabel(n int64) string {
+	if n <= 0 {
+		return "?"
+	}
+	return hostSize(n)
 }
 
 func credsLabel(c Creds, m engine.Messages) string {

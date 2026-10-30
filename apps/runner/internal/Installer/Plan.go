@@ -71,8 +71,9 @@ func (b *Builder) MissingPackages() []string {
 
 func (b *Builder) Build() engine.Plan {
 	var p engine.Plan
-	p.Blockers = b.blockers()
-	p.Notes = b.notes()
+	memoryBlockers, memoryNotes := b.fitMemory()
+	p.Blockers = append(b.blockers(), memoryBlockers...)
+	p.Notes = append(b.notes(), memoryNotes...)
 	if len(p.Blockers) > 0 {
 		return p
 	}

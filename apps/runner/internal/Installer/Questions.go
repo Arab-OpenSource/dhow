@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"strconv"
 
 	config "github.com/Khaymah/dhow/apps/runner/internal/Config"
@@ -15,6 +16,7 @@ type Interview struct {
 	M   engine.Messages
 	Det Detection
 	Out io.Writer
+	Env []byte
 }
 
 func (iv Interview) say(format string, args ...any) { _, _ = fmt.Fprintf(iv.Out, format, args...) }
@@ -56,6 +58,9 @@ func (iv Interview) Run(prev Answers) (Answers, string, error) {
 		return Answers{}, "", err
 	}
 	a.Capacity, _ = strconv.Atoi(capacity)
+	if err := iv.askMemory(&a); err != nil {
+		return Answers{}, "", err
+	}
 	b := Builder{Det: iv.Det, A: a}
 	if missing := b.MissingPackages(); len(missing) > 0 && iv.Det.Distro.Family != engine.FamilyUnknown {
 		if a.InstallPackages, err = iv.P.Confirm(iv.M.T(KeyAskPackages, fmt.Sprint(missing)), true); err != nil {
@@ -81,5 +86,51 @@ func (iv Interview) askIdentity(a *Answers) error {
 		return err
 	}
 	a.Identity = choice
+	return nil
+}
+
+func (iv Interview) askMemory(a *Answers) error {
+	c := CheckMemory(RenderEnv(*a, iv.Env), iv.Det.MemoryBytes)
+	if c.Err != nil || c.Fits || c.Explicit || !c.CanFit {
+		return nil
+	}
+	iv.say("%s\n", iv.M.T(KeyAskMemoryIntro, hostSize(c.Machine), FormatSize(config.DefaultJobMemory().Total()), hostSize(Headroom(c.Machine))))
+	memoryDef, diskDef := FormatSize(c.Fitted.MemoryBytes), FormatSize(c.Fitted.DiskBytes)
+	memory, err := iv.P.Ask(iv.M.T(KeyAskMaxMemory), memoryDef, func(v string) error {
+		return iv.checkLimits(v, diskDef, false)
+	})
+	if err != nil {
+		return err
+	}
+	disk, err := iv.P.Ask(iv.M.T(KeyAskMaxDisk), diskDef, func(v string) error {
+		return iv.checkLimits(memory, v, true)
+	})
+	if err != nil {
+		return err
+	}
+	if memory == memoryDef && disk == diskDef {
+		return nil
+	}
+	env := maps.Clone(a.Env)
+	if env == nil {
+		env = map[string]string{}
+	}
+	env[config.EnvMaxMemory], env[config.EnvMaxDisk] = memory, disk
+	a.Env = env
+	return nil
+}
+
+func (iv Interview) checkLimits(memory, disk string, fit bool) error {
+	vars := map[string]string{config.EnvMaxMemory: memory, config.EnvMaxDisk: disk}
+	j, err := config.ReadJobMemory(func(k string) string { return vars[k] })
+	if err != nil || !safeEnvValue(memory) || !safeEnvValue(disk) {
+		return errors.New(iv.M.T(KeySizeInvalid))
+	}
+	if !fit {
+		return nil
+	}
+	if config.CheckJobMemory(j, iv.Det.MemoryBytes) != nil {
+		return errors.New(MemoryCheck{Machine: iv.Det.MemoryBytes, Current: j}.TooHigh(iv.M))
+	}
 	return nil
 }

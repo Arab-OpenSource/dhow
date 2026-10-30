@@ -156,3 +156,17 @@ func serverAddress(t Target) string {
 	}
 	return t.Config.URL.String()
 }
+
+func (d doctor) memory() engine.Finding {
+	title := d.m.T(KeyCheckMemory)
+	c := CheckMemory(d.env, d.det.MemoryBytes)
+	switch {
+	case c.Err != nil:
+		return d.fail(title, d.m.T(KeyBlockLimitsInvalid, c.Err.Error()), d.m.T(KeyAdviceEnv, EnvFilePath), nil)
+	case c.Machine <= 0:
+		return engine.Finding{Severity: engine.SeverityInfo, Title: title, Detail: d.m.T(KeyMemoryUnknown)}
+	case !c.Fits:
+		return d.fail(title, c.TooHigh(d.m), c.Advice(d.m), nil)
+	}
+	return withDetail(engine.OK(title), d.m.T(KeyMemoryFits, FormatSize(c.Current.Total()), hostSize(c.Machine)))
+}

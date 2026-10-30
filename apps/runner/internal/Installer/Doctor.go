@@ -79,7 +79,7 @@ func (d doctor) run(ctx context.Context) []engine.Finding {
 	if d.b.Sandbox() {
 		out = append(out, d.podman(), d.kernel(), d.subIDs())
 	}
-	out = append(out, d.unit(), d.service(ctx), d.exposure(ctx), d.permissions(), d.identity(), d.pending())
+	out = append(out, d.memory(), d.unit(), d.service(ctx), d.exposure(ctx), d.permissions(), d.identity(), d.pending())
 	return append(out, d.server(ctx)...)
 }
 
