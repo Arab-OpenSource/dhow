@@ -100,13 +100,15 @@ M3.12 (الشرائح خلصت)          M3.13 في الآخر
 **فاضل:**
 - **الدعوات المقبولة في الواجهة:** الـ API بيرجّعها (`?Status=accepted`)، بس صفحة الأعضاء مافيهاش مكان ليها، فهي من الـ API بس لحد ما نقرر مكانها.
 
-## بعد M3
+## الطريق لأول نسخة production (ADR-0068)
 
-M4 الـ pipelines ومزوّدي Git، وM5 الأسرار والبيئات، وM6 أهداف النشر، وM7 الواجهة الكاملة والإشعارات، وM8 الإصدارات المدفوعة، وM9 التقوية والمراجعة الخارجية، وM10 البيتا، وM11 الـ GA. التفاصيل وشروط الخلاص في [`docs/roadmap.md`](../docs/roadmap.md).
+[ADR-0068](ADR/0068-first-production-release-scope.md) حدّد نطاق أول نسخة production: الـ runners على Debian وUbuntu بـ Podman rootless بس، والنشر على SSH/VPS وDocker Compose، وGitHub وGitLab وGit عام، ونسخة Community بس. الترتيب: M3.13 ← M4 ← M5 ← M6 ← M7 ← M9 ← M10 ← M11، واللي اتأجّل (SELinux وKubernetes وHelm وgVisor وBitbucket وStatic/CDN/SFTP والمحرر المرئي وTeams وWhatsApp وM8 ومكوّن GitLab CI) في قسم «بعد أول نسخة» في [`docs/roadmap.md`](../docs/roadmap.md).
+
+**الجاي M4** بعد M3.13، وخطته في [`M4-Pipelines.md`](M4-Pipelines.md) مستنية مراجعة Sabry وإجابة أسئلتها المفتوحة.
 
 ## بنود مفتوحة اتأجلت
 
-- **SELinux enforcing (ADR-0067):** الـ runner مش مدعوم على Fedora وRHEL وRocky وAlma بـ enforcing، لأن `container_t` ممنوع من `connectto` على الـ control socket. نختار قبل ما M3 يقفل: نقلب اتجاه قناة التحكم، أو policy module بـ domain للـ runner. وبعدها نرجّع fedora وrocky-10 لـ `vm-test.yml`.
+- **SELinux enforcing (ADR-0067):** الـ runner مش مدعوم على Fedora وRHEL وRocky وAlma بـ enforcing، لأن `container_t` ممنوع من `connectto` على الـ control socket. اتأجّل لبعد أول نسخة (ADR-0068)، ووقتها نختار: نقلب اتجاه قناة التحكم، أو policy module بـ domain للـ runner. وبعدها نرجّع fedora وrocky-10 لـ `vm-test.yml`.
 
 - **الـ runner:** حقل سقف الموارد في `RegisterRequest`، ورفض `RESOURCE_REQUEST_EXCEEDS_RUNNER` وقت الإنشاء.
 - **الحمل:** الـ token bucket لكل runner ورد «الـ pool مشغول» (ADR-0042). والإشعار بالـ labels لو الـ runners كتروا. وحدود الـ logs لكل instance مع HA.
