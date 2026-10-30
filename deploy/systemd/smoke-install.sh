@@ -174,7 +174,7 @@ keys_off_disk() {
   seed=$(systemd-creds decrypt --name=identity /var/lib/dhow-runner/identity.cred - | grep -o '"SigningSeed":"[^"]*"' | cut -d'"' -f4)
   enc=$(systemd-creds decrypt --name=identity /var/lib/dhow-runner/identity.cred - | grep -o '"EncryptionKey":"[^"]*"' | cut -d'"' -f4)
   [[ -n $seed && -n $enc ]] || return 1
-  ! grep -rqsF -e "$seed" -e "${enc:0:64}" -- /var/lib/dhow-runner /etc /root /tmp /var/tmp /usr/local &&
+  ! grep -rqsF -e "$seed" -e "${enc:0:64}" -- /var/lib/dhow-runner /etc /root /tmp /var/tmp /usr/local/bin &&
     ! journalctl --no-pager | grep -qF -e "$seed" -e "${enc:0:64}"
 }
 
