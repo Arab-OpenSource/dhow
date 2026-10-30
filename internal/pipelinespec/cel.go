@@ -10,6 +10,8 @@ import (
 
 	"github.com/google/cel-go/cel"
 	celast "github.com/google/cel-go/common/ast"
+	celenv "github.com/google/cel-go/common/env"
+	"github.com/google/cel-go/common/overloads"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/interpreter"
 )
@@ -90,8 +92,24 @@ func (s exprScope) secretsCode() string {
 	}
 }
 
+func excludedFunctions() []*celenv.Function {
+	names := []string{
+		overloads.Matches, overloads.TypeConvertTimestamp, overloads.TypeConvertDuration,
+		overloads.TimeGetFullYear, overloads.TimeGetMonth, overloads.TimeGetDayOfYear, overloads.TimeGetDayOfMonth,
+		overloads.TimeGetDate, overloads.TimeGetDayOfWeek, overloads.TimeGetHours, overloads.TimeGetMinutes,
+		overloads.TimeGetSeconds, overloads.TimeGetMilliseconds,
+	}
+	out := make([]*celenv.Function, 0, len(names))
+	for _, n := range names {
+		out = append(out, celenv.NewFunction(n))
+	}
+	return out
+}
+
 func baseOptions() []cel.EnvOption {
+	subset := celenv.NewLibrarySubset().AddExcludedFunctions(excludedFunctions()...)
 	return []cel.EnvOption{
+		cel.StdLib(cel.StdLibSubset(subset)),
 		cel.ParserExpressionSizeLimit(MaxExpressionBytes),
 		cel.ParserRecursionLimit(MaxExpressionDepth),
 		cel.ExpressionNodeLimit(MaxExpressionNodes),
@@ -128,7 +146,7 @@ func newEnv(scope exprScope, d *declarations) (*cel.Env, error) {
 			cel.Overload("hash_files_list", []*cel.Type{cel.ListType(cel.StringType)}, cel.StringType),
 		))
 	}
-	env, err := cel.NewEnv(opts...)
+	env, err := cel.NewCustomEnv(opts...)
 	if err != nil {
 		return nil, fmt.Errorf("build expression environment: %w", err)
 	}
@@ -178,6 +196,7 @@ type value struct {
 	literal    string
 	expression string
 	secret     string
+	ast        *cel.Ast
 }
 
 func (v value) isExpression() bool { return v.expression != "" }
@@ -211,14 +230,39 @@ func conditionSource(raw string) (string, error) {
 	return src, nil
 }
 
+type exprBudget struct {
+	count     int
+	cost      uint64
+	exhausted bool
+}
+
 type exprChecker struct {
 	issues *issueList
 	envs   map[exprScope]*cel.Env
 	decls  *declarations
+	budget *exprBudget
 }
 
-func newExprChecker(issues *issueList, d *declarations) *exprChecker {
-	return &exprChecker{issues: issues, envs: map[exprScope]*cel.Env{}, decls: d}
+func newExprChecker(issues *issueList, d *declarations, b *exprBudget) *exprChecker {
+	if b == nil {
+		b = &exprBudget{}
+	}
+	return &exprChecker{issues: issues, envs: map[exprScope]*cel.Env{}, decls: d, budget: b}
+}
+
+func (c *exprChecker) spend(cost uint64, path string) bool {
+	b := c.budget
+	if b.exhausted {
+		return false
+	}
+	b.count++
+	b.cost += cost
+	if b.count > MaxExpressions || b.cost > MaxTotalExpressionCost {
+		b.exhausted = true
+		c.issues.add(CodeExpressionBudget, path)
+		return false
+	}
+	return true
 }
 
 func (c *exprChecker) env(scope exprScope) (*cel.Env, error) {
@@ -260,6 +304,9 @@ func (c *exprChecker) check(scope exprScope, src, path string) (value, bool) {
 		c.issues.add(CodeExpressionTooLong, path)
 		return value{}, false
 	}
+	if !c.spend(0, path) {
+		return value{}, false
+	}
 	env, err := c.env(scope)
 	if err != nil {
 		c.issues.add(CodeExpressionSyntax, path)
@@ -290,7 +337,15 @@ func (c *exprChecker) check(scope exprScope, src, path string) (value, bool) {
 		c.issues.add(CodeExpressionType, path)
 		return value{}, false
 	}
-	return value{expression: src}, true
+	est, err := env.EstimateCost(checked, sizeEstimator{})
+	if err != nil || est.Max > MaxExpressionCost {
+		c.issues.add(CodeExpressionTooExpensive, path)
+		return value{}, false
+	}
+	if !c.spend(est.Max, path) {
+		return value{}, false
+	}
+	return value{expression: src, ast: checked}, true
 }
 
 func checkCode(err error) string {

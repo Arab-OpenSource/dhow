@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/google/cel-go/cel"
+	"github.com/Khaymah/dhow/internal/jobspec"
 )
 
 type Context struct {
@@ -14,6 +14,8 @@ type Context struct {
 	Inputs  map[string]any
 	Needs   map[string]any
 	Env     map[string]string
+
+	SecretEnv []string
 }
 
 type Git struct {
@@ -40,64 +42,6 @@ type Project struct {
 	Name string
 }
 
-func matrixActivation(c combination) map[string]any {
-	act := make(map[string]any, len(c))
-	for _, v := range c {
-		act["matrix."+v.Key] = v.Value.Value()
-	}
-	return act
-}
-
-func activation(c Context, d *declarations, m combination) map[string]any {
-	act := matrixActivation(m)
-	act["git.sha"] = c.Git.SHA
-	act["git.ref"] = c.Git.Ref
-	act["git.branch"] = c.Git.Branch
-	act["git.tag"] = c.Git.Tag
-	act["git.is_tag"] = c.Git.IsTag
-	act["git.message"] = c.Git.Message
-	act["git.author"] = c.Git.Author
-	act["git.event"] = c.Git.Event
-	act["git.pr.number"] = c.Git.PR.Number
-	act["git.pr.base_ref"] = c.Git.PR.BaseRef
-	act["git.pr.head_ref"] = c.Git.PR.HeadRef
-	act["git.pr.is_fork"] = c.Git.PR.IsFork
-	act["project.id"] = c.Project.ID
-	act["project.name"] = c.Project.Name
-	act["vars"] = orEmpty(c.Vars)
-	act["env"] = orEmpty(c.Env)
-	for name, t := range d.inputs {
-		v, ok := c.Inputs[name]
-		if !ok {
-			if t.IsExactType(cel.BoolType) {
-				v = false
-			} else {
-				v = ""
-			}
-		}
-		act["inputs."+name] = v
-	}
-	for id, isMatrix := range d.needs {
-		v, ok := c.Needs[id]
-		if !ok {
-			if isMatrix {
-				v = map[string]map[string]string{}
-			} else {
-				v = map[string]string{}
-			}
-		}
-		act["needs."+id+".outputs"] = v
-	}
-	return act
-}
-
-func orEmpty(m map[string]string) map[string]string {
-	if m == nil {
-		return map[string]string{}
-	}
-	return m
-}
-
 func (p *Plan) EvalGroup(ctx context.Context, c Context) (string, error) {
 	if p.Concurrency == nil {
 		return "", nil
@@ -107,12 +51,15 @@ func (p *Plan) EvalGroup(ctx context.Context, c Context) (string, error) {
 		return g.Literal, nil
 	}
 	d := &declarations{inputs: p.inputs}
-	out, err := evaluate(ctx, scopeGroup, d, g.Expression, activation(c, d, nil))
+	act, err := activation(c, d, nil, nil)
 	if err != nil {
 		return "", err
 	}
-	s, _ := out.(string)
-	return s, nil
+	out, err := evaluate(ctx, scopeGroup, d, g.Expression, act)
+	if err != nil {
+		return "", err
+	}
+	return boundedString(out, MaxContextTextBytes)
 }
 
 func (r *RunJob) EvalIf(ctx context.Context, c Context) (bool, error) {
@@ -130,7 +77,7 @@ func (r *RunJob) evalBool(ctx context.Context, scope exprScope, src string, c Co
 	if src == "" {
 		return true, nil
 	}
-	out, err := evaluate(ctx, scope, r.decls, src, activation(c, r.decls, r.combo))
+	out, err := r.evaluate(ctx, scope, src, c)
 	if err != nil {
 		return false, err
 	}
@@ -147,10 +94,34 @@ func (r *RunJob) EvalValue(ctx context.Context, ref string, c Context) (string, 
 	if strings.HasPrefix(ref, "Steps[") {
 		scope = scopeStepValue
 	}
-	out, err := evaluate(ctx, scope, r.decls, src, activation(c, r.decls, r.combo))
+	out, err := r.evaluate(ctx, scope, src, c)
 	if err != nil {
 		return "", err
 	}
+	return boundedString(out, jobspec.MaxEnvValueBytes)
+}
+
+func (r *RunJob) evaluate(ctx context.Context, scope exprScope, src string, c Context) (any, error) {
+	secret := make(map[string]bool, len(c.SecretEnv)+len(r.Spec.GetSecrets()))
+	for _, name := range c.SecretEnv {
+		secret[name] = true
+	}
+	for _, ref := range r.Spec.GetSecrets() {
+		if name := ref.GetAsEnv(); name != "" {
+			secret[name] = true
+		}
+	}
+	act, err := activation(c, r.decls, r.combo, secret)
+	if err != nil {
+		return nil, err
+	}
+	return evaluate(ctx, scope, r.decls, src, act)
+}
+
+func boundedString(out any, limit int) (string, error) {
 	s, _ := out.(string)
+	if len(s) > limit {
+		return "", ErrExpressionResult
+	}
 	return s, nil
 }

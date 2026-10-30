@@ -1,11 +1,13 @@
 package pipelinespec
 
 import (
-	"context"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	celast "github.com/google/cel-go/common/ast"
+	"github.com/google/cel-go/common/operators"
 
 	"github.com/Khaymah/dhow/internal/jobspec"
 )
@@ -186,22 +188,65 @@ func (a *analysis) artifactInstances(ja *jobAnalysis, v value, path string) []st
 		}
 		return names
 	}
-	prg, err := prepare(scopeArtifactName, ja.decls, v.expression)
-	if err != nil {
+	var parts []namePart
+	if v.ast == nil || !nameTemplate(v.ast.NativeRep().Expr(), &parts) {
 		a.issues.add(CodeArtifactNameInvalid, path)
 		return nil
 	}
 	names := make([]string, 0, len(ja.combos))
 	for _, c := range ja.combos {
-		out, err := prg.run(context.Background(), matrixActivation(c), ExpressionTimeout)
-		name, _ := out.(string)
-		if err != nil || !artifactPattern.MatchString(name) {
+		var b strings.Builder
+		for _, p := range parts {
+			if p.key == "" {
+				b.WriteString(p.literal)
+				continue
+			}
+			s, _ := c.get(p.key)
+			b.WriteString(s.Text)
+		}
+		name := b.String()
+		if !artifactPattern.MatchString(name) {
 			a.issues.add(CodeArtifactNameInvalid, path)
 			return nil
 		}
 		names = append(names, name)
 	}
 	return names
+}
+
+type namePart struct {
+	literal string
+	key     string
+}
+
+func nameTemplate(e celast.Expr, parts *[]namePart) bool {
+	if len(*parts) > MaxArtifactName {
+		return false
+	}
+	switch e.Kind() {
+	case celast.LiteralKind:
+		s, ok := e.AsLiteral().Value().(string)
+		*parts = append(*parts, namePart{literal: s})
+		return ok
+	case celast.IdentKind:
+		key, ok := strings.CutPrefix(e.AsIdent(), "matrix.")
+		*parts = append(*parts, namePart{key: key})
+		return ok && key != ""
+	case celast.SelectKind:
+		sel := e.AsSelect()
+		op := sel.Operand()
+		ok := !sel.IsTestOnly() && op.Kind() == celast.IdentKind && op.AsIdent() == "matrix"
+		*parts = append(*parts, namePart{key: sel.FieldName()})
+		return ok
+	case celast.CallKind:
+		call := e.AsCall()
+		if call.FunctionName() != operators.Add || len(call.Args()) != 2 || call.IsMemberFunction() {
+			return false
+		}
+		return nameTemplate(call.Args()[0], parts) && nameTemplate(call.Args()[1], parts)
+	default:
+		return false
+	}
 }
 
 func (a *analysis) artifactNames() {

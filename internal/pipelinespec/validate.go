@@ -38,6 +38,7 @@ type analysis struct {
 	jobs        map[string]*jobAnalysis
 	group       value
 	runJobCount int
+	budget      *exprBudget
 }
 
 func Check(src []byte) (*Spec, []Issue) {
@@ -57,7 +58,9 @@ func analyze(spec *Spec) *analysis {
 	if positions == nil {
 		positions = map[string]Position{}
 	}
-	a := &analysis{spec: spec, issues: &issueList{positions: positions}, jobs: map[string]*jobAnalysis{}}
+	a := &analysis{
+		spec: spec, issues: &issueList{positions: positions}, jobs: map[string]*jobAnalysis{}, budget: &exprBudget{},
+	}
 	if spec.Version != SupportedVersion {
 		a.issues.add(CodeVersionUnsupported, "version")
 	}
@@ -137,7 +140,7 @@ func validInput(in *Input) bool {
 	}
 	switch in.Type {
 	case "", inputString:
-		return len(in.Options) == 0 && (in.Default == nil || len(in.Default.Text) <= MaxPluginInputBytes)
+		return len(in.Options) == 0 && (in.Default == nil || len(in.Default.Text) <= MaxContextVarBytes)
 	case inputBoolean:
 		return len(in.Options) == 0 && (in.Default == nil || in.Default.Kind == KindBool)
 	case inputChoice:
@@ -218,7 +221,7 @@ func (a *analysis) concurrency() {
 		a.issues.add(CodeValueTooLong, "concurrency.group")
 		return
 	}
-	checker := newExprChecker(a.issues, &declarations{inputs: a.inputs})
+	checker := newExprChecker(a.issues, &declarations{inputs: a.inputs}, a.budget)
 	if v, ok := checker.value(scopeGroup, c.Group, "concurrency.group"); ok {
 		a.group = v
 	}

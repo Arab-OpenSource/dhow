@@ -74,7 +74,7 @@ func (a *analysis) expand(id string, job *Job) *jobAnalysis {
 		ja.needs = append(ja.needs, n)
 	}
 	ja.decls = &declarations{inputs: a.inputs, matrix: matrix, needs: needs}
-	ja.exprs = newExprChecker(a.issues, ja.decls)
+	ja.exprs = newExprChecker(a.issues, ja.decls, a.budget)
 	return ja
 }
 

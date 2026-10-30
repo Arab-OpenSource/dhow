@@ -59,13 +59,16 @@ func FuzzCEL(f *testing.F) {
 		}
 		for _, scope := range []exprScope{scopeJobIf, scopeJobValue, scopeCacheKey} {
 			issues := &issueList{positions: map[string]Position{}}
-			c := newExprChecker(issues, d)
+			c := newExprChecker(issues, d, nil)
 			v, ok := c.check(scope, src, "x")
 			if !ok || v.expression == "" || scope == scopeCacheKey {
 				continue
 			}
-			act := activation(Context{Inputs: map[string]any{"flag": true}}, d, combination{{Key: "os", Value: Scalar{Kind: KindString, Text: "a"}}})
-			_, err := evaluate(context.Background(), scope, d, v.expression, act)
+			act, err := activation(Context{Inputs: map[string]any{"flag": true}}, d, combination{{Key: "os", Value: Scalar{Kind: KindString, Text: "a"}}}, nil)
+			if err != nil {
+				t.Fatalf("activation: %v", err)
+			}
+			_, err = evaluate(context.Background(), scope, d, v.expression, act)
 			if err != nil && !knownEvalError(err) {
 				t.Fatalf("unexpected error type: %v", err)
 			}

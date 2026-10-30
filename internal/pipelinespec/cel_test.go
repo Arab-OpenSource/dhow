@@ -3,6 +3,7 @@ package pipelinespec
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -24,12 +25,15 @@ func expensiveCondition() string {
 	return l + ".all(a, " + l + ".all(b, " + l + ".all(c, " + l + ".all(d, a + b + c + d >= 0))))"
 }
 
-func TestExpensiveExpressionStopsAtTheLimit(t *testing.T) {
+func TestExpensiveExpressionIsRefusedAtValidation(t *testing.T) {
 	cond := expensiveCondition()
 	require.Less(t, len(cond), MaxExpressionBytes)
 	_, issues := Check([]byte(job("    if: ${{ " + cond + " }}\n    steps: [{run: x}]\n")))
-	require.False(t, HasErrors(issues), "%v", issues)
-	p, err := prepare(scopeJobIf, &declarations{}, cond)
+	assert.Contains(t, issueCodes(issues, SeverityError), CodeExpressionTooExpensive)
+}
+
+func TestRuntimeLimitsStillStopAnExpensiveExpression(t *testing.T) {
+	p, err := prepare(scopeJobIf, &declarations{}, expensiveCondition())
 	require.NoError(t, err)
 	for range 3 {
 		start := time.Now()
@@ -48,12 +52,6 @@ func TestCostLimitStopsBeforeTheTimeout(t *testing.T) {
 	require.ErrorIs(t, err, ErrExpressionCost)
 }
 
-func TestEvalIfStopsAnExpensiveCondition(t *testing.T) {
-	plan := compileSource(t, []byte(job("    if: ${{ "+expensiveCondition()+" }}\n    steps: [{run: x}]\n")))
-	_, err := plan.Jobs[0].EvalIf(context.Background(), Context{})
-	assert.True(t, errors.Is(err, ErrExpressionCost) || errors.Is(err, ErrExpressionTimeout), "%v", err)
-}
-
 func TestExpressionStopsWhenTheContextEnds(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -69,13 +67,15 @@ func TestTypeErrorsAreCaughtAtValidation(t *testing.T) {
 	}
 }
 
-func TestRegexIsLinear(t *testing.T) {
-	plan := compileSource(t, []byte(job("    if: ${{ git.message.matches(\"(a*)*b\") }}\n    steps: [{run: x}]\n")))
-	start := time.Now()
-	ok, err := plan.Jobs[0].EvalIf(context.Background(), Context{Git: Git{Message: strings.Repeat("a", 4096)}})
-	require.NoError(t, err)
-	assert.False(t, ok)
-	assert.Less(t, time.Since(start), 50*time.Millisecond)
+func TestRegexAndTimeFunctionsAreNotAvailable(t *testing.T) {
+	for _, cond := range []string{
+		`git.message.matches("a+")`, `matches(git.message, "a")`, `timestamp("2026-10-30T00:00:00Z") != timestamp("2026-10-31T00:00:00Z")`,
+		`duration("1h") == duration("1h")`,
+	} {
+		_, issues := Check([]byte(job("    if: ${{ " + cond + " }}\n    steps: [{run: x}]\n")))
+		codes := issueCodes(issues, SeverityError)
+		assert.True(t, slices.Contains(codes, CodeExpressionUnknownName) || slices.Contains(codes, CodeExpressionType), "%s: %v", cond, codes)
+	}
 }
 
 func TestEvaluation(t *testing.T) {
