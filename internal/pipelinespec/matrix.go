@@ -31,10 +31,12 @@ func runJobKey(id string, c combination) string {
 	}
 	parts := make([]string, 0, len(c))
 	for _, v := range c {
-		parts = append(parts, v.Key+"="+v.Value.Text)
+		parts = append(parts, v.Key+"="+keyEscaper.Replace(v.Value.Text))
 	}
 	return id + " (" + strings.Join(parts, ", ") + ")"
 }
+
+var keyEscaper = strings.NewReplacer(`\`, `\\`, ",", `\,`, "=", `\=`, "(", `\(`, ")", `\)`)
 
 func sameScalar(a, b Scalar) bool {
 	return a.Kind == b.Kind && a.Value() == b.Value()
