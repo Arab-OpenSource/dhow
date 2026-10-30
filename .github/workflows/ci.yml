@@ -14,8 +14,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  go:
+  changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    name: Changed areas
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.scope.outputs.code }}
+      web: ${{ steps.scope.outputs.web }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Decide which areas the change touches
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+        run: deploy/ci/changed-areas.sh "$EVENT" >> "$GITHUB_OUTPUT"
+
+  docs:
+    needs: changes
+    name: Docs and hooks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Test Claude Code hooks
+        run: make hooks-test
+      - name: Check the Arabic and English docs
+        run: make docs-check
+
+  go:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     name: Go (lint, test, vulnerabilities)
     runs-on: ubuntu-24.04
     services:
@@ -76,13 +111,10 @@ jobs:
         run: make build
       - name: Build the runner
         run: make build-runner
-      - name: Test Claude Code hooks
-        run: make hooks-test
-      - name: Check the Arabic and English docs
-        run: make docs-check
 
   timing:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     name: Go (timing side channels)
     runs-on: ubuntu-24.04
     services:
@@ -112,7 +144,8 @@ jobs:
         run: make timing
 
   isolation:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     name: Runner isolation (rootless Podman)
     runs-on: ubuntu-26.04
     timeout-minutes: 60
@@ -197,7 +230,8 @@ jobs:
             "postgres://dhow:dhow-ci-only@127.0.0.1:5432/dhow?sslmode=disable"
 
   web:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     name: Web (lint, typecheck, test, build, size)
     runs-on: ubuntu-24.04
     env:
@@ -240,7 +274,8 @@ jobs:
         run: pnpm size
 
   image:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || needs.changes.outputs.web == 'true'
     name: Image (build, smoke test, SBOM, vulnerability scan)
     runs-on: ubuntu-24.04
     env:
