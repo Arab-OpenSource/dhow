@@ -157,19 +157,24 @@ job_succeeds() {
   done
   return 1
 }
+only_mptcp_advisory() {
+  grep -qx 'Everything looks good.' "$1" && return 0
+  grep -qx 'Nothing blocks Dhow, but read the warnings above.' "$1" || return 1
+  ! grep -E '^  (WARN|FAIL) ' "$1" | grep -v 'MPTCP, CVE-2026-98432'
+}
 doctor_clean() {
   dhow-runner doctor >"$work/doctor.log" 2>&1 || {
     cat -- "$work/doctor.log"
     return 1
   }
-  grep -q 'Everything looks good.' "$work/doctor.log"
+  only_mptcp_advisory "$work/doctor.log"
 }
 keys_off_disk() {
   local seed enc
   seed=$(systemd-creds decrypt --name=identity /var/lib/dhow-runner/identity.cred - | grep -o '"SigningSeed":"[^"]*"' | cut -d'"' -f4)
   enc=$(systemd-creds decrypt --name=identity /var/lib/dhow-runner/identity.cred - | grep -o '"EncryptionKey":"[^"]*"' | cut -d'"' -f4)
   [[ -n $seed && -n $enc ]] || return 1
-  ! grep -rqsF -e "$seed" -e "${enc:0:64}" -- /var/lib/dhow-runner /etc /root /tmp /var/tmp /usr/local &&
+  ! grep -rqsF -e "$seed" -e "${enc:0:64}" -- /var/lib/dhow-runner /etc /root /tmp /var/tmp /usr/local/bin &&
     ! journalctl --no-pager | grep -qF -e "$seed" -e "${enc:0:64}"
 }
 

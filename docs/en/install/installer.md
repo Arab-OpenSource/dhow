@@ -174,8 +174,9 @@ install_packages: false
 - CPU cores and memory against the [hardware requirements](../requirements.md): below the minimum is a failure, below the recommended size a warning.
 - Free disk space in `/var/lib` and in the PostgreSQL data directory: less than 1 GiB is a failure, less than 5 GiB a warning.
 - Where each server setting and the sign-in providers come from: the environment, the database or the default. It names the setting, never its value. When `DHOW_OIDC_PROVIDERS` is set and some accounts are linked to providers saved in the database under an id the variable does not list, that is a warning with the number of accounts and providers, because those accounts cannot sign in with them. This check reads the database, so it is skipped with Compose.
+- Multipath TCP in the kernel (`/proc/sys/net/mptcp/enabled`), with the kernel release: a warning while it is on, for [CVE-2026-98432](../security/kernel-advisories.md). Doctor never changes the setting.
 
-Every finding comes with its fix: a command, such as restarting the service, renewing the certificate or restoring a file mode, or advice when a person must decide. In a terminal doctor asks before each fix. `--fix` applies them all, and without a terminal doctor only lists them. It exits with status `0` when everything is fine.
+Every finding comes with its fix: a command, such as restarting the service, renewing the certificate or restoring a file mode, or advice when a person must decide. In a terminal doctor asks before each fix. `--fix` applies them all, and without a terminal doctor only lists them. It exits with status `0` when everything is fine. The MPTCP warning alone does not change that: doctor then ends with "Nothing blocks Dhow, but read the warnings above."
 
 ## Upgrade
 

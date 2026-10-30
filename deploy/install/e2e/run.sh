@@ -49,10 +49,15 @@ journal_has_setup_link() { in_box journalctl -u dhow -o cat --no-pager | grep -q
 every_step_skipped() { ! grep -E '^\[[0-9]+/[0-9]+\] [^:]*$' "$1"; }
 pgdg_installed() { in_box test -x /usr/lib/postgresql/18/bin/postgres || in_box test -x /usr/pgsql-18/bin/postgres; }
 nologin() { in_box getent passwd dhow | grep -q ':/usr/sbin/nologin$'; }
+only_mptcp_advisory() {
+  grep -qx 'Everything looks good.' "$1" && return 0
+  grep -qx 'Nothing blocks Dhow, but read the warnings above.' "$1" || return 1
+  ! grep -E '^  (WARN|FAIL) ' "$1" | grep -v 'MPTCP, CVE-2026-98432'
+}
 doctor_clean() {
   in_box /root/dhow-server doctor >"$work/doctor.log"
   cat -- "$work/doctor.log"
-  grep -q 'Everything looks good.' "$work/doctor.log"
+  only_mptcp_advisory "$work/doctor.log"
 }
 unit_unknown() { ! in_box systemctl cat dhow.service >/dev/null 2>&1; }
 user_gone() { ! in_box getent passwd dhow >/dev/null; }

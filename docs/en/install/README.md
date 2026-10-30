@@ -59,9 +59,14 @@ Go through this list before other people use the instance.
 - [ ] The owner account was created right after the install. Until then, anyone who can read the server log can use the setup link.
 - [ ] The image is pinned by digest after [verifying its signature](compose.md#verify-an-image).
 
+**The host kernel**
+
+- [ ] The kernel has the fix for every advisory in [Kernel security advisories](../security/kernel-advisories.md), or its mitigation is in place. `dhow-server doctor` warns while MPTCP is on (CVE-2026-98432).
+
 ## More
 
 - [Hardware requirements](../requirements.md): the CPU, memory and disk Dhow and its runners need, and how they were measured.
+- [Kernel security advisories](../security/kernel-advisories.md): kernel flaws that affect Dhow, how to check the host, and how to mitigate them.
 - [Configuration](configuration.md): every `DHOW_*` variable, its default and its validation.
 - [Sign in with OIDC](../guides/oidc.md): sign-in with Google, Keycloak, GitHub or any OIDC provider.
 - [Troubleshooting](troubleshooting.md): `CSRF_FAILED`, cookies that are not stored, the public URL and `sslmode` errors, the wrong client address, locked-out sign-ins, and the setup link.

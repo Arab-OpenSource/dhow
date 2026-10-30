@@ -60,6 +60,7 @@
 | M4.1 | `internal/pipelinespec`: الـ parser والـ validator وCEL والـ DAG والـ matrix والـ JSON Schema (ADR-0069) | #65 |
 | M4.2 | `dhow lint` في `apps/cli`، والأرشيفات الموقّعة، و`get.sh --component cli` | #66 |
 | M4.3 | موديول `Projects` و`policy.Project` بالـ bindings على المشروع، و`Core/JobQueue` جوه transaction اللي بينادي (ADR-0070) | #68 |
+| إصلاح CVE-2026-98432 | MPTCP مقفول في كل ملفات داو التنفيذية بـ `godebug multipathtcp=0`، وتحذير في `doctor`، وصفحة تنبيهات النواة (ADR-0073) | #70 |
 
 شرط خلاص M2 اتحقق: اختبارات الصلاحيات خضرا، ومفيش finding مفتوح Critical أو High. والمراجعة الخارجية اتنقلت لـ M9 (ADR-0040).
 

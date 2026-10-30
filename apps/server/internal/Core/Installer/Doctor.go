@@ -84,8 +84,15 @@ func (app App) Doctor(ctx context.Context, opts DoctorOptions) error {
 		}
 		return fmt.Errorf("%w: %d", ErrUnhealthy, remaining)
 	}
-	app.say("\n%s\n", m.T(KeyDoctorClean))
+	app.say("\n%s\n", m.T(cleanKey(findings)))
 	return nil
+}
+
+func cleanKey(findings []Finding) Key {
+	if engine.HasAdvisory(findings) {
+		return engine.KeyDoctorAdvisories
+	}
+	return KeyDoctorClean
 }
 
 func (d Doctor) Run(ctx context.Context) []Finding {
@@ -100,7 +107,7 @@ func (d Doctor) Run(ctx context.Context) []Finding {
 	out = append(out, d.resources()...)
 	out = append(out, d.disk()...)
 	out = append(out, d.settingSources(ctx)...)
-	return out
+	return append(out, engine.KernelMPTCP(d.Sys, d.M))
 }
 
 func ok(title string) Finding { return engine.OK(title) }
