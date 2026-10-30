@@ -23,6 +23,7 @@ Exit codes:
 	KeyTooManyPaths:   "dhow lint: give one path only.",
 	KeyFileNotFound:   "dhow lint: %s: the file does not exist.",
 	KeyFileNotRegular: "dhow lint: %s: this is not a regular file.",
+	KeyFileSymlink:    "dhow lint: %s: this is a symbolic link. dhow lint does not follow links, so a pull request cannot point it at another file on this machine. Lint the real file instead.",
 	KeyFileNoAccess:   "dhow lint: %s: you do not have permission to read this file.",
 	KeyFileUnreadable: "dhow lint: %s: the file cannot be read.",
 	KeyValid:          "%s: the pipeline is valid.",

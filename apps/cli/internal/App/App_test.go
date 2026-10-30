@@ -45,6 +45,8 @@ func TestTheSameBadFilesGiveTheSameCodes(t *testing.T) {
 
 func TestExitCodes(t *testing.T) {
 	dir := t.TempDir()
+	link := filepath.Join(dir, "link.yml")
+	require.NoError(t, os.Symlink(filepath.Join("testdata", "valid.dhow.yml"), link))
 	unreadable := filepath.Join(dir, "secret.yml")
 	require.NoError(t, os.WriteFile(unreadable, []byte("version: 1\n"), 0o000))
 	cases := []struct {
@@ -59,6 +61,7 @@ func TestExitCodes(t *testing.T) {
 		{"missing file", []string{"lint", filepath.Join(dir, "nope.yml")}, ExitUsage, "the file does not exist"},
 		{"folder without a pipeline", []string{"lint", dir}, ExitUsage, "the file does not exist"},
 		{"not a regular file", []string{"lint", os.DevNull}, ExitUsage, "not a regular file"},
+		{"symbolic link", []string{"lint", link}, ExitUsage, "this is a symbolic link"},
 		{"no command", nil, ExitUsage, "Usage:"},
 		{"unknown command", []string{"deploy"}, ExitUsage, "deploy is not a command"},
 		{"unknown option", []string{"lint", "--strict"}, ExitUsage, "--strict is not an option"},
@@ -129,6 +132,11 @@ func TestErrorsAreTranslated(t *testing.T) {
 	_, errOut, code := run([]string{"lint", "--lang", "ar", "nope.yml"}, nil)
 	assert.Equal(t, ExitUsage, code)
 	assert.Contains(t, errOut, "الملف غير موجود")
+	link := filepath.Join(t.TempDir(), ".dhow.yml")
+	require.NoError(t, os.Symlink(os.DevNull, link))
+	_, errOut, code = run([]string{"lint", "--lang", "ar", link}, nil)
+	assert.Equal(t, ExitUsage, code)
+	assert.Contains(t, errOut, "رابط رمزي")
 	_, errOut, _ = run([]string{"lint", "--bogus", "--lang", "ar"}, nil)
 	assert.Contains(t, errOut, "ليس خيارًا")
 }

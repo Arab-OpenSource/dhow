@@ -61,13 +61,17 @@ func TestFileErrors(t *testing.T) {
 	}
 }
 
-func TestSymlinkToAFileIsFollowed(t *testing.T) {
-	target := write(t, "real.yml", pipelinespectest.RunJob(""))
+func TestSymlinksAreNeverFollowed(t *testing.T) {
+	secret := write(t, "config.json", "{\"auths\": {}}\n")
 	link := filepath.Join(t.TempDir(), ".dhow.yml")
-	require.NoError(t, os.Symlink(target, link))
+	require.NoError(t, os.Symlink(secret, link))
 	res, err := File(link)
-	require.NoError(t, err)
-	assert.Zero(t, res.Errors())
+	require.ErrorIs(t, err, ErrSymlink)
+	assert.Empty(t, res.Issues)
+	dangling := filepath.Join(t.TempDir(), ".dhow.yml")
+	require.NoError(t, os.Symlink(filepath.Join(t.TempDir(), "nowhere"), dangling))
+	_, err = File(dangling)
+	assert.ErrorIs(t, err, ErrSymlink)
 }
 
 func TestResolve(t *testing.T) {

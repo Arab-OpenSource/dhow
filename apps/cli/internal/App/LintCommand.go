@@ -67,6 +67,8 @@ func fileErrorKey(err error) output.Key {
 		return output.KeyFileNotFound
 	case errors.Is(err, lint.ErrNotRegular):
 		return output.KeyFileNotRegular
+	case errors.Is(err, lint.ErrSymlink):
+		return output.KeyFileSymlink
 	case errors.Is(err, lint.ErrNoAccess):
 		return output.KeyFileNoAccess
 	default:

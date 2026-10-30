@@ -2,12 +2,12 @@ package lint
 
 import (
 	"errors"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/Khaymah/dhow/internal/pipelinespec"
+	"github.com/Khaymah/dhow/internal/safefile"
 )
 
 const DefaultFile = ".dhow.yml"
@@ -15,6 +15,7 @@ const DefaultFile = ".dhow.yml"
 var (
 	ErrNotFound   = errors.New("the file does not exist")
 	ErrNotRegular = errors.New("the path is not a regular file")
+	ErrSymlink    = errors.New("the path is a symbolic link")
 	ErrNoAccess   = errors.New("permission to read the file is denied")
 	ErrUnreadable = errors.New("the file could not be read")
 )
@@ -65,31 +66,8 @@ func Source(path string, src []byte) Result {
 	return Result{Path: path, Issues: issues}
 }
 
-func read(path string) (src []byte, err error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, classify(err)
-	}
-	if !info.Mode().IsRegular() {
-		return nil, ErrNotRegular
-	}
-	f, err := os.Open(path) //nolint:gosec // The user names the file to lint; it is read, never executed.
-	if err != nil {
-		return nil, classify(err)
-	}
-	defer func() {
-		if cerr := f.Close(); cerr != nil && err == nil {
-			src, err = nil, classify(cerr)
-		}
-	}()
-	opened, err := f.Stat()
-	if err != nil {
-		return nil, classify(err)
-	}
-	if !opened.Mode().IsRegular() {
-		return nil, ErrNotRegular
-	}
-	src, err = io.ReadAll(io.LimitReader(f, pipelinespec.MaxFileBytes+1))
+func read(path string) ([]byte, error) {
+	src, err := safefile.ReadRegular(path, pipelinespec.MaxFileBytes+1)
 	if err != nil {
 		return nil, classify(err)
 	}
@@ -98,6 +76,10 @@ func read(path string) (src []byte, err error) {
 
 func classify(err error) error {
 	switch {
+	case errors.Is(err, safefile.ErrSymlink):
+		return ErrSymlink
+	case errors.Is(err, safefile.ErrNotRegular):
+		return ErrNotRegular
 	case errors.Is(err, fs.ErrNotExist):
 		return ErrNotFound
 	case errors.Is(err, fs.ErrPermission):

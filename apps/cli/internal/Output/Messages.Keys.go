@@ -13,6 +13,7 @@ const (
 	KeyTooManyPaths   Key = "too.many.paths"
 	KeyFileNotFound   Key = "file.not.found"
 	KeyFileNotRegular Key = "file.not.regular"
+	KeyFileSymlink    Key = "file.symlink"
 	KeyFileNoAccess   Key = "file.no.access"
 	KeyFileUnreadable Key = "file.unreadable"
 	KeyValid          Key = "valid"

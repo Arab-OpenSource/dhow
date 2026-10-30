@@ -23,6 +23,7 @@ var arMessages = map[Key]string{
 	KeyTooManyPaths:   "dhow lint: اكتب مسارًا واحدًا فقط.",
 	KeyFileNotFound:   "dhow lint: %s: الملف غير موجود.",
 	KeyFileNotRegular: "dhow lint: %s: هذا ليس ملفًا عاديًا.",
+	KeyFileSymlink:    "dhow lint: %s: هذا رابط رمزي (symlink). لا يتبع dhow lint الروابط، حتى لا يستطيع أي pull request أن يوجّهه إلى ملف آخر على هذا الجهاز. افحص الملف الأصلي نفسه.",
 	KeyFileNoAccess:   "dhow lint: %s: ليست لديك صلاحية قراءة هذا الملف.",
 	KeyFileUnreadable: "dhow lint: %s: لا يمكن قراءة الملف.",
 	KeyValid:          "%s: خطوات النشر صحيحة.",
