@@ -525,6 +525,7 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
   - سياسة الـ forks والموافقة.
   - الـ manual وapi triggers بالـ inputs.
   - الـ reconciler.
+  - **تثبيت الصور بالـ tag وقت بداية الـ run** (قرار Sabry يوم 2026-10-30): `image:` بالـ tag بيطلّع `IMAGE_NOT_PINNED` warning من `Check` بس `Compile` كان بيرفضه بـ `JOB_SPEC_INVALID`. الحل: السيرفر بيحوّل الـ tag لـ digest من الـ registry وقت بداية الـ run (من خلال حماية الـ SSRF في `internal/netguard`)، وبيسجّل الـ digest على الـ run، وبيعمل compile بيه، فكل job وكل إعادة تشغيل بيسحبوا نفس الصورة بالظبط. `Check` بيفضل يطلّع الـ warning، و`dhow lint` بيفضل على `Check`.
   - ADR للقرارين 2 و10، وقرار سياسة الـ forks بعد إجابة السؤال 1.
 - **قبول:**
   - **الـ DAG:** pipeline بـ 4 jobs (اتنين بالتوازي وmatrix 2×2) بيخلص بالترتيب الصح، والـ need الفاشل بيعمل `skipped` للي بعده.
@@ -533,6 +534,7 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
   - **الـ concurrency:** run جديد بـ `cancel_in_progress` بيلغي القديم، ومن غيره بيستنى.
   - **الـ forks:** PR من fork بيعدّل `.dhow.yml`: التعريف اللي اتطبّق من الـ base (الـ digest بيثبت). ومفيش أسرار ولا بيئات ولا كتابة cache.
   - **التعريف الغلط:** `PIPELINE_INVALID` بالأخطاء في الـ API وفي الـ check.
+  - **الصورة بالـ tag:** run بـ `image: alpine:3` بيتسجّل عليه الـ digest، وكل الـ jobs والإعادة بيسحبوا نفس الـ digest حتى لو الـ tag اتنقل في الـ registry.
   - **الأعطال:** قتل السيرفر بعد ما الـ job خلص وقبل الـ commit: بعد القيام، الـ run بيكمّل صح (مفيش حدث ضايع لأن الكل في transaction واحدة).
 - **التحقق:**
   - `go test -race -count=1 ./apps/server/internal/Modules/Pipelines/...`
