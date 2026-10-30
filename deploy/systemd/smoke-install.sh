@@ -157,12 +157,17 @@ job_succeeds() {
   done
   return 1
 }
+only_mptcp_advisory() {
+  grep -qx 'Everything looks good.' "$1" && return 0
+  grep -qx 'Nothing blocks Dhow, but read the warnings above.' "$1" || return 1
+  ! grep -E '^  (WARN|FAIL) ' "$1" | grep -v 'MPTCP, CVE-2026-98432'
+}
 doctor_clean() {
   dhow-runner doctor >"$work/doctor.log" 2>&1 || {
     cat -- "$work/doctor.log"
     return 1
   }
-  grep -q 'Everything looks good.' "$work/doctor.log"
+  only_mptcp_advisory "$work/doctor.log"
 }
 keys_off_disk() {
   local seed enc
