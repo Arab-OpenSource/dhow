@@ -9,8 +9,13 @@
 - **Linux** على `amd64` أو `arm64`، مع systemd. لا ندعم أجهزة تشغيل Windows وmacOS.
 - **اتصال HTTPS خارجي** إلى سيرفر داو (Dhow)، مباشرة أو عبر وكيل HTTP (نحترم `HTTPS_PROXY`، ويبقى TLS من الطرف إلى الطرف عبره).
 - **رمز تسجيل** من صفحة **أجهزة التشغيل** في السيرفر ([تسجيل جهاز تشغيل](register.md#1-إنشاء-رمز-تسجيل)).
-- **لمشغّل Podman (M3.6):** Podman 5.4 أو أحدث، و`crun`، و`uidmap`، وcgroup v2 مع التفويض (delegation)، وuser namespaces. هذه موجودة في Debian 13 وUbuntu 26.04 وFedora وRHEL 9.6+ أو 10 (Rocky وAlma). Debian 12 وUbuntu 24.04 لا يوفّرانها من مستودعاتهما، ويتوقف `install` عليهما ويذكر الإصدار الذي وجده. ويمنع Ubuntu أيضًا user namespaces للبرامج التي ليس لها ملف AppArmor. اضبط `kernel.apparmor_restrict_unprivileged_userns=0` في `/etc/sysctl.d/` أو أعطِ Podman ملفًا، وإلا يتوقف `install` ويخبرك بالسبب.
+- **لمشغّل Podman (M3.6):** Podman 5.4 أو أحدث، و`crun`، و`uidmap`، وcgroup v2 مع التفويض (delegation)، وuser namespaces. هذه موجودة في Debian 13 وUbuntu 26.04 وFedora وRHEL 9.6+ أو 10 (Rocky وAlma)، لكن وضع SELinux enforcing غير مدعوم بعد ([الأجهزة المدعومة](#الأجهزة-المدعومة)). Debian 12 وUbuntu 24.04 لا يوفّرانها من مستودعاتهما، ويتوقف `install` عليهما ويذكر الإصدار الذي وجده. ويمنع Ubuntu أيضًا user namespaces للبرامج التي ليس لها ملف AppArmor. اضبط `kernel.apparmor_restrict_unprivileged_userns=0` في `/etc/sysctl.d/` أو أعطِ Podman ملفًا، وإلا يتوقف `install` ويخبرك بالسبب.
 - **جهاز خاص به، أو `/proc` خاص.** لا يستطيع المستخدمون المحليون الآخرون عرض مجلد حالة جهاز التشغيل. لكن معرّف الحاوية يظهر في سطر أوامر `conmon`، وبه قد يقرأ مستخدم محلي ملفات صورة التشغيل (وليس `/workspace` أو الأسرار أبدًا، فهي في tmpfs الخاص بالحاوية). شغّل جهاز التشغيل على جهاز لا يدخل إليه أحد غيرك، أو اربط (mount) `/proc` بالخيار `hidepid=2`.
+
+### الأجهزة المدعومة
+
+- **مدعومة:** Debian وUbuntu، وهما يستخدمان AppArmor.
+- **غير مدعومة بعد:** الأجهزة التي يعمل فيها SELinux في وضع enforcing، مثل Fedora وRHEL وRocky وAlma. يمنع SELinux وكيل التشغيل من الاتصال بمقبس التحكم في جهاز التشغيل، فيفشل كل تشغيل. يقرأ `install` الملف `/sys/fs/selinux/enforce` قبل الخطوة الأولى ويتوقف دون أن يغيّر شيئًا، ويذكر `doctor` المشكلة نفسها. والأجهزة التي يعمل فيها SELinux في وضع permissive أو المعطّل فيها مقبولة. وتحويل SELinux إلى وضع permissive (`setenforce 0`) قرارك أنت، ولا ننصح به.
 
 ## احصل على الملف التنفيذي
 

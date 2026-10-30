@@ -9,8 +9,13 @@ The runner is a single static Linux binary, `dhow-runner`, for `amd64` and `arm6
 - **Linux** on `amd64` or `arm64`, with systemd. Windows and macOS runners are not supported.
 - **Outbound HTTPS** to your Dhow server, directly or through an HTTP proxy (`HTTPS_PROXY` is honored, and TLS still runs end to end through it).
 - **A registration token** from the **Runners** page of your server ([Register a runner](register.md#1-create-a-registration-token)).
-- **For the Podman driver (M3.6):** Podman 5.4 or newer, `crun`, `uidmap`, cgroup v2 with delegation, and user namespaces. Debian 13, Ubuntu 26.04, Fedora and RHEL 9.6+ or 10 (Rocky, Alma) ship these. Debian 12 and Ubuntu 24.04 do not, from their own repositories, and `install` stops on them with the version it found. Ubuntu also blocks user namespaces for programs without an AppArmor profile; set `kernel.apparmor_restrict_unprivileged_userns=0` in `/etc/sysctl.d/` or give Podman a profile, or `install` stops and says so.
+- **For the Podman driver (M3.6):** Podman 5.4 or newer, `crun`, `uidmap`, cgroup v2 with delegation, and user namespaces. Debian 13, Ubuntu 26.04, Fedora and RHEL 9.6+ or 10 (Rocky, Alma) ship these, but SELinux enforcing is not supported yet ([Supported hosts](#supported-hosts)). Debian 12 and Ubuntu 24.04 do not, from their own repositories, and `install` stops on them with the version it found. Ubuntu also blocks user namespaces for programs without an AppArmor profile; set `kernel.apparmor_restrict_unprivileged_userns=0` in `/etc/sysctl.d/` or give Podman a profile, or `install` stops and says so.
 - **A host of its own, or a private `/proc`.** Other local users cannot list the runner's state directory, but a container's ID shows in the `conmon` command line, and with it a local user could read the files of the job's image (never `/workspace` or secrets, which live in the container's own tmpfs). Run the runner on a host no one else logs into, or mount `/proc` with `hidepid=2`.
+
+### Supported hosts
+
+- **Supported:** Debian and Ubuntu, which use AppArmor.
+- **Not supported yet:** hosts with SELinux in enforcing mode, such as Fedora, RHEL, Rocky and Alma. SELinux stops the job agent from connecting to the runner's control socket, so every job fails. `install` reads `/sys/fs/selinux/enforce` before step 1 and stops there without changing anything, and `doctor` reports the same problem. Hosts with SELinux permissive or disabled are accepted. Switching SELinux to permissive (`setenforce 0`) is your own choice, and we do not recommend it.
 
 ## Get the binary
 

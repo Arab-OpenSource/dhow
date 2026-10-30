@@ -18,6 +18,7 @@ On a terminal it offers each proposed fix in turn. `--fix` applies them all with
 | Runner installed | The binary, the unit, `runner.env`, the state directory or the `dhow-runner` user is missing. | `sudo dhow-runner install` |
 | Podman 5.4 or newer, crun and newuidmap | Podman is missing or older than 5.4, or `crun`, `newuidmap` or `newgidmap` is missing. Skipped for the test driver. | A newer Podman from the distribution. |
 | cgroup v2 and user namespaces | The kernel uses cgroup v1, user namespaces are off, or AppArmor blocks them. | The kernel settings named in the message. |
+| SELinux is not enforcing | SELinux is in enforcing mode, which jobs do not support yet ([Supported hosts](install.md#supported-hosts)). | A supported host. Switching to permissive is your own choice, and we do not recommend it. |
 | Sub-ids | The runner user has fewer than 65536 sub-ids per job in `/etc/subuid` or `/etc/subgid`. | `--fix` adds a free range of 1048576. |
 | Memory for each job | `DHOW_RUNNER_MAX_MEMORY` plus the tmpfs disk `DHOW_RUNNER_MAX_DISK` is more than the host memory. It is the same check `install` makes before step 1 ([Memory per job](install.md#memory-per-job)). | Lower both in `runner.env`; the message suggests values that fit. |
 | The systemd unit matches this release | The installed unit differs from the one in the binary (a warning). | `--fix` writes it again and restarts the runner. |
