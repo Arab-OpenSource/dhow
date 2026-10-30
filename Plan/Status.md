@@ -106,6 +106,8 @@ M4 الـ pipelines ومزوّدي Git، وM5 الأسرار والبيئات، 
 
 ## بنود مفتوحة اتأجلت
 
+- **SELinux enforcing (ADR-0067):** الـ runner مش مدعوم على Fedora وRHEL وRocky وAlma بـ enforcing، لأن `container_t` ممنوع من `connectto` على الـ control socket. نختار قبل ما M3 يقفل: نقلب اتجاه قناة التحكم، أو policy module بـ domain للـ runner. وبعدها نرجّع fedora وrocky-10 لـ `vm-test.yml`.
+
 - **الـ runner:** حقل سقف الموارد في `RegisterRequest`، ورفض `RESOURCE_REQUEST_EXCEEDS_RUNNER` وقت الإنشاء.
 - **الحمل:** الـ token bucket لكل runner ورد «الـ pool مشغول» (ADR-0042). والإشعار بالـ labels لو الـ runners كتروا. وحدود الـ logs لكل instance مع HA.
 - **التنضيف:** تنضيف `"RunnerSessions"` في M3.13. واحتفاظ الـ logs لكل مؤسسة في M4.

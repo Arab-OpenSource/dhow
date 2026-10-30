@@ -43,6 +43,7 @@ cleanup() {
   local status=$?
   if ((status != 0 || failures != 0)); then
     journalctl --no-pager -n 60 -u dhow-runner 2>&1 || true
+    if command -v ausearch >/dev/null 2>&1; then ausearch -m avc -ts recent 2>&1 | tail -n 30 || true; fi
     tail -n 40 "$work/server.log" 2>&1 || true
   fi
   systemctl disable --now dhow-runner >/dev/null 2>&1 || true

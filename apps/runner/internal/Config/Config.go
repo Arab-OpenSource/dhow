@@ -244,10 +244,9 @@ func loadLimits(getenv func(string) string, m Machine, cfg Config) (Limits, []er
 	var err error
 	l.CPUMillis, err = parseCPU(getenv(EnvMaxCPU), m.CPUMillis)
 	add(EnvMaxCPU, err)
-	l.MemoryBytes, err = parseBytesRange(getenv(EnvMaxMemory), jobspec.DefaultMemoryBytes, jobspec.MinMemoryBytes, jobspec.MaxMemoryBytes)
-	add(EnvMaxMemory, err)
-	l.DiskBytes, err = parseBytesRange(getenv(EnvMaxDisk), jobspec.DefaultDiskBytes, jobspec.MinDiskBytes, jobspec.MaxDiskBytes)
-	add(EnvMaxDisk, err)
+	memory, memErrs := parseJobMemory(getenv, cfg.DiskMode)
+	errs = append(errs, memErrs...)
+	l.MemoryBytes, l.DiskBytes = memory.MemoryBytes, memory.DiskBytes
 	pids, err := parseIntRange(getenv(EnvMaxPids), jobspec.DefaultPids, jobspec.MinPids, jobspec.MaxPids)
 	add(EnvMaxPids, err)
 	l.Pids = int64(pids)
@@ -267,13 +266,9 @@ func checkMachine(l Limits, m Machine, cfg Config) []error {
 	if m.PidMax > 0 && l.Pids > m.PidMax {
 		errs = append(errs, fmt.Errorf("%s: %d %w (pid_max %d)", EnvMaxPids, l.Pids, ErrAboveMachine, m.PidMax))
 	}
-	memory := l.MemoryBytes
-	if cfg.DiskMode == DiskModeTmpfs {
-		memory += l.DiskBytes
-	}
-	if m.MemoryBytes > 0 && memory > m.MemoryBytes {
-		errs = append(errs, fmt.Errorf("%s: %d bytes of memory per job (with the tmpfs disk) %w (%d); lower %s or %s",
-			EnvMaxMemory, memory, ErrAboveMachine, m.MemoryBytes, EnvMaxMemory, EnvMaxDisk))
+	memory := JobMemory{MemoryBytes: l.MemoryBytes, DiskBytes: l.DiskBytes, Tmpfs: cfg.DiskMode == DiskModeTmpfs}
+	if err := CheckJobMemory(memory, m.MemoryBytes); err != nil {
+		errs = append(errs, err)
 	}
 	if m.DiskFree != nil {
 		jobs := int64(max(cfg.Capacity, 1))

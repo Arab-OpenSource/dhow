@@ -30,6 +30,7 @@ const (
 	MaxUserNamespaces = "/proc/sys/user/max_user_namespaces"
 	AppArmorUserns    = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns"
 	SystemdRunDir     = "/run/systemd/system"
+	SELinuxEnforce    = "/sys/fs/selinux/enforce"
 )
 
 const (

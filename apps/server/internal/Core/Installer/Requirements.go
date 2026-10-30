@@ -1,14 +1,14 @@
 package installer
 
 import (
-	"bufio"
-	"bytes"
 	"strconv"
 	"strings"
+
+	engine "github.com/Khaymah/dhow/internal/installer"
 )
 
 const (
-	MemInfoPath   = "/proc/meminfo"
+	MemInfoPath   = engine.MemInfoPath
 	CPUOnlinePath = "/sys/devices/system/cpu/online"
 	DataRoot      = "/var/lib"
 
@@ -63,21 +63,7 @@ func ReadHostResources(sys System) HostResources {
 	return h
 }
 
-func ParseMemTotal(data []byte) uint64 {
-	sc := bufio.NewScanner(bytes.NewReader(data))
-	for sc.Scan() {
-		fields := strings.Fields(sc.Text())
-		if len(fields) < 2 || fields[0] != "MemTotal:" {
-			continue
-		}
-		kib, err := strconv.ParseUint(fields[1], 10, 64)
-		if err != nil || kib > (1<<54) {
-			return 0
-		}
-		return kib << 10
-	}
-	return 0
-}
+func ParseMemTotal(data []byte) uint64 { return engine.ParseMemTotal(data) }
 
 func ParseCPUList(list string) int {
 	total := 0
