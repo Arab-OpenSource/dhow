@@ -1,0 +1,9 @@
+{
+  "SchemaVersion": 1,
+  "File": "testdata/valid.dhow.yml",
+  "Lang": "ar",
+  "Valid": true,
+  "Errors": 0,
+  "Warnings": 0,
+  "Issues": []
+}

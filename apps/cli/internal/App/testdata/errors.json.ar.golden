@@ -1,0 +1,58 @@
+{
+  "SchemaVersion": 1,
+  "File": "testdata/errors.dhow.yml",
+  "Lang": "ar",
+  "Valid": false,
+  "Errors": 5,
+  "Warnings": 1,
+  "Issues": [
+    {
+      "Code": "DAG_CYCLE",
+      "Severity": "error",
+      "Path": "jobs.build.needs",
+      "Line": 6,
+      "Column": 5,
+      "Message": "قائمة needs لهذا التشغيل تكوّن دائرة"
+    },
+    {
+      "Code": "IMAGE_NOT_PINNED",
+      "Severity": "warning",
+      "Path": "jobs.build.image",
+      "Line": 7,
+      "Column": 5,
+      "Message": "الصورة غير مثبّتة بالـ digest: يرفضها جهاز التشغيل إلا إذا سُمح بالصور غير المثبّتة"
+    },
+    {
+      "Code": "RUN_EXPRESSION_NOT_ALLOWED",
+      "Severity": "error",
+      "Path": "jobs.build.steps[0].run",
+      "Line": 9,
+      "Column": 9,
+      "Message": "${{ }} غير مسموح داخل run: مرّر القيمة عبر env واقرأها كمتغيّر"
+    },
+    {
+      "Code": "DAG_CYCLE",
+      "Severity": "error",
+      "Path": "jobs.deploy.needs",
+      "Line": 11,
+      "Column": 5,
+      "Message": "قائمة needs لهذا التشغيل تكوّن دائرة"
+    },
+    {
+      "Code": "SECRETS_IN_IF",
+      "Severity": "error",
+      "Path": "jobs.deploy.if",
+      "Line": 13,
+      "Column": 5,
+      "Message": "لا يمكن استخدام الأسرار في شرط أبدًا"
+    },
+    {
+      "Code": "USES_NOT_PINNED",
+      "Severity": "error",
+      "Path": "jobs.deploy.steps[0].uses",
+      "Line": 15,
+      "Column": 9,
+      "Message": "الإضافة في uses يجب تثبيتها بالـ digest (name@sha256:...)"
+    }
+  ]
+}

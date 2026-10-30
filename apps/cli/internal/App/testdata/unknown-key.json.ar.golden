@@ -1,0 +1,26 @@
+{
+  "SchemaVersion": 1,
+  "File": "testdata/unknown-key.dhow.yml",
+  "Lang": "ar",
+  "Valid": false,
+  "Errors": 2,
+  "Warnings": 0,
+  "Issues": [
+    {
+      "Code": "TRIGGER_NOT_SUPPORTED_YET",
+      "Severity": "error",
+      "Path": "on.schedule",
+      "Line": 4,
+      "Column": 3,
+      "Message": "هذا الحدث غير مدعوم بعد (schedule بعد أول إصدار، وartifact مع M6)"
+    },
+    {
+      "Code": "UNKNOWN_KEY",
+      "Severity": "error",
+      "Path": "jobs.build.stepz",
+      "Line": 8,
+      "Column": 5,
+      "Message": "هذا المفتاح ليس من مفاتيح ملف خطوات النشر"
+    }
+  ]
+}

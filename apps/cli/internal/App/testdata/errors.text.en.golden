@@ -1,0 +1,7 @@
+testdata/errors.dhow.yml:6:5: error DAG_CYCLE at jobs.build.needs: the needs of this job form a cycle
+testdata/errors.dhow.yml:7:5: warning IMAGE_NOT_PINNED at jobs.build.image: the image is not pinned by digest: the runner refuses it unless unpinned images are allowed
+testdata/errors.dhow.yml:9:9: error RUN_EXPRESSION_NOT_ALLOWED at jobs.build.steps[0].run: ${{ }} is not allowed inside run: pass the value through env and read it as a variable
+testdata/errors.dhow.yml:11:5: error DAG_CYCLE at jobs.deploy.needs: the needs of this job form a cycle
+testdata/errors.dhow.yml:13:5: error SECRETS_IN_IF at jobs.deploy.if: secrets can never be used in a condition
+testdata/errors.dhow.yml:15:9: error USES_NOT_PINNED at jobs.deploy.steps[0].uses: a plugin in uses must be pinned by digest (name@sha256:...)
+testdata/errors.dhow.yml: errors: 5, warnings: 1. The server refuses this pipeline.

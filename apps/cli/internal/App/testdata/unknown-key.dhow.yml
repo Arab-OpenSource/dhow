@@ -1,0 +1,8 @@
+version: 1
+on:
+  push: {}
+  schedule: [{cron: "0 3 * * *"}]
+jobs:
+  build:
+    image: alpine:3
+    stepz: []

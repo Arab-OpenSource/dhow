@@ -1,0 +1,15 @@
+version: 1
+on:
+  push: {}
+jobs:
+  build:
+    needs: [deploy]
+    image: alpine:3
+    steps:
+      - run: echo ${{ git.message }}
+  deploy:
+    needs: [build]
+    image: alpine@sha256:61bb7a95b0f3650f3039c0fcabe07674458cf0d13afa51aade6188bab8215b07
+    if: ${{ secrets.TOKEN == "x" }}
+    steps:
+      - uses: ghcr.io/acme/deploy:1
