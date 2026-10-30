@@ -78,3 +78,12 @@ func TestDeriveKeyNeedsALongSecretAndSeparatesLabels(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, a, again)
 }
+
+func TestSealRefusesAPlaintextOverTheLimit(t *testing.T) {
+	s, err := appcrypto.NewSealer(secret(t), "dhow/test/v1")
+	require.NoError(t, err)
+	_, err = s.Seal(make([]byte, appcrypto.MaxPlaintext), nil)
+	require.NoError(t, err)
+	_, err = s.Seal(make([]byte, appcrypto.MaxPlaintext+1), nil)
+	require.ErrorIs(t, err, appcrypto.ErrTooLarge)
+}
