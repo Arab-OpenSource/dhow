@@ -67,7 +67,7 @@
 
 | الشغل | الـ branch | الـ PR | اللي فاضل |
 |---|---|---|---|
-| M4.4: موديول `Sources`: `internal/gitref` و`gitsource` و`netguard`، وربط Git عام بـ deploy key وhost key متثبّت بالتأكيد، و`/webhooks/git/{hookId}` بالتوقيعات الأربعة والـ dedupe و`Core/Triggers`، و`"WebhookDeliveries"` مقسّم، وworker الـ commit statuses (ADR-0072 وADR-0074) | `feat/sources-generic-git` | — | مراجعة أمنية مستقلة، وبعدها الـ PR |
+| M4.4: موديول `Sources`: `internal/gitref` و`gitsource` و`netguard`، وربط Git عام بـ deploy key وhost key متثبّت بالتأكيد، و`/webhooks/git/{hookId}` بالتوقيعات الأربعة والـ dedupe و`Core/Triggers`، و`"WebhookDeliveries"` مقسّم، وworker الـ commit statuses (ADR-0072 وADR-0074) | `feat/sources-generic-git` | — | الـ PR (المراجعة الأمنية اتعملت وكل الـ findings اتصلّحت: Medium واحدة وخمسة Low) |
 | `runner.revoked` (إلغاء اللوحة وإلغاء الـ runner لنفسه) بيتنشر على الـ event bus بعد الـ commit، فلو الـ process وقع بينهم الـ audit بيضيع. الـ bus مافيهوش outbox | — | — | outbox للأحداث اللي بتتسجّل، أو نشرها جوه نفس الـ transaction |
 
 M2.6 وM3.6 والتطوير المحلي وإصلاحات مراجعة M3.6 وتغيير الاسم وM3.7 وتجهيز Windows وM3.9 اتدمجوا في 2026-10-28، ومن #35 لـ #59 اتدمجوا في 2026-10-28 و2026-10-29.
