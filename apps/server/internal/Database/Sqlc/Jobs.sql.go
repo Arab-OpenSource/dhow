@@ -18,7 +18,7 @@ UPDATE "Jobs"
 SET "State" = 'canceled', "FailureReason" = 'CANCELED', "FinishedAt" = now(), "CancelRequestedAt" = now(),
     "CancelRequestedBy" = $1::uuid, "UpdatedAt" = now()
 WHERE "Id" = $2 AND "State" = 'queued'
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 `
 
 type CancelQueuedJobParams struct {
@@ -54,19 +54,23 @@ func (q *Queries) CancelQueuedJob(ctx context.Context, arg CancelQueuedJobParams
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
 
 const claimQueuedJob = `-- name: ClaimQueuedJob :one
-SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 FROM "Jobs" j
 WHERE j."OrganizationId" = $1 AND j."State" = 'queued' AND NOT j."IsDeleted"
   AND j."Labels" <@ $2::text[] AND j."Isolation" = ANY ($3::text[])
+  AND j."RequiredFeatures" <@ $4::text[]
   AND j."QueueDeadline" > now() AND j."CancelRequestedAt" IS NULL
   AND NOT EXISTS (SELECT 1
                   FROM "JobAttempts" a
-                  WHERE a."JobId" = j."Id" AND a."RunnerId" = $4
+                  WHERE a."JobId" = j."Id" AND a."RunnerId" = $5
                     AND a."FailureReason" = 'RESOURCE_REQUEST_EXCEEDS_RUNNER')
 ORDER BY j."Priority" DESC, j."QueuedAt", j."Id"
 LIMIT 1
@@ -77,6 +81,7 @@ type ClaimQueuedJobParams struct {
 	OrganizationID  uuid.UUID
 	Labels          []string
 	IsolationLevels []string
+	Features        []string
 	RunnerID        uuid.UUID
 }
 
@@ -85,6 +90,7 @@ func (q *Queries) ClaimQueuedJob(ctx context.Context, arg ClaimQueuedJobParams) 
 		arg.OrganizationID,
 		arg.Labels,
 		arg.IsolationLevels,
+		arg.Features,
 		arg.RunnerID,
 	)
 	var i Job
@@ -113,6 +119,9 @@ func (q *Queries) ClaimQueuedJob(ctx context.Context, arg ClaimQueuedJobParams) 
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
@@ -328,7 +337,7 @@ const finishJob = `-- name: FinishJob :one
 UPDATE "Jobs"
 SET "State" = $1, "FailureReason" = $2, "FinishedAt" = now(), "UpdatedAt" = now()
 WHERE "Id" = $3 AND "State" = $4
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 `
 
 type FinishJobParams struct {
@@ -371,6 +380,9 @@ func (q *Queries) FinishJob(ctx context.Context, arg FinishJobParams) (Job, erro
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
@@ -394,7 +406,7 @@ func (q *Queries) GetAttemptStepState(ctx context.Context, arg GetAttemptStepSta
 }
 
 const getJob = `-- name: GetJob :one
-SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 FROM "Jobs"
 WHERE "Id" = $1 AND "OrganizationId" = $2 AND NOT "IsDeleted"
 `
@@ -432,6 +444,9 @@ func (q *Queries) GetJob(ctx context.Context, arg GetJobParams) (Job, error) {
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
@@ -544,10 +559,11 @@ func (q *Queries) InsertAttemptStep(ctx context.Context, arg InsertAttemptStepPa
 
 const insertJob = `-- name: InsertJob :one
 INSERT INTO "Jobs" ("OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation",
-                    "Priority", "MaxInfraRetries", "QueueDeadline")
+                    "Priority", "MaxInfraRetries", "QueueDeadline", "OriginKind", "OriginId", "RequiredFeatures")
 VALUES ($1, $2, $3, $4, $5, $6, $7::text[], $8, $9,
-        $10, now() + make_interval(secs => $11::float8))
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+        $10, now() + make_interval(secs => $11::float8), $12,
+        $13::uuid, $14::text[])
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 `
 
 type InsertJobParams struct {
@@ -562,6 +578,9 @@ type InsertJobParams struct {
 	Priority            int32
 	MaxInfraRetries     int32
 	QueueTimeoutSeconds float64
+	OriginKind          string
+	OriginID            *uuid.UUID
+	RequiredFeatures    []string
 }
 
 func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) (Job, error) {
@@ -577,6 +596,9 @@ func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) (Job, erro
 		arg.Priority,
 		arg.MaxInfraRetries,
 		arg.QueueTimeoutSeconds,
+		arg.OriginKind,
+		arg.OriginID,
+		arg.RequiredFeatures,
 	)
 	var i Job
 	err := row.Scan(
@@ -604,6 +626,9 @@ func (q *Queries) InsertJob(ctx context.Context, arg InsertJobParams) (Job, erro
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
@@ -931,7 +956,7 @@ func (q *Queries) LockActiveLease(ctx context.Context, arg LockActiveLeaseParams
 }
 
 const lockJob = `-- name: LockJob :one
-SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 FROM "Jobs"
 WHERE "Id" = $1 AND "OrganizationId" = $2 AND NOT "IsDeleted"
 FOR UPDATE
@@ -970,12 +995,15 @@ func (q *Queries) LockJob(ctx context.Context, arg LockJobParams) (Job, error) {
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
 
 const lockJobByID = `-- name: LockJobByID :one
-SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+SELECT "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 FROM "Jobs"
 WHERE "Id" = $1
 FOR UPDATE
@@ -1009,6 +1037,9 @@ func (q *Queries) LockJobByID(ctx context.Context, id uuid.UUID) (Job, error) {
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
@@ -1106,7 +1137,7 @@ UPDATE "Jobs"
 SET "State" = 'running', "StartedAt" = COALESCE("StartedAt", now()),
     "Deadline" = now() + make_interval(secs => $1::float8), "UpdatedAt" = now()
 WHERE "Id" = $2 AND "State" = 'leased'
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 `
 
 type MarkJobRunningParams struct {
@@ -1142,6 +1173,9 @@ func (q *Queries) MarkJobRunning(ctx context.Context, arg MarkJobRunningParams) 
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
@@ -1269,7 +1303,7 @@ const requestJobCancel = `-- name: RequestJobCancel :one
 UPDATE "Jobs"
 SET "CancelRequestedAt" = now(), "CancelRequestedBy" = $1::uuid, "UpdatedAt" = now()
 WHERE "Id" = $2 AND "State" IN ('leased', 'running') AND "CancelRequestedAt" IS NULL
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 `
 
 type RequestJobCancelParams struct {
@@ -1305,6 +1339,9 @@ func (q *Queries) RequestJobCancel(ctx context.Context, arg RequestJobCancelPara
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }
@@ -1313,7 +1350,7 @@ const requeueJob = `-- name: RequeueJob :one
 UPDATE "Jobs"
 SET "State" = 'queued', "Deadline" = NULL, "UpdatedAt" = now()
 WHERE "Id" = $1 AND "State" = $2
-RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries"
+RETURNING "Id", "CreatedAt", "UpdatedAt", "IsDeleted", "OrganizationId", "CreatedByUserId", "Name", "Spec", "SpecDigest", "Image", "Labels", "Isolation", "Priority", "State", "FailureReason", "QueuedAt", "StartedAt", "FinishedAt", "Deadline", "QueueDeadline", "CancelRequestedAt", "CancelRequestedBy", "AttemptCount", "MaxInfraRetries", "OriginKind", "OriginId", "RequiredFeatures"
 `
 
 type RequeueJobParams struct {
@@ -1349,6 +1386,9 @@ func (q *Queries) RequeueJob(ctx context.Context, arg RequeueJobParams) (Job, er
 		&i.CancelRequestedBy,
 		&i.AttemptCount,
 		&i.MaxInfraRetries,
+		&i.OriginKind,
+		&i.OriginId,
+		&i.RequiredFeatures,
 	)
 	return i, err
 }

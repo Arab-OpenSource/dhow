@@ -142,6 +142,9 @@ type Job struct {
 	CancelRequestedBy *uuid.UUID
 	AttemptCount      int32
 	MaxInfraRetries   int32
+	OriginKind        string
+	OriginId          *uuid.UUID
+	RequiredFeatures  []string
 }
 
 type JobAttempt struct {
@@ -296,6 +299,21 @@ type Passkey struct {
 	BackupEligible    bool
 	BackupState       bool
 	LastUsedAt        *time.Time
+}
+
+type Project struct {
+	Id              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	IsDeleted       bool
+	OrganizationId  uuid.UUID
+	Slug            string
+	Name            string
+	PipelinePath    string
+	ForkPolicy      string
+	State           string
+	ArchivedAt      *time.Time
+	CreatedByUserId uuid.UUID
 }
 
 type RateLimit struct {

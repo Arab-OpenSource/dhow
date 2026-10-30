@@ -14,6 +14,7 @@ import (
 type Querier interface {
 	AdvanceAttemptLog(ctx context.Context, arg AdvanceAttemptLogParams) error
 	AdvanceTotpStep(ctx context.Context, arg AdvanceTotpStepParams) (int64, error)
+	ArchiveProject(ctx context.Context, arg ArchiveProjectParams) (Project, error)
 	CancelQueuedJob(ctx context.Context, arg CancelQueuedJobParams) (Job, error)
 	ClaimQueuedJob(ctx context.Context, arg ClaimQueuedJobParams) (Job, error)
 	ClearMfaReset(ctx context.Context, arg ClearMfaResetParams) error
@@ -32,6 +33,7 @@ type Querier interface {
 	CountOverviewInvitations(ctx context.Context, arg CountOverviewInvitationsParams) (int64, error)
 	CountOverviewJobs(ctx context.Context, arg CountOverviewJobsParams) (CountOverviewJobsRow, error)
 	CountOverviewRunners(ctx context.Context, arg CountOverviewRunnersParams) (CountOverviewRunnersRow, error)
+	CountProjects(ctx context.Context, arg CountProjectsParams) (int64, error)
 	CountQueuedJobs(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRegistrationTokens(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRunnerSessionSwitches(ctx context.Context, arg CountRunnerSessionSwitchesParams) (int64, error)
@@ -77,6 +79,8 @@ type Querier interface {
 	GetOpenInvitation(ctx context.Context, arg GetOpenInvitationParams) (GetOpenInvitationRow, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (GetOrganizationByIDRow, error)
 	GetOrganizationForMember(ctx context.Context, arg GetOrganizationForMemberParams) (GetOrganizationForMemberRow, error)
+	GetProject(ctx context.Context, arg GetProjectParams) (Project, error)
+	GetProjectBindings(ctx context.Context, arg GetProjectBindingsParams) (GetProjectBindingsRow, error)
 	GetRegistrationToken(ctx context.Context, arg GetRegistrationTokenParams) (RunnerRegistrationToken, error)
 	GetRunner(ctx context.Context, arg GetRunnerParams) (Runner, error)
 	GetRunnerIdentity(ctx context.Context, id uuid.UUID) (GetRunnerIdentityRow, error)
@@ -109,6 +113,7 @@ type Querier interface {
 	InsertOidcProvider(ctx context.Context, arg InsertOidcProviderParams) (int64, error)
 	InsertOrganization(ctx context.Context, arg InsertOrganizationParams) (InsertOrganizationRow, error)
 	InsertPasskey(ctx context.Context, arg InsertPasskeyParams) (InsertPasskeyRow, error)
+	InsertProject(ctx context.Context, arg InsertProjectParams) (Project, error)
 	InsertRecoveryCode(ctx context.Context, arg InsertRecoveryCodeParams) error
 	InsertRegistrationToken(ctx context.Context, arg InsertRegistrationTokenParams) (RunnerRegistrationToken, error)
 	InsertRunner(ctx context.Context, arg InsertRunnerParams) (Runner, error)
@@ -140,6 +145,7 @@ type Querier interface {
 	ListOidcProviders(ctx context.Context) ([]ListOidcProvidersRow, error)
 	ListOpenInvitations(ctx context.Context, arg ListOpenInvitationsParams) ([]ListOpenInvitationsRow, error)
 	ListOrganizationBindings(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationBindingsRow, error)
+	ListProjects(ctx context.Context, arg ListProjectsParams) ([]Project, error)
 	ListRegistrationTokens(ctx context.Context, arg ListRegistrationTokensParams) ([]RunnerRegistrationToken, error)
 	ListRunners(ctx context.Context, arg ListRunnersParams) ([]Runner, error)
 	ListTeamBindings(ctx context.Context, arg ListTeamBindingsParams) ([]ListTeamBindingsRow, error)
@@ -167,6 +173,7 @@ type Querier interface {
 	LockOrganization(ctx context.Context, id uuid.UUID) (LockOrganizationRow, error)
 	LockOrganizationQueue(ctx context.Context, organizationID string) error
 	LockPendingTotp(ctx context.Context, arg LockPendingTotpParams) (LockPendingTotpRow, error)
+	LockProject(ctx context.Context, arg LockProjectParams) (Project, error)
 	LockRunnerIdentity(ctx context.Context, id uuid.UUID) (LockRunnerIdentityRow, error)
 	LockRunnerLease(ctx context.Context, runnerID uuid.UUID) (uuid.UUID, error)
 	LockRunnerSlots(ctx context.Context, runnerID string) error
@@ -274,6 +281,7 @@ type Querier interface {
 	UpdateInstanceSetting(ctx context.Context, arg UpdateInstanceSettingParams) (int64, error)
 	UpdateOidcProvider(ctx context.Context, arg UpdateOidcProviderParams) (int64, error)
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (UpdateOrganizationNameRow, error)
+	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateRunner(ctx context.Context, arg UpdateRunnerParams) (Runner, error)
 	UpdateRunnerThrottle(ctx context.Context, arg UpdateRunnerThrottleParams) error
 	UpdateTeam(ctx context.Context, arg UpdateTeamParams) (UpdateTeamRow, error)
