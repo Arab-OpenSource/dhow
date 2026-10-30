@@ -12,7 +12,7 @@ dhow-runner install --answers, doctor, a job, rotate-keys, a second install and 
 Environment:
   VM_CACHE        where downloaded images are kept (default: ~/.cache/dhow-vm)
   VM_ACCEL        kvm (default) or tcg, which works without /dev/kvm but is very slow
-  VM_MEMORY       guest memory in MiB (default: 4096)
+  VM_MEMORY       guest memory in MiB (default: 8192)
   VM_CPUS         guest CPUs (default: 2)
   VM_TIMEOUT      seconds to wait for the result (default: 2700)
   FEDORA_VERSION  the Fedora release to test (default: 43)
@@ -27,7 +27,7 @@ runner_bin=$3
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 cache=${VM_CACHE:-$HOME/.cache/dhow-vm}
 accel=${VM_ACCEL:-kvm}
-memory=${VM_MEMORY:-4096}
+memory=${VM_MEMORY:-8192}
 cpus=${VM_CPUS:-2}
 timeout=${VM_TIMEOUT:-2700}
 marker='DHOW-VM-TEST:'
