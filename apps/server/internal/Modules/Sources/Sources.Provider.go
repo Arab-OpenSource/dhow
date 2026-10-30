@@ -53,8 +53,14 @@ func (c Credential) Format(f fmt.State, _ rune) {
 	_, _ = io.WriteString(f, c.String())
 }
 
+type redactedCredential struct {
+	Kind      string `json:"Kind"`
+	KnownHost string `json:"KnownHost"`
+	Secret    string `json:"Secret"`
+}
+
 func (c Credential) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]string{"Kind": c.Kind, "KnownHost": c.KnownHost, "Secret": redacted})
+	return json.Marshal(redactedCredential{Kind: c.Kind, KnownHost: c.KnownHost, Secret: redacted})
 }
 
 type StatusReport struct {
