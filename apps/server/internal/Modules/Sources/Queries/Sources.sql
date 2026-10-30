@@ -64,11 +64,19 @@ WHERE r."HookId" = @hook_id AND r."Provider" = @provider AND NOT r."IsDeleted" A
 SELECT pg_advisory_xact_lock(hashtextextended('dhow.webhook:' || @provider::text || ':' || @hook_id::text, 0));
 
 -- name: WebhookDeliverySeen :one
-SELECT EXISTS (
-    SELECT 1
-    FROM "WebhookDeliveries"
-    WHERE "Provider" = @provider AND "HookId" = @hook_id AND "CreatedAt" >= @since
-      AND ("DeliveryId" = @delivery_id OR "PayloadDigest" = @payload_digest)
+SELECT (
+    EXISTS (
+        SELECT 1
+        FROM "WebhookDeliveries" d
+        WHERE d."Provider" = @provider::text AND d."HookId" = @hook_id::text AND d."DeliveryId" = @delivery_id::text
+          AND d."CreatedAt" >= @delivery_since::timestamptz
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM "WebhookDeliveries" p
+        WHERE p."Provider" = @provider::text AND p."HookId" = @hook_id::text AND p."PayloadDigest" = @payload_digest::bytea
+          AND p."CreatedAt" >= @digest_since::timestamptz
+    )
 )::boolean;
 
 -- name: InsertWebhookDelivery :one

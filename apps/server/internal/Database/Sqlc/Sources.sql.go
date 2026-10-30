@@ -663,29 +663,39 @@ func (q *Queries) UpsertCommitStatus(ctx context.Context, arg UpsertCommitStatus
 }
 
 const webhookDeliverySeen = `-- name: WebhookDeliverySeen :one
-SELECT EXISTS (
-    SELECT 1
-    FROM "WebhookDeliveries"
-    WHERE "Provider" = $1 AND "HookId" = $2 AND "CreatedAt" >= $3
-      AND ("DeliveryId" = $4 OR "PayloadDigest" = $5)
+SELECT (
+    EXISTS (
+        SELECT 1
+        FROM "WebhookDeliveries" d
+        WHERE d."Provider" = $1::text AND d."HookId" = $2::text AND d."DeliveryId" = $3::text
+          AND d."CreatedAt" >= $4::timestamptz
+    )
+    OR EXISTS (
+        SELECT 1
+        FROM "WebhookDeliveries" p
+        WHERE p."Provider" = $1::text AND p."HookId" = $2::text AND p."PayloadDigest" = $5::bytea
+          AND p."CreatedAt" >= $6::timestamptz
+    )
 )::boolean
 `
 
 type WebhookDeliverySeenParams struct {
 	Provider      string
 	HookID        string
-	Since         time.Time
 	DeliveryID    string
+	DeliverySince time.Time
 	PayloadDigest []byte
+	DigestSince   time.Time
 }
 
 func (q *Queries) WebhookDeliverySeen(ctx context.Context, arg WebhookDeliverySeenParams) (bool, error) {
 	row := q.db.QueryRow(ctx, webhookDeliverySeen,
 		arg.Provider,
 		arg.HookID,
-		arg.Since,
 		arg.DeliveryID,
+		arg.DeliverySince,
 		arg.PayloadDigest,
+		arg.DigestSince,
 	)
 	var column_1 bool
 	err := row.Scan(&column_1)

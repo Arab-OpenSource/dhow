@@ -58,6 +58,11 @@ func TestASignedPushTriggersOnceAndADuplicateDoesNothing(t *testing.T) {
 	w.env.Clock.Advance(time.Hour)
 	assert.Equal(t, http.StatusOK, w.send(hookPath(r), giteaHeaders(secret, "delivery-1", body), body).Status)
 	assert.Len(t, w.triggers.Received(), 1)
+	w.env.Clock.Advance(10 * 24 * time.Hour)
+	late := w.send(hookPath(r), giteaHeaders(secret, "delivery-late", body), body)
+	require.Equal(t, http.StatusOK, late.Status, "a body signed without a timestamp stays a replay for the whole retention: %s", late.Raw)
+	assert.Len(t, w.triggers.Received(), 1)
+	w.env.Clock.Advance(-10*24*time.Hour - time.Hour)
 
 	tag := []byte(`{"Ref":"refs/tags/v1.0.0","Sha":"` + sha + `"}`)
 	ours := w.send(hookPath(r), dhowHeaders(secret, "script-1", w.env.Clock.Now().Unix(), tag), tag)

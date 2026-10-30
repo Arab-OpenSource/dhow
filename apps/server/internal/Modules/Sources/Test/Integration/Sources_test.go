@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -178,4 +179,31 @@ func TestDeliveryPartitionsAreMadeAheadAndDroppedAfterThirtyDays(t *testing.T) {
 	assert.Equal(t, 4, s.env.CountRows(`SELECT count(*) FROM pg_inherits WHERE inhparent = '"WebhookDeliveries"'::regclass`))
 	_, err = s.env.Pool.Exec(ctx, `SELECT "DropWebhookPartitions"(3)`)
 	require.Error(t, err, "deliveries are kept longer than the dedupe window")
+}
+
+func TestTheReplayLookupUsesTheIndexes(t *testing.T) {
+	s := linkedRepository(t)
+	ctx := context.Background()
+	tx, err := s.env.Pool.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(ctx) }()
+	_, err = tx.Exec(ctx, `SET LOCAL enable_seqscan = off`)
+	require.NoError(t, err)
+	rows, err := tx.Query(ctx, `EXPLAIN SELECT (
+		EXISTS (SELECT 1 FROM "WebhookDeliveries" d WHERE d."Provider" = 'generic' AND d."HookId" = $1 AND d."DeliveryId" = 'x'
+			AND d."CreatedAt" >= now() - interval '3 days')
+		OR EXISTS (SELECT 1 FROM "WebhookDeliveries" p WHERE p."Provider" = 'generic' AND p."HookId" = $1 AND p."PayloadDigest" = $2
+			AND p."CreatedAt" >= now() - interval '31 days'))`, strings.Repeat("a", 32), make([]byte, 32))
+	require.NoError(t, err)
+	var plan strings.Builder
+	for rows.Next() {
+		var line string
+		require.NoError(t, rows.Scan(&line))
+		plan.WriteString(line + "\n")
+	}
+	require.NoError(t, rows.Err())
+	assert.NotContains(t, plan.String(), "Seq Scan", plan.String())
+	assert.Contains(t, plan.String(), `"PayloadDigest" = `, plan.String())
+	assert.Equal(t, 2, strings.Count(plan.String(), "InitPlan"), plan.String())
+	assert.GreaterOrEqual(t, strings.Count(plan.String(), "Index Cond"), 2, plan.String())
 }

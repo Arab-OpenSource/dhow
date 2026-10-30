@@ -20,6 +20,7 @@ const (
 	WebhookReplayWindow      = 5 * time.Minute
 	WebhookDedupeWindow      = 72 * time.Hour
 	WebhookRetentionDays     = 30
+	WebhookDigestWindow      = (WebhookRetentionDays + 1) * 24 * time.Hour
 	WebhookPartitionsAhead   = 3
 	WebhookMaintainInterval  = time.Hour
 	WebhookMaintainLockWait  = 2 * time.Second

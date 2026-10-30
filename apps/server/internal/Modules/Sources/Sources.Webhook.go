@@ -113,8 +113,8 @@ func (s *Service) record(
 		return models.Received{}, err
 	}
 	seen, err := q.WebhookDeliverySeen(ctx, sqlc.WebhookDeliverySeenParams{
-		Provider: in.Provider, HookID: hookID, Since: req.Now.Add(-config.WebhookDedupeWindow), DeliveryID: proof.DeliveryID,
-		PayloadDigest: digest,
+		Provider: in.Provider, HookID: hookID, DeliveryID: proof.DeliveryID, DeliverySince: req.Now.Add(-config.WebhookDedupeWindow),
+		PayloadDigest: digest, DigestSince: req.Now.Add(-config.WebhookDigestWindow),
 	})
 	if err != nil || seen {
 		return models.Received{Duplicate: seen}, err

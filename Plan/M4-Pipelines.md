@@ -528,6 +528,7 @@ raw HTTP on /runner-api (runner access token + Dhow-Lease-Id + Dhow-Fencing-Toke
 
 ### M4.8: موديول `Pipelines`: الـ runs والـ DAG والـ triggers
 - **الاعتماد:** M4.1 وM4.4 وM4.7 (وM4.5 وM4.6 للمزوّدين دول).
+- **من المراجعة الأمنية لـ M4.4 (ملزم):** الـ `Sink` اللي بينفّذ `Core/Triggers` بيرفض أي sha اتعمله trigger قبل كده لنفس الـ ref ونفس المستودع (من `"PipelineRuns"`، مش من `"WebhookDeliveries"` اللي بيتمسح بعد 30 يوم)، ومابيعملش run. كده webhook موقّع من غير وقت (Gitea وForgejo وHub) لو اتعاد بعد الاحتفاظ مالوش أثر. ومعاه اختبار بيعيد نفس الـ body بعد مسح الـ deliveries.
 - **من مراجعة M4.3:**
   - routes الـ jobs على مستوى المؤسسة (`/organizations/{id}/jobs/...`) لازم تحل الدور على مشروع الـ job لما الـ job يبقى مربوط بمشروع. غير كده Maintainer اتقلّل لـ Viewer على مشروع يقدر يلغي jobs المشروع ده من route المؤسسة. ومعاه اختبار في الـ route-table.
   - كل نداء لـ `Core/JobQueue` بيكتب الـ audit بتاعه بعد الـ commit (ADR-0070)، ومعاه اختبار إن الـ run اللي اتعمل ليه حدث.
