@@ -130,14 +130,23 @@ func TestSecondFactorFollowsTheProjectRole(t *testing.T) {
 	}{
 		{"an overdue admin cannot manage a project", member(policy.RoleAdmin, past, past), policy.ProjectManage, on(), true},
 		{"an overdue admin still reads it", member(policy.RoleAdmin, past, past), policy.ProjectRead, on(), false},
-		{"a developer raised to project admin is covered by the admins rule", member(policy.RoleDeveloper, time.Time{}, past),
-			policy.ProjectManage, on(policy.RoleAdmin), true},
-		{"a developer raised to maintainer is not", member(policy.RoleDeveloper, time.Time{}, past), policy.ProjectManage,
-			on(policy.RoleMaintainer), false},
-		{"the admin due date applies only on that project", member(policy.RoleDeveloper, time.Time{}, past), policy.ProjectManage,
-			policy.Resource{OrganizationID: org}, false},
-		{"a member with a factor has no due date", member(policy.RoleDeveloper, time.Time{}, time.Time{}), policy.ProjectManage,
-			on(policy.RoleAdmin), false},
+		{
+			"a developer raised to project admin is covered by the admins rule", member(policy.RoleDeveloper, time.Time{}, past),
+			policy.ProjectManage, on(policy.RoleAdmin), true,
+		},
+		{
+			"a developer raised to maintainer is not", member(policy.RoleDeveloper, time.Time{}, past), policy.ProjectManage,
+			on(policy.RoleMaintainer), false,
+		},
+		{
+			"the admin due date applies only on that project", member(policy.RoleDeveloper, time.Time{}, past), policy.ProjectManage,
+			policy.Resource{OrganizationID: org},
+			false,
+		},
+		{
+			"a member with a factor has no due date", member(policy.RoleDeveloper, time.Time{}, time.Time{}), policy.ProjectManage,
+			on(policy.RoleAdmin), false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
