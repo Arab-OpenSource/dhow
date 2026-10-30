@@ -14,6 +14,13 @@
 1. الـ runner كـ `unconfined_service_t` (الوحدة العادية): `avc: denied { connectto }` بـ `scontext` هو `container_t` (الـ agent) و`tcontext` هو `unconfined_service_t`، و`tclass=unix_stream_socket`.
 2. الـ runner كـ `container_runtime_t`: نفس الـ denial بالظبط، و`tcontext` هو `container_runtime_t`.
 
+السطور زي ما طلعت من `ausearch` على Rocky 10 (تشغيلات `vm-test` يوم 2026-10-30)، والمسار مختصر:
+
+```
+avc:  denied  { connectto } for  comm="agent" path=".../control/control.sock" scontext=system_u:system_r:container_t:s0:c674,c947 tcontext=system_u:system_r:unconfined_service_t:s0 tclass=unix_stream_socket permissive=0
+avc:  denied  { connectto } for  comm="agent" path=".../control/control.sock" scontext=system_u:system_r:container_t:s0:c561,c760 tcontext=system_u:system_r:container_runtime_t:s0 tclass=unix_stream_socket permissive=0
+```
+
 يعني `connectto` بيتحسب على الـ domain بتاع الـ process اللي سامع على الـ socket، مش على label الملف، فمفيش relabel للملف يحلّها. والـ policy بتاعة `container-selinux` مابتسمحش لـ `container_t` يعمل `connectto` على أي domain منهم.
 
 ## القرار
