@@ -66,6 +66,13 @@ const (
 	ProjectCreated  = "project.created"
 	ProjectUpdated  = "project.updated"
 	ProjectArchived = "project.archived"
+
+	ProjectRepositoryLinked     = "project.repository_linked"
+	ProjectRepositoryUpdated    = "project.repository_updated"
+	ProjectHostKeyConfirmed     = "project.host_key_confirmed"
+	ProjectDeployKeyRotated     = "project.deploy_key_rotated"
+	ProjectDeployKeyConfirmed   = "project.deploy_key_confirmed"
+	ProjectWebhookSecretRotated = "project.webhook_secret_rotated"
 )
 
 func AuditedEvents() []string {
@@ -125,6 +132,12 @@ func AuditedEvents() []string {
 		ProjectCreated,
 		ProjectUpdated,
 		ProjectArchived,
+		ProjectRepositoryLinked,
+		ProjectRepositoryUpdated,
+		ProjectHostKeyConfirmed,
+		ProjectDeployKeyRotated,
+		ProjectDeployKeyConfirmed,
+		ProjectWebhookSecretRotated,
 	}
 }
 

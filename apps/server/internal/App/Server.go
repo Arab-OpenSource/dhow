@@ -70,6 +70,11 @@ func Run(ctx context.Context) error {
 		return err
 	}
 	defer stopJobs()
+	stopSources, err := StartSources(ctx, wired.Sources, log)
+	if err != nil {
+		return err
+	}
+	defer stopSources()
 	stopMaintenance := StartMaintenance(ctx, wired.Retention, config.RetentionEvery)
 	defer stopMaintenance()
 	servers := []served{{srv: NewHTTPServer(cfg, wired.Handler, log), attrs: []any{"public_url", cfg.PublicURL.String()}}}

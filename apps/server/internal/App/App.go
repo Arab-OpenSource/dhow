@@ -26,6 +26,7 @@ import (
 	runners "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Khaymah/dhow/apps/server/internal/Modules/Session"
 	settings "github.com/Khaymah/dhow/apps/server/internal/Modules/Settings"
+	sources "github.com/Khaymah/dhow/apps/server/internal/Modules/Sources"
 	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
 	tokens "github.com/Khaymah/dhow/apps/server/internal/Modules/Tokens"
 )
@@ -40,6 +41,7 @@ type Options struct {
 	Runners   *runners.Service
 	Jobs      *jobs.Service
 	Projects  *projects.Service
+	Sources   *sources.Service
 	Overview  *overview.Service
 	Tokens    *tokens.Service
 	Prefs     *preferences.Service
@@ -47,6 +49,7 @@ type Options struct {
 	CSRF      *auth.CSRF
 	APITokens *auth.APITokens
 	Limits    *ratelimit.PerClient
+	Webhooks  ratelimit.Limiter
 	Settings  *settings.Service
 	Instance  func() policy.InstanceSettings
 	Now       func() time.Time
@@ -62,6 +65,7 @@ func Policies() []policy.Rule {
 	rules = append(rules, runners.Policies()...)
 	rules = append(rules, jobs.Policies()...)
 	rules = append(rules, projects.Policies()...)
+	rules = append(rules, sources.Policies()...)
 	rules = append(rules, overview.Policies()...)
 	rules = append(rules, tokens.Policies()...)
 	rules = append(rules, preferences.Policies()...)
@@ -116,11 +120,12 @@ func (o Options) guard() *auth.Guard {
 
 func NewRouter(o Options) http.Handler {
 	public := publicRouter(o)
-	if o.Runners == nil || o.Config.RunnerPlaneSeparate() {
-		return public
-	}
 	root := chi.NewRouter()
-	root.Mount(config.RunnerAPIPrefix, RunnerPlane(o))
+	root.MethodNotAllowed(methodNotAllowed)
+	if o.Runners != nil && !o.Config.RunnerPlaneSeparate() {
+		root.Mount(config.RunnerAPIPrefix, RunnerPlane(o))
+	}
+	mountWebhooks(root, o)
 	root.Mount("/", public)
 	return root
 }
@@ -161,6 +166,9 @@ func publicRouter(o Options) chi.Router {
 			if o.Projects != nil {
 				projects.Routes(timed, projects.Deps{Service: o.Projects, Guard: guard, Log: o.Log})
 			}
+			if o.Sources != nil {
+				sources.Routes(timed, sources.Deps{Service: o.Sources, Guard: guard, Log: o.Log})
+			}
 			if o.Overview != nil {
 				overview.Routes(timed, overview.Deps{Service: o.Overview, Guard: guard, Log: o.Log})
 			}
@@ -194,7 +202,7 @@ func publicRouter(o Options) chi.Router {
 }
 
 func isAPIPath(p string) bool {
-	for _, prefix := range []string{"/api", config.RunnerAPIPrefix} {
+	for _, prefix := range []string{"/api", config.RunnerAPIPrefix, config.WebhookPrefix} {
 		if p == prefix || strings.HasPrefix(p, prefix+"/") {
 			return true
 		}

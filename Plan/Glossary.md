@@ -34,6 +34,10 @@
 | Deployment | نشر |
 | Environment | بيئة |
 | Pipeline | خطوات النشر (pipeline) |
+| Repository | مستودع |
+| Deploy key | مفتاح المستودع |
+| Host key | مفتاح سيرفر المستودع (البصمة: fingerprint) |
+| Webhook | الإشعارات (webhook)، والرابط «رابط الإشعارات» والسر «سر الإشعارات» |
 | Secret | سر |
 | Rollback | ارجع إلى النسخة السابقة |
 | Approval | موافقة |

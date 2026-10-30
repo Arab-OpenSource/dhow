@@ -1484,6 +1484,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{id}/projects/{projectId}/repository": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the repository linked to a project
+         * @description Needs `project.read` on the project. Shows the clone address, the webhook address, the public half of the deploy key and the fingerprints of the pinned and the pending host keys. Never shows a private key or a webhook secret. A project without a repository answers 404 `REPOSITORY_NOT_LINKED`.
+         */
+        get: operations["getRepository"];
+        /**
+         * Link a Git repository to a project, or change its address
+         * @description Needs `project.manage` on the project. Generic Git only in this version: an `ssh://` or `user@host:path` address with a deploy key that Dhow makes, or an `https://` address of a public repository. For SSH, Dhow fetches the host key over the network (private addresses are refused unless `DHOW_GIT_ALLOW_PRIVATE_CIDRS` allows them) and keeps it pending until someone confirms its fingerprint. The first link answers 201 with the webhook secret, the only time it is shown; a later call answers 200 without it, keeps the deploy key and the webhook, and fetches the host key again. An archived project answers 409 `PROJECT_ARCHIVED`.
+         */
+        put: operations["linkRepository"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/projects/{projectId}/repository/confirm-host-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pin the pending host key
+         * @description Needs `project.manage` on the project. The fingerprint must be the one of the pending host key, as `GetRepository` showed it (`SHA256:...`), or the answer is 409 `HOST_KEY_FINGERPRINT_MISMATCH`. Without a pending key the answer is 409 `HOST_KEY_NOT_PENDING`. Dhow never pins a host key by itself, also not when it changes.
+         */
+        post: operations["confirmHostKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/projects/{projectId}/repository/rotate-deploy-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a new deploy key
+         * @description Needs `project.manage` on the project. Only for SSH. The answer shows the public half of the new key. The previous key keeps working for 24 hours, or until `confirm-deploy-key`, so you can add the new key to the Git server first.
+         */
+        post: operations["rotateDeployKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/projects/{projectId}/repository/confirm-deploy-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop using the previous deploy key
+         * @description Needs `project.manage` on the project. Call it after adding the new public key to the Git server. Idempotent.
+         */
+        post: operations["confirmDeployKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{id}/projects/{projectId}/repository/rotate-webhook-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a new webhook secret
+         * @description Needs `project.manage` on the project. The answer shows the new secret once. The previous secret stops working at once.
+         */
+        post: operations["rotateWebhookSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{id}/overview": {
         parameters: {
             query?: never;
@@ -3047,6 +3151,72 @@ export interface components {
             Name?: string;
             PipelinePath?: string;
             ForkPolicy?: components["schemas"]["ForkPolicy"];
+        };
+        /** @enum {string} */
+        GitProvider: "github" | "gitlab" | "generic";
+        /** @enum {string} */
+        GitTransport: "https" | "ssh";
+        /**
+         * @description `host_key_unconfirmed`: an SSH repository whose host key nobody has confirmed yet. Webhooks for it are recorded and ignored until someone confirms the fingerprint.
+         * @enum {string}
+         */
+        RepositoryState: "ready" | "host_key_unconfirmed";
+        Repository: {
+            /** Format: uuid */
+            Id: string;
+            /** Format: uuid */
+            ProjectId: string;
+            Provider: components["schemas"]["GitProvider"];
+            /** @description The clone address in its canonical form, such as `ssh://git@git.example.com/team/app.git`. */
+            CloneUrl: string;
+            Transport: components["schemas"]["GitTransport"];
+            FullName: string;
+            DefaultBranch: string;
+            /** @description Where the Git server sends push webhooks. Its last part is random, not the repository id. */
+            WebhookUrl: string;
+            /** @description The public half of the deploy key, to add to the Git server as a read-only key. SSH only. */
+            DeployKeyPublic?: string;
+            /** @description The previous public key, while it still works after a rotation. */
+            PreviousDeployKeyPublic?: string;
+            /** Format: date-time */
+            PreviousDeployKeyExpiresAt?: string;
+            /** @description The `SHA256:` fingerprint of the pinned host key. */
+            HostKeyFingerprint?: string;
+            /** @description The `SHA256:` fingerprint of a fetched host key that waits for confirmation. */
+            PendingHostKeyFingerprint?: string;
+            State: components["schemas"]["RepositoryState"];
+            /**
+             * Format: date-time
+             * @description When a correctly signed webhook last arrived.
+             */
+            LastDeliveryAt?: string;
+            /** Format: date-time */
+            CreatedAt: string;
+            /** Format: date-time */
+            UpdatedAt: string;
+        };
+        RepositoryResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["Repository"];
+        };
+        LinkRepositoryRequest: {
+            /** @description `ssh://user@host[:port]/path`, `user@host:path` or `https://host[:port]/path`. A DNS name, never an IP address, and no password, query, `..` or leading dash. */
+            CloneUrl: string;
+            /** @description Defaults to `main`. A branch name by the rules of `git check-ref-format`. */
+            DefaultBranch?: string;
+        };
+        RepositoryWithSecret: {
+            Repository: components["schemas"]["Repository"];
+            /** @description The webhook secret. Shown only in the answer that made it. */
+            WebhookSecret?: string;
+        };
+        LinkRepositoryResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["RepositoryWithSecret"];
+        };
+        WebhookSecretResponse: components["schemas"]["Envelope"] & {
+            Data?: components["schemas"]["RepositoryWithSecret"];
+        };
+        ConfirmHostKeyRequest: {
+            Fingerprint: string;
         };
         OverviewJobs: {
             /** @description Jobs in the `leased` or `running` state. */
@@ -5353,6 +5523,167 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getRepository: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The repository. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    linkRepository: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkRepositoryRequest"];
+            };
+        };
+        responses: {
+            /** @description The repository after a change of address. No webhook secret. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkRepositoryResponse"];
+                };
+            };
+            /** @description The new link, with the webhook secret shown once. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkRepositoryResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    confirmHostKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmHostKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description The repository. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    rotateDeployKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The repository. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    confirmDeployKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The repository. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    rotateWebhookSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["Id"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The repository and its new webhook secret, shown once. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookSecretResponse"];
                 };
             };
             default: components["responses"]["Error"];

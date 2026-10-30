@@ -53,6 +53,11 @@ tags:
       Projects of an organization: the unit that a repository, its pipeline and its runs belong to. Served by the
       Projects module. A role binding on a project raises or lowers the caller's organization role inside that project
       only (Owner and Admin are never lowered).
+  - name: sources
+    description: >-
+      The Git repository linked to a project, its deploy key, its pinned host key and its webhook secret. Served by the
+      Sources module. Private keys and webhook secrets are write-only: a webhook secret is shown once, when it is made,
+      and a deploy key only ever shows its public half. Providers call `/webhooks/...`, outside this API.
   - name: overview
     description: >-
       Counts for the home page and the sidebar, in one request. Served by the Overview module, which reads the jobs,
@@ -2272,6 +2277,173 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProjectResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/projects/{projectId}/repository:
+    get:
+      operationId: getRepository
+      tags: [sources]
+      summary: Read the repository linked to a project
+      description: >-
+        Needs `project.read` on the project. Shows the clone address, the webhook address, the public half of the deploy
+        key and the fingerprints of the pinned and the pending host keys. Never shows a private key or a webhook secret.
+        A project without a repository answers 404 `REPOSITORY_NOT_LINKED`.
+      security:
+        - SessionCookie: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The repository.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepositoryResponse"
+        default:
+          $ref: "#/components/responses/Error"
+    put:
+      operationId: linkRepository
+      tags: [sources]
+      summary: Link a Git repository to a project, or change its address
+      description: >-
+        Needs `project.manage` on the project. Generic Git only in this version: an `ssh://` or `user@host:path` address
+        with a deploy key that Dhow makes, or an `https://` address of a public repository. For SSH, Dhow fetches the
+        host key over the network (private addresses are refused unless `DHOW_GIT_ALLOW_PRIVATE_CIDRS` allows them) and
+        keeps it pending until someone confirms its fingerprint. The first link answers 201 with the webhook secret, the
+        only time it is shown; a later call answers 200 without it, keeps the deploy key and the webhook, and fetches
+        the host key again. An archived project answers 409 `PROJECT_ARCHIVED`.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkRepositoryRequest"
+      responses:
+        "200":
+          description: The repository after a change of address. No webhook secret.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkRepositoryResponse"
+        "201":
+          description: The new link, with the webhook secret shown once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkRepositoryResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/projects/{projectId}/repository/confirm-host-key:
+    post:
+      operationId: confirmHostKey
+      tags: [sources]
+      summary: Pin the pending host key
+      description: >-
+        Needs `project.manage` on the project. The fingerprint must be the one of the pending host key, as
+        `GetRepository` showed it (`SHA256:...`), or the answer is 409 `HOST_KEY_FINGERPRINT_MISMATCH`. Without a
+        pending key the answer is 409 `HOST_KEY_NOT_PENDING`. Dhow never pins a host key by itself, also not when it
+        changes.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmHostKeyRequest"
+      responses:
+        "200":
+          description: The repository.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepositoryResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/projects/{projectId}/repository/rotate-deploy-key:
+    post:
+      operationId: rotateDeployKey
+      tags: [sources]
+      summary: Make a new deploy key
+      description: >-
+        Needs `project.manage` on the project. Only for SSH. The answer shows the public half of the new key. The
+        previous key keeps working for 24 hours, or until `confirm-deploy-key`, so you can add the new key to the Git
+        server first.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The repository.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepositoryResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/projects/{projectId}/repository/confirm-deploy-key:
+    post:
+      operationId: confirmDeployKey
+      tags: [sources]
+      summary: Stop using the previous deploy key
+      description: >-
+        Needs `project.manage` on the project. Call it after adding the new public key to the Git server. Idempotent.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The repository.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepositoryResponse"
+        default:
+          $ref: "#/components/responses/Error"
+  /organizations/{id}/projects/{projectId}/repository/rotate-webhook-secret:
+    post:
+      operationId: rotateWebhookSecret
+      tags: [sources]
+      summary: Make a new webhook secret
+      description: >-
+        Needs `project.manage` on the project. The answer shows the new secret once. The previous secret stops working
+        at once.
+      security:
+        - SessionCookie: []
+          CsrfToken: []
+        - ApiToken: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: The repository and its new webhook secret, shown once.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookSecretResponse"
         default:
           $ref: "#/components/responses/Error"
   /organizations/{id}/overview:
@@ -5533,6 +5705,128 @@ components:
           maxLength: 255
         ForkPolicy:
           $ref: "#/components/schemas/ForkPolicy"
+    GitProvider:
+      type: string
+      enum: [github, gitlab, generic]
+    GitTransport:
+      type: string
+      enum: [https, ssh]
+    RepositoryState:
+      type: string
+      enum: [ready, host_key_unconfirmed]
+      description: >-
+        `host_key_unconfirmed`: an SSH repository whose host key nobody has confirmed yet. Webhooks for it are recorded
+        and ignored until someone confirms the fingerprint.
+    Repository:
+      type: object
+      additionalProperties: false
+      required: [Id, ProjectId, Provider, CloneUrl, Transport, FullName, DefaultBranch, WebhookUrl, State, CreatedAt, UpdatedAt]
+      properties:
+        Id:
+          type: string
+          format: uuid
+        ProjectId:
+          type: string
+          format: uuid
+        Provider:
+          $ref: "#/components/schemas/GitProvider"
+        CloneUrl:
+          type: string
+          description: The clone address in its canonical form, such as `ssh://git@git.example.com/team/app.git`.
+        Transport:
+          $ref: "#/components/schemas/GitTransport"
+        FullName:
+          type: string
+        DefaultBranch:
+          type: string
+        WebhookUrl:
+          type: string
+          description: Where the Git server sends push webhooks. Its last part is random, not the repository id.
+        DeployKeyPublic:
+          type: string
+          description: The public half of the deploy key, to add to the Git server as a read-only key. SSH only.
+        PreviousDeployKeyPublic:
+          type: string
+          description: The previous public key, while it still works after a rotation.
+        PreviousDeployKeyExpiresAt:
+          type: string
+          format: date-time
+        HostKeyFingerprint:
+          type: string
+          description: The `SHA256:` fingerprint of the pinned host key.
+        PendingHostKeyFingerprint:
+          type: string
+          description: The `SHA256:` fingerprint of a fetched host key that waits for confirmation.
+        State:
+          $ref: "#/components/schemas/RepositoryState"
+        LastDeliveryAt:
+          type: string
+          format: date-time
+          description: When a correctly signed webhook last arrived.
+        CreatedAt:
+          type: string
+          format: date-time
+        UpdatedAt:
+          type: string
+          format: date-time
+    RepositoryResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/Repository"
+    LinkRepositoryRequest:
+      type: object
+      additionalProperties: false
+      required: [CloneUrl]
+      properties:
+        CloneUrl:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          description: >-
+            `ssh://user@host[:port]/path`, `user@host:path` or `https://host[:port]/path`. A DNS name, never an IP
+            address, and no password, query, `..` or leading dash.
+        DefaultBranch:
+          type: string
+          minLength: 1
+          maxLength: 244
+          description: Defaults to `main`. A branch name by the rules of `git check-ref-format`.
+    RepositoryWithSecret:
+      type: object
+      additionalProperties: false
+      required: [Repository]
+      properties:
+        Repository:
+          $ref: "#/components/schemas/Repository"
+        WebhookSecret:
+          type: string
+          description: The webhook secret. Shown only in the answer that made it.
+    LinkRepositoryResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/RepositoryWithSecret"
+    WebhookSecretResponse:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            Data:
+              $ref: "#/components/schemas/RepositoryWithSecret"
+    ConfirmHostKeyRequest:
+      type: object
+      additionalProperties: false
+      required: [Fingerprint]
+      properties:
+        Fingerprint:
+          type: string
+          minLength: 50
+          maxLength: 50
+          pattern: "^SHA256:[A-Za-z0-9+/]{43}$"
     OverviewJobs:
       type: object
       nullable: true
