@@ -67,13 +67,13 @@ sudo install -m 0644 deploy/systemd/dhow-runner.service /etc/systemd/system/dhow
 sudo dhow-runner install
 ```
 
-It shows what it found on the host, asks for the server address, the registration token (hidden while you type), the runner name, where to keep the private keys and how many jobs may run at once, prints the full plan, and asks once before it changes anything. `--dry-run` stops after the plan, `--yes` skips the final question, and `--lang ar` or `--lang en` picks the language (the default follows the locale).
+It shows what it found on the host, asks for the server address, the registration token (hidden while you type), the runner name, where to keep the private keys and how many jobs may run at once (and, on a small host, the memory and disk per job), prints the full plan, and asks once before it changes anything. `--dry-run` stops after the plan, `--yes` skips the final question, and `--lang ar` or `--lang en` picks the language (the default follows the locale).
 
 ### What it does
 
 Every step checks first whether it is already done, so running `install` again changes only what is missing:
 
-1. **Checks** Podman 5.4+, `crun`, `newuidmap`, cgroup v2, user namespaces and the AppArmor switch, and stops with a clear reason if one is missing. With `install_packages: true` it installs `podman`, `crun` and `uidmap` (or `shadow-utils`) from the distribution first, then checks the Podman version again.
+1. **Checks** Podman 5.4+, `crun`, `newuidmap`, cgroup v2, user namespaces, the AppArmor switch and the [memory per job](#memory-per-job), and stops with a clear reason if one is missing. With `install_packages: true` it installs `podman`, `crun` and `uidmap` (or `shadow-utils`) from the distribution first, then checks the Podman version again.
 2. **Creates the system user** `dhow-runner`, without a login shell, with `/var/lib/dhow-runner` as its home.
 3. **Gives it 1048576 sub-ids** (16 jobs at once, 65536 each) in `/etc/subuid` and `/etc/subgid`, from the first free range at or above 1048576.
 4. **Creates** `/var/lib/dhow-runner` (`0700 dhow-runner`; the Podman driver opens it to `0711` when it starts) and `/etc/dhow-runner` (`0750 root:dhow-runner`).
@@ -83,6 +83,16 @@ Every step checks first whether it is already done, so running `install` again c
 8. **Keeps the identity encrypted** with `systemd-creds` in `/var/lib/dhow-runner/identity.cred`, and adds the drop-in `/etc/systemd/system/dhow-runner.service.d/10-dhow-identity.conf` that hands it to the service ([the encrypted identity](keys.md#the-encrypted-identity)). When `systemd-creds` cannot encrypt on the host (no TPM2 and no usable host key), or you chose `identity: file`, the identity stays in `/var/lib/dhow-runner/identity` with mode `0600`, and the plan and the result say so. A plain identity left by a manual setup is encrypted in place.
 9. **Saves the answers**, without the token, in `/etc/dhow-runner/answers.yaml` (`0600 root`).
 10. **Enables and starts** the unit, then waits up to two minutes for the runner to sign in and ask for work. If it does not, it prints the reason and the last lines of the service log.
+
+### Memory per job
+
+Each job gets up to `DHOW_RUNNER_MAX_MEMORY` of memory and a `/workspace` tmpfs of up to `DHOW_RUNNER_MAX_DISK`, and tmpfs pages count as memory too. The defaults (2 GiB plus 4 GiB) need a host with 6 GiB of memory, and the runner refuses to start when the sum is more than the host has ([Limits and the machine](configuration.md#limits-and-the-machine)). So before step 1, `install` reads the host memory from `/proc/meminfo` and applies the same rule:
+
+- When the defaults fit, nothing changes.
+- When they do not fit and you set neither value, the plan picks lower limits. It keeps 1 GiB or a quarter of the memory, whichever is larger, for the runner and the system. It splits the rest between memory and disk in the same 1 to 2 ratio as the defaults, in steps of 64 MiB, and never goes below 512 MiB for either. It writes both values to `runner.env` and to the saved answers, and the plan says so. On a 4 GiB VPS that reports 3922 MiB, that gives `DHOW_RUNNER_MAX_MEMORY=960MiB` and `DHOW_RUNNER_MAX_DISK=1920MiB`. The interactive install offers these values as the default answers, and `--answers` uses them without asking.
+- When you set either value yourself (in `env` or in `runner.env`) and the sum does not fit, or the host has less than 2 GiB, which is too little even for the smallest limits, `install` stops before step 1, changes nothing, and says which values to set.
+
+`dhow-runner doctor` makes the same check, with the same message.
 
 ### Unattended: the answers file
 
