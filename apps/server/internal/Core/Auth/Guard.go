@@ -50,6 +50,7 @@ type ResolvedToken struct {
 	Scopes          []policy.Action
 	ExpiresAt       time.Time
 	SecondFactorDue time.Time
+	AdminDue        time.Time
 	Email           string
 	Name            string
 	Locale          string
@@ -301,7 +302,9 @@ func (g *Guard) authorizeToken(ctx context.Context, r *http.Request, rule policy
 	principal := Principal{
 		Subject: policy.Subject{
 			UserID: res.UserID, TokenID: res.TokenID, TokenScopes: res.Scopes,
-			Memberships: []policy.Membership{{OrganizationID: res.OrganizationID, Role: res.Role, SecondFactorDue: res.SecondFactorDue}},
+			Memberships: []policy.Membership{{
+				OrganizationID: res.OrganizationID, Role: res.Role, SecondFactorDue: res.SecondFactorDue, AdminSecondFactorDue: res.AdminDue,
+			}},
 		},
 		Email: res.Email, Name: res.Name, Locale: res.Locale, ExpiresAt: res.ExpiresAt,
 	}

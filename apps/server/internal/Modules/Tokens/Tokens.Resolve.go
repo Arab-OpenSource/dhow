@@ -44,11 +44,12 @@ func (s *Service) ResolveToken(ctx context.Context, hash []byte, now time.Time) 
 	if !known {
 		rule = policy.SecondFactorEveryone
 	}
-	due := policy.SecondFactorDue(policy.SecondFactorState{
+	state := policy.SecondFactorState{
 		Rule: rule, Since: row.RequireSecondFactorSince, AdminsSince: row.RequireSecondFactorAdminsSince, JoinedAt: row.JoinedAt, Role: role, HasFactor: row.HasSecondFactor,
-	}, config.SecondFactorGrace)
+	}
+	due := policy.SecondFactorDue(state, config.SecondFactorGrace)
 	return auth.ResolvedToken{
 		TokenID: row.Id, UserID: row.UserId, OrganizationID: row.OrganizationId, Role: role, Scopes: scopes,
-		ExpiresAt: row.ExpiresAt, SecondFactorDue: due, Email: row.Email, Name: row.Name, Locale: row.Locale,
+		ExpiresAt: row.ExpiresAt, SecondFactorDue: due, AdminDue: policy.SecondFactorDueAsAdmin(state, config.SecondFactorGrace), Email: row.Email, Name: row.Name, Locale: row.Locale,
 	}, nil
 }

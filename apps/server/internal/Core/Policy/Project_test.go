@@ -3,6 +3,7 @@ package policy_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -106,4 +107,45 @@ func TestProjectRules(t *testing.T) {
 	for _, a := range policy.ProjectActions() {
 		assert.Contains(t, policy.Actions(), a)
 	}
+}
+
+func TestSecondFactorFollowsTheProjectRole(t *testing.T) {
+	org, project := uuid.New(), uuid.New()
+	now := time.Now()
+	past := now.Add(-time.Hour)
+	member := func(role policy.Role, due, adminDue time.Time) policy.Subject {
+		return policy.Subject{UserID: uuid.New(), Memberships: []policy.Membership{
+			{OrganizationID: org, Role: role, SecondFactorDue: due, AdminSecondFactorDue: adminDue},
+		}}
+	}
+	on := func(bindings ...policy.Role) policy.Resource {
+		return policy.Resource{OrganizationID: org, ProjectID: project, ProjectBindings: bindings}
+	}
+	tests := []struct {
+		name     string
+		subject  policy.Subject
+		action   policy.Action
+		resource policy.Resource
+		want     bool
+	}{
+		{"an overdue admin cannot manage a project", member(policy.RoleAdmin, past, past), policy.ProjectManage, on(), true},
+		{"an overdue admin still reads it", member(policy.RoleAdmin, past, past), policy.ProjectRead, on(), false},
+		{"a developer raised to project admin is covered by the admins rule", member(policy.RoleDeveloper, time.Time{}, past),
+			policy.ProjectManage, on(policy.RoleAdmin), true},
+		{"a developer raised to maintainer is not", member(policy.RoleDeveloper, time.Time{}, past), policy.ProjectManage,
+			on(policy.RoleMaintainer), false},
+		{"the admin due date applies only on that project", member(policy.RoleDeveloper, time.Time{}, past), policy.ProjectManage,
+			policy.Resource{OrganizationID: org}, false},
+		{"a member with a factor has no due date", member(policy.RoleDeveloper, time.Time{}, time.Time{}), policy.ProjectManage,
+			on(policy.RoleAdmin), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, policy.SecondFactorBlocks(tt.subject, tt.action, tt.resource, now))
+		})
+	}
+	assert.True(t, policy.IsSensitive(policy.ProjectManage))
+	state := policy.SecondFactorState{Rule: policy.SecondFactorAdmins, JoinedAt: past, Role: policy.RoleDeveloper}
+	assert.True(t, policy.SecondFactorDue(state, time.Minute).IsZero())
+	assert.Equal(t, past.Add(time.Minute), policy.SecondFactorDueAsAdmin(state, time.Minute))
 }

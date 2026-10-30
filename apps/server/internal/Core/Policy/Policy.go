@@ -119,10 +119,11 @@ func Allows(role Role, action Action) bool {
 }
 
 type Membership struct {
-	OrganizationID  uuid.UUID
-	Role            Role
-	SecondFactorDue time.Time
-	LastSeenAt      time.Time
+	OrganizationID       uuid.UUID
+	Role                 Role
+	SecondFactorDue      time.Time
+	AdminSecondFactorDue time.Time
+	LastSeenAt           time.Time
 }
 
 type Subject struct {
