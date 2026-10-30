@@ -132,7 +132,6 @@
 - ممنوع `--no-verify`، وممنوع force-push على `main`.
 - **أي branch بيتفتح له draft PR من أول commit**، وفي وصفه «اتعمل» و«لسه»، عشان الشغل يبقى محفوظ وظاهر.
 - **الـ CI مابيشتغلش على الـ draft.** كل job فيه شرط `!github.event.pull_request.draft`، والـ `pull_request` بيسمع لـ `ready_for_review`. والـ PR بيتحوّل لـ «Ready for review» بعد ما الميزة تخلص و`make check` والمراجعة الأمنية يعدّوا، فالـ CI يشتغل ساعتها. وأي workflow جديد لازم ياخد نفس الشرط.
-- **الـ jobs التقيلة بتشتغل بس على اللي اتغيّر.** job `changes` بيشغّل `deploy/ci/changed-areas.sh`، فـ PR فيه `docs/` و`Plan/` و`.claude/` وملفات `.md` بس بيشغّل job `docs` الخفيف (`hooks-test` و`docs-check`) وبس. وGo والـ timing والعزل والـ image وCodeQL بيشتغلوا لما الكود يتغيّر، والواجهة لما `apps/web` أو `openapi.yaml` يتغيّروا. وعلى `main` كله بيشتغل. والـ job اللي بيتخطّى بيتحسب ناجح، فممنوع `paths-ignore` على workflow فيه فحص إجباري، وأي job تقيل جديد بياخد `needs: changes`.
 - **الـ branch بيتمسح تلقائي بعد الدمج** (`delete-merged-branch.yml`). والـ branches القديمة بتتمسح بـ `cleanup-merged-branches.yml` يدوي، وهو بيمسح بس الـ branch اللي آخر commit فيه هو نفس آخر commit في PR اندمج.
 
 ## التواصل
