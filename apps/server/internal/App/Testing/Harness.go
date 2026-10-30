@@ -24,9 +24,11 @@ import (
 	config "github.com/Khaymah/dhow/apps/server/internal/Config"
 	auth "github.com/Khaymah/dhow/apps/server/internal/Core/Auth"
 	mailer "github.com/Khaymah/dhow/apps/server/internal/Core/Mail"
+	triggers "github.com/Khaymah/dhow/apps/server/internal/Core/Triggers"
 	dbtest "github.com/Khaymah/dhow/apps/server/internal/Database/Testing"
 	"github.com/Khaymah/dhow/internal/buildinfo"
 	"github.com/Khaymah/dhow/internal/logging"
+	"github.com/Khaymah/dhow/internal/netguard"
 )
 
 const (
@@ -138,6 +140,9 @@ type Options struct {
 	Clock         *Clock
 	OidcTransport http.RoundTripper
 	Secrets       *FakeSecrets
+	Triggers      triggers.Sink
+	GitLookup     netguard.Lookup
+	GitDial       netguard.DialFunc
 
 	LogStreamWriteWait time.Duration
 	LogReadWait        time.Duration
@@ -194,7 +199,7 @@ func NewWithOptions(t *testing.T, o Options) *Env {
 	infra := app.Infra{
 		Config: cfg, Log: log, Pool: pool, Migrations: fakeMigrations{}, Build: buildinfo.Info{Version: "test", Commit: "test"},
 		Breach: breach, HashParams: &params, Now: clock.Now, Mailer: o.Mailer, OidcTransport: o.OidcTransport,
-		LogStreamWriteWait: o.LogStreamWriteWait, LogReadWait: o.LogReadWait,
+		LogStreamWriteWait: o.LogStreamWriteWait, LogReadWait: o.LogReadWait, Triggers: o.Triggers, GitLookup: o.GitLookup, GitDial: o.GitDial,
 	}
 	if o.Secrets != nil {
 		infra.Secrets = o.Secrets

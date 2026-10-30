@@ -15,11 +15,13 @@ const (
 	sealVersion   = byte(1)
 	nonceBytes    = 12
 	minSecretSize = 32
+	MaxPlaintext  = 1 << 20
 )
 
 var (
 	ErrShortSecret = errors.New("secret is shorter than 32 bytes")
 	ErrSealed      = errors.New("sealed value is malformed or was not sealed with this key and context")
+	ErrTooLarge    = errors.New("plaintext is larger than 1 MiB")
 )
 
 func DeriveKey(secret []byte, label string) ([]byte, error) {
@@ -54,6 +56,9 @@ func NewSealer(secret []byte, label string) (*Sealer, error) {
 }
 
 func (s *Sealer) Seal(plaintext, context []byte) ([]byte, error) {
+	if len(plaintext) > MaxPlaintext {
+		return nil, ErrTooLarge
+	}
 	out := make([]byte, 1+nonceBytes, 1+nonceBytes+len(plaintext)+s.aead.Overhead())
 	out[0] = sealVersion
 	if _, err := rand.Read(out[1:]); err != nil {

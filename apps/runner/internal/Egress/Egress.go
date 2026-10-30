@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Khaymah/dhow/internal/jobspec"
+	"github.com/Khaymah/dhow/internal/netguard"
 )
 
 const (
@@ -81,7 +82,7 @@ func New(o Options) (*Proxy, error) {
 	o.Idle = positiveDuration(o.Idle, DefaultIdle)
 	o.DialTimeout = positiveDuration(o.DialTimeout, DefaultDialTimeout)
 	o.HeaderTimeout = positiveDuration(o.HeaderTimeout, DefaultHeaderTimeout)
-	return &Proxy{rules: rules, ranges: ranges{blocked: blockedPrefixes(), host: o.HostAddrs, allowed: o.AllowPrivate}, o: o}, nil
+	return &Proxy{rules: rules, ranges: ranges{guard: netguard.Policy{Allowed: o.AllowPrivate}, host: o.HostAddrs}, o: o}, nil
 }
 
 func (p *Proxy) Serve(ctx context.Context, ln net.Listener) error {

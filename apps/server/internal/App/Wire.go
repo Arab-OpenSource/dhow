@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -23,6 +24,7 @@ import (
 	ratelimit "github.com/Khaymah/dhow/apps/server/internal/Core/RateLimit"
 	runnerauth "github.com/Khaymah/dhow/apps/server/internal/Core/RunnerAuth"
 	instancesettings "github.com/Khaymah/dhow/apps/server/internal/Core/Settings"
+	triggers "github.com/Khaymah/dhow/apps/server/internal/Core/Triggers"
 	retention "github.com/Khaymah/dhow/apps/server/internal/Database/Retention"
 	sqlc "github.com/Khaymah/dhow/apps/server/internal/Database/Sqlc"
 	alerts "github.com/Khaymah/dhow/apps/server/internal/Modules/Alerts"
@@ -35,10 +37,12 @@ import (
 	runners "github.com/Khaymah/dhow/apps/server/internal/Modules/Runners"
 	session "github.com/Khaymah/dhow/apps/server/internal/Modules/Session"
 	settings "github.com/Khaymah/dhow/apps/server/internal/Modules/Settings"
+	sources "github.com/Khaymah/dhow/apps/server/internal/Modules/Sources"
 	system "github.com/Khaymah/dhow/apps/server/internal/Modules/System"
 	systemmodels "github.com/Khaymah/dhow/apps/server/internal/Modules/System/Models"
 	tokens "github.com/Khaymah/dhow/apps/server/internal/Modules/Tokens"
 	"github.com/Khaymah/dhow/internal/buildinfo"
+	"github.com/Khaymah/dhow/internal/netguard"
 )
 
 type Infra struct {
@@ -58,6 +62,9 @@ type Infra struct {
 	LogStreamWriteWait time.Duration
 	LogReadWait        time.Duration
 	OidcTransport      http.RoundTripper
+	Triggers           triggers.Sink
+	GitLookup          netguard.Lookup
+	GitDial            netguard.DialFunc
 }
 
 type Wired struct {
@@ -68,6 +75,7 @@ type Wired struct {
 	Jobs          *jobs.Service
 	JobQueue      jobqueue.Queue
 	Projects      *projects.Service
+	Sources       *sources.Service
 	LogPool       *pgxpool.Pool
 	Retention     *retention.Runner
 	Alerts        *alerts.Service
@@ -98,22 +106,11 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	}
 	passwords := passwordsFor(in, store)
 	csrf := auth.NewCSRF(in.Config.SecretKey)
-	sealer, err := appcrypto.NewSealer(in.Config.SecretKey, config.TotpSealLabel)
+	keys, err := keysFor(in)
 	if err != nil {
 		return nil, err
 	}
-	recovery, err := auth.NewRecoveryHasher(in.Config.SecretKey)
-	if err != nil {
-		return nil, err
-	}
-	passkeys, err := auth.NewWebAuthn(in.Config.PublicURL, config.WebAuthnDisplayName, config.WebAuthnChallengeTTL)
-	if err != nil {
-		return nil, err
-	}
-	runnerKeys, err := runnerauth.DeriveKeys(in.Config.SecretKey)
-	if err != nil {
-		return nil, err
-	}
+	sealer, recovery, passkeys, runnerKeys := keys.totp, keys.recovery, keys.passkeys, keys.runner
 	external, err := externalAuth(in, store)
 	if err != nil {
 		return nil, err
@@ -149,6 +146,10 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	if err != nil {
 		return nil, err
 	}
+	sourcesService, err := sourcesFor(in, bus, limiter)
+	if err != nil {
+		return nil, err
+	}
 
 	opts := Options{
 		Config: in.Config,
@@ -163,6 +164,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		Runners:   runnersService,
 		Jobs:      jobsService,
 		Projects:  projects.NewService(projects.Options{DB: in.Pool, Bus: bus, Log: in.Log, Now: in.Now}),
+		Sources:   sourcesService,
 		Overview:  overview.NewService(overview.Options{Counter: sqlc.New(in.Pool), Log: in.Log, Now: in.Now}),
 		Tokens:    tokensService,
 		Prefs:     preferences.NewService(in.Pool, in.Log, in.Now),
@@ -170,6 +172,7 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 		CSRF:      csrf,
 		APITokens: external.apiTokens,
 		Limits:    ratelimit.NewLivePerClient(limiter, func() int { return limits().Public }, config.RateLimitPublicWindow, in.Log),
+		Webhooks:  limiter,
 		Settings:  settingsFor(in, store, sessionService, bus, mail, limiter, external.providers),
 		Instance:  store.Instance,
 		Now:       in.Now,
@@ -177,13 +180,36 @@ func Build(ctx context.Context, in Infra) (*Wired, error) {
 	}
 	wired := &Wired{
 		Options: opts, Handler: NewRouter(opts), Identity: identityService, Jobs: jobsService, JobQueue: jobsService.Queue(),
-		Projects: opts.Projects, LogPool: logPool, Settings: store, Alerts: alertsService,
+		Projects: opts.Projects, Sources: sourcesService, LogPool: logPool, Settings: store, Alerts: alertsService,
 		Retention: retention.New(retention.Options{Pool: in.Pool, Log: in.Log, Now: in.Now}),
 	}
 	if in.Config.RunnerPlaneSeparate() {
 		wired.RunnerHandler = RunnerPlaneServer(opts)
 	}
 	return wired, nil
+}
+
+type keyset struct {
+	totp     *appcrypto.Sealer
+	recovery *auth.RecoveryHasher
+	passkeys *webauthn.WebAuthn
+	runner   *runnerauth.Keys
+}
+
+func keysFor(in Infra) (keyset, error) {
+	var k keyset
+	var err error
+	if k.totp, err = appcrypto.NewSealer(in.Config.SecretKey, config.TotpSealLabel); err != nil {
+		return k, err
+	}
+	if k.recovery, err = auth.NewRecoveryHasher(in.Config.SecretKey); err != nil {
+		return k, err
+	}
+	if k.passkeys, err = auth.NewWebAuthn(in.Config.PublicURL, config.WebAuthnDisplayName, config.WebAuthnChallengeTTL); err != nil {
+		return k, err
+	}
+	k.runner, err = runnerauth.DeriveKeys(in.Config.SecretKey)
+	return k, err
 }
 
 func readinessChecks(jobsService *jobs.Service, store *instancesettings.Store) []system.ReadinessCheck {

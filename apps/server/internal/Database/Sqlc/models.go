@@ -79,6 +79,53 @@ type AuthChallenge struct {
 	FirstMethod     string
 }
 
+type CommitStatusReport struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	OrganizationId uuid.UUID
+	RepositoryId   uuid.UUID
+	Sha            string
+	RunId          uuid.UUID
+	TargetUrl      pgtype.Text
+	DesiredState   string
+	DesiredAt      time.Time
+	SentState      pgtype.Text
+	Attempts       int32
+	NextAttemptAt  time.Time
+	LastError      pgtype.Text
+	AbandonedAt    *time.Time
+}
+
+type GitConnection struct {
+	Id              uuid.UUID
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	IsDeleted       bool
+	OrganizationId  uuid.UUID
+	Provider        string
+	InstallationId  pgtype.Int8
+	BaseUrl         pgtype.Text
+	TokenSealed     []byte
+	TokenExpiresAt  *time.Time
+	State           string
+	CreatedByUserId uuid.UUID
+}
+
+type GitSetupFlow struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	Kind           string
+	StateHash      []byte
+	UserId         uuid.UUID
+	OrganizationId *uuid.UUID
+	ExpiresAt      time.Time
+	ConsumedAt     *time.Time
+}
+
 type Instance struct {
 	Id               int16
 	CreatedAt        time.Time
@@ -337,6 +384,36 @@ type RecoveryCode struct {
 	UsedAt    *time.Time
 }
 
+type Repository struct {
+	Id                         uuid.UUID
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
+	IsDeleted                  bool
+	OrganizationId             uuid.UUID
+	ProjectId                  uuid.UUID
+	Provider                   string
+	ConnectionId               *uuid.UUID
+	ExternalId                 pgtype.Text
+	FullName                   string
+	CloneUrl                   string
+	Transport                  string
+	DefaultBranch              string
+	HostKey                    pgtype.Text
+	HostKeyConfirmedAt         *time.Time
+	HostKeyConfirmedByUserId   *uuid.UUID
+	PendingHostKey             pgtype.Text
+	PendingHostKeyFetchedAt    *time.Time
+	DeployKeyPublic            pgtype.Text
+	DeployKeySealed            []byte
+	PreviousDeployKeyPublic    pgtype.Text
+	PreviousDeployKeySealed    []byte
+	PreviousDeployKeyExpiresAt *time.Time
+	WebhookSecretSealed        []byte
+	HookId                     pgtype.Text
+	LastDeliveryAt             *time.Time
+	CreatedByUserId            uuid.UUID
+}
+
 type RoleBinding struct {
 	Id             uuid.UUID
 	CreatedAt      time.Time
@@ -518,4 +595,22 @@ type UserPreference struct {
 	ThemeId        string
 	CustomThemes   []byte
 	OrganizationId *uuid.UUID
+}
+
+type WebhookDelivery struct {
+	Id             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	IsDeleted      bool
+	Provider       string
+	HookId         string
+	DeliveryId     string
+	PayloadDigest  []byte
+	OrganizationId *uuid.UUID
+	RepositoryId   *uuid.UUID
+	Event          string
+	Ref            pgtype.Text
+	Sha            pgtype.Text
+	Outcome        string
+	Reason         pgtype.Text
 }

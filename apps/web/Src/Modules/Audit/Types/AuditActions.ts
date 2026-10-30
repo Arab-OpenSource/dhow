@@ -61,6 +61,12 @@ export const AUDIT_ACTIONS: Readonly<Record<string, IAuditAction>> = {
   'project.created': { Icon: 'layers', Bad: false },
   'project.updated': { Icon: 'layers', Bad: false },
   'project.archived': { Icon: 'layers', Bad: true },
+  'project.repository_linked': { Icon: 'layers', Bad: false },
+  'project.repository_updated': { Icon: 'layers', Bad: false },
+  'project.host_key_confirmed': { Icon: 'key', Bad: false },
+  'project.deploy_key_rotated': { Icon: 'key', Bad: false },
+  'project.deploy_key_confirmed': { Icon: 'key', Bad: false },
+  'project.webhook_secret_rotated': { Icon: 'key', Bad: false },
   'system.instance.setupCompleted': { Icon: 'shield', Bad: false },
   'system.settings.changed': { Icon: 'settings', Bad: false },
 };
