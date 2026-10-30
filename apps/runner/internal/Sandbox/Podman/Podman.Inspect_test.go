@@ -124,6 +124,18 @@ func TestTheSandboxIsCreatedFromTheImageIDWithoutImageEnv(t *testing.T) {
 	}
 }
 
+func TestThePerAttemptMountsGetAPrivateSELinuxLabel(t *testing.T) {
+	spec, l := testSpec()
+	args := createArgs(spec, l, "/seccomp.json", strings.Repeat("b", 64))
+	want := "type=bind,src=" + l.controlDir + ",dst=" + controlMount + ",ro=true,relabel=private,U=true"
+	for _, a := range args {
+		if a == want {
+			return
+		}
+	}
+	t.Fatalf("the control channel mount must be relabelled for container_t, want %q in %v", want, args)
+}
+
 func TestADynamicallyLinkedAgentIsRefused(t *testing.T) {
 	f, err := elf.Open("/bin/sh")
 	if err != nil {
